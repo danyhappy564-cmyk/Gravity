@@ -13,6 +13,7 @@ namespace Gravity.Client.Patches
     /// 바닐라("사람 PMC에게서 먼 1등 지점 복제", kb 2.33) 대신 PointPicker.PickSquad로 고른 지점을 filteredPoints에 넣고 원래 함수는 건너뛴다.
     /// 후보는 RaidContext.ZonePoints[zone] 중 재사용 대기(IsValid(time))와 진영(IsValid(side))이 맞는 것(바닐라와 같은 두 필터).
     /// 고른 지점은 10초 예약. 고르지 못하면 아무것도 넣지 않는다 → SelectAISpawnPoints가 빈 목록 → TrySpawn이 다음 구역, 끝나면 대기열.
+    /// 근처 보충(F8) PMC 웨이브면 NearDirector가 고른 지점(Tag.PointId) 하나만 같은 두 필터를 거쳐 넣는다(맞지 않으면 아무것도 넣지 않음).
     /// TrySpawn 밖에서 불린 경우(ValidateSpawnPosition 등)와 예외는 바닐라.
     /// 바닐라 TrySpawn은 maxCount=1로 지점 하나만 받고(BotBossSpawn.cs:363·366) SelectAISpawnPoints가 maxCount개만 꺼내므로(SpawnSystem.cs:1009-1013)
     /// 분대 전체 인원만큼 넣어도 실제로는 첫 지점에 리더가 나고 호위는 그 지점 복제(BotBossSpawn.cs:374-381)에 난다(바닐라와 같은 결과).
@@ -40,6 +41,12 @@ namespace Gravity.Client.Patches
                 if (role == null || !role.Value.IsPmcBot()) return true;
                 if (!PmcZones.EnsurePoints(c)) return true;
 
+                if (ctx.Near != null)
+                {
+                    ctx.PickedAny |= PickNear(c, filteredPoints, ctx.Near.PointId, creationData, time);
+                    return false;
+                }
+
                 var picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time);
                 ctx.PickedAny |= picked;
                 return false;
@@ -49,6 +56,16 @@ namespace Gravity.Client.Patches
                 Log.ErrorOnce("PmcPoints", ex);
                 return true;
             }
+        }
+
+        private static bool PickNear(RaidContext c, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, int id,
+            BotCreationData data, float now)
+        {
+            if (!c.PointById.TryGetValue(id, out var sp) || sp == null) return false;
+            if (!sp.IsValid(now) || !sp.IsValid(data.Side)) return false;
+            filteredPoints.InsertRange(new List<ISpawnPoint> { sp });
+            c.Reserved.Add((PmcZones.V(sp.Position), now + ReserveSec));
+            return true;
         }
 
         private static bool Pick(RaidContext c, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, BotZone z,

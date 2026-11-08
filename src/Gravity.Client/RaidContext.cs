@@ -47,11 +47,13 @@ namespace Gravity.Client
         public readonly ConditionalWeakTable<BossLocationSpawn, StrongBox<float>> FirstFail =
             new ConditionalWeakTable<BossLocationSpawn, StrongBox<float>>();
 
-        /// <summary>생성한 인원(키 pmcUSEC·pmcBEAR = PMC 분대 실제 생성, assault = ScavDirector가 요청한 스캐브). 보고용.</summary>
-        public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0 };
+        /// <summary>생성한 인원(키 pmcUSEC·pmcBEAR = PMC 분대 실제 생성, assault = ScavDirector가 요청한 스캐브,
+        /// near = NearDirector가 요청한 근처 보충 인원에서 대기열로 가다 버린 수를 뺀 것). 보고용.</summary>
+        public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0, ["near"] = 0 };
 
         /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
-        /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번). 보고용.</summary>
+        /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번) + 상한에 막힌 근처 보충 자리 수.
+        /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
         public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0 };
 
         /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
@@ -83,6 +85,16 @@ namespace Gravity.Client
 
         /// <summary>ScavDirector에서 예외가 났으면 true: 이 레이드의 남은 시간은 바닐라 자동 스폰으로 돌린다.</summary>
         internal bool ScavFailed;
+
+        /// <summary>NearDirector 상태(근처 보충이 켜진 레이드의 첫 틱에 만든다).</summary>
+        internal Directors.NearDirector.State? NearState;
+
+        /// <summary>NearDirector에서 예외가 났으면 true: 이 레이드의 남은 시간은 근처 보충을 하지 않는다.</summary>
+        internal bool NearFailed;
+
+        /// <summary>NearDirector가 넣은 웨이브. PMC 패치(지점·그룹 제한·대기열)가 근처 보충 웨이브를 알아보는 데 쓴다.</summary>
+        internal readonly ConditionalWeakTable<BossLocationSpawn, Directors.NearDirector.Tag> NearWaves =
+            new ConditionalWeakTable<BossLocationSpawn, Directors.NearDirector.Tag>();
 
         /// <summary>ZonePoints를 만들었는지 / PMC 구역 0개 맵 보충을 끝냈는지(PmcZones 내부용).</summary>
         internal bool PointsBuilt;

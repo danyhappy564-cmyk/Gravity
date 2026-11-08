@@ -8,9 +8,11 @@ using SPT.Reflection.Patching;
 namespace Gravity.Client.Patches
 {
     /// <summary>
-    /// NonWavesSpawnScenario.Update(NonWavesSpawnScenario.cs:116) 앞. 두 가지를 한다.
-    /// 1) 레이드 시간 60초마다 살아 있는 봇 수 [분, PMC, 스캐브, 전체]를 RaidContext에 적는다(보고용, 아래 2와 무관하게 늘 한다).
-    /// 2) 서버가 스캐브를 관리하는 레이드(S.Scav.Managed)면 ScavDirector.Tick을 부르고 false(바닐라 자동 스폰을 건너뜀).
+    /// NonWavesSpawnScenario.Update(NonWavesSpawnScenario.cs:116) 앞. 세 가지를 한다.
+    /// 1) 레이드 시간 60초마다 살아 있는 봇 수 [분, PMC, 스캐브, 전체]를 RaidContext에 적는다(보고용, 아래와 무관하게 늘 한다).
+    /// 2) 근처 보충(F8): NearDirector.Tick. 스캐브 관리 여부와 상관없이 부른다(연구소처럼 스캐브가 바닐라인 맵에서도 근처 보충은 돈다).
+    ///    반환값에는 영향이 없다. NearDirector에서 예외가 나면 그 레이드는 NearFailed로 표시하고 남은 시간은 근처 보충을 하지 않는다.
+    /// 3) 서버가 스캐브를 관리하는 레이드(S.Scav.Managed)면 ScavDirector.Tick을 부르고 false(바닐라 자동 스폰을 건너뜀).
     ///    이 컴포넌트는 LocalGame.Create가 늘 붙이므로(LocalGame.cs:144) 바닐라가 돌지 않는 맵(OfflineNewSpawn=false: 공장·연구소·미궁·리저브,
     ///    LocalGame.cs:195·BaseLocalGame.cs:519)에서도 Update는 매 프레임 불린다. 그래서 바닐라의 _started 대신 RaidContext.Started로 시작을 본다.
     ///    ScavDirector에서 예외가 나면 그 레이드는 ScavFailed로 표시하고 남은 시간은 바닐라로 돌린다(예외 시 바닐라 경로).
@@ -39,6 +41,20 @@ namespace Gravity.Client.Patches
             catch (Exception ex)
             {
                 Log.ErrorOnce("NonWaves", ex);
+            }
+
+            if (c != null && !c.NearFailed)
+            {
+                try
+                {
+                    NearDirector.Tick(c, ____botsController);
+                }
+                catch (Exception ex)
+                {
+                    c.NearFailed = true;
+                    Log.ErrorOnce("NearDirector", ex);
+                    Log.Warn($"{c.S.MapId} 근처 보충 중 예외: 이 레이드의 남은 시간은 근처 보충 없음");
+                }
             }
 
             if (c == null || c.ScavFailed || c.S.Scav == null || !c.S.Scav.Managed) return true;
