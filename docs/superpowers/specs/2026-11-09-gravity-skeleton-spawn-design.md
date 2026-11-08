@@ -87,7 +87,7 @@ SPT의 `LocationLifecycleService.GenerateLocationAndLoot(sessionId, name, genera
 - **지움**(그 맵을 Gravity가 관리할 때):
   - `BossLocationSpawn` 중 `BossName`이 `pmcUSEC`/`pmcBEAR`인 항목
   - `Waves` 중 `WildSpawnType`이 `assault`인 항목
-  - 단, 맵 설정 `original=true`(원래 스캐브 웨이브 유지)이면 스캐브 웨이브는 남긴다.
+- **맵 끄기**: 맵 설정 `original=false`이면 그 맵은 통째로 건드리지 않는다(바닐라 그대로). 목업의 "게임 기본 맵 데이터에 Gravity 적용" 스위치다. `variant`(다른 모드가 바꿔 끼운 맵에도 적용)는 이번 판에서 구분하지 않고 항상 적용한다. **[검토 필요]**
 - **남김**: 보스·호위·레이더·로그·컬티스트·저격 스캐브(`marksman`)·팩션 모드 항목(RUAF·UNTAR·BlackDiv가 넣은 것)·이벤트 항목. 보스는 5.5절의 확률 조정만 한다.
 
 ### 5.3 계획 만들기(`SpawnPlanner`)
@@ -190,7 +190,7 @@ SPT의 `LocationLifecycleService.GenerateLocationAndLoot(sessionId, name, genera
 1. 이번 판은 서버 모드만 만든다(클라이언트 없음).
 2. 웹은 목업 v013을 그대로 쓰고, 미구현 칸에는 띠를 붙인다.
 3. 설정은 웹 state 전체를 한 파일에 저장한다(미구현 칸 보존).
-4. 지우는 것은 PMC 항목과 assault 웨이브뿐이고, 나머지는 남긴다.
+4. 지우는 것은 PMC 항목과 assault 웨이브뿐이고, 나머지는 남긴다. 맵 `original` 스위치를 끄면 그 맵은 바닐라로 둔다.
 5. 그룹 제한의 "동시에" 범위는 이번 판에서 "레이드 전체"로 센다.
 6. 무한 보충은 촘촘한 웨이브로 흉내 낸다. 상한이 찼을 때의 동작은 인게임에서 확인한다.
 7. 보스는 확률·맵 끄기만 한다(구역·호위·새 맵은 2-2).
