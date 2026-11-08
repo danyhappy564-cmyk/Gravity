@@ -73,9 +73,12 @@ public static class RaidSpawnApplier
     }
 
     /// <summary>
-    /// PMC 분대 하나의 BossZone. 클라는 쉼표 목록에서 구역 하나를 무작위로 골라 레이드 끝까지 그 구역만 재시도한다(kb 2.62)
-    /// → 목록을 넘기지 않는다. 구역이 다 켜져 있으면(또는 다 꺼져 있으면) "" = 클라가 PMC 구역 전부를 섞어 차례로 시도,
-    /// 일부만 켜져 있으면 켜진 구역을 분대 순서대로 하나씩 돌려 준다.
+    /// PMC 분대 하나의 BossZone. 쉼표 목록은 쓰지 않는다: 클라는 목록에서 구역 하나를 무작위로 골라 레이드 끝까지
+    /// 그 구역만 재시도한다(kb 2.62).
+    /// - 구역을 다 켰으면(다 껐으면 다 켠 것으로 봄) "" = 클라가 자기 PMC 구역(HasPmcBotSpawns) 전부를 섞어 차례로 시도
+    ///   (11-09 세관 확인 판 18/18). 클라에 PMC 구역이 없는 맵(공장: BotZone 지점이 전부 일반 Bot)은 대기열에 쌓이지 않고 바로 버려진다
+    ///   — 이름을 직접 넣으면 같은 구역을 3초마다 영원히 재시도하므로 그보다 낫다(11-09 공장 시험). 그런 맵의 PMC는 0.2 클라 플러그인 몫.
+    /// - 일부만 켰으면 켠 구역 이름 하나씩을 분대 순서대로 돌려 준다(all은 BotPmc 지점이 있는 구역 목록, MapCatalog).
     /// </summary>
     internal static string PmcZoneFor(string[] all, MapSettings ms, int groupIndex)
     {

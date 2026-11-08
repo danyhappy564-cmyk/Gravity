@@ -121,7 +121,8 @@ SPT의 `LocationLifecycleService.GenerateLocationAndLoot(sessionId, name, genera
 - **PMC 그룹** → `BossLocationSpawn` 하나:
   - `BossName`=`BossEscortType`=`pmcUSEC|pmcBEAR`
   - `BossEscortAmount`=`"인원-1"`, `BossChance=100`, `Time`=초
-  - `BossZone`=구역을 다 켰으면(또는 다 껐으면) `""`(클라가 PMC 구역 전부를 섞어 차례로 시도), 일부만 켰으면 켠 구역 하나씩을 분대 순서대로 돌려 넣는다. **쉼표 목록은 쓰지 않는다**: 클라는 목록에서 한 구역만 무작위로 골라 고정하고 그 구역만 재시도한다(kb 2.62, 11-09 세관 시험에서 대기열 16·PMC 1~2명의 원인으로 확정).
+  - `BossZone`: **쉼표 목록은 쓰지 않는다** — 클라는 목록에서 한 구역만 무작위로 골라 고정하고 그 구역만 재시도한다(kb 2.62). 바닐라 묶음에는 봇 PMC 지점이 없는 구역이 섞여 있어(세관 12개 중 6개) 그 구역을 고른 분대는 영원히 대기했다(11-09 세관: 대기열 16·PMC 1~2명). 구역을 다 켰으면 `""`(클라가 자기 PMC 구역 전부를 섞어 차례로 시도, 세관 확인 판 18/18). 일부만 켰으면 켠 구역 이름 하나씩을 분대 순서대로 돌려 넣는다. 웹의 PMC 구역 목록 = DB `SpawnPointParams`에서 `BotPmc` 지점이 있는 구역.
+  - **공장 한계(11-09)**: 클라의 공장 `BotZone` 지점 19개는 모두 일반 `Bot`이라 PMC 구역이 0개(`AvailableZonesPmc=0`) → 보스 웨이브 PMC는 바닐라 항목까지 `can't find zones to spawn boss`로 버려진다(코드상 판단). `""`이면 바로 버려지고, 이름을 넣으면 3초마다 영원히 재시도한다. 공장·미궁 PMC는 0.2 클라 플러그인(사람 스폰 지점 사용, ABPS 방식 원리만 참고)에서 해결한다.
   - `BossDifficulty`=`BossEscortDifficulty`=난이도
   - `IgnoreMaxBots`=`ignoreCap.start`(시작) 또는 `ignoreCap.waves`(웨이브)
   - `SpawnMode`=`["regular","pve"]`

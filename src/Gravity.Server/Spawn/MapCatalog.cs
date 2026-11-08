@@ -34,7 +34,12 @@ public sealed class MapCatalog
             var basePmc = (int)Math.Round(pmcEntries.Sum(e => (e.BossChance ?? 100) / 100 * (1 + AvgEscort(e.BossEscortAmount))));
             var assault = (b.Waves ?? []).Where(w => w.WildSpawnType == WildSpawnType.assault).ToList();
             var baseScav = (int)Math.Round(assault.Sum(w => ((w.SlotsMin ?? 0) + (w.SlotsMax ?? 0)) / 2.0));
-            var pmcZones = Split(pmcEntries.Select(e => e.BossZone));
+            // 웹에 보이는 PMC 구역 = 봇 PMC 지점(BotPmc)이 있는 구역. 바닐라 항목의 구역 묶음에는 PMC 지점이 없는 구역이
+            // 섞여 있다(세관 12개 중 6개: 웨이드·기숙사·주유소 등) — 그런 구역을 하나 고르면 그 분대는 영원히 대기한다(kb 2.62).
+            var pmcPointZones = (b.SpawnPointParams ?? [])
+                .Where(p => p.Categories?.Contains("BotPmc") == true && !string.IsNullOrEmpty(p.BotZoneName))
+                .Select(p => p.BotZoneName!).Distinct().OrderBy(z => z, StringComparer.Ordinal).ToArray();
+            var pmcZones = pmcPointZones.Length > 0 ? pmcPointZones : Split(pmcEntries.Select(e => e.BossZone));
             if (pmcZones.Length == 0) pmcZones = Split([b.OpenZones]);
             var scavZones = Split(assault.Select(w => w.SpawnPoints));
             var raidSec = (int)Math.Round((b.EscapeTimeLimit ?? 40) * 60);

@@ -70,7 +70,7 @@ public class ApplierTests
             Assert.Equal(100, e.BossChance);
             Assert.Equal(e.BossName, e.BossEscortType);
             Assert.InRange(int.Parse(e.BossEscortAmount!), 0, 4);
-            Assert.Equal("", e.BossZone); // 구역 다 켜짐 → 클라가 PMC 구역 전부를 섞어 시도(kb 2.62)
+            Assert.Equal("", e.BossZone); // 구역 다 켜짐 → 클라가 PMC 구역 전부를 섞어 시도(쉼표 목록 금지, kb 2.62)
             Assert.Contains("pve", e.SpawnMode);
         });
         var startCount = plan.Groups.Count(g => g.IsStart);
@@ -114,8 +114,12 @@ public class ApplierTests
         string[] all = ["Z1", "Z2", "Z3", "Z4"];
         var some = ms with { Zones = new Dictionary<string, bool> { ["Z2"] = false, ["Z4"] = false } };
         Assert.Equal(["Z1", "Z3", "Z1", "Z3"], Enumerable.Range(0, 4).Select(i => RaidSpawnApplier.PmcZoneFor(all, some, i)).ToArray());
+        // 다 켬·다 끔 → "" (클라가 자기 PMC 구역 전부를 섞어 시도)
         Assert.Equal("", RaidSpawnApplier.PmcZoneFor(all, ms with { Zones = new Dictionary<string, bool>() }, 3));
         Assert.Equal("", RaidSpawnApplier.PmcZoneFor(all, ms with { Zones = all.ToDictionary(z => z, _ => true) }, 0));
+        Assert.Equal("", RaidSpawnApplier.PmcZoneFor(all, ms with { Zones = all.ToDictionary(z => z, _ => false) }, 0));
+        // 구역 1개 맵(공장 BotZone)도 "" — 이름을 넣으면 클라에 PMC 지점이 없을 때 영원히 대기열(11-09 공장 시험)
+        Assert.Equal("", RaidSpawnApplier.PmcZoneFor(["BotZone"], ms, 7));
         Assert.Equal("", RaidSpawnApplier.PmcZoneFor([], ms, 0));
     }
 
