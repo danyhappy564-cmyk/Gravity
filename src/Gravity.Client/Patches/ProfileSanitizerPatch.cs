@@ -14,7 +14,7 @@ namespace Gravity.Client.Patches
     /// Profile.GetAllPrefabPaths 앞: 봇 프로필의 외형 ID를 클라가 모르면(CustomizationSolver.GetItem == null 또는 Prefab 없음)
     /// 같은 진영·같은 부위의 클라 외형으로 바꾸고, Prefab 없는 장비는 뺀다.
     /// 그대로 두면 GetBundle이 null을 내고 ObjectsFactory.Pools.ConvertResourceInfo에서 NRE가 나 봇 생성이 통째로 실패한다(kb 2.17).
-    /// GetAllPrefabPaths는 반복기라도 Prefix는 부르는 순간 돈다.
+    /// GetAllPrefabPaths는 반복기라도 Prefix는 부르는 순간 돈다. Plugin.SpawnActive가 false면(서버 없음·Hello 실패·판 불일치·잠금) 아무것도 바꾸지 않는다.
     /// </summary>
     internal sealed class ProfileSanitizerPatch : ModulePatch
     {
@@ -34,6 +34,9 @@ namespace Gravity.Client.Patches
         {
             try
             {
+                // 클라 기능이 켜졌을 때만(Hello 성공·판 호환·서버 잠금 없음·ABPS 없음). Hello는 패치를 건 뒤에 오므로 부를 때마다 본다.
+                // RaidContext·Managed는 보지 않는다: 충돌 방지라 클라가 켜져 있으면 모든 레이드에 건다.
+                if (!Plugin.SpawnActive) return;
                 // 봇만: 봇 생성 경로(BotProfileClient·BotSpawner)는 allCustomization=false로 부르고 Info.Settings(역할)가 있다.
                 // 플레이어·은신처는 기본값 true로 부른다.
                 if (allCustomization || __instance?.Info?.Settings == null) return;
