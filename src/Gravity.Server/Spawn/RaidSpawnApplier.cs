@@ -17,7 +17,9 @@ public static class RaidSpawnApplier
 
     private static readonly string[] Modes = ["regular", "pve"];
 
-    public static void Apply(LocationBase loc, SpawnPlan plan, GravityConfig cfg, MapInfo info)
+    /// <param name="hasClient">클라 플러그인이 있는 세션이면 true: 스캐브 웨이브(assault)를 계획의 시작 스캐브로 바꾸고,
+    /// 저격(marksman)은 scav.startMarksman이 꺼졌을 때만 지운다. 없으면 스캐브·저격 웨이브는 바닐라 그대로.</param>
+    public static void Apply(LocationBase loc, SpawnPlan plan, GravityConfig cfg, MapInfo info, bool hasClient = false)
     {
         var ms = cfg.MapFor(info.Id);
         var scavZones = Zones(info.ScavZones, ms);
@@ -40,9 +42,10 @@ public static class RaidSpawnApplier
             });
         }
 
-        // 스캐브 웨이브: 계획에 있을 때만 갈아 끼운다(이번 판은 비어 있음 → 바닐라 유지).
-        var manageScavs = plan.ScavWaves.Count > 0;
-        var waves = (loc.Waves ?? []).Where(w => !manageScavs || w.WildSpawnType != WildSpawnType.assault).ToList();
+        // 스캐브 웨이브: 클라가 있을 때만 갈아 끼운다(시작 스캐브가 0개여도 바닐라 assault는 지운다).
+        var manageScavs = hasClient;
+        var waves = (loc.Waves ?? []).Where(w => !manageScavs
+            || (w.WildSpawnType != WildSpawnType.assault && (s.Scav.StartMarksman || w.WildSpawnType != WildSpawnType.marksman))).ToList();
         foreach (var w in plan.ScavWaves)
             waves.Add(new Wave
             {

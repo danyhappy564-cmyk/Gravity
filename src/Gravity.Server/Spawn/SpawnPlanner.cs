@@ -129,6 +129,7 @@ public static class SpawnPlanner
             var scavEnd = raid * (1 - s.HardStop.ScavPct / 100);
             var t = s.Scav.SeparateStart ? s.Scav.DelayMin : 0;
             var times = new List<double>();
+            var firstWindow = -1; // 첫 활동 구간에 든 웨이브 수(= 시작 스캐브)
             while (t < scavEnd && times.Count < MaxWaves)
             {
                 var activeEnd = t + Between(s.Scav.ActiveMin, s.Scav.ActiveMax);
@@ -137,16 +138,28 @@ public static class SpawnPlanner
                     times.Add(t);
                     t += (60 + rnd.Next(61)) / 60.0;
                 }
+                if (firstWindow < 0) firstWindow = times.Count;
                 t = activeEnd + Between(s.Scav.QuietMin, s.Scav.QuietMax);
             }
             if (times.Count == 0) return;
             var startMin = s.Scav.SeparateStart ? s.Scav.DelayMin : 0;
             var total = map.BaseScav * Math.Max(0, raid - startMin) / Math.Max(1.0, map.DbRaidSec / 60.0);
             var per = total / times.Count;
-            foreach (var tt in times) scav.Add(Wave(tt, Math.Max(1, (int)R(per))));
+            for (var i = 0; i < times.Count; i++) scav.Add(Wave(times[i], Math.Max(1, (int)R(per))) with { IsStart = i < firstWindow });
         }
 
         double Between(double a, double b) => a >= b ? a : a + rnd.NextDouble() * (b - a);
+    }
+
+    /// <summary>무한 보충용 PMC 분대 목록(크기·진영·난이도를 계획기와 같은 비율로 미리 뽑는다). 시드가 같으면 같은 목록.</summary>
+    public static List<Gravity.Shared.RefillGroup> PlanRefill(GravityConfig cfg, int seed, int count)
+    {
+        var rnd = new Random(unchecked(seed * 31 + 7));
+        var s = cfg.Spawn;
+        var list = new List<Gravity.Shared.RefillGroup>();
+        for (var i = 0; i < count; i++)
+            list.Add(new Gravity.Shared.RefillGroup(rnd.NextDouble() * 100 < s.UsecPct, PickSize(s.Squad, rnd), Pick(DiffNames, s.Diff, rnd)));
+        return list;
     }
 
     private static ScavWave Wave(double tMin, int n)

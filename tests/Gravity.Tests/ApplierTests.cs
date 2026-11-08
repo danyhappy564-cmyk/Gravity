@@ -46,7 +46,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime();
-        Assert.True(rt.TryApplyToRaid("bigmap", loc, null, 5));
+        Assert.True(rt.TryApplyToRaid("bigmap", loc, null, null, 5));
         Assert.Contains(loc.BossLocationSpawn, e => e.BossName == "bossBully");
         Assert.Contains(loc.BossLocationSpawn, e => e.BossName == "exUsec");
         Assert.Contains(loc.BossLocationSpawn, e => e.BossName == "ruafPatrol");
@@ -60,7 +60,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"spawn":{"ignoreCap":{"start":true,"waves":false}}}""");
-        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        rt.TryApplyToRaid("bigmap", loc, null, null, 5);
         var pmcs = loc.BossLocationSpawn.Where(MapCatalog.IsPmc).ToList();
         Assert.NotEmpty(pmcs);
         var plan = rt.Last!.Plan!;
@@ -82,7 +82,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"maps":{"bigmap":{"cap":31}}}""");
-        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        rt.TryApplyToRaid("bigmap", loc, null, null, 5);
         Assert.Equal(20, loc.BotMax);
         Assert.Empty(rt.Last!.Plan!.ScavWaves);
         Assert.Contains("스캐브 바닐라 유지", rt.Last!.Summary);
@@ -93,7 +93,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"maps":{"bigmap":{"zones":{"ZoneA":{"on":false}}}}}""");
-        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        rt.TryApplyToRaid("bigmap", loc, null, null, 5);
         Assert.All(loc.BossLocationSpawn.Where(MapCatalog.IsPmc), e => Assert.Equal("ZoneB", e.BossZone));
     }
 
@@ -102,7 +102,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"maps":{"bigmap":{"zones":{"ZoneA":{"on":false},"ZoneB":{"on":false}}}}}""");
-        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        rt.TryApplyToRaid("bigmap", loc, null, null, 5);
         Assert.All(loc.BossLocationSpawn.Where(MapCatalog.IsPmc), e => Assert.Equal("", e.BossZone));
     }
 
@@ -128,7 +128,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"bosses":{"reshala":{"on":true,"chance":80,"maps":{"bigmap":false}}}}""");
-        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        rt.TryApplyToRaid("bigmap", loc, null, null, 5);
         Assert.Equal(0, loc.BossLocationSpawn.First(e => e.BossName == "bossBully").BossChance);
         Assert.Equal(50, loc.BossLocationSpawn.First(e => e.BossName == "exUsec").BossChance);
     }
@@ -138,7 +138,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"bosses":{"reshala":{"chance":80}}}""");
-        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        rt.TryApplyToRaid("bigmap", loc, null, null, 5);
         Assert.Equal(80, loc.BossLocationSpawn.First(e => e.BossName == "bossBully").BossChance);
     }
 
@@ -148,7 +148,7 @@ public class ApplierTests
         var loc = Loc();
         loc.Id = "custom_map";
         var (rt, _) = Runtime();
-        Assert.False(rt.TryApplyToRaid("custom_map", loc, null, 5));
+        Assert.False(rt.TryApplyToRaid("custom_map", loc, null, null, 5));
         Assert.Contains(loc.BossLocationSpawn, e => e.BossName == "pmcUSEC" && e.SptId == null);
         Assert.Equal(20, loc.BotMax);
     }
@@ -158,7 +158,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime(abps: true);
-        Assert.False(rt.TryApplyToRaid("bigmap", loc, null, 5));
+        Assert.False(rt.TryApplyToRaid("bigmap", loc, null, null, 5));
         Assert.Equal(2, loc.Waves.Count);
     }
 
@@ -167,7 +167,7 @@ public class ApplierTests
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"maps":{"bigmap":{"original":false}}}""");
-        Assert.False(rt.TryApplyToRaid("bigmap", loc, null, 5));
+        Assert.False(rt.TryApplyToRaid("bigmap", loc, null, null, 5));
         Assert.Equal(20, loc.BotMax);
     }
 
@@ -177,7 +177,7 @@ public class ApplierTests
         var loc = Loc();
         loc.EscapeTimeLimit = 25;
         var (rt, _) = Runtime();
-        rt.TryApplyToRaid("bigmap", loc, new RaidChanges { SimulatedRaidStartSeconds = 600, RaidTimeMinutes = 25 }, 5);
+        rt.TryApplyToRaid("bigmap", loc, new RaidChanges { SimulatedRaidStartSeconds = 600, RaidTimeMinutes = 25 }, null, 5);
         var plan = rt.Last!.Plan!;
         Assert.Equal(2100, plan.RaidSec);
         Assert.Equal(600, plan.SimStartSec);

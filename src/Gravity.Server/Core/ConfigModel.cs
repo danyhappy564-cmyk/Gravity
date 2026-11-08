@@ -10,25 +10,39 @@ public sealed record HardStop(string Mode, double PmcPct, double ScavPct, double
 public sealed record Intensity(double Early, double Mid, double Late);
 public sealed record GroupCapRule(int Size, string Cmp, int Count);
 public sealed record GroupCap(bool On, string Scope, string Over, IReadOnlyList<GroupCapRule> Rules);
-public sealed record ScavSettings(bool SeparateStart, double DelayMin, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax);
+public sealed record ScavSettings(
+    bool SeparateStart, double DelayMin, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
+    double Refill, int Pending, int SoftCap, int PerPlayer, double PscavChance, bool StartMarksman);
+
+public sealed record ProtectSettings(bool On, double Sec, double Radius);
+public sealed record SpacingSettings(double Player, double Bots);
 
 public sealed record SpawnSettings(
     double StartPmcPct, double FirstDelaySec, double IntervalMin, double RandomPct, double MinGapSec,
     double DistWave, double DistBots, bool Smooth, int WaveMin, int WaveMax, HardStop HardStop,
     bool IgnoreCapStart, bool IgnoreCapWaves, Intensity Intensity, double UsecPct,
-    double[] Squad, GroupCap GroupCap, double[] Diff, ScavSettings Scav);
+    double[] Squad, GroupCap GroupCap, double[] Diff, ScavSettings Scav,
+    ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth);
+
+/// <summary>근처 보충(0.2 클라). 값은 웹 단위 그대로(초·m·%).</summary>
+public sealed record NearSettings(
+    bool On, double FirstDelay, double Interval, double MinDist, double MaxDist, double Spacing,
+    int WaveMin, int WaveMax, double SlotChance, double PmcChance, int Attempts, bool Sight, bool StopAtCap,
+    bool GroupScavOff, double GroupChance, int GroupMin, int GroupMax,
+    bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2);
 
 public sealed record InfSettings(double DelaySec, int Batch, double PmcShare, double Jitter);
 
 public sealed record MapSettings(
     bool Override, string Style, InfSettings Inf, double StartPmcPct, double IntervalMin, int WaveMin, int WaveMax,
-    Intensity Intensity, bool Original, int Cap, IReadOnlyDictionary<string, bool> Zones);
+    Intensity Intensity, bool Original, int Cap, IReadOnlyDictionary<string, bool> Zones,
+    double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights);
 
 public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<string, bool> Maps);
 
 public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
-    IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance)
+    IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near)
 {
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
 }
@@ -51,9 +65,13 @@ public static class ConfigModel
     public static int DefaultCap(string map) =>
         map == "labyrinth" ? 10 : map.StartsWith("factory") ? 14 : map == "tarkovstreets" ? 30 : 24;
 
+    public static double DefaultPmcDist(string map) => map.StartsWith("factory") ? 40 : 120;
+    public static double DefaultScavDist(string map) => map.StartsWith("factory") ? 30 : 80;
+
     public static MapSettings DefaultMap(string id) => new(
         false, id == "labyrinth" ? "infinite" : "waves", new InfSettings(45, 2, 50, 30), 35, 6, 2, 4,
-        new Intensity(1.2, 1, 0.6), true, DefaultCap(id), new Dictionary<string, bool>());
+        new Intensity(1.2, 1, 0.6), true, DefaultCap(id), new Dictionary<string, bool>(),
+        DefaultPmcDist(id), DefaultScavDist(id), true, new Dictionary<string, double>());
 
     public static GravityConfig Default() => FromState(null, []);
 
@@ -100,7 +118,14 @@ public static class ConfigModel
             diff,
             new ScavSettings(r.Bool(sp + "scav.separateStart", true), r.Num(sp + "scav.delay", 4, 0, 60),
                 r.Num(sp + "scav.activeMin", 3, 1, 60), r.Num(sp + "scav.activeMax", 7, 1, 60),
-                r.Num(sp + "scav.quietMin", 1, 0, 60), r.Num(sp + "scav.quietMax", 3, 0, 60)));
+                r.Num(sp + "scav.quietMin", 1, 0, 60), r.Num(sp + "scav.quietMax", 3, 0, 60),
+                r.Num(sp + "scav.refill", 120, 0, 3600), (int)r.Num(sp + "scav.pending", 3, 0, 20),
+                (int)r.Num(sp + "scav.softCap", 18, 0, 60), (int)r.Num(sp + "scav.perPlayer", 20, 0, 100),
+                r.Num(sp + "scav.pscavChance", 10, 0, 100), r.Bool(sp + "scav.startMarksman", true)),
+            new ProtectSettings(r.Bool(sp + "protect.on", true), r.Num(sp + "protect.sec", 90, 0, 3600), r.Num(sp + "protect.radius", 120, 5, 1000)),
+            new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
+            r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),
+            r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false));
 
         var maps = new Dictionary<string, MapSettings>();
         foreach (var id in KnownMaps)
@@ -108,9 +133,13 @@ public static class ConfigModel
             var d = DefaultMap(id);
             var p = $"maps.{id}.";
             var zones = new Dictionary<string, bool>();
+            var zoneW = new Dictionary<string, double>();
             if (r.Node(p + "zones") is JsonObject zo)
                 foreach (var (k, v) in zo)
+                {
                     zones[k] = v is JsonObject o && o["on"] is JsonValue jv && jv.TryGetValue<bool>(out var on) ? on : true;
+                    zoneW[k] = r.Num($"{p}zones.{k}.w", 100, 0, 1000);
+                }
             var wMin = (int)r.Num(p + "waveMin", d.WaveMin, 0, 20);
             maps[id] = new MapSettings(
                 r.Bool(p + "override", d.Override), r.Str(p + "style", d.Style, "waves", "infinite", "start"),
@@ -119,7 +148,9 @@ public static class ConfigModel
                 r.Num(p + "startPmcPct", d.StartPmcPct, 0, 100), r.Num(p + "interval", d.IntervalMin, 0.5, 60),
                 wMin, (int)Math.Max(wMin, r.Num(p + "waveMax", d.WaveMax, 0, 20)),
                 new Intensity(r.Num(p + "early", 1.2, 0, 3), r.Num(p + "mid", 1, 0, 3), r.Num(p + "late", 0.6, 0, 3)),
-                r.Bool(p + "original", true), (int)r.Num(p + "cap", d.Cap, 1, 60), zones);
+                r.Bool(p + "original", true), (int)r.Num(p + "cap", d.Cap, 1, 60), zones,
+                r.Num(p + "pmcDist", d.PmcDist, 5, 1000), r.Num(p + "scavDist", d.ScavDist, 5, 1000),
+                r.Bool(p + "start.scav", true), zoneW);
         }
 
         var bosses = new Dictionary<string, BossSettings>();
@@ -133,8 +164,21 @@ public static class ConfigModel
             bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm);
         }
 
+        var nMin = r.Num("near.minDist", 200, 5, 1000);
+        var nWaveMin = (int)r.Num("near.waveMin", 3, 0, 20);
+        var gMin = (int)r.Num("near.group.min", 2, 1, 10);
+        var near = new NearSettings(
+            r.Bool("near.on", false), r.Num("near.firstDelay", 15, 0, 3600), r.Num("near.interval", 180, 5, 3600),
+            nMin, Math.Max(nMin, r.Num("near.maxDist", 300, 5, 1000)), r.Num("near.spacing", 15, 5, 1000),
+            nWaveMin, (int)Math.Max(nWaveMin, r.Num("near.waveMax", 8, 0, 20)),
+            r.Num("near.slotChance", 50, 0, 100), r.Num("near.pmcChance", 30, 0, 100), (int)r.Num("near.attempts", 3, 1, 20),
+            r.Bool("near.sight", false), r.Bool("near.stopAtCap", true),
+            r.Bool("near.group.scavOff", false), r.Num("near.group.chance", 25, 0, 100), gMin, (int)Math.Max(gMin, r.Num("near.group.max", 5, 1, 10)),
+            r.Bool("near.custom.on", false), r.Role("near.custom.t1", "raider"), (int)r.Num("near.custom.cap1", 5, 0, 60),
+            r.Role("near.custom.t2", "rogue"), (int)r.Num("near.custom.cap2", 5, 0, 60), r.Num("near.custom.ratio2", 50, 0, 100));
+
         return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
-            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100));
+            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near);
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>
@@ -167,6 +211,11 @@ public static class ConfigModel
 
         public bool Bool(string path, bool def) =>
             Node(path) is JsonValue jv && jv.GetValueKind() is JsonValueKind.True or JsonValueKind.False ? jv.GetValue<bool>() : def;
+
+        /// <summary>역할 이름(영문·숫자·밑줄 40자까지). 그 밖은 기본값.</summary>
+        public string Role(string path, string def) =>
+            Node(path) is JsonValue jv && jv.GetValueKind() == JsonValueKind.String
+            && jv.GetValue<string>() is { Length: > 0 and <= 40 } v && v.All(c => char.IsAsciiLetterOrDigit(c) || c == '_') ? v : def;
 
         public string Str(string path, string def, params string[] allowed) =>
             Node(path) is JsonValue jv && jv.GetValueKind() == JsonValueKind.String && allowed.Contains(jv.GetValue<string>())

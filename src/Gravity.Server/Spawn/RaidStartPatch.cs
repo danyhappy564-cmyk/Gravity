@@ -17,6 +17,7 @@ namespace Gravity.Spawn;
 public class RaidStartPatch : AbstractPatch
 {
     [ThreadStatic] private static RaidChanges? _pending;
+    [ThreadStatic] private static string? _session;
     internal static ProfileActivityService? Activity;
 
     protected override MethodBase GetTargetMethod() =>
@@ -25,6 +26,7 @@ public class RaidStartPatch : AbstractPatch
     [PatchPrefix]
     public static void Prefix(MongoId sessionId)
     {
+        _session = sessionId.ToString();
         try { _pending = Activity?.GetProfileActivityRaidData(sessionId)?.RaidAdjustments; }
         catch { _pending = null; }
     }
@@ -34,7 +36,9 @@ public class RaidStartPatch : AbstractPatch
     {
         var changes = _pending;
         _pending = null;
+        var session = _session;
+        _session = null;
         if (!generateLoot || __result is null || string.Equals(name, "hideout", StringComparison.OrdinalIgnoreCase)) return;
-        GravityRuntime.Instance?.TryApplyToRaid(name, __result, changes);
+        GravityRuntime.Instance?.TryApplyToRaid(name, __result, changes, session);
     }
 }
