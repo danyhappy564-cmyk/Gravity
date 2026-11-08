@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Gravity.Client</RootNamespace>
+    <AssemblyName>Gravity.Client</AssemblyName>
+    <Version>0.2.0</Version>
+    <TarkovDir Condition="'$(TarkovDir)' == ''">E:\SPT 4.1\</TarkovDir>
+    <Managed>$(TarkovDir)EscapeFromTarkov_Data\Managed\</Managed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gravity.Shared\Gravity.Shared.csproj" />
+  </ItemGroup>
+
+  <!-- 게임 DLL은 참조만 한다(복사하지 않음). -->
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(TarkovDir)BepInEx\core\BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(TarkovDir)BepInEx\core\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="spt-common"><HintPath>$(TarkovDir)BepInEx\plugins\spt\spt-common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="spt-reflection"><HintPath>$(TarkovDir)BepInEx\plugins\spt\spt-reflection.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(Managed)Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Comfort"><HintPath>$(Managed)Comfort.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(Managed)Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(Managed)UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(Managed)UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(Managed)UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>None</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+  </PropertyGroup>
+
+  <Target Name="RequireGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(TarkovDir)BepInEx\core\BepInEx.dll')" Text="TarkovDir 속성에 SPT 4.1 설치 경로를 지정하세요(지금: $(TarkovDir))." />
+  </Target>
+
+  <!-- Release 빌드 뒤 저장소 루트 Build\BepInEx\plugins\Gravity\ 에 게임 폴더 구조 그대로 모은다 -->
+  <PropertyGroup>
+    <ClientOutputDir>$(MSBuildThisFileDirectory)..\..\Build\BepInEx\plugins\Gravity\</ClientOutputDir>
+  </PropertyGroup>
+  <Target Name="CopyClientToBuildFolder" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
+    <ItemGroup>
+      <ClientFiles Include="$(OutDir)Gravity.Client.dll;$(OutDir)Gravity.Shared.dll" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ClientOutputDir)" />
+    <Copy SourceFiles="@(ClientFiles)" DestinationFolder="$(ClientOutputDir)" />
+    <Message Text="[Gravity] -> $(ClientOutputDir)" Importance="high" />
+  </Target>
+
+</Project>
