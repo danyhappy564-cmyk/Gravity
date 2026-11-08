@@ -4,6 +4,7 @@ using Gravity.Client;
 using Gravity.Core;
 using Gravity.Shared;
 using Gravity.Spawn;
+using Gravity.Web;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using Xunit;
@@ -268,6 +269,51 @@ public class ClientSettingsTests
         rt.OnReport(new RaidReport("bigmap", 5, new Dictionary<string, int> { ["pmcUSEC"] = 3 }, new Dictionary<string, int>(), 2, [new[] { 1, 2, 3, 5 }]));
         Assert.Equal("bigmap", rt.LastReport!.MapId);
         Assert.Contains(log, l => l.Contains("클라 보고"));
+    }
+
+    [Fact]
+    public void Report_StoredWithPlan()
+    {
+        var (rt, _) = Runtime();
+        Hello(rt, "s1");
+        Assert.True(rt.TryApplyToRaid("bigmap", Loc("bigmap", 40), null, "s1", 5));
+        var planned = rt.Last!.Plan!;
+        rt.OnReport(new RaidReport("bigmap", 5, new Dictionary<string, int> { ["pmcUSEC"] = 3, ["pmcBEAR"] = 1 },
+            new Dictionary<string, int> { ["noPoint"] = 2 }, 4, [new[] { 1, 2, 0, 5 }]));
+        Assert.Equal("bigmap", rt.LastReport!.MapId);
+
+        var json = JsonSerializer.Serialize(GravityWeb.LastRaidBody(rt), GravityWeb.JsonOptions);
+        var root = JsonNode.Parse(json)!;
+        Assert.Equal(3, (int)root["report"]!["spawned"]!["pmcUSEC"]!);
+        Assert.Equal(2, (int)root["report"]!["dropped"]!["noPoint"]!);
+        Assert.Equal(4, (int)root["report"]!["sanitized"]!);
+        Assert.Equal(planned.StartPmcs, (int)root["report"]!["plan"]!["startPmcs"]!);
+        Assert.Equal(planned.PmcTotal - planned.StartPmcs, (int)root["report"]!["plan"]!["wavePmcs"]!);
+        Assert.NotNull(root["plan"]);
+    }
+
+    [Fact]
+    public void LastRaid_NoReport_ReportIsNull_AndNothingAtAllIsNull()
+    {
+        var (rt, _) = Runtime();
+        Assert.Null(GravityWeb.LastRaidBody(rt));
+        Hello(rt, "s1");
+        rt.TryApplyToRaid("bigmap", Loc("bigmap", 40), null, "s1", 5);
+        var root = JsonNode.Parse(JsonSerializer.Serialize(GravityWeb.LastRaidBody(rt), GravityWeb.JsonOptions))!;
+        Assert.Null(root["report"]);
+    }
+
+    [Fact]
+    public void MetaClient_ReflectsHello()
+    {
+        var (rt, _) = Runtime();
+        Assert.Null(GravityWeb.ClientBody(rt)["version"]);
+        rt.OnHello("s1", new HelloRequest(GravityVersion.Current, true));
+        var c = GravityWeb.ClientBody(rt);
+        Assert.Equal(GravityVersion.Current, (string)c["version"]!);
+        Assert.True((bool)c["compatible"]!);
+        Assert.True((bool)c["abps"]!);
+        Assert.NotNull(c["lastHello"]);
     }
 
     [Fact]

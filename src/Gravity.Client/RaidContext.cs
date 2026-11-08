@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -51,6 +52,24 @@ namespace Gravity.Client
 
         /// <summary>버린 PMC 분대 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버림. Task 6 보고용.</summary>
         public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0 };
+
+        /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
+        public readonly List<int[]> AlivePerMinute = new List<int[]>();
+
+        private int _nextSampleMinute;
+
+        /// <summary>
+        /// 레이드 시간으로 60초가 지났을 때만 true(분 번호는 minute). 프레임마다 불러도 가볍다: 시각 비교 한 번.
+        /// 몇 분을 건너뛰었어도(렉) 한 번만 기록하고 다음 분으로 넘어간다.
+        /// </summary>
+        internal bool DueForSample(out int minute)
+        {
+            minute = _nextSampleMinute;
+            if (Elapsed < _nextSampleMinute * 60f) return false;
+            _nextSampleMinute = Math.Max(_nextSampleMinute + 1, (int)(Elapsed / 60f) + 1);
+            minute = _nextSampleMinute - 1;
+            return true;
+        }
 
         /// <summary>지점·구역 섞기용(레이드 시드로 시작). 게임 스레드에서만 쓴다.</summary>
         public readonly System.Random Rng;
@@ -145,8 +164,8 @@ namespace Gravity.Client
             if (c == null) return;
             ClientLink.SendReport(new RaidReport(
                 c.S.MapId, c.S.Seed,
-                new Dictionary<string, int>(), new Dictionary<string, int>(),
-                c.Sanitized, new List<int[]>()));
+                new Dictionary<string, int>(c.Spawned), new Dictionary<string, int>(c.Dropped),
+                c.Sanitized, new List<int[]>(c.AlivePerMinute)));
         }
     }
 }

@@ -23,6 +23,9 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     /// <summary>이번 판에 클라가 받을 설정(맵 id별). 클라가 있는 세션에서 적용했을 때만 채운다.</summary>
     public ConcurrentDictionary<string, ClientRaidSettings> LastClientSettings { get; } = new(StringComparer.OrdinalIgnoreCase);
     public RaidReport? LastReport { get; private set; }
+    /// <summary>보고를 받은 시각과, 그때 비교할 계획(같은 맵의 마지막 적용 계획. 없으면 null).</summary>
+    public DateTime? LastReportAt { get; private set; }
+    public SpawnPlan? LastReportPlan { get; private set; }
 
     public HelloResponse OnHello(string sessionId, HelloRequest r)
     {
@@ -44,6 +47,9 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     public void OnReport(RaidReport r)
     {
         LastReport = r;
+        LastReportAt = DateTime.Now;
+        var plan = Last?.Plan;
+        LastReportPlan = plan is not null && string.Equals(plan.MapId, r.MapId, StringComparison.OrdinalIgnoreCase) ? plan : null;
         info($"{GravityInfo.Tag} 클라 보고 {r.MapId}: 생성 {string.Join(" ", r.Spawned.Select(kv => $"{kv.Key} {kv.Value}"))}"
             + (r.Dropped.Count > 0 ? $" / 버림 {string.Join(" ", r.Dropped.Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
             + $" / 정리 {r.Sanitized}");

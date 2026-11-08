@@ -448,6 +448,7 @@ const u=k=>tr(UI[k]);
 
 /* ================= data ================= */
 /* SVM: what Gravity reads from <SVM>/Loader/loader.json -> Presets/<name>.json (read only). Values = user's install (preset 260907). */
+let serverMeta=null,serverErr='',serverWarn='',lastRaid=null; // 시험 렌더(아래 Object.keys(P))가 서버 연결 코드보다 먼저 돌아서 위쪽에 둔다
 const SVM={on:true,preset:'260907',raidAdd:60,disableEvents:true,forceXmas:false,forceHallo:false,bots:false,pmc:false,aiOverride:false};
 const MAPS=[
  ['bigmap','세관','Customs',40,120,'SVM',16,22],['woods','삼림','Woods',40,40,'',14,20],['factory4_day','공장 · 낮','Factory · Day',20,20,'',6,10],
@@ -1186,6 +1187,8 @@ P.diag={desc:T('함께 깔린 모드를 감지해 겹치는 기능을 조절하�
   ${card(T('ABPS · APBS','ABPS · APBS'),`<p class="muted small">${tr(T('같은 일을 하는 모드입니다. 깔려 있으면 겹치는 Gravity 모듈(ABPS → 스폰, APBS → 장비)을 자동으로 끄고 잠급니다. 지우면 다시 켤 수 있습니다.','Same job as Gravity. If installed, the overlapping module (ABPS → spawns, APBS → loadouts) is turned off and locked.'))}</p><label class="sw" style="margin-top:10px"><input type="checkbox" id="abpsDemo" ${abpsDemo?'checked':''}><span class="tr"></span><span class="small muted">${tr(T('목업: ABPS 감지 상황','Mockup: ABPS detected'))}</span></label><label class="sw" style="margin-top:8px"><input type="checkbox" id="apbsDemo" ${apbsDemo?'checked':''}><span class="tr"></span><span class="small muted">${tr(T('목업: APBS 감지 상황','Mockup: APBS detected'))}</span></label>`,{right:pill(abpsDemo||apbsDemo?'✕ '+tr(T('감지됨','Detected')):tr(T('없음','Not found')),abpsDemo||apbsDemo?'bad':'')})}
   ${card(T('Questing Bots','Questing Bots'),`<p class="muted small">${tr(T('지원하지 않습니다. 감지되면 스폰 모듈을 끄고 빨간 경고를 띄웁니다.','Not supported. If detected, spawn module turns off.'))}</p><label class="sw" style="margin-top:10px"><input type="checkbox" id="qbDemo" ${qbDemo?'checked':''}><span class="tr"></span><span class="small muted">${tr(T('목업: 감지된 상황 보기','Mockup: simulate detection'))}</span></label>`,{right:pill(qbDemo?'✕ '+tr(T('감지됨','Detected')):tr(T('없음','Not found')),qbDemo?'bad':'')})}
   ${card(T('기록','Logging'),seg('diag.log',T('로그 수준','Log level'),'',[['off',T('꺼짐','Off')],['summary',T('요약','Summary')],['verbose',T('자세히','Verbose')]])+sw('diag.report',T('레이드 끝나면 스폰 리포트 저장','Save spawn report'),'')+sw('diag.botLog',T('봇 장비 기록 저장','Save loadout log'),'',{adv:true}))}</div>
+  ${clientCard()}
+  ${raidReportCard()}
   ${card(T('최근 경고','Recent warnings'),[['00:03:12','WARN',T('세관: 레이드 100분 감지(기본 40 + SVM 60) — 타임라인을 비율로 늘려 웨이브 18개.','Customs: 100-min raid (40 + SVM 60) — timeline stretched to 18 waves.')],['00:02:40','INFO',T('ORBIT 감지 — 봇 재우기·컬링 기능 없음 확인.','ORBIT detected — no sleeping/culling in Gravity.')],['00:01:05','WARN',T('모드 부품 고리 감지: 핸드가드 → 레일 → 핸드가드. 잘못 놓인 부품을 건너뜁니다.','Part loop detected; skipping misplaced part.')],['00:00:12','INFO',T('이번 판 모드 아이템: 무기 30/173, 장비 30/131.','This raid’s mod items: weapons 30/173, gear 30/131.')]].map(([t,l,m])=>`<div class="log"><span class="mono muted">${t}</span>${pill(l,l==='WARN'?'warn':'blue')}<span>${tr(m)}</span></div>`).join(''))}
   </div>`;}};
 
@@ -1625,6 +1628,7 @@ document.addEventListener('click',e=>{
   else if(a==='tiersReset'){state.gear.tiers=clone(DEFAULTS.gear.tiers);rerender();}
   else if(a==='resetRole'){state.roles[roleSel]=roleDefaults(roleSel);rerender();}
   else if(a==='copyRole'){const grp=ROLE_GROUPS.find(([,l])=>l.some(x=>x[0]===roleSel))[1];grp.forEach(([id])=>{if(id!==roleSel)state.roles[id]=clone(state.roles[roleSel]);});toast(fmt(tr(T('{n}개 봇에 복사했습니다','Copied to {n} bots')),{n:grp.length-1}));rerender();}
+  else if(a==='refreshRaid'){Promise.all([fetch('api/meta').then(r=>r.json()),fetch('api/lastraid').then(r=>r.json())]).then(([m,l])=>{serverMeta=m;lastRaid=l;rerender();}).catch(e=>toast(tr(T('새로고침 실패: ','Refresh failed: '))+e.message));}
   else if(a==='orbitRecommend'){state.orbit.refillAfterExtract=true;state.orbit.nearAsGhost=true;state.orbit.respectTakeover=true;state.near.minDist=Math.max(state.near.minDist,210);state.near.maxDist=Math.max(state.near.maxDist,state.near.minDist+80);toast(tr(T('ORBIT 권장값을 적용했습니다 (근처 보충 거리 210m 이상)','Applied ORBIT-friendly values (near-player ≥ 210 m)')));rerender();}
   else if(a==='attCopyAll'){const D=state.tierData[tBot][tierSel],src=clone(attFor(tBot,tierSel,atWeapon));[...Object.keys(D.weapons.primaryShort||{}),...Object.keys(D.weapons.primaryLong||{}),...Object.keys(D.weapons.holster||{})].forEach(w=>{if(w!==atWeapon)D.attach[w]=clone(src);});toast(tr(T('이 티어의 모든 무기에 적용했습니다','Applied to every weapon in this tier')));rerender();}
   else if(a==='tierImportDemo'){const data=clone(state.tierData);data.pmc[5].weapons.primaryLong.epic_scar=25;data.pmc[5].weapons.primaryLong.ghost_gun=10;data.pmc[6].weapons.primaryLong.epic_scar=30;const obj={format:'gravity-tier-preset',version:1,name:"Friend's chad tiers",exportedAt:new Date().toISOString(),tiers:state.gear.tiers,tables:data,ownTables:[],items:{...tierModItems(data),epic_scar:{source:'Epic Gun Pack',code:'9ec9ac395c1f0e9a7b3d2e6f'},ghost_gun:{source:'Ghost Arms',code:'7a1f00c35c1f0e9a7b3d2e6f'}}};importTierJson(JSON.stringify(obj),'friend-chads.json');}
@@ -1666,7 +1670,33 @@ Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){
 
 /* ================= 실제 서버 연결 (Gravity 0.1.0) ================= */
 const NOT_LIVE=new Set(['near','specials','factions','events','tiers','tieredit','roles','weapons','items','blacklist','gearpresets','client','orbit','dev']);
-let serverMeta=null,serverErr='',serverWarn='';
+const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('맵 상한 하드 스톱','Map cap hard stop')};
+function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
+function clientCard(){
+  const c=serverMeta&&serverMeta.client,has=!!(c&&c.version);
+  const kvs=has?[[tr(T('클라 판','Client version')),esc(c.version)],[tr(T('판 호환','Compatible')),c.compatible?tr(T('예','Yes')):tr(T('아니오','No'))],['ABPS',c.abps?tr(T('있음 · 스폰 잠김','Present · spawns locked')):tr(T('없음','None'))],[tr(T('마지막 연결','Last hello')),esc(fmtAt(c.lastHello))]]:[];
+  return card(T('클라 플러그인 연결','Client plugin link'),has?`<div class="kv">${kvs.map(([k,v])=>`<div><b>${v}</b><small>${k}</small></div>`).join('')}</div>`:`<p class="muted small">${tr(T('아직 클라 플러그인이 연결된 적이 없습니다(이번 서버 실행 중). 게임 메뉴까지 가면 연결됩니다.','No client plugin has connected since the server started. It connects at the game menu.'))}</p>`,{icon:'⇄',right:has?pill(c.compatible?'✓ '+tr(T('연결됨','Linked')):'✕ '+tr(T('판 불일치','Version mismatch')),c.compatible?'good':'bad'):pill(tr(T('연결 없음','Not linked')))});
+}
+function raidReportCard(){
+  const refresh=`<button class="mini-btn" data-act="refreshRaid">${tr(T('새로고침','Refresh'))}</button>`;
+  const r=lastRaid&&lastRaid.report;
+  if(!r)return card(T('계획 vs 실제','Plan vs actual'),`<p class="muted small">${tr(T('아직 보고 없음. 클라 플러그인이 레이드가 끝날 때 실제로 생성한 수를 보냅니다.','No report yet. The client plugin sends what it actually spawned when a raid ends.'))}</p>`,{icon:'≈',right:refresh});
+  const p=r.plan,sp=r.spawned||{},dr=r.dropped||{};
+  const usec=sp.pmcUSEC||0,bear=sp.pmcBEAR||0,none=tr(T('계획 없음','no plan'));
+  const row=(label,plan,actual)=>`<tr><td>${tr(label)}</td><td class="num">${plan}</td><td class="num">${actual}</td></tr>`;
+  const planTbl=`<div class="tw"><table><thead><tr><th></th><th class="num">${tr(T('계획','Plan'))}</th><th class="num">${tr(T('실제','Actual'))}</th></tr></thead><tbody>
+    ${row(T('PMC 시작 인원','PMC at start'),p?p.startPmcs:'-','-')}
+    ${row(T('PMC 웨이브 인원','PMC in waves'),p?p.wavePmcs:'-','-')}
+    ${row(T('PMC 합계','PMC total'),p?p.pmcTotal:'-',usec+bear)}
+    ${row('USEC',p?p.usec:'-',usec)}
+    ${row('BEAR',p?p.bear:'-',bear)}</tbody></table></div>`;
+  const dropKeys=Object.keys(DROP_LABEL),dropTotal=dropKeys.reduce((a,k)=>a+(dr[k]||0),0);
+  const dropTbl=`<div class="tw" style="margin-top:10px"><table><thead><tr><th>${tr(T('버린 분대(이유별)','Dropped squads by reason'))}</th><th class="num">${tr(T('수','Count'))}</th></tr></thead><tbody>${dropKeys.map(k=>row(DROP_LABEL[k],dr[k]||0,'').replace('<td class="num"></td>','')).join('')}${row(T('프로필 정리(외형·장비)','Profile cleanup (looks/gear)'),r.sanitized||0,'').replace('<td class="num"></td>','')}</tbody></table></div>`;
+  const ap=r.alivePerMinute||[],peak=ap.reduce((m,x)=>x[3]>m[3]?x:m,[0,0,0,0]);
+  const alive=ap.length?`<p class="muted small" style="margin-top:10px">${fmt(tr(T('1분마다 센 살아 있는 봇: {n}번 기록, 가장 많았을 때 {t}마리(PMC {p} · 스캐브 {s}, {m}분째).','Alive bots sampled each minute: {n} samples, peak {t} (PMC {p} · scav {s}, minute {m}).')),{n:ap.length,t:peak[3],p:peak[1],s:peak[2],m:peak[0]})}</p>`:'';
+  const note=p?'':`<p class="muted small" style="margin-top:6px">${none}: ${tr(T('이 보고와 같은 맵의 계획이 서버에 없어 계획 칸은 비웁니다.','The server has no plan for this report’s map, so the plan column is empty.'))}</p>`;
+  return card(T('계획 vs 실제','Plan vs actual'),`<p class="muted small" style="margin-bottom:8px">${esc(r.mapId)} · ${tr(T('시드','seed'))} ${r.seed} · ${esc(fmtAt(r.at))}${dropTotal?' · '+tr(T('버린 분대 합계','dropped'))+' '+dropTotal:''}</p>${planTbl}${dropTbl}${alive}${note}`,{icon:'≈',right:refresh});
+}
 const BOSS_ROLE={reshala:'bossBully',shturman:'bossKojaniy',tagilla:'bossTagilla',glukhar:'bossGluhar',sanitar:'bossSanitar',killa:'bossKilla',kaban:'bossBoar',kollontay:'bossKolontay',zryachiy:'bossZryachiy',goons:'bossKnight',partisan:'bossPartisan'};
 const zoneLabel=z=>z.replace(/^Zone/,'').replace(/([a-z])([A-Z])/g,'$1 $2');
 function liveBanner(pg){
@@ -1694,7 +1724,8 @@ function mergeInto(base,over){if(!over||typeof over!=='object'||Array.isArray(ov
   const out=Array.isArray(base)?[...base]:{...base};for(const[k,v]of Object.entries(over))out[k]=(base&&typeof base[k]==='object'&&!Array.isArray(base[k])&&v&&typeof v==='object'&&!Array.isArray(v))?mergeInto(base[k],v):v;return out;}
 async function boot(){
   try{
-    const [mr,sr]=await Promise.all([fetch('api/meta'),fetch('api/state')]);
+    const [mr,sr,lr]=await Promise.all([fetch('api/meta'),fetch('api/state'),fetch('api/lastraid').catch(()=>null)]);
+    try{lastRaid=lr&&lr.ok?await lr.json():null;}catch(_){lastRaid=null;}
     if(!mr.ok||!sr.ok)throw new Error('HTTP '+mr.status+'/'+sr.status);
     const meta=await mr.json(),st=await sr.json();
     applyMeta(meta);DEFAULTS=makeDefaults();

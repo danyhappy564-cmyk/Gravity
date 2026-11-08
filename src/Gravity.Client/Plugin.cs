@@ -61,6 +61,8 @@ namespace Gravity.Client
                 Enable(new PmcPointsPatch());
                 Enable(new PmcTrySpawnPatch());
                 Enable(new PmcCapDelayPatch());
+                // 1분마다 살아 있는 봇 수 기록(보고용). 바닐라는 그대로 돈다.
+                Enable(new NonWavesPatch());
             }
 
             Log.Info($"클라 플러그인 {GravityVersion.Current} 준비");

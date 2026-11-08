@@ -9,12 +9,16 @@ public sealed class ClientSessions
     private readonly ConcurrentDictionary<string, HelloRequest> _hello = new(StringComparer.Ordinal);
 
     public string? LastVersion { get; private set; }
+    public bool LastAbps { get; private set; }
+    public DateTime? LastHelloAt { get; private set; }
 
     public void Hello(string sessionId, HelloRequest r)
     {
         if (string.IsNullOrEmpty(sessionId)) return;
         _hello[sessionId] = r;
         LastVersion = r.ClientVersion;
+        LastAbps = r.AbpsClient;
+        LastHelloAt = DateTime.Now;
     }
 
     public bool HasClient(string? sessionId) => !string.IsNullOrEmpty(sessionId) && _hello.ContainsKey(sessionId);

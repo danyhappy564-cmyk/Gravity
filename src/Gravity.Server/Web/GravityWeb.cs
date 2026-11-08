@@ -17,6 +17,7 @@ public class GravityWeb : IHttpListener
     private const string Prefix = "/gravity";
     private const int MaxBody = 2 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    internal static JsonSerializerOptions JsonOptions => Json;
 
     private static readonly Dictionary<string, string> Types = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -65,11 +66,12 @@ public class GravityWeb : IHttpListener
                         {
                             version = GravityInfo.Version, detect = rt.Detect,
                             locked = new { spawn = rt.Detect.SpawnLocked, gear = rt.Detect.GearLocked },
-                            maps = rt.Catalog.All
+                            maps = rt.Catalog.All,
+                            client = ClientBody(rt)
                         });
                         return;
                     case ("lastraid", "GET"):
-                        await Send(res, 200, rt.Last is { } l ? new { at = l.At, summary = l.Summary, skipped = l.Skipped, plan = l.Plan } : null);
+                        await Send(res, 200, LastRaidBody(rt));
                         return;
                 }
                 await Send(res, 404, new { error = "없는 API" });
@@ -86,6 +88,45 @@ public class GravityWeb : IHttpListener
         {
             await Send(res, 500, new { error = ex.Message });
         }
+    }
+
+    /// <summary>`api/meta`의 client 칸: 마지막 Hello 기준. 클라가 한 번도 안 왔으면 version은 null.</summary>
+    internal static JsonObject ClientBody(GravityRuntime rt)
+    {
+        var s = rt.Sessions;
+        var v = s.LastVersion;
+        return new JsonObject
+        {
+            ["version"] = v,
+            ["compatible"] = v is not null && Gravity.Shared.GravityVersion.Compatible(v, Gravity.Shared.GravityVersion.Current),
+            ["abps"] = s.LastAbps,
+            ["lastHello"] = s.LastHelloAt
+        };
+    }
+
+    /// <summary>`api/lastraid` 응답: 마지막 계획과 클라 보고(없으면 report는 null). 둘 다 없으면 null.</summary>
+    internal static object? LastRaidBody(GravityRuntime rt)
+    {
+        var l = rt.Last;
+        var r = rt.LastReport;
+        if (l is null && r is null) return null;
+        object? report = null;
+        if (r is not null)
+        {
+            var p = rt.LastReportPlan;
+            report = new
+            {
+                at = rt.LastReportAt, mapId = r.MapId, seed = r.Seed,
+                spawned = r.Spawned, dropped = r.Dropped, sanitized = r.Sanitized, alivePerMinute = r.AlivePerMinute,
+                plan = p is null ? null : new
+                {
+                    startPmcs = p.StartPmcs, wavePmcs = p.PmcTotal - p.StartPmcs, pmcTotal = p.PmcTotal,
+                    usec = p.Groups.Where(g => g.Usec).Sum(g => g.Size), bear = p.Groups.Where(g => !g.Usec).Sum(g => g.Size),
+                    droppedPmcs = p.DroppedPmcs
+                }
+            };
+        }
+        return new { at = l?.At, summary = l?.Summary, skipped = l?.Skipped, plan = l?.Plan, report };
     }
 
     /// <summary>wwwroot 안 파일 경로. 빈 경로는 index.html, 밖으로 나가는 경로는 null.</summary>
