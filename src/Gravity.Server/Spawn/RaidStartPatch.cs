@@ -1,0 +1,40 @@
+using System.Reflection;
+using Gravity.Core;
+using HarmonyLib;
+using SPTarkov.Reflection.Patching;
+using SPTarkov.Server.Core.Models.Common;
+using SPTarkov.Server.Core.Models.Eft.Common;
+using SPTarkov.Server.Core.Models.Spt.Location;
+using SPTarkov.Server.Core.Services.Profile;
+using SPTarkov.Server.Core.Services.InRaid;
+
+namespace Gravity.Spawn;
+
+/// <summary>
+/// 레이드 시작 때 SPT가 만든 맵 복제본(클라이언트로 갈 것)을 고친다.
+/// 앞: 이번 레이드의 시간 조정(스캐브 레이드 시작 지연)을 잡아 둔다 — 원래 함수가 끝나면 지워지기 때문.
+/// </summary>
+public class RaidStartPatch : AbstractPatch
+{
+    [ThreadStatic] private static RaidChanges? _pending;
+    internal static ProfileActivityService? Activity;
+
+    protected override MethodBase GetTargetMethod() =>
+        AccessTools.Method(typeof(LocationLifecycleService), nameof(LocationLifecycleService.GenerateLocationAndLoot));
+
+    [PatchPrefix]
+    public static void Prefix(MongoId sessionId)
+    {
+        try { _pending = Activity?.GetProfileActivityRaidData(sessionId)?.RaidAdjustments; }
+        catch { _pending = null; }
+    }
+
+    [PatchPostfix]
+    public static void Postfix(string name, bool generateLoot, LocationBase __result)
+    {
+        var changes = _pending;
+        _pending = null;
+        if (!generateLoot || __result is null || string.Equals(name, "hideout", StringComparison.OrdinalIgnoreCase)) return;
+        GravityRuntime.Instance?.TryApplyToRaid(name, __result, changes);
+    }
+}

@@ -19,6 +19,8 @@ public sealed class MapCatalog
 
     public bool TryGet(string id, out MapInfo info) => _info.TryGetValue(id, out info!);
 
+    internal void AddForTest(MapInfo info) => _info[info.Id] = info;
+
     public void Build(LocationTable locations, PmcConfig pmcConfig, BotConfig botConfig)
     {
         _info.Clear();
