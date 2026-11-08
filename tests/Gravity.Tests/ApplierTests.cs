@@ -51,9 +51,8 @@ public class ApplierTests
         Assert.Contains(loc.BossLocationSpawn, e => e.BossName == "exUsec");
         Assert.Contains(loc.BossLocationSpawn, e => e.BossName == "ruafPatrol");
         Assert.DoesNotContain(loc.BossLocationSpawn, e => e.BossName == "pmcUSEC" && e.SptId != "gravity");
-        Assert.Contains(loc.Waves, w => w.WildSpawnType == WildSpawnType.marksman);
-        Assert.All(loc.Waves.Where(w => w.WildSpawnType == WildSpawnType.assault), w => Assert.Equal("gravity", w.SptId));
-        Assert.Equal(Enumerable.Range(0, loc.Waves.Count), loc.Waves.Select(w => w.Number ?? -1));
+        Assert.Equal(2, loc.Waves.Count);
+        Assert.All(loc.Waves, w => Assert.Null(w.SptId));
     }
 
     [Fact]
@@ -79,13 +78,14 @@ public class ApplierTests
     }
 
     [Fact]
-    public void Apply_SetsBotMaxAndCap()
+    public void Apply_LeavesBotMaxAndScavsVanilla()
     {
         var loc = Loc();
         var (rt, _) = Runtime("""{"maps":{"bigmap":{"cap":31}}}""");
         rt.TryApplyToRaid("bigmap", loc, null, 5);
-        Assert.Equal(31, loc.BotMax);
-        Assert.Equal(31, rt.MaxBotCap!["bigmap"]);
+        Assert.Equal(20, loc.BotMax);
+        Assert.Empty(rt.Last!.Plan!.ScavWaves);
+        Assert.Contains("스캐브 바닐라 유지", rt.Last!.Summary);
     }
 
     [Fact]
@@ -153,7 +153,8 @@ public class ApplierTests
         var (rt, _) = Runtime();
         rt.TryApplyToRaid("bigmap", loc, new RaidChanges { SimulatedRaidStartSeconds = 600, RaidTimeMinutes = 25 }, 5);
         var plan = rt.Last!.Plan!;
-        Assert.Equal(1500, plan.RaidSec);
+        Assert.Equal(2100, plan.RaidSec);
         Assert.Equal(600, plan.SimStartSec);
+        Assert.All(plan.Groups, g => Assert.InRange(g.TimeSec, 0, 1500));
     }
 }

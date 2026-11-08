@@ -40,7 +40,9 @@ public static class RaidSpawnApplier
             });
         }
 
-        var waves = (loc.Waves ?? []).Where(w => w.WildSpawnType != WildSpawnType.assault).ToList();
+        // 스캐브 웨이브: 계획에 있을 때만 갈아 끼운다(이번 판은 비어 있음 → 바닐라 유지).
+        var manageScavs = plan.ScavWaves.Count > 0;
+        var waves = (loc.Waves ?? []).Where(w => !manageScavs || w.WildSpawnType != WildSpawnType.assault).ToList();
         foreach (var w in plan.ScavWaves)
             waves.Add(new Wave
             {
@@ -48,24 +50,26 @@ public static class RaidSpawnApplier
                 KeepZoneOnSpawn = false, SpawnPoints = scavZones, SlotsMin = w.SlotsMin, SlotsMax = w.SlotsMax,
                 TimeMin = w.TimeMinSec, TimeMax = w.TimeMaxSec, SpawnMode = [.. Modes], SptId = "gravity"
             });
-        for (var i = 0; i < waves.Count; i++) waves[i].Number = i;
+        if (manageScavs) for (var i = 0; i < waves.Count; i++) waves[i].Number = i;
 
+        // BotMax는 웨이브 밖 자동 스폰의 목표치라 건드리지 않는다(4.1 클라 전체 상한은 클라 설정 — 2-2에서 클라 플러그인으로).
         loc.BossLocationSpawn = bosses;
-        loc.Waves = waves;
-        loc.BotMax = plan.BotCap;
+        if (manageScavs) loc.Waves = waves;
     }
 
     /// <summary>보스 켜기·확률·맵 끄기. 설정에 없는 역할(팩션·이벤트·모드 보스)은 건드리지 않는다.</summary>
     public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId)
     {
+        // 새 확률을 먼저 다 계산한 뒤 한 번에 쓴다(중간 예외 시 일부만 바뀌지 않게).
+        var updates = new List<(BossLocationSpawn e, double chance)>();
         foreach (var e in loc.BossLocationSpawn)
         {
             if (e.BossName is not { } role || !BossRoleToId.TryGetValue(role, out var id)) continue;
             if (!cfg.Bosses.TryGetValue(id, out var b)) continue;
             var mapOn = !b.Maps.TryGetValue(mapId, out var on) || on;
-            if (!b.On || !mapOn) { e.BossChance = 0; continue; }
-            e.BossChance = cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance;
+            updates.Add((e, !b.On || !mapOn ? 0 : cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance));
         }
+        foreach (var (e, c) in updates) e.BossChance = c;
     }
 
     /// <summary>맵 구역 중 웹에서 끈 것을 뺀다. 다 꺼지면 전부 쓴다.</summary>

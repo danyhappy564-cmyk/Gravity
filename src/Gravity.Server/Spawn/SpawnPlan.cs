@@ -18,5 +18,6 @@ public sealed record SpawnPlan(
         $"{MapId} 레이드 {RaidSec / 60}분(시작 {SimStartSec}초) 방식 {Style} PMC 시작 {StartPmcs}({Groups.Count(g => g.IsStart)}그룹)"
         + $"+웨이브 {Groups.Count(g => !g.IsStart)}그룹({PmcTotal - StartPmcs}명)"
         + (DroppedPmcs > 0 ? $" 제한으로 뺀 {DroppedPmcs}명" : "")
-        + $" 스캐브 웨이브 {ScavWaves.Count}개({ScavWaves.Sum(w => w.SlotsMax)}명 이하) 상한 {BotCap} 시드 {Seed}";
+        + (ScavWaves.Count > 0 ? $" 스캐브 웨이브 {ScavWaves.Count}개({ScavWaves.Sum(w => w.SlotsMax)}명 이하)" : " 스캐브 바닐라 유지")
+        + $" 시드 {Seed}";
 }

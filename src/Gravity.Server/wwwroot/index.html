@@ -1675,7 +1675,7 @@ function liveBanner(pg){
   if(serverWarn)h+=notice(T(serverWarn,serverWarn),'warn');
   if(NOT_LIVE.has(pg))h+=notice(T('이 페이지는 아직 게임에 적용되지 않습니다(다음 판). 값은 저장되므로 미리 맞춰 둘 수 있습니다.','This page is not applied in game yet (next version). Values are saved for later.'),'flat');
   if(pg==='bosses')h+=notice(T('이번 판에서는 보스 켜기·확률·나오는 맵 끄기만 적용됩니다. 태어날 구역·호위 수·새 맵 추가는 다음 판입니다.','This version applies boss on/off, chance and map off only.'),'flat');
-  if(pg==='flow'||pg==='maps')h+=notice(T('근처 보충·핫스팟 가중·시작 보호·스폰 거리는 다음 판에서 적용됩니다. 웨이브·상한·그룹 제한·보스 확률은 지금 적용됩니다.','Near-player, hotspots, protection and distances come next version.'),'flat');
+  if(pg==='flow'||pg==='maps'||pg==='dashboard')h+=notice(T('지금 게임에 적용: PMC 시작 인원·웨이브(시각·인원·분대 크기·진영·난이도), 그룹 개수 제한(레이드 전체 기준), 맵별 방식(웨이브·무한 보충·시작만)·맵 끄기·PMC 구역, 보스 확률. 다음 판(클라이언트 필요): 스캐브 스폰·맵 동시 봇 상한·근처 보충·핫스팟·시작 보호·스폰 거리, 그룹 제한의 "동시에 살아 있는" 기준.','Applied now: PMC start/waves, group limits (whole raid), map styles, PMC zones, boss chances. Next version (needs client): scavs, bot cap, near-player, hotspots, protection, distances.'),'flat');
   return h;
 }
 function applyMeta(meta){
