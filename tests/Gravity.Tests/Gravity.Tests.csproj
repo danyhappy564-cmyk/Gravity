@@ -17,5 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Gravity.Server\Gravity.Server.csproj" />
+    <ProjectReference Include="..\..\src\Gravity.Shared\Gravity.Shared.csproj" />
   </ItemGroup>
 </Project>

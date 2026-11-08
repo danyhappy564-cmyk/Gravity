@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Gravity.Shared</RootNamespace>
+    <AssemblyName>Gravity.Shared</AssemblyName>
+    <Version>0.2.0</Version>
+  </PropertyGroup>
+
+</Project>

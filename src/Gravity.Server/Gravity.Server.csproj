@@ -6,7 +6,7 @@
     <AssemblyName>Gravity</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <OutputPath>bin\$(Configuration)\Gravity\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
@@ -17,6 +17,10 @@
     <PackageReference Include="SPTarkov.DI" Version="4.1.0" ExcludeAssets="runtime" />
     <PackageReference Include="SPTarkov.Reflection" Version="4.1.0" ExcludeAssets="runtime" />
     <PackageReference Include="SPTarkov.Server.Core" Version="4.1.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gravity.Shared\Gravity.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
