@@ -35,9 +35,16 @@ public static class ClientSettingsBuilder
         if (ms.Style == "infinite")
         {
             inf = new InfDto(ms.Inf.DelaySec, ms.Inf.Batch, ms.Inf.PmcShare / 100, ms.Inf.Jitter / 100);
-            var n = (int)Math.Min(MaxRefill, Math.Max(1, Math.Ceiling(raid / Math.Max(1.0, ms.Inf.DelaySec))));
-            refill = SpawnPlanner.PlanRefill(cfg, plan.Seed, n);
+            // 미궁 PMC가 꺼져 있으면(allowPmcLabyrinth=false, 기본) 보충 PMC 분대도 보내지 않는다(스캐브 보충만).
+            if (map.Id != "labyrinth" || s.AllowPmcLabyrinth)
+            {
+                var n = (int)Math.Min(MaxRefill, Math.Max(1, Math.Ceiling(raid / Math.Max(1.0, ms.Inf.DelaySec))));
+                refill = SpawnPlanner.PlanRefill(cfg, plan.Seed, n);
+            }
         }
+
+        // 연구소는 바닐라에 일반 스캐브가 없다: allowScavLab(기본 false)이 꺼져 있으면 클라 스캐브 관리를 끈다(바닐라 그대로).
+        var scavManaged = managed && (map.Id != "laboratory" || s.AllowScavLab);
 
         return new ClientRaidSettings(
             map.Id, managed, plan.Seed, raid, (int)Math.Round(Math.Max(1, pmcSec)), (int)Math.Round(Math.Max(1, scavSec)), plan.BotCap,
@@ -45,7 +52,7 @@ public static class ClientSettingsBuilder
             s.Protect.On, s.Protect.Sec, s.Protect.Radius,
             s.Placement, s.HotspotShare / 100, weights, s.AllowPmcLabyrinth,
             new GroupCapDto(s.GroupCap.On, s.GroupCap.Scope, s.GroupCap.Over, rules),
-            new ScavDto(managed, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100),
+            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100),
             inf, refill, BuildNear(cfg.Near));
     }
 

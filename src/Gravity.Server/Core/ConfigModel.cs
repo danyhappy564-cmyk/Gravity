@@ -22,7 +22,7 @@ public sealed record SpawnSettings(
     double DistWave, double DistBots, bool Smooth, int WaveMin, int WaveMax, HardStop HardStop,
     bool IgnoreCapStart, bool IgnoreCapWaves, Intensity Intensity, double UsecPct,
     double[] Squad, GroupCap GroupCap, double[] Diff, ScavSettings Scav,
-    ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth);
+    ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth, bool AllowScavLab);
 
 /// <summary>근처 보충(0.2 클라). 값은 웹 단위 그대로(초·m·%).</summary>
 public sealed record NearSettings(
@@ -125,7 +125,8 @@ public static class ConfigModel
             new ProtectSettings(r.Bool(sp + "protect.on", true), r.Num(sp + "protect.sec", 90, 0, 3600), r.Num(sp + "protect.radius", 120, 5, 1000)),
             new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
             r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),
-            r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false));
+            r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false),
+            r.Bool(sp + "allowScavLab", false));
 
         var maps = new Dictionary<string, MapSettings>();
         foreach (var id in KnownMaps)

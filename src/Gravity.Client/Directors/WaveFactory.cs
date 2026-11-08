@@ -16,7 +16,12 @@ namespace Gravity.Client.Directors
     /// </summary>
     internal static class WaveFactory
     {
-        /// <summary>스캐브(assault) 1마리 웨이브. zoneName 구역 안의 실제 지점은 바닐라(SelectAISpawnPoints)가 고른다.</summary>
+        /// <summary>
+        /// 스캐브(assault) 1마리 웨이브. zoneName 구역 안의 실제 지점은 바닐라(SelectAISpawnPoints)가 고른다.
+        /// playerScav는 SpawnWave.IsPlayers에 넣기만 한다: 4.1의 BotSpawner.ActivateBotsByWave(SpawnWave)(BotSpawner.cs:383-421)는
+        /// IsPlayers를 읽지 않으므로 효과가 없다. 그래서 0.2에서는 scav.pscavChance를 적용하지 않고 ScavDirector는 늘 false를 넘긴다
+        /// (웹 띠 "다음 판", 컨트롤러 결정 14).
+        /// </summary>
         public static SpawnWave Scav(string zoneName, BotDifficulty d, bool playerScav) => new SpawnWave
         {
             BotsCount = 1,

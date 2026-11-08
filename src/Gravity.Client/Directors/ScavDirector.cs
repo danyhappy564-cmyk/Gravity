@@ -11,16 +11,21 @@ namespace Gravity.Client.Directors
     /// <summary>
     /// F6·F7: 바닐라 웨이브 밖 자동 스폰(NonWavesSpawnScenario.Update) 대신 스캐브를 넣고, 무한 보충 맵이면 PMC 분대도 같은 루프에서 넣는다.
     /// NonWavesPatch가 매 프레임 부르지만 일은 레이드 시간 2초에 한 번만 한다(Ruling 9). 봇은 지우지 않는다(ORBIT 호환).
-    /// - 넣을 수: ScavSchedule.Tick(경과 초, BotsController._maxCount, AliveLoadingDelayedBotsCount, SpawnDelaysService.WaitCount,
-    ///   이 레이드에서 넣은 스캐브 ÷ 사람 수, 사람 수).
+    /// - 넣을 수: ScavSchedule.Tick(경과 초, BotsController._maxCount, AliveLoadingDelayedBotsCount, 살아 있는 스캐브(assault) 수,
+    ///   SpawnDelaysService.WaitCount, 이 레이드에서 넣은 스캐브 ÷ 사람 수, 사람 수). 스캐브 빈자리 = min(cap - 살아 있는+로딩+대기 봇,
+    ///   softCap - 살아 있는 스캐브)(웹 "이 수를 넘으면 보충 멈춤", 컨트롤러 결정 10). PMC 차례는 맵 상한만 보고, 휴식 창·스캐브 하드 스톱·
+    ///   대기 수·플레이어당 한도·softCap은 스캐브에만 걸린다(결정 10·13).
     /// - 스캐브: 저격 구역이 아닌 구역(BotSpawner.SpawnZones(false), BotSpawner.cs:655) 중 그 구역의 지점(BotZone.SpawnPoints) 하나라도
     ///   모든 사람과 ScavDist 이상(시작 보호 중이면 ProtectRadius 이상)이고 자리가 남은(BotZone.HaveFreeSpace) 구역을 웹 구역 가중치로 섞어
     ///   1마리씩 BotsController.ActivateBotsByWave(SpawnWave)(BotsController.cs:499). 구역 안의 실제 지점은 바닐라가 고른다.
     /// - PMC 차례(무한 방식, pmcTurn): RefillGroups의 다음 분대를 BotsController.ActivateBotsByWave(BossLocationSpawn)(BotsController.cs:507)로.
     ///   지점·동시 그룹 제한·대기열 만료·Spawned 기록은 Task 5 패치가 한다. 분대가 맵 상한에 안 들어가면(BotSpawner.CheckOnMax, 바닐라
     ///   BotBossSpawn.Spawn과 같은 판정) 그 차례는 건너뛰고 분대는 다음 PMC 차례로 남긴다(대기열에 쌓지 않음, 설계 4.6).
-    ///   목록을 다 썼거나 PMC 하드 스톱이 지났으면 그 차례는 스캐브 차례로 쓴다.
-    /// - Dropped["cap"]: 차례가 상한에 막히면(ScavBlock.Cap 또는 PMC 분대가 안 들어감) 그 구간에서 한 번만 센다. 무엇이든 넣으면 구간이 끝난다.
+    ///   목록을 다 썼거나 PMC 하드 스톱이 지났거나 미궁 PMC가 꺼져 있으면(allowPmcLabyrinth=false, 결정 12) 그 차례는 스캐브 차례로 쓴다
+    ///   (스캐브 판정을 거친 수만큼).
+    /// - 플레이어 스캐브 확률(scav.pscavChance)은 0.2에서 적용하지 않는다: SpawnWave.IsPlayers를 바닐라가 읽지 않는다(결정 14, WaveFactory.Scav).
+    /// - Dropped["cap"]: 차례가 맵 상한에 막히면(ScavBlock.Cap 또는 PMC 분대가 안 들어감) 그 구간에서 한 번만 센다. 무엇이든 넣으면 구간이 끝난다.
+    ///   softCap(살아 있는 스캐브 한도)에 막힌 것은 버림이 아니므로 세지 않는다.
     /// </summary>
     internal static class ScavDirector
     {
@@ -65,18 +70,14 @@ namespace Gravity.Client.Directors
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null || !bc._canSpawn) return;
 
-            CollectHumans(st.Humans);
+            int aliveScavs = CollectPlayers(st.Humans);
             int players = Math.Max(1, st.Humans.Count);
             int alive = bc.AliveLoadingDelayedBotsCount;
             int pending = spawner.SpawnDelaysService?.WaitCount ?? 0;
 
-            int n = st.Schedule.Tick(now, bc._maxCount, alive, pending, st.ScavSpawned / players, players, out bool pmcTurn);
-            if (n <= 0)
-            {
-                if (st.Schedule.LastBlock == ScavBlock.Cap) MarkCap(c, st);
-                return;
-            }
+            int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, st.ScavSpawned / players, players, out bool pmcTurn);
 
+            // PMC 차례는 스캐브 판정(n)과 상관없이 먼저 본다. n은 PMC를 못 넣을 때 대신 넣을 스캐브 수다.
             if (pmcTurn)
             {
                 var r = TryPmc(c, st, bc, spawner, now);
@@ -85,12 +86,23 @@ namespace Gravity.Client.Directors
                 // Unavailable: 이 차례는 스캐브로
             }
 
+            if (n <= 0)
+            {
+                if (st.Schedule.LastBlock == ScavBlock.Cap) MarkCap(c, st);
+                return;
+            }
+
             int done = SpawnScavs(c, st, bc, spawner, n, now, difficulties);
             if (done > 0) st.CapEpisode = false;
         }
 
         private static PmcResult TryPmc(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)
         {
+            if (c.S.MapId == "labyrinth" && !c.S.AllowPmcLabyrinth)
+            {
+                Log.InfoOnce("ScavDirector.LabPmcOff:" + c.S.Seed, "labyrinth 미궁 PMC 꺼짐(allowPmcLabyrinth): 보충 PMC 없이 스캐브만");
+                return PmcResult.Unavailable;
+            }
             var groups = c.S.RefillGroups;
             if (groups == null || st.RefillIndex >= groups.Count)
             {
@@ -135,8 +147,8 @@ namespace Gravity.Client.Directors
             {
                 var zone = order[i % order.Count];
                 var d = difficulties != null && difficulties.Count > 0 ? difficulties.Random() : BotDifficulty.normal;
-                bool pscav = c.Rng.NextDouble() < s.Scav.PscavChance;
-                Watch(bc.ActivateBotsByWave(WaveFactory.Scav(zone.NameZone, d, pscav)));
+                // 플레이어 스캐브(pscavChance)는 0.2에서 적용하지 않는다(IsPlayers를 바닐라가 읽지 않음, 결정 14).
+                Watch(bc.ActivateBotsByWave(WaveFactory.Scav(zone.NameZone, d, false)));
             }
             st.ScavSpawned += n;
             c.Spawned["assault"] += n;
@@ -173,20 +185,28 @@ namespace Gravity.Client.Directors
             Log.Info($"{c.S.MapId} 스캐브 구역 {st.Zones.Count}개(저격 제외), 지점 {points}개");
         }
 
-        /// <summary>살아 있는 사람 플레이어 위치(버퍼 재사용).</summary>
-        private static void CollectHumans(List<Vec3> into)
+        /// <summary>살아 있는 사람 플레이어 위치를 버퍼에 담고(재사용), 살아 있는 스캐브(assault 역할 봇) 수를 돌려준다.</summary>
+        private static int CollectPlayers(List<Vec3> humans)
         {
-            into.Clear();
+            humans.Clear();
             var gw = Singleton<GameWorld>.Instance;
-            if (gw == null) return;
+            if (gw == null) return 0;
+            int scavs = 0;
             var alive = gw.AllAlivePlayersList;
             for (int i = 0; i < alive.Count; i++)
             {
                 var p = alive[i];
-                if (p == null || p.IsAI) continue;
+                if (p == null) continue;
+                if (p.IsAI)
+                {
+                    var role = p.Profile?.Info?.Settings?.Role;
+                    if (role != null && role.Value == WildSpawnType.assault) scavs++;
+                    continue;
+                }
                 Vector3 v = p.Position;
-                into.Add(new Vec3(v.x, v.y, v.z));
+                humans.Add(new Vec3(v.x, v.y, v.z));
             }
+            return scavs;
         }
 
         /// <summary>비동기 생성(프로필 받기)에서 난 예외를 한 번만 남긴다.</summary>

@@ -17,6 +17,9 @@ public class ClientSettingsTests
     private static readonly MapInfo Factory = new("factory4_day", 6, 10, 1200, ["BotZone"], ["BotZone"]);
     private static readonly MapInfo Big = new("bigmap", 16, 20, 2400, ["ZoneA", "ZoneB"], ["ZoneS1", "ZoneS2"]);
     private static readonly MapInfo Lab = new("labyrinth", 4, 6, 2400, ["L1"], ["L1"]);
+    private static readonly MapInfo Laboratory = new("laboratory", 6, 10, 2400, ["LabZ"], ["LabZ"]);
+    private static GravityConfig LabPmcOn(string extra = "") =>
+        ConfigModel.FromState(JsonNode.Parse("{\"spawn\":{\"allowPmcLabyrinth\":true}" + extra + "}"), []);
 
     private static (GravityRuntime rt, List<string> log) Runtime(string state = "{}", bool abps = false, params MapInfo[] maps)
     {
@@ -73,7 +76,7 @@ public class ClientSettingsTests
     [Fact]
     public void Build_InfiniteStyle_HasRefillGroups()
     {
-        var cfg = ConfigModel.Default();
+        var cfg = LabPmcOn();
         var plan = SpawnPlanner.Plan(cfg, Lab, 2400, 0, 3);
         var s = ClientSettingsBuilder.Build(cfg, Lab, plan, true);
         Assert.NotNull(s.Inf);
@@ -88,9 +91,52 @@ public class ClientSettingsTests
     [Fact]
     public void Build_RefillGroups_CappedAt200()
     {
-        var cfg = ConfigModel.FromState(JsonNode.Parse("""{"maps":{"labyrinth":{"inf":{"delay":10}}}}"""), []);
+        var cfg = LabPmcOn(""","maps":{"labyrinth":{"inf":{"delay":10}}}""");
         var plan = SpawnPlanner.Plan(cfg, Lab, 36000, 0, 3);
         Assert.Equal(200, ClientSettingsBuilder.Build(cfg, Lab, plan, true).RefillGroups.Count);
+    }
+
+    [Fact]
+    public void Build_Labyrinth_PmcOffByDefault_NoRefillGroups_ScavRefillKept()
+    {
+        var cfg = ConfigModel.Default();
+        Assert.False(cfg.Spawn.AllowPmcLabyrinth);
+        var s = ClientSettingsBuilder.Build(cfg, Lab, SpawnPlanner.Plan(cfg, Lab, 2400, 0, 3), true);
+        Assert.NotNull(s.Inf);
+        Assert.Empty(s.RefillGroups);
+        Assert.False(s.AllowPmcLabyrinth);
+        Assert.True(s.Scav.Managed);
+    }
+
+    [Fact]
+    public void Build_InfiniteOtherMap_RefillGroupsWithoutLabyrinthSwitch()
+    {
+        var cfg = ConfigModel.FromState(JsonNode.Parse("""{"maps":{"bigmap":{"style":"infinite"}}}"""), []);
+        var s = ClientSettingsBuilder.Build(cfg, Big, SpawnPlanner.Plan(cfg, Big, 2400, 0, 3), true);
+        Assert.NotNull(s.Inf);
+        Assert.NotEmpty(s.RefillGroups);
+    }
+
+    [Fact]
+    public void Config_AllowScavLab_DefaultFalse_ReadsTrue()
+    {
+        Assert.False(ConfigModel.Default().Spawn.AllowScavLab);
+        Assert.True(ConfigModel.FromState(JsonNode.Parse("""{"spawn":{"allowScavLab":true}}"""), []).Spawn.AllowScavLab);
+    }
+
+    [Fact]
+    public void Build_Laboratory_ScavUnmanagedUnlessAllowed()
+    {
+        var cfg = ConfigModel.Default();
+        var off = ClientSettingsBuilder.Build(cfg, Laboratory, SpawnPlanner.Plan(cfg, Laboratory, 2400, 0, 1), true);
+        Assert.True(off.Managed);
+        Assert.False(off.Scav.Managed);
+
+        var on = ConfigModel.FromState(JsonNode.Parse("""{"spawn":{"allowScavLab":true}}"""), []);
+        Assert.True(ClientSettingsBuilder.Build(on, Laboratory, SpawnPlanner.Plan(on, Laboratory, 2400, 0, 1), true).Scav.Managed);
+
+        // 다른 맵은 스위치와 상관없이 관리
+        Assert.True(ClientSettingsBuilder.Build(cfg, Big, SpawnPlanner.Plan(cfg, Big, 2400, 0, 1), true).Scav.Managed);
     }
 
     [Fact]
