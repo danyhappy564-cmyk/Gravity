@@ -17,6 +17,9 @@ public static class RaidSpawnApplier
 
     private static readonly string[] Modes = ["regular", "pve"];
 
+    /// <summary>[실험] 원인 가르기용 플래그(config/experiment.txt 한 줄, 쉼표: ignore,pve,t30,normal,zones). 확정 뒤 지운다.</summary>
+    public static HashSet<string> Experiment { get; set; } = [];
+
     public static void Apply(LocationBase loc, SpawnPlan plan, GravityConfig cfg, MapInfo info)
     {
         var ms = cfg.MapFor(info.Id);
@@ -25,18 +28,26 @@ public static class RaidSpawnApplier
         var s = cfg.Spawn;
 
         var bosses = loc.BossLocationSpawn.Where(e => !MapCatalog.IsPmc(e)).ToList();
+        var x = Experiment;
+        var sets = MapCatalog.ZoneSets.TryGetValue(info.Id, out var zs) && zs.Count > 0 ? zs : null;
+        var gi = 0;
         foreach (var g in plan.Groups)
         {
             var side = g.Usec ? "pmcUSEC" : "pmcBEAR";
+            var dif = x.Contains("normal") ? "normal" : g.Difficulty;
+            var zone = x.Contains("zones") && sets is not null ? sets[gi % sets.Count] : pmcZones;
+            var time = Math.Max(1, g.TimeSec);
+            if (x.Contains("t30") && g.IsStart) time = Math.Max(30, time);
+            gi++;
             bosses.Add(new BossLocationSpawn
             {
                 BossName = side, BossEscortType = side, BossChance = 100,
-                BossDifficulty = g.Difficulty, BossEscortDifficulty = g.Difficulty,
-                BossEscortAmount = (g.Size - 1).ToString(), BossZone = pmcZones,
-                IsBossPlayer = false, IsRandomTimeSpawn = false, Time = Math.Max(1, g.TimeSec),
+                BossDifficulty = dif, BossEscortDifficulty = dif,
+                BossEscortAmount = (g.Size - 1).ToString(), BossZone = zone,
+                IsBossPlayer = false, IsRandomTimeSpawn = false, Time = time,
                 TriggerId = "", TriggerName = "", Delay = 0, ForceSpawn = false,
-                IgnoreMaxBots = g.IsStart ? s.IgnoreCapStart : s.IgnoreCapWaves,
-                Supports = null!, SpawnMode = Modes, SptId = "gravity"
+                IgnoreMaxBots = x.Contains("ignore") || (g.IsStart ? s.IgnoreCapStart : s.IgnoreCapWaves),
+                Supports = null!, SpawnMode = x.Contains("pve") ? ["pve"] : Modes, SptId = "gravity"
             });
         }
 

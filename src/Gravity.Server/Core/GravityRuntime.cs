@@ -24,6 +24,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         try
         {
             var cfg = Store.Current;
+            Spawn.RaidSpawnApplier.Experiment = ReadExperiment();
             if (!cfg.SpawnModule || Detect.SpawnLocked) return Skip(id, Detect.SpawnLocked ? "ABPS 감지로 잠김" : "스폰 모듈 꺼짐");
             if (!Catalog.TryGet(id, out var info)) return Skip(id, "모르는 맵(커스텀 맵은 건드리지 않음)");
             if (!cfg.MapFor(id).Original) return Skip(id, "이 맵은 Gravity 적용 꺼짐");
@@ -38,7 +39,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             RaidSpawnApplier.Apply(loc, plan, cfg, info);
             RaidSpawnApplier.ApplyBosses(loc, cfg, id);
             Last = new LastRaid(DateTime.Now, plan.Summary, plan, null);
-            info_($"{GravityInfo.Tag} {plan.Summary}");
+            info_($"{GravityInfo.Tag} {plan.Summary}" + (Spawn.RaidSpawnApplier.Experiment.Count > 0 ? " [실험 " + string.Join(",", Spawn.RaidSpawnApplier.Experiment) + "]" : ""));
             return true;
         }
         catch (Exception ex)
@@ -55,5 +56,17 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     {
         Last = new LastRaid(DateTime.Now, $"{id}: 적용 안 함({why})", null, why);
         return false;
+    }
+
+    /// <summary>[실험] config/experiment.txt(쉼표 플래그). 원인 확정 뒤 지운다.</summary>
+    public static string ExperimentFile { get; set; } = "";
+    private static HashSet<string> ReadExperiment()
+    {
+        try
+        {
+            if (ExperimentFile.Length == 0 || !File.Exists(ExperimentFile)) return [];
+            return File.ReadAllText(ExperimentFile).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+        }
+        catch { return []; }
     }
 }
