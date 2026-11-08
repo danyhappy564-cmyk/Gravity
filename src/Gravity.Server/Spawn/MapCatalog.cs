@@ -13,9 +13,6 @@ public sealed record MapMeta(string Id, int RaidMin, int BotMax, int BasePmc, in
 /// <summary>서버 로드 뒤 DB에서 맵별 기본 정보를 한 번 모은다(원본은 읽기만).</summary>
 public sealed class MapCatalog
 {
-    /// <summary>[실험] 맵별 바닐라 PMC 항목의 구역 묶음(쉼표 문자열).</summary>
-    public static readonly Dictionary<string, List<string>> ZoneSets = new(StringComparer.OrdinalIgnoreCase);
-
     private readonly Dictionary<string, MapInfo> _info = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MapMeta> _meta = [];
     public IReadOnlyList<MapMeta> All => _meta;
@@ -38,7 +35,6 @@ public sealed class MapCatalog
             var assault = (b.Waves ?? []).Where(w => w.WildSpawnType == WildSpawnType.assault).ToList();
             var baseScav = (int)Math.Round(assault.Sum(w => ((w.SlotsMin ?? 0) + (w.SlotsMax ?? 0)) / 2.0));
             var pmcZones = Split(pmcEntries.Select(e => e.BossZone));
-            ZoneSets[id] = pmcEntries.Select(e => e.BossZone ?? "").Where(z => z.Length > 0).Distinct().ToList();
             if (pmcZones.Length == 0) pmcZones = Split([b.OpenZones]);
             var scavZones = Split(assault.Select(w => w.SpawnPoints));
             var raidSec = (int)Math.Round((b.EscapeTimeLimit ?? 40) * 60);

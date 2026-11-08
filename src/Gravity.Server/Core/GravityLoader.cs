@@ -32,8 +32,6 @@ public class GravityLoader(
         var catalog = new MapCatalog();
         catalog.Build(locations, pmcConfig, botConfig);
 
-        GravityRuntime.ExperimentFile = Path.Combine(paths.ConfigDir, "experiment.txt");
-
         GravityRuntime.Instance = new GravityRuntime(store, catalog, detect, m => logger.Warning(m), m => logger.Info(m))
         {
             MaxBotCap = botConfig.MaxBotCap

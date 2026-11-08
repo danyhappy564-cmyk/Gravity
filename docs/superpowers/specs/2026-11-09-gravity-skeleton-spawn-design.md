@@ -121,7 +121,7 @@ SPT의 `LocationLifecycleService.GenerateLocationAndLoot(sessionId, name, genera
 - **PMC 그룹** → `BossLocationSpawn` 하나:
   - `BossName`=`BossEscortType`=`pmcUSEC|pmcBEAR`
   - `BossEscortAmount`=`"인원-1"`, `BossChance=100`, `Time`=초
-  - `BossZone`=켠 구역(쉼표 목록, 비면 맵 기본 PMC 구역)
+  - `BossZone`=구역을 다 켰으면(또는 다 껐으면) `""`(클라가 PMC 구역 전부를 섞어 차례로 시도), 일부만 켰으면 켠 구역 하나씩을 분대 순서대로 돌려 넣는다. **쉼표 목록은 쓰지 않는다**: 클라는 목록에서 한 구역만 무작위로 골라 고정하고 그 구역만 재시도한다(kb 2.62, 11-09 세관 시험에서 대기열 16·PMC 1~2명의 원인으로 확정).
   - `BossDifficulty`=`BossEscortDifficulty`=난이도
   - `IgnoreMaxBots`=`ignoreCap.start`(시작) 또는 `ignoreCap.waves`(웨이브)
   - `SpawnMode`=`["regular","pve"]`
@@ -160,6 +160,7 @@ SPT의 `LocationLifecycleService.GenerateLocationAndLoot(sessionId, name, genera
 - 커스텀 맵(모르는 맵 id)은 건드리지 않는다. 기본 정보가 없는 맵은 계획을 만들지 않고 바닐라로 둔다.
 - 남의 모드 항목에서 예외가 나도 Gravity 처리는 항목 단위로 넘어간다.
 - 이른 로딩 단계에서 설정을 쓰지 않는다. 설정은 `OnLoad` 이후에 읽고, 패치는 레이드 때만 돈다.
+- **ABPS를 대신할 때 생기는 빈자리(11-09 확인)**: ABPS 클라 플러그인에는 봇 프로필 정리 패치(`Profile.GetAllPrefabPaths` 직전, 클라가 모르는 외형은 진영 기본 외형으로, 모델 없는 아이템은 제거)가 들어 있다. ABPS 없이 APBS 모드 옷 허용(`enableAllowlistedModClothing`)을 쓰면 `ConvertResourceInfo` NRE로 봇 생성이 통째로 실패한다(kb 2.17). 0.1은 서버 전용이라 막지 못한다 → 0.2 클라 플러그인에 같은 역할을 새로 작성한다(ABPS 코드는 읽기만).
 
 ## 8. 오류 처리 요약
 - 설정 파일 손상 → 백업 폴더에 `broken-<시각>.json`으로 옮기고 기본값으로 시작하며, 웹에 알린다.

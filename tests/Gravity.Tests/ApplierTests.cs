@@ -70,7 +70,7 @@ public class ApplierTests
             Assert.Equal(100, e.BossChance);
             Assert.Equal(e.BossName, e.BossEscortType);
             Assert.InRange(int.Parse(e.BossEscortAmount!), 0, 4);
-            Assert.Equal("ZoneA,ZoneB", e.BossZone);
+            Assert.Equal("", e.BossZone); // 구역 다 켜짐 → 클라가 PMC 구역 전부를 섞어 시도(kb 2.62)
             Assert.Contains("pve", e.SpawnMode);
         });
         var startCount = plan.Groups.Count(g => g.IsStart);
@@ -95,6 +95,28 @@ public class ApplierTests
         var (rt, _) = Runtime("""{"maps":{"bigmap":{"zones":{"ZoneA":{"on":false}}}}}""");
         rt.TryApplyToRaid("bigmap", loc, null, 5);
         Assert.All(loc.BossLocationSpawn.Where(MapCatalog.IsPmc), e => Assert.Equal("ZoneB", e.BossZone));
+    }
+
+    [Fact]
+    public void Apply_AllZonesOff_UsesAllZones()
+    {
+        var loc = Loc();
+        var (rt, _) = Runtime("""{"maps":{"bigmap":{"zones":{"ZoneA":{"on":false},"ZoneB":{"on":false}}}}}""");
+        rt.TryApplyToRaid("bigmap", loc, null, 5);
+        Assert.All(loc.BossLocationSpawn.Where(MapCatalog.IsPmc), e => Assert.Equal("", e.BossZone));
+    }
+
+    [Fact]
+    public void PmcZoneFor_NeverCommaList_RotatesEnabledZones()
+    {
+        var (_, store) = Runtime();
+        var ms = store.Current.MapFor("bigmap");
+        string[] all = ["Z1", "Z2", "Z3", "Z4"];
+        var some = ms with { Zones = new Dictionary<string, bool> { ["Z2"] = false, ["Z4"] = false } };
+        Assert.Equal(["Z1", "Z3", "Z1", "Z3"], Enumerable.Range(0, 4).Select(i => RaidSpawnApplier.PmcZoneFor(all, some, i)).ToArray());
+        Assert.Equal("", RaidSpawnApplier.PmcZoneFor(all, ms with { Zones = new Dictionary<string, bool>() }, 3));
+        Assert.Equal("", RaidSpawnApplier.PmcZoneFor(all, ms with { Zones = all.ToDictionary(z => z, _ => true) }, 0));
+        Assert.Equal("", RaidSpawnApplier.PmcZoneFor([], ms, 0));
     }
 
     [Fact]

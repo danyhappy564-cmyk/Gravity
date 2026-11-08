@@ -17,37 +17,26 @@ public static class RaidSpawnApplier
 
     private static readonly string[] Modes = ["regular", "pve"];
 
-    /// <summary>[실험] 원인 가르기용 플래그(config/experiment.txt 한 줄, 쉼표: ignore,pve,t30,normal,zones). 확정 뒤 지운다.</summary>
-    public static HashSet<string> Experiment { get; set; } = [];
-
     public static void Apply(LocationBase loc, SpawnPlan plan, GravityConfig cfg, MapInfo info)
     {
         var ms = cfg.MapFor(info.Id);
-        var pmcZones = Zones(info.PmcZones, ms);
         var scavZones = Zones(info.ScavZones, ms);
         var s = cfg.Spawn;
 
         var bosses = loc.BossLocationSpawn.Where(e => !MapCatalog.IsPmc(e)).ToList();
-        var x = Experiment;
-        var sets = MapCatalog.ZoneSets.TryGetValue(info.Id, out var zs) && zs.Count > 0 ? zs : null;
-        var gi = 0;
-        foreach (var g in plan.Groups)
+        for (var i = 0; i < plan.Groups.Count; i++)
         {
+            var g = plan.Groups[i];
             var side = g.Usec ? "pmcUSEC" : "pmcBEAR";
-            var dif = x.Contains("normal") ? "normal" : g.Difficulty;
-            var zone = x.Contains("zones") && sets is not null ? sets[gi % sets.Count] : pmcZones;
-            var time = Math.Max(1, g.TimeSec);
-            if (x.Contains("t30") && g.IsStart) time = Math.Max(30, time);
-            gi++;
             bosses.Add(new BossLocationSpawn
             {
                 BossName = side, BossEscortType = side, BossChance = 100,
-                BossDifficulty = dif, BossEscortDifficulty = dif,
-                BossEscortAmount = (g.Size - 1).ToString(), BossZone = zone,
-                IsBossPlayer = false, IsRandomTimeSpawn = false, Time = time,
+                BossDifficulty = g.Difficulty, BossEscortDifficulty = g.Difficulty,
+                BossEscortAmount = (g.Size - 1).ToString(), BossZone = PmcZoneFor(info.PmcZones, ms, i),
+                IsBossPlayer = false, IsRandomTimeSpawn = false, Time = Math.Max(1, g.TimeSec),
                 TriggerId = "", TriggerName = "", Delay = 0, ForceSpawn = false,
-                IgnoreMaxBots = x.Contains("ignore") || (g.IsStart ? s.IgnoreCapStart : s.IgnoreCapWaves),
-                Supports = null!, SpawnMode = x.Contains("pve") ? ["pve"] : Modes, SptId = "gravity"
+                IgnoreMaxBots = g.IsStart ? s.IgnoreCapStart : s.IgnoreCapWaves,
+                Supports = null!, SpawnMode = Modes, SptId = "gravity"
             });
         }
 
@@ -81,6 +70,18 @@ public static class RaidSpawnApplier
             updates.Add((e, !b.On || !mapOn ? 0 : cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance));
         }
         foreach (var (e, c) in updates) e.BossChance = c;
+    }
+
+    /// <summary>
+    /// PMC 분대 하나의 BossZone. 클라는 쉼표 목록에서 구역 하나를 무작위로 골라 레이드 끝까지 그 구역만 재시도한다(kb 2.62)
+    /// → 목록을 넘기지 않는다. 구역이 다 켜져 있으면(또는 다 꺼져 있으면) "" = 클라가 PMC 구역 전부를 섞어 차례로 시도,
+    /// 일부만 켜져 있으면 켜진 구역을 분대 순서대로 하나씩 돌려 준다.
+    /// </summary>
+    internal static string PmcZoneFor(string[] all, MapSettings ms, int groupIndex)
+    {
+        var on = all.Where(z => !ms.Zones.TryGetValue(z, out var v) || v).ToArray();
+        if (on.Length == 0 || on.Length == all.Length) return "";
+        return on[groupIndex % on.Length];
     }
 
     /// <summary>맵 구역 중 웹에서 끈 것을 뺀다. 다 꺼지면 전부 쓴다.</summary>
