@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Gravity</RootNamespace>
+    <AssemblyName>Gravity</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.1.0</Version>
+    <OutputPath>bin\$(Configuration)\Gravity\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="SPTarkov.Common" Version="4.1.0" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTarkov.DI" Version="4.1.0" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTarkov.Reflection" Version="4.1.0" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTarkov.Server.Core" Version="4.1.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\LICENSE" CopyToOutputDirectory="PreserveNewest" Link="LICENSE" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gravity.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>None</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+  </PropertyGroup>
+
+  <!-- 빌드하면 저장소 루트 Build\ 아래에 게임 폴더 구조 그대로 모은다 -->
+  <PropertyGroup>
+    <ReleaseOutputDir>$(MSBuildThisFileDirectory)..\..\Build\SPT_Runtime\user\mods\Gravity\</ReleaseOutputDir>
+  </PropertyGroup>
+  <Target Name="CopyToBuildFolder" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
+    <ItemGroup>
+      <ModFiles Include="$(OutputPath)**\*" Exclude="$(OutputPath)**\*.pdb;$(OutputPath)**\*.deps.json;$(OutputPath)**\*.runtimeconfig.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ReleaseOutputDir)" />
+    <Copy SourceFiles="@(ModFiles)" DestinationFiles="@(ModFiles->'$(ReleaseOutputDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Message Text="[Gravity] -> $(ReleaseOutputDir)" Importance="high" />
+  </Target>
+
+</Project>
