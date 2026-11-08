@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using EFT.Game.Spawning;
 using Gravity.Shared;
 using UnityEngine;
 
@@ -30,11 +32,42 @@ namespace Gravity.Client
         /// <summary>맵 상한을 BotsController에 걸었는지(CapPatch 내부용).</summary>
         internal bool CapApplied;
 
+        /// <summary>구역별 PMC 후보 지점: 맵의 플레이어 지점(Player 카테고리, Infiltration 있음)과 봇 PMC 지점(BotPmc 카테고리)을
+        /// BotsController.GetClosestZone으로 가장 가까운 구역에 배정한다. 레이드에서 한 번 만든다(PmcZones.EnsurePoints).</summary>
+        public readonly Dictionary<BotZone, List<Candidate>> ZonePoints = new Dictionary<BotZone, List<Candidate>>();
+
+        /// <summary>Candidate.Id → 게임 지점.</summary>
+        public readonly Dictionary<int, ISpawnPoint> PointById = new Dictionary<int, ISpawnPoint>();
+
+        /// <summary>방금 다른 분대가 잡은 지점(10초). 지점을 고를 때만 지난 것을 지운다(매 프레임 일 없음).</summary>
+        public readonly List<(Vec3 pos, float until)> Reserved = new List<(Vec3 pos, float until)>();
+
+        /// <summary>Gravity 분대(웨이브 항목)별 첫 실패 시각(Time.time). 대기열 만료 판정용.</summary>
+        public readonly ConditionalWeakTable<BossLocationSpawn, StrongBox<float>> FirstFail =
+            new ConditionalWeakTable<BossLocationSpawn, StrongBox<float>>();
+
+        /// <summary>생성한 PMC 인원(키 pmcUSEC·pmcBEAR). Task 6 보고용.</summary>
+        public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0 };
+
+        /// <summary>버린 PMC 분대 수(키 noPoint·expired·groupCap). Task 6 보고용.</summary>
+        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0 };
+
+        /// <summary>지점·구역 섞기용(레이드 시드로 시작). 게임 스레드에서만 쓴다.</summary>
+        public readonly System.Random Rng;
+
+        /// <summary>ZonePoints를 만들었는지 / PMC 구역 0개 맵 보충을 끝냈는지(PmcZones 내부용).</summary>
+        internal bool PointsBuilt;
+        internal bool ZonesFilled;
+
         private RaidContext(ClientRaidSettings s, float startTime)
         {
             S = s;
             StartTime = startTime;
+            Rng = new System.Random(s.Seed);
         }
+
+        /// <summary>레이드 시작 뒤 지난 초(게임 스레드에서만).</summary>
+        public float Elapsed => Time.time - StartTime;
 
         /// <summary>지금 레이드. 서버 설정을 못 받았거나 Managed=false면 null.</summary>
         public static RaidContext? Current
