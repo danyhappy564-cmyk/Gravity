@@ -49,8 +49,8 @@ namespace Gravity.Client
         /// <summary>생성한 PMC 인원(키 pmcUSEC·pmcBEAR). Task 6 보고용.</summary>
         public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0 };
 
-        /// <summary>버린 PMC 분대 수(키 noPoint·expired·groupCap). Task 6 보고용.</summary>
-        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0 };
+        /// <summary>버린 PMC 분대 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버림. Task 6 보고용.</summary>
+        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0 };
 
         /// <summary>지점·구역 섞기용(레이드 시드로 시작). 게임 스레드에서만 쓴다.</summary>
         public readonly System.Random Rng;

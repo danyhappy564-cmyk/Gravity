@@ -154,4 +154,36 @@ namespace Gravity.Client.Patches
             return res;
         }
     }
+
+    /// <summary>
+    /// BotBossSpawn.DelayBossSpawn(BotBossSpawn.cs:292) 앞: 하드 스톱이 지난 Gravity 분대는 대기열에 다시 넣지 않고 버린다(Dropped["cap"]).
+    /// 맵 상한이 차면 Spawn이 TrySpawn 없이 바로 DelayBossSpawn을 불러(BotBossSpawn.cs:259-262·279·286-288) PmcTrySpawnPatch의 만료가 돌지 않는다.
+    /// 하드 스톱 전에는 그대로 자리 날 때까지 기다린다. 대기 항목은 3초마다 CheckSpawnAfterDelay → Spawn(:297-300)으로 다시 오므로,
+    /// 하드 스톱 뒤 첫 재시도에서 여기로 와서 빠진다. DelayBossSpawn을 부르는 곳은 Spawn의 두 곳(:283·:288)뿐이고,
+    /// TrySpawn 실패 경로(:283)는 하드 스톱이면 PmcTrySpawnPatch가 이미 true로 바꿔 여기까지 오지 않으므로 여기서 버리는 것은 상한 대기 몫이다.
+    /// </summary>
+    internal sealed class PmcCapDelayPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod() =>
+            typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.DelayBossSpawn), BindingFlags.Instance | BindingFlags.Public)!;
+
+        [PatchPrefix]
+        private static bool Prefix(BossLocationSpawn wave)
+        {
+            try
+            {
+                var c = RaidContext.Current;
+                if (c == null || wave == null || !wave.BossType.IsPmcBot()) return true;
+                if (!SpawnExpiry.PastHardStop(c.Elapsed, c.S.HardStopPmcSec)) return true;
+                c.FirstFail.Remove(wave);
+                c.Dropped["cap"]++;
+                return false; // 대기열에 넣지 않음 = 버림
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("PmcCapDelay", ex);
+                return true;
+            }
+        }
+    }
 }

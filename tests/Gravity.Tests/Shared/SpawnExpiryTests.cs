@@ -14,6 +14,15 @@ public class SpawnExpiryTests
         Assert.True(SpawnExpiry.Expired(0, 1, 1000, 1000));
     }
 
+    // 맵 상한 대기: 하드 스톱 전에는 계속 기다리고, 닿은 순간부터 버린다.
+    [Fact]
+    public void PastHardStop_Boundaries()
+    {
+        Assert.False(SpawnExpiry.PastHardStop(999.9f, 1000));
+        Assert.True(SpawnExpiry.PastHardStop(1000, 1000));
+        Assert.True(SpawnExpiry.PastHardStop(1500, 1000));
+    }
+
     [Fact]
     public void Expiry_CustomMaxWait()
     {

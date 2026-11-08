@@ -60,6 +60,7 @@ namespace Gravity.Client
                 Enable(new PmcZoneOrderPerfectPosPatch());
                 Enable(new PmcPointsPatch());
                 Enable(new PmcTrySpawnPatch());
+                Enable(new PmcCapDelayPatch());
             }
 
             Log.Info($"클라 플러그인 {GravityVersion.Current} 준비");

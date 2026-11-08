@@ -7,6 +7,9 @@ namespace Gravity.Shared
     public static class SpawnExpiry
     {
         public static bool Expired(float firstFailTime, float now, float raidElapsed, int hardStopSec, float maxWaitSec = 180) =>
-            now - firstFailTime >= maxWaitSec || raidElapsed >= hardStopSec;
+            now - firstFailTime >= maxWaitSec || PastHardStop(raidElapsed, hardStopSec);
+
+        /// <summary>레이드가 하드 스톱(초)에 닿았는지. 맵 상한 때문에 기다리는 분대는 이때부터 버린다.</summary>
+        public static bool PastHardStop(float raidElapsed, int hardStopSec) => raidElapsed >= hardStopSec;
     }
 }
