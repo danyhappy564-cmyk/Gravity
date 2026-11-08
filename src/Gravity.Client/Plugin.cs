@@ -61,7 +61,7 @@ namespace Gravity.Client
                 Enable(new PmcPointsPatch());
                 Enable(new PmcTrySpawnPatch());
                 Enable(new PmcCapDelayPatch());
-                // 1분마다 살아 있는 봇 수 기록(보고용). 바닐라는 그대로 돈다.
+                // 1분마다 살아 있는 봇 수 기록(보고용), 서버가 스캐브를 관리하면 바닐라 자동 스폰 대신 ScavDirector(F6·F7)
                 Enable(new NonWavesPatch());
             }
 

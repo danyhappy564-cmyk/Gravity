@@ -113,4 +113,37 @@ public class PointPickerTests
             Assert.Equal(new[] { 3 }, r.Ids);
         }
     }
+    [Fact]
+    public void HasClearPoint_DistanceFromHumans()
+    {
+        var pts = new[] { new Vec3(100, 0, 0), new Vec3(250, 0, 0) };
+        var humans = new[] { new Vec3(0, 0, 0) };
+        Assert.True(PointPicker.HasClearPoint(pts, humans, 200, false, 0));
+        Assert.False(PointPicker.HasClearPoint(pts, humans, 300, false, 0));
+    }
+
+    [Fact]
+    public void HasClearPoint_EveryHumanCounts()
+    {
+        var pts = new[] { new Vec3(250, 0, 0) };
+        var humans = new[] { new Vec3(0, 0, 0), new Vec3(300, 0, 0) };
+        Assert.False(PointPicker.HasClearPoint(pts, humans, 100, false, 0));
+    }
+
+    [Fact]
+    public void HasClearPoint_ProtectRadiusOnlyWhileActive()
+    {
+        var pts = new[] { new Vec3(250, 0, 0) };
+        var humans = new[] { new Vec3(0, 0, 0) };
+        Assert.True(PointPicker.HasClearPoint(pts, humans, 200, false, 400));
+        Assert.False(PointPicker.HasClearPoint(pts, humans, 200, true, 400));
+        Assert.True(PointPicker.HasClearPoint(pts, humans, 200, true, 100)); // 보호 반경이 더 작으면 scavDist가 기준
+    }
+
+    [Fact]
+    public void HasClearPoint_NoHumansOrNoPoints()
+    {
+        Assert.True(PointPicker.HasClearPoint(new[] { new Vec3(1, 0, 0) }, new Vec3[0], 500, true, 500));
+        Assert.False(PointPicker.HasClearPoint(new Vec3[0], new Vec3[0], 0, false, 0));
+    }
 }

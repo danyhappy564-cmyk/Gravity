@@ -115,4 +115,39 @@ public class ScavScheduleTests
             Assert.Equal(1, sch.Tick(151f, 24, 0, 0, 0, 1, out _));
         }
     }
+    [Fact]
+    public void LastBlock_ReportsReason()
+    {
+        var sch = Make(Dto(refill: 120, softCap: 18, aMin: 10, aMax: 10), hardStop: 1000);
+        Assert.Equal(0, sch.Tick(0f, 24, 6, 0, 0, 1, out _));
+        Assert.Equal(ScavBlock.Cap, sch.LastBlock);
+        Assert.Equal(1, sch.Tick(2f, 24, 0, 0, 0, 1, out _));
+        Assert.Equal(ScavBlock.None, sch.LastBlock);
+        Assert.Equal(0, sch.Tick(4f, 24, 0, 0, 0, 1, out _));
+        Assert.Equal(ScavBlock.Interval, sch.LastBlock);
+        Assert.Equal(0, sch.Tick(200f, 24, 0, 4, 0, 1, out _));
+        Assert.Equal(ScavBlock.Pending, sch.LastBlock);
+        Assert.Equal(0, sch.Tick(200f, 24, 0, 0, 10, 1, out _));
+        Assert.Equal(ScavBlock.PerPlayer, sch.LastBlock);
+        Assert.Equal(0, sch.Tick(1000f, 24, 0, 0, 0, 1, out _));
+        Assert.Equal(ScavBlock.HardStop, sch.LastBlock);
+    }
+
+    [Fact]
+    public void LastBlock_Quiet()
+    {
+        var sch = Make(Dto(refill: 10));
+        sch.Tick(0f, 24, 0, 0, 0, 1, out _);
+        Assert.Equal(0, sch.Tick(90f, 24, 0, 0, 0, 1, out _));
+        Assert.Equal(ScavBlock.Quiet, sch.LastBlock);
+    }
+
+    [Fact]
+    public void Inf_AtCap_ZeroNoPmcTurn()
+    {
+        var sch = Make(Dto(softCap: 18), new InfDto(30, 2, 1.0, 0.0));
+        Assert.Equal(0, sch.Tick(0f, 24, 6, 0, 0, 1, out var pmc));
+        Assert.False(pmc);
+        Assert.Equal(ScavBlock.Cap, sch.LastBlock);
+    }
 }

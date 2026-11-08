@@ -88,6 +88,24 @@ namespace Gravity.Shared
             return false;
         }
 
+        /// <summary>
+        /// F6 스캐브 구역 판정: points 중 하나라도 모든 사람(humans)과 minDist 이상이고,
+        /// 시작 보호 중(protectActive)이면 protectRadius 이상인 지점이 있으면 true. 사람이 없으면 지점이 하나라도 있으면 true. 할당 없음.
+        /// </summary>
+        public static bool HasClearPoint(IReadOnlyList<Vec3> points, IReadOnlyList<Vec3> humans, double minDist,
+            bool protectActive, double protectRadius)
+        {
+            double need = protectActive ? Math.Max(minDist, protectRadius) : minDist;
+            for (int i = 0; i < points.Count; i++)
+            {
+                bool ok = true;
+                for (int h = 0; h < humans.Count; h++)
+                    if (Vec3.Dist(points[i], humans[h]) < need) { ok = false; break; }
+                if (ok) return true;
+            }
+            return false;
+        }
+
         /// <summary>F8용: 플레이어에서 [minDist,maxDist] 띠 안, 안 보이고, 이미 고른 지점과 spacing 이상 떨어진 1개.</summary>
         public static PickResult PickRing(IReadOnlyList<Candidate> cands, Vec3 player, double minDist, double maxDist,
             IReadOnlyList<Vec3> taken, double spacing, Func<Vec3, bool>? visible, Random rng)

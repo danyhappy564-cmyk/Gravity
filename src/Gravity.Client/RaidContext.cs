@@ -47,10 +47,11 @@ namespace Gravity.Client
         public readonly ConditionalWeakTable<BossLocationSpawn, StrongBox<float>> FirstFail =
             new ConditionalWeakTable<BossLocationSpawn, StrongBox<float>>();
 
-        /// <summary>생성한 PMC 인원(키 pmcUSEC·pmcBEAR). Task 6 보고용.</summary>
-        public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0 };
+        /// <summary>생성한 인원(키 pmcUSEC·pmcBEAR = PMC 분대 실제 생성, assault = ScavDirector가 요청한 스캐브). 보고용.</summary>
+        public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0 };
 
-        /// <summary>버린 PMC 분대 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버림. Task 6 보고용.</summary>
+        /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
+        /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번). 보고용.</summary>
         public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0 };
 
         /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
@@ -73,6 +74,15 @@ namespace Gravity.Client
 
         /// <summary>지점·구역 섞기용(레이드 시드로 시작). 게임 스레드에서만 쓴다.</summary>
         public readonly System.Random Rng;
+
+        /// <summary>OnGameStarted를 지났는지(게임 스레드). ScavDirector는 이때부터 돈다.</summary>
+        internal bool Started;
+
+        /// <summary>ScavDirector 상태(첫 차례에 만든다).</summary>
+        internal Directors.ScavDirector.State? ScavState;
+
+        /// <summary>ScavDirector에서 예외가 났으면 true: 이 레이드의 남은 시간은 바닐라 자동 스폰으로 돌린다.</summary>
+        internal bool ScavFailed;
 
         /// <summary>ZonePoints를 만들었는지 / PMC 구역 0개 맵 보충을 끝냈는지(PmcZones 내부용).</summary>
         internal bool PointsBuilt;
@@ -146,7 +156,11 @@ namespace Gravity.Client
                     _pending = null;
                     Log.Warn($"{_pendingMap} 레이드 시작까지 서버 설정이 오지 않음: 이 레이드는 바닐라로 진행");
                 }
-                if (_current != null) _current.StartTime = Time.time;
+                if (_current != null)
+                {
+                    _current.StartTime = Time.time;
+                    _current.Started = true;
+                }
             }
         }
 
