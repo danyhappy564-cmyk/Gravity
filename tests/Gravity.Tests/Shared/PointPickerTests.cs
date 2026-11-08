@@ -49,6 +49,14 @@ public class PointPickerTests
     }
 
     [Fact]
+    public void Pick_StartProtection_NotRelaxed()
+    {
+        var r = PointPicker.PickSquad(new[] { C(1, 150) }, new[] { Human0 }, NoRes, 1, Rules(50, true, 200), new Random(1));
+        Assert.Empty(r.Ids);
+        Assert.Equal("noPoint", r.Reason);
+    }
+
+    [Fact]
     public void Pick_Relaxed_WhenStrictFails()
     {
         var r = PointPicker.PickSquad(new[] { C(1, 100) }, new[] { Human0 }, NoRes, 1, Rules(), new Random(1));

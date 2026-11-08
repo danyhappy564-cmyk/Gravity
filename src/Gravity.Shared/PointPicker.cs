@@ -26,7 +26,7 @@ namespace Gravity.Shared
             if (ids != null) return new PickResult(ids, "ok");
 
             double f = rules.RelaxFactor;
-            ids = TryPick(list, actors, reserved, size, rules, rules.PmcDist * f, rules.BotDist * f, rules.ReserveDist * f, rules.ProtectRadius * f);
+            ids = TryPick(list, actors, reserved, size, rules, rules.PmcDist * f, rules.BotDist * f, rules.ReserveDist * f, rules.ProtectRadius);
             if (ids != null) return new PickResult(ids, "relaxed");
 
             return new PickResult(None, "noPoint");
