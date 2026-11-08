@@ -38,7 +38,12 @@ public sealed class MapCatalog
             if (pmcZones.Length == 0) pmcZones = Split([b.OpenZones]);
             var scavZones = Split(assault.Select(w => w.SpawnPoints));
             var raidSec = (int)Math.Round((b.EscapeTimeLimit ?? 40) * 60);
-            _info[id] = new MapInfo(id, Math.Max(1, basePmc), Math.Max(1, baseScav), raidSec, pmcZones, scavZones);
+            // 바닐라 스캐브 웨이브는 대부분 "시작 때 한 번"이라 DB 합계가 실제 인원보다 훨씬 작다.
+            // 맵별 기준 인원(웹 목업과 같은 값, 40분당)을 최소값으로 쓴다. BaseScav는 DB 레이드 길이 기준으로 맞춘다.
+            var (refPmc, refScav40) = Reference.TryGetValue(id, out var rf) ? rf : (8, 16);
+            basePmc = Math.Max(basePmc, refPmc);
+            baseScav = Math.Max(baseScav, (int)Math.Round(refScav40 * raidSec / 60.0 / 40.0));
+            _info[id] = new MapInfo(id, Math.Max(1, basePmc), Math.Max(0, baseScav), raidSec, pmcZones, scavZones);
             var bosses = b.BossLocationSpawn
                 .Where(e => e.BossName is { } n && n.StartsWith("boss", StringComparison.OrdinalIgnoreCase))
                 .GroupBy(e => e.BossName!)
@@ -47,6 +52,14 @@ public sealed class MapCatalog
             _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses));
         }
     }
+
+    // 맵별 기준 인원: (PMC 한 판, 스캐브 40분당). 웹 목업 MAPS 값과 같다.
+    internal static readonly Dictionary<string, (int Pmc, int Scav40)> Reference = new()
+    {
+        ["bigmap"] = (16, 22), ["woods"] = (14, 20), ["factory4_day"] = (6, 10), ["factory4_night"] = (6, 10),
+        ["rezervbase"] = (13, 20), ["shoreline"] = (16, 22), ["interchange"] = (15, 22), ["laboratory"] = (10, 0),
+        ["lighthouse"] = (13, 20), ["tarkovstreets"] = (18, 24), ["sandbox"] = (8, 12), ["sandbox_high"] = (10, 12), ["labyrinth"] = (4, 6)
+    };
 
     internal static bool IsPmc(BossLocationSpawn e) => e.BossName is "pmcUSEC" or "pmcBEAR";
 

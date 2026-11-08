@@ -28,7 +28,7 @@ public static class SpawnPlanner
         var end = Math.Max(1.0 / 60, stop);
         var gap = s.MinGapSec / 60;
         var first = Math.Min(end, s.FirstDelaySec / 60);
-        var basePmc = map.BasePmc * raid / Math.Max(1.0, map.DbRaidSec / 60.0);
+        var basePmc = (double)map.BasePmc; // 시작 인원 기준(레이드 길이와 무관 — 길이는 웨이브 수가 따라감)
 
         var groups = new List<PmcGroup>();
         var scav = new List<ScavWave>();
