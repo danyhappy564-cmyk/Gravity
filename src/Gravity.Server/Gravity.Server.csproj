@@ -27,6 +27,7 @@
   <ItemGroup>
     <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\LICENSE" CopyToOutputDirectory="PreserveNewest" Link="LICENSE" />
+    <None Include="..\..\CREDITS.md" CopyToOutputDirectory="PreserveNewest" Link="CREDITS.md" />
   </ItemGroup>
 
   <ItemGroup>
