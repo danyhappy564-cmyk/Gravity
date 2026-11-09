@@ -94,7 +94,8 @@ namespace Gravity.Client.Directors
             if (player == null || player.HealthController == null || !player.HealthController.IsAlive) return;
 
             int excluded = c.CountCapExcluded();
-            var slots = st.Schedule.Tick(now, bc._maxCount, Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(UnityEngine.Time.time));
+            // 상한 표 PMC 예약 자리(1.0): 근처 보충도 스캐브처럼 아직 PMC가 안 채운 예약 몫만큼 덜 쓴다.
+            var slots = st.Schedule.Tick(now, bc._maxCount - c.PmcReserveLeft(), Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(UnityEngine.Time.time));
             if (slots.Count == 0) return;
 
             Vector3 pp = player.Position;

@@ -71,11 +71,12 @@ namespace Gravity.Shared
         /// <param name="aliveScavs">살아 있는 스캐브(assault) 수(softCap 판정).</param>
         /// <param name="spawnedPerPlayer">살아 있는 스캐브 ÷ 사람 수(웹 뜻 "한 명당 살아 있을 수 있는 수", 스캐브만 막는다).</param>
         public int Tick(float raidElapsed, int cap, int aliveLoadingDelayed, int aliveScavs, int pending,
-            int spawnedPerPlayer, int players, out bool pmcTurn)
+            int spawnedPerPlayer, int players, out bool pmcTurn, int scavReserve = 0)
         {
             pmcTurn = false;
+            scavReserve = Math.Max(0, scavReserve);
             if (_s.Style == "start" || _s.Style == "infinite")
-                return TickIndependent(raidElapsed, cap, aliveLoadingDelayed, aliveScavs, pending, spawnedPerPlayer, out pmcTurn);
+                return TickIndependent(raidElapsed, cap, aliveLoadingDelayed, aliveScavs, pending, spawnedPerPlayer, out pmcTurn, scavReserve);
 
             while (raidElapsed >= _windowEnd)
             {
@@ -102,7 +103,9 @@ namespace Gravity.Shared
 
             int want = _inf != null ? _inf.Batch : 1;
             ScavBlock why = ScavGate(raidElapsed, pending, spawnedPerPlayer, aliveScavs);
-            int count = why == ScavBlock.None ? Math.Min(want, Math.Min(room, _s.SoftCap - aliveScavs)) : 0;
+            // 스캐브 몫 빈자리: PMC 예약 자리(상한 표, 1.0) 중 아직 안 찬 몫은 쓰지 않는다
+            int scavRoom = room - scavReserve;
+            int count = why == ScavBlock.None ? Math.Max(0, Math.Min(want, Math.Min(scavRoom, _s.SoftCap - aliveScavs))) : 0;
 
             if (pmcTurn)
             {
@@ -117,6 +120,7 @@ namespace Gravity.Shared
                 if (_inf != null) Consume(raidElapsed);
                 return Block(why);
             }
+            if (scavRoom <= 0) return Block(ScavBlock.Cap); // PMC 예약 자리만 남음: 다음 틱에 다시
             if (count <= 0) return Block(ScavBlock.None); // Batch 0 설정(상한 탓 아님)
 
             Consume(raidElapsed);
@@ -125,7 +129,7 @@ namespace Gravity.Shared
         }
 
         /// <summary>명시한 스캐브 방식은 PMC 보충 시계와 따로 셉니다. 시작 스캐브는 서버가 넣습니다.</summary>
-        private int TickIndependent(float elapsed, int cap, int alive, int scavs, int pending, int perPlayer, out bool pmcTurn)
+        private int TickIndependent(float elapsed, int cap, int alive, int scavs, int pending, int perPlayer, out bool pmcTurn, int scavReserve = 0)
         {
             pmcTurn = false;
             if (cap <= alive) return Block(ScavBlock.Cap);
@@ -139,9 +143,10 @@ namespace Gravity.Shared
             if (pmcTurn || elapsed < _nextScavAttempt) return Block(ScavBlock.Interval);
             var why = ScavGate(elapsed, pending, perPlayer, scavs);
             if (why != ScavBlock.None) return Block(why);
+            if (cap - alive - scavReserve <= 0) return Block(ScavBlock.Cap); // PMC 예약 자리만 남음
             _nextScavAttempt = elapsed + Math.Max(2, _s.RefillSec);
             LastBlock = ScavBlock.None;
-            return Math.Min(1, Math.Min(cap - alive, _s.SoftCap - scavs));
+            return Math.Min(1, Math.Min(cap - alive - scavReserve, _s.SoftCap - scavs));
         }
 
         /// <summary>스캐브에만 걸리는 판정. 순서: 휴식 창, 스캐브 하드 스톱, 대기 수, 플레이어당 한도, softCap.</summary>

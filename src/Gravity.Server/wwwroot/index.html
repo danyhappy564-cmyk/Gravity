@@ -239,6 +239,15 @@ body.easy .adv{display:none!important}
 .fac-h{display:flex;align-items:center;gap:10px}
 .fac-h .logo{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:12px;letter-spacing:.5px;border:1px solid var(--line-2);background:#0e131b}
 .wide-tl .tl{padding:10px 6px 4px}
+.tl-split{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:14px;align-items:start}
+@media(max-width:1180px){.tl-split{grid-template-columns:1fr}}
+.roster{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2)}
+.roster h4{margin:0 0 6px;font-size:13px}
+.roster-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+.roster-row.dis{opacity:.55}
+.roster-row .nm{flex:1;min-width:0}
+.roster details{margin-top:8px}.roster summary{cursor:pointer;font-size:12.5px;color:var(--muted,#8f9bb0)}
+.roster .addlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 @media(max-width:1100px){.split{grid-template-columns:1fr}.list{position:static;max-height:none;flex-direction:row;flex-wrap:wrap}.list .cap{width:100%}.kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bigtiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .bigtile{position:relative;overflow:hidden;text-align:left;border:1px solid #1f2835;border-radius:16px;padding:18px 18px 16px;background:linear-gradient(180deg,#151c27,#0f141c);transition:border-color .2s,transform .15s}
@@ -505,6 +514,14 @@ const BOSSES=[
  B('partisan','파르티잔','Partisan',['bigmap','woods','shoreline','lighthouse'],25,[0,0],[3,30])
 ];
 const SPEC_EXTRA=['raiders','rogues'];
+// 특수 봇 웹 id → SPT 역할(맵별 등장 목록이 서버 맵 자료(roster)와 맞춰 볼 때)
+const SPEC_ROLE={raiders:'pmcBot',rogues:'exUsec',cultists:'sectantPriest',bloodhounds:'arenaFighterEvent',snipers:'marksman',infected:'infectedAssault'};
+// 상한 표(1.0): 종류 줄과 방식
+const CAP_KINDS=[['boss',T('보스·추종자','Bosses & followers'),T('보스와 추종자(나이트 3인방 포함).','Bosses and their followers.')],
+ ['special',T('특수 봇','Special bots'),T('레이더·로그·컬티스트·블러드하운드.','Raiders, rogues, cultists, bloodhounds.')],
+ ['faction',T('팩션','Factions'),T('RUAF·블랙 디비전 같은 팩션 모드 봇(Gravity 관리 여부와 상관없이).','Faction mod bots such as RUAF and Black Division (managed or not).')],
+ ['event',T('이벤트','Event bots'),T('감염자·산타·피스메이커 같은 시즌 이벤트 봇.','Infected, Santa, Peacemaker and other seasonal bots.')]];
+const CAP_MODES=[['separate',T('따로 셈','Separate')],['vanilla',T('원본대로','As original')],['respect',T('상한 지킴','Respect cap')]];
 const specChance=(id,mid)=>{const sp=state.specials[id];return SPEC_EXTRA.includes(id)?(sp.extra?.[mid]||0):(sp.chance[mid]||0);};
 const SPECIALS=[
  ['raiders',T('레이더','Raiders'),{laboratory:65,rezervbase:40},[3,5]],['rogues',T('로그','Rogues'),{lighthouse:75},[3,6]],
@@ -604,7 +621,7 @@ function makeDefaults(){
     bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'normal',maps:mm,zones:zz};});
   const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1]};
     // 레이더·로그(ABPS식): 원래 스폰(레버·탈출구 이벤트 포함)은 그대로 두고, 맵 확률·인원은 따로 넣는 "추가 스폰"에만(기본 0% = 원래 스폰만)
-    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1]});});
+    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1]});});
   const factions={};FACTIONS.forEach(f=>{factions[f.id]={managed:false,style:'waves',shareCap:false,maps:Object.fromEntries(MAPS.map(m=>[m.id,f.maps.includes(m.id)])),
     patrol:{on:true,chance:45,count:2,min:3,max:6,tMin:5,tMax:28},checkpoint:{on:true,chance:45,count:2,min:3,max:4,radius:20},hunt:{on:true,chance:20,min:3,max:4},
     bd:{chance:25,tMin:10,tMax:80,huntMin:3,huntMax:5,labsGate:20,labsStart:15,wedge:true,wedgeChance:15}};});
@@ -616,7 +633,7 @@ function makeDefaults(){
     spawn:{placement:'mixed',hotspotShare:60,hotspotBoost:true,hotspotIgnoreCap:false,startPmcPct:35,startGroup:{chance:60,maxSize:4,maxCount:4},firstDelay:120,interval:6,randomPct:30,minGap:60,dist:{wave:0,bots:0,smooth:true},waveMin:2,waveMax:4,
       stopBeforeEnd:10,hardStop:{mode:'percent',pmcPct:15,scavPct:5},maxRespawn:{pmc:0,scav:0},ignoreCap:{start:false,waves:false},allowPmcLabyrinth:false,allowScavLab:false,
       raid:{mode:'detect'},intensity:{early:1.2,mid:1,late:.6},protect:{on:true,sec:90,radius:120},spacing:{player:80,bots:25},
-      usecPct:50,squad:{s1:40,s2:30,s3:20,s4:10,s5:0},groupCap:{on:false,scope:'raid',over:'split',rules:[{size:5,cmp:'eq',count:1},{size:3,cmp:'eq',count:1}]},diff:{easy:10,normal:50,hard:30,imp:10},levelMode:'relative',lvRelMin:-10,lvRelMax:15,lvFixMin:15,lvFixMax:45,
+      usecPct:50,squad:{s1:40,s2:30,s3:20,s4:10,s5:0},caps:{pmcReserve:0,pmcGroups:0,boss:{mode:'separate',max:0},special:{mode:'separate',max:0},faction:{mode:'separate',max:0},event:{mode:'separate',max:0}},groupCap:{on:false,scope:'raid',over:'split',rules:[{size:5,cmp:'eq',count:1},{size:3,cmp:'eq',count:1}]},diff:{easy:10,normal:50,hard:30,imp:10},levelMode:'relative',lvRelMin:-10,lvRelMax:15,lvFixMin:15,lvFixMax:45,
       scav:{startOn:true,startPct:20,separateStart:true,delay:4,activeMin:3,activeMax:7,quietMin:1,quietMax:3,refill:45,pending:3,softCap:18,perPlayer:20,pscavChance:10,playerScavRemain:60,startMarksman:true,lateRaiders:true}},
     near:{on:false,firstDelay:15,interval:180,botDelay:5,minDist:200,maxDist:300,spacing:15,waveMin:3,waveMax:8,slotChance:50,useDefault:true,pmcChance:30,
       custom:{on:false,t1:'raider',cap1:5,t2:'rogue',cap2:5,ratio2:50,diff:'normal'},group:{scavOff:false,chance:25,min:2,max:5},attempts:3,sight:false,sightPriority:70,stopAtCap:true},
@@ -738,7 +755,7 @@ const raidOf=m=>state.spawn.raid.mode==='detect'?m.det:state.maps[m.id].raidSet;
 const CARD_FIELDS={
   flow:['startPmcPct','firstDelay','interval','waveMin','waveMax','randomPct','minGap','dist.wave','dist.bots','dist.smooth','intensity.early','intensity.mid','intensity.late','hardStop.mode','hardStop.pmcPct','stopBeforeEnd','ignoreCap.start','ignoreCap.waves'],
   scav:['scav.startOn','scav.startPct','scav.separateStart','scav.delay','scav.activeMin','scav.activeMax','scav.quietMin','scav.quietMax','scav.refill','scav.pending','scav.softCap','scav.perPlayer','scav.pscavChance','scav.playerScavRemain','scav.startMarksman','hardStop.scavPct'],
-  near:['near'],dist:['protect','spacing','pmcDist','scavDist'],hotspot:['placement','hotspotShare','hotspotBoost','hotspotIgnoreCap'],limits:['groupCap']
+  near:['near'],dist:['protect','spacing','pmcDist','scavDist'],hotspot:['placement','hotspotShare','hotspotBoost','hotspotIgnoreCap'],limits:['groupCap','caps']
 };
 const CARD_NAMES={flow:T('PMC 흐름','PMC flow'),scav:T('스캐브','Scavs'),near:T('근처 보충','Near-player refill'),dist:T('시작 보호 · 스폰 거리','Protection & distances'),hotspot:T('핫스팟 비중','Hotspot share'),limits:T('그룹 제한 · 맵 동시 상한','Group limits & map cap')};
 function commonPath(p){return p.startsWith('near.')||p==='near'?p:'spawn.'+p;}
@@ -768,6 +785,36 @@ function plan(m,c=cfgFor(m)){
 }
 const bossChance=b=>state.bossCommon.on&&b.id!=='zryachiy'?state.bossCommon.chance:state.bosses[b.id].chance;
 const bossesOn=m=>BOSSES.filter(b=>state.bosses[b.id].on&&state.bosses[b.id].maps[m.id]&&bossChance(b)>0);
+// 맵별 등장 목록(1.0, 사용자 11-10): 이 맵에 나오는 보스·특수 봇·팩션. "원본" = 서버 맵 자료(roster)에 있는 것(서버가 없으면 웹 기본표).
+// 켜고 끄기는 보스 맵 칸·특수 봇 맵 확률(레이더·로그는 원래 스폰 유지 keep)·팩션 맵 칸과 같은 값이다. 전체가 꺼진 것은 흐리게(그 페이지에서 켬).
+function mapRoster(m){const meta=serverMeta&&(serverMeta.maps||[]).find(x=>x.id===m.id),rs=meta&&meta.roster?Object.keys(meta.roster).map(x=>x.toLowerCase()):null,has=r=>!!r&&rs.includes(String(r).toLowerCase());
+  const items=[],add=[];
+  BOSSES.forEach(b=>{const bb=state.bosses[b.id],van=rs?has(BOSS_ROLE[b.id]):b.maps.includes(m.id),on=!!bb.maps[m.id];
+    if(!van&&!on){if(b.id!=='zryachiy')add.push({type:'boss',id:b.id,name:b.name});return;}
+    items.push({type:'boss',id:b.id,name:b.name,on:bb.on&&on,tag:van?'van':'add',off:!bb.on});});
+  SPECIALS.forEach(([id,n,ch])=>{const sp=state.specials[id],ex=SPEC_EXTRA.includes(id),van=rs?has(SPEC_ROLE[id]):(ch[m.id]||0)>0;if(!van)return;
+    const on=ex?sp.on&&sp.vanilla&&(sp.keep||{})[m.id]!==false:sp.on&&(sp.chance[m.id]||0)>0;
+    items.push({type:'spec',id,name:n,on,tag:'van',off:!sp.on||(ex&&!sp.vanilla)});});
+  FACTIONS.forEach(f=>{const F=state.factions[f.id],on=!!F.maps[m.id],inst=facInst(f.id),van=f.maps.includes(m.id);
+    if(!van&&!on){if(inst)add.push({type:'fac',id:f.id,name:f.name});return;}
+    items.push({type:'fac',id:f.id,name:f.name,on,tag:van?'mod':'add',off:!inst});});
+  return {items,add};}
+function rosterBox(m){const {items,add}=mapRoster(m),tag={van:[T('원본','Original'),'good'],add:[T('추가','Added'),'blue'],mod:[T('모드','Mod'),'']};
+  const row=x=>`<div class="roster-row${x.off?' dis':''}"><button class="mini-btn ${x.on?'on':''}" data-roster="${x.type}|${x.id}|${m.id}" ${x.off?'disabled':''} aria-pressed="${x.on}">${x.on?'✓':'—'}</button><span class="nm">${tr(x.name).replace(/ ·.*/,'')}</span>${pill(tr(tag[x.tag][0]),tag[x.tag][1])}</div>`;
+  return `<div class="roster"><h4>${tr(T('이 맵 등장 목록','On this map'))}</h4>${items.map(row).join('')||`<p class="small muted">${tr(T('이 맵에 원래 나오는 보스·특수 봇이 없습니다.','No bosses or special bots on this map by default.'))}</p>`}`
+   +(items.some(x=>x.off)?`<p class="small muted" style="margin-top:6px">${tr(T('흐린 줄은 보스·특수 봇·팩션 페이지에서 전체가 꺼져 있거나(레이더·로그 "원래 스폰 유지" 포함) 모드가 없는 것입니다.','Dimmed rows are off on their own page (incl. raiders/rogues "keep original spawns") or the mod is missing.'))}</p>`:'')
+   +(add.length?`<details><summary>＋ ${tr(T('다른 봇 추가','Add another bot'))}</summary><div class="addlist">${add.map(x=>`<button class="mini-btn" data-roster="${x.type}|${x.id}|${m.id}">${tr(x.name).replace(/ ·.*/,'')}</button>`).join('')}</div></details>`:'')
+   +`<p class="small muted" style="margin-top:8px">${tr(T('켠 것만 타임라인에 그립니다. 확률·인원은 각 페이지에서 정합니다.','Only checked bots are drawn. Chances and sizes are set on their own pages.'))}</p></div>`;}
+function rosterToggle(key){const[type,id,mid]=key.split('|');
+  if(type==='boss'){writeSetting(`bosses.${id}.maps.${mid}`,!state.bosses[id].maps[mid]);return;}
+  if(type==='fac'){facManage(id);writeSetting(`factions.${id}.maps.${mid}`,!state.factions[id].maps[mid]);return;}
+  if(type==='spec'){const sp=state.specials[id];
+    if(SPEC_EXTRA.includes(id)){sp.keep||={};writeSetting(`specials.${id}.keep.${mid}`,sp.keep[mid]===false);return;}
+    const def=(SPECIALS.find(x=>x[0]===id)[2][mid])||10;writeSetting(`specials.${id}.chance.${mid}`,(sp.chance[mid]||0)>0?0:def);}}
+// 타임라인 특수 봇 줄: [이름, 표시, 웹 id]. 레이더·로그는 원래 스폰(원본)과 추가 스폰(+%)을 따로.
+function specLane(m){const r=mapRoster(m).items;return SPECIALS.flatMap(([id,n])=>{const sp=state.specials[id];if(!sp.on)return [];const out=[],c=specChance(id,m.id);
+  if(SPEC_EXTRA.includes(id)){if(r.some(x=>x.type==='spec'&&x.id===id&&x.on))out.push([n,tr(T('원본','orig.')),id]);if(c>0)out.push([n,'+'+c+'%',id]);}
+  else if(c>0)out.push([n,c+'%',id]);return out;});}
 /** 분대 크기 분포(spawn.squad s1~s5)로 뽑은 크기 목록(서버 PlanRefill처럼 시드가 같으면 같은 목록). */
 function squadList(c,n,sd){const w=[1,2,3,4,5].map(k=>Math.max(0,+(c.squad?.['s'+k]??0))),tot=w.reduce((a,b)=>a+b,0),r=rng(sd),res=[];
   for(let i=0;i<n;i++){let x=r()*(tot||1),k=0;if(tot>0){for(;k<4;k++){x-=w[k];if(x<0)break;}}res.push(k+1);}return res;}
@@ -826,6 +873,7 @@ function timeline(m,big=false){
   if(fac.length)lanes.push(['fac',T('팩션','Factions'),'#c9a2ff']);
   if(c.near.on)lanes.push(['near',T('근처 보충','Near'),'#a78bfa']);
   if(bs.length)lanes.push(['boss',T('보스','Bosses'),'#e8b04b']);
+  const sps=specLane(m);if(sps.length)lanes.push(['spec',T('특수 봇','Specials'),'#9fc3ff']);
   const LH=50,top=46,BH=bs.length?Math.max(LH,bs.length*20+14):LH,FH=fac.length>1?Math.max(LH,fac.length*22+12):LH,LS=lanes.map(([id])=>id==='boss'?BH:id==='fac'?FH:LH),TH=LS.reduce((a,b)=>a+b,0),H=top+TH+40,Y={},Y0={};let acc=top;lanes.forEach(([id],i)=>{Y0[id]=acc;Y[id]=acc+LS[i]/2;acc+=LS[i];});
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" data-l="${L}" data-r="${R}" data-w="${W}" data-raid="${p.raid}" data-map="${m.id}"${ed?' class="tl-ed"':''}><defs><pattern id="hatch${m.id}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#f0c070" stroke-opacity=".45" stroke-width="2.4"/></pattern></defs>`;
   ['early','mid','late'].forEach((k,i)=>{const x0=x(p.raid*i/3),x1=x(p.raid*(i+1)/3);
@@ -856,10 +904,10 @@ function timeline(m,big=false){
     if(t1>t0)s+=`<line x1="${x(t0)}" x2="${x(t1)}" y1="${yy}" y2="${yy}" stroke="#e8b04b" stroke-opacity=".5" stroke-width="4" stroke-linecap="round"/>`;
     const lx=x(t0)+12+pos.filter(v=>Math.abs(v-x(t0))<4).length*0;pos.push(x(t0));
     s+=`<text x="${x(t0)}" y="${yy+6}" fill="#e8b04b" font-size="17" text-anchor="middle" opacity="${ch?1:.35}"${ed?` data-drag="boss|${b.id}" class="tlc tld"`:''}>★</text><text x="${lx}" y="${yy+5}" fill="#f0d08a" font-size="12.5" opacity="${ch?1:.45}"${pp('boss|'+b.id)}>${tr(b.name)} ${ch}%</text>`;});}
+  if(Y.spec){let xx=x(0)+4;sps.forEach(([n,lab,id])=>{const t=`✦ ${tr(n)} ${lab}`;s+=`<text x="${xx}" y="${Y.spec+5}" fill="#b7d0ff" font-size="12.5"${pp('spec|'+id)}>${esc(t)}</text>`;xx+=t.length*9+18;});}
   const step=p.raid>90?15:p.raid>30?10:5;for(let t=0;t<=p.raid;t+=step)s+=`<text x="${x(t)}" y="${H-10}" fill="#8f9bb0" font-size="13" text-anchor="middle">${t}${t===0?'':''}</text><line x1="${x(t)}" x2="${x(t)}" y1="${H-36}" y2="${H-30}" stroke="#46526a"/>`;
   s+=`<text x="${W-R}" y="${H-10}" fill="#647089" font-size="12" text-anchor="end">${tr(T('분','min'))}</text>`;
   const notes=[];bs.forEach(b=>{const bb=state.bosses[b.id];notes.push(ed?`<span class="pill gold tlc" data-pop="boss|${b.id}">★ ${tr(b.name)} ${bossChance(b)}% · ${bb.zones[m.id].map(z=>zname(m.id,z)).join(', ')}</span>`:pill('★ '+tr(b.name)+' '+bossChance(b)+'% · '+bb.zones[m.id].map(z=>zname(m.id,z)).join(', '),'gold'));});
-  SPECIALS.forEach(([id,n])=>{const sp=state.specials[id],ch=specChance(id,m.id);if(sp.on&&ch>0)notes.push(ed?`<span class="pill blue tlc" data-pop="spec|${id}">✦ ${tr(n)}${SPEC_EXTRA.includes(id)?' +':' '}${ch}%</span>`:pill('✦ '+tr(n)+(SPEC_EXTRA.includes(id)?' +':' ')+ch+'%','blue'));});
   if(m.id==='laboratory'&&state.lab.blackoutLink!=='always')notes.push(pill(tr(T('블랙아웃 연동','Blackout link'))+': '+tr(state.lab.blackoutLink==='only'?T('정전 판에만 블디','BlackDiv on blackout only'):T('정전 판 확률 ×','Blackout ×'))+(state.lab.blackoutLink==='boost'?state.lab.blackoutMult:''),'warn'));
   return `<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
 }
@@ -1086,7 +1134,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +slider(s+'hotspotShare',T('핫스팟 비중','Hotspot share'),'',{dis:c.placement!=='mixed'})
     +sw(s+'hotspotBoost',T('핫스팟 부스트','Hotspot boost'),T('아직 효과가 없습니다.','Not applied yet.'),{adv:true,dis:c.placement==='vanilla'})
     +sw(s+'hotspotIgnoreCap',T('핫스팟은 동시 상한 무시','Hotspots ignore cap'),T('아직 효과가 없습니다.','Not applied yet.'),{adv:true,dis:c.placement==='vanilla'});
-  const limits=(mid?mapCapControl(mid):notice(T('동시 봇 상한은 각 맵 탭에서 정합니다.','The bot cap is always set per map.'),'flat'))+groupCapBox(mid);
+  const limits=(mid?mapCapControl(mid):notice(T('동시 봇 상한은 각 맵 탭에서 정합니다.','The bot cap is always set per map.'),'flat'))+capTableBox(mid)+groupCapBox(mid);
   const shared=card(T('레이드 시간 (공통)','Raid length (shared)'),choice(s+'raid.mode',T('레이드 시간 기준','Raid time source'),'',[['detect','⟲',T('감지 (권장)','Detect'),T('실제 시간을 읽습니다.','Reads actual raid time.')],['set','⏱',T('Gravity가 정함','Set by Gravity'),T('맵별 시간을 씁니다.','Uses per-map raid time.')]])+raidTimeBox(det))
     +card(T('PMC 구성 (모든 맵 공통)','PMC makeup (all maps)'),slider(s+'usecPct',T('USEC 비율','USEC share'),'')
       +ratio(s+'squad',[['s1',T('솔로','Solo'),'#6ea8ff'],['s2',T('2인','Duo'),'#8fb8ff'],['s3',T('3인','Trio'),'#a78bfa'],['s4',T('4인','Squad 4'),'#e8b04b'],['s5',T('5인','Squad 5'),'#f08a5d']],T('분대 크기','Squad size'),'')
@@ -1133,7 +1181,7 @@ const spawnMap={desc:T('맵마다 웨이브/무한 보충, 레이드 시간, 스
     const weight=(key,label)=>{const v=zz[key]??zz.w??100,p=pre+view.key+'.'+z.id+'.'+key;return `<label class="zone-weight"><span>${tr(label)}</span><input type="range" min="0" max="200" step="10" value="${v}" data-p="${p}" data-t="n" data-unit='"%"' style="--p:${v/2}%" ${enabled?'':'disabled'}><span class="val small" data-v="${p}">${v}%</span></label>`;};
     return `<div class="zone-split${enabled?'':' dis'}"><label class="sw"><input type="checkbox" aria-label="${esc(tr(z.name))}" data-p="${pre}${view.key}.${z.id}.on" data-t="b" ${enabled?'checked':''}><span class="tr"></span></label><span>${tr(z.name)}</span>${pill(tr(kind),z.kind==='pmc'?'blue':z.kind==='scav'?'good':'')}<div class="zone-weights">${z.kind!=='scav'?weight('wPmc',T('PMC','PMC')):''}${z.kind!=='pmc'?weight('wScav',T('스캐브','Scavs')):''}</div></div>`;}).join('');
   return `<div class="stack">${tabs}
-   ${card(T('미리보기','Preview'),`<div class="wide-tl" data-live="timeline" data-arg="${m.id}">${timeline(m,true)}</div>${legend()}<div style="margin-top:14px" data-live="stat" data-arg="${m.id}">${statBox(m)}</div>`,{icon:'▦',desc:T(tr(m.name)+' · '+m.id,tr(m.name)+' · '+m.id),right:`<div class="sw-row"><button class="mini-btn ${tlEdit?'on':''}" data-act="tlEdit">✎ ${tr(T('미리보기에서 고치기','Edit in preview'))}</button><button class="mini-btn" data-act="reroll">↻ ${tr(T('다시 굴리기','Re-roll'))}</button></div>`})}
+   ${card(T('미리보기','Preview'),`<div class="tl-split"><div style="min-width:0"><div class="wide-tl" data-live="timeline" data-arg="${m.id}">${timeline(m,true)}</div>${legend()}</div>${rosterBox(m)}</div><div style="margin-top:14px" data-live="stat" data-arg="${m.id}">${statBox(m)}</div>`,{icon:'▦',desc:T(tr(m.name)+' · '+m.id,tr(m.name)+' · '+m.id),right:`<div class="sw-row"><button class="mini-btn ${tlEdit?'on':''}" data-act="tlEdit">✎ ${tr(T('미리보기에서 고치기','Edit in preview'))}</button><button class="mini-btn" data-act="reroll">↻ ${tr(T('다시 굴리기','Re-roll'))}</button></div>`})}
    ${spawnPresetCard('maps')}
    <div class="grid g2">
    ${card(T('스폰 방식','Spawn style'),choice(pre+'style',MAPF.style,'',[
@@ -1225,7 +1273,7 @@ P.factions={desc:T('RUAF·UNTAR·블랙 디비전처럼 봇을 추가하는 모�
     ${kind('hunt',T('사냥조','Hunts'),slider(p+'hunt.chance',T('확률','Chance'),T('레이드 10~90% 사이에 들어옵니다. 레넌트·전 USEC 사냥조는 모드 설정 그대로입니다.','Enters between 10–90% of the raid. Remnant and ex-USEC hunts keep the mod’s own config.'),{dis:!man})+range(p+'hunt.min',p+'hunt.max',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man}))}</div>`;
   const detail=`<div class="stack">${card(T(f.name.ko,f.name.en),`<div class="ctl"><div class="seg"><button data-segp="${p}managed" data-v="false" class="${!man?'on':''}">${tr(T('모드 설정 그대로','Use the mod’s own config'))}</button><button data-segp="${p}managed" data-v="true" class="${man?'on':''}">${tr(T('Gravity가 관리','Managed by Gravity'))}</button></div></div>`
      +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.map(m=>flipBtn(p+'maps.'+m.id,tr(m.name),{dis:!man})).join('')}</div>`
-     +sw(p+'shareCap',T('PMC 동시 상한을 같이 씀','Shares the PMC cap'),T('켜면 팩션 봇도 맵 동시 상한에 셉니다. 끄면(기본) 상한이 차도 나오고, 스캐브·PMC 보충도 팩션 봇을 빼고 상한을 셉니다.','On: faction bots count toward the map cap. Off (default): they spawn even when the cap is full, and scav/PMC refills ignore them when counting.'),{dis:!man})
+     +notice(fmt(tr(T('맵 상한과의 관계는 스폰 → 상한 카드의 "종류별 상한 · 팩션" 줄에서 정합니다(지금: {m}).','How factions count toward the map cap is set in Spawn → Limits, "Cap by bot type · Factions" (now: {m}).')),{m:tr((CAP_MODES.find(x=>x[0]===state.spawn.caps.faction.mode)||CAP_MODES[0])[1])}),'flat')
      +`<div class="chips" style="margin-top:8px">${facInst(f.id)?pill('✓ '+f.mod+' '+tr(T('감지됨','detected')),'good'):pill('✕ '+f.mod+' '+tr(T('설치되지 않음','not installed')))}${pill('ORBIT '+f.orbit+': '+(f.id==='untar'||f.id==='ruaf'?'false':'false'),'blue')}</div>`,{icon:'⚑',desc:T('그대로 두면 그 모드가 자기 설정대로 스폰합니다. Gravity가 관리하면 아래 값으로 덮어씁니다.','Left alone, the mod spawns per its own config. Managed = Gravity overrides.')})}${body}</div>`;
   const inst=facInst(f.id)?(f.id==='untar'?notice(T('UNTAR는 아직 Gravity가 관리하지 않습니다(설치본으로 봇 이름을 확인하지 못함). 모드 설정 그대로 나옵니다.','UNTAR is not managed by Gravity yet; it uses its own config.'),'flat'):''):notice(T('이 게임에는 설치되어 있지 않습니다. 값은 저장되지만 효과가 없습니다.','Not installed in this game. Values are saved but have no effect.'),'flat');
   return `<div class="stack">${spawnOff()}${inst}<div class="split">${list}${detail}</div></div>`;}};
@@ -1549,6 +1597,16 @@ function gcPreview(){const m=mapById(isSpawnMap()?mapSel:flowMap),g=gcEstimate(m
     <tr><td class="muted">${tr(T('제한 없이','No limit'))}</td>${sz.map(k=>`<td class="num muted">${g.before[k]}</td>`).join('')}</tr>
     <tr><td>${tr(T('제한 적용','With limits'))}</td>${sz.map(k=>`<td class="num"><b style="color:${g.after[k]!==g.before[k]?'#f0c070':'inherit'}">${g.after[k]}</b></td>`).join('')}</tr></tbody></table></div>`
    +(g.over?`<p class="muted small" style="margin-top:6px">${gc.over==='split'?fmt(tr(T('넘친 {o}명은 더 작은 그룹으로 나눠 넣습니다{l}.','{o} extra PMCs are regrouped into smaller groups{l}.')),{o:g.over,l:g.lost?fmt(tr(T(' (넣을 자리가 없는 {n}명은 뺌)',' ({n} with no slot are dropped)')),{n:g.lost}):''}):fmt(tr(T('넘친 {o}명은 넣지 않습니다. 그만큼 PMC 수가 줄어듭니다.','{o} extra PMCs are not spawned.')),{o:g.over})}</p>`:'');}
+// 상한 표(1.0, 사용자 11-10): PMC 예약 자리·동시 무리 최대 + 보스·특수·팩션·이벤트 방식과 최대 인원. "limits" 카드라 맵별로도 정한다.
+function capTableBox(mid=null){const C=scopedControls(mid),pre='spawn.caps.';
+  const how=T('따로 셈: 상한을 무시하고 나오며 맵 상한 계산에서 뺍니다(PMC·스캐브 자리를 뺏지 않음). 원본대로: 맵 자료 그대로 나오고 나온 뒤 자리를 차지합니다. 상한 지킴: 자리가 날 때까지 늦게 나옵니다.',
+    'Separate: spawns past the cap and is left out of the count (keeps PMC/scav slots). As original: map data as-is, takes slots once spawned. Respect cap: waits for a free slot.');
+  return `<div class="sub" style="margin-top:14px">${tr(T('종류별 상한','Cap by bot type'))}</div>`
+   +C.slider(pre+'pmcReserve',T('PMC 예약 자리','PMC reserved slots'),T('스캐브·근처 보충은 이만큼 자리를 비워 둡니다. PMC가 이만큼 살아 있으면 예약은 다 찬 것입니다. 0이면 끕니다.','Scavs and near refills leave this many slots for PMC groups. Filled once that many PMCs are alive. 0 = off.'),{min:0,max:20,unit:UI.ppl})
+   +C.slider(pre+'pmcGroups',T('PMC 동시 무리 최대','Max PMC groups at once'),T('살아 있는 PMC 무리가 이 수면 다음 무리는 자리가 날 때까지 기다립니다. 0이면 제한 없음.','At this many live PMC groups, the next one waits. 0 = no limit.'),{min:0,max:12,unit:''})
+   +CAP_KINDS.map(([k,l,d])=>C.seg(pre+k+'.mode',l,T(d.ko+' '+how.ko,d.en+' '+how.en),CAP_MODES)
+     +C.slider(pre+k+'.max',T(l.ko+' 최대 인원',l.en+' · max alive'),T('살아 있는 수가 이만큼이면 새 무리는 호위를 줄이거나 건너뜁니다. 0이면 제한 없음.','At this many alive, new groups are trimmed or skipped. 0 = no limit.'),{min:0,max:30,unit:UI.ppl})).join('')
+   +notice(T('기본(모두 따로 셈)이면 맵 상한 = PMC+스캐브 동시 인원입니다. 보스·특수·팩션·이벤트는 그 위에 더 나올 수 있어서, 총 인원을 줄이려면 최대 인원을 정하세요.','With the defaults (all Separate) the map cap counts PMCs and scavs only; other bots come on top, so set a max to limit the total.'),'flat');}
 function groupCapBox(mid=null){const s=mid?`maps.${mid}.groupCap.`:'spawn.groupCap.',gc=mid?cfgFor(mapById(mid)).groupCap:state.spawn.groupCap,off=mid&&!cardOn(mid,'limits');
   const number=(p,min,max)=>`<input type="number" min="${min}" max="${max}" value="${get(p.slice(s.length),gc)}" data-p="${p}" data-t="n" ${off?'disabled':''}>`;
   const rows=gc.rules.map((r,i)=>`<div class="gcrow">${number(s+'rules.'+i+'.size',1,5)}<span>${tr(T('인','-person'))}</span><select data-p="${s}rules.${i}.cmp" data-t="s" ${off?'disabled':''}><option value="eq" ${r.cmp==='eq'?'selected':''}>${tr(T('그룹','groups'))}</option><option value="ge" ${r.cmp==='ge'?'selected':''}>${tr(T('이상 그룹','or larger groups'))}</option></select><span>${tr(T('은 최대','at most'))}</span>${number(s+'rules.'+i+'.count',0,10)}<span>${tr(T('개',''))}</span><button class="mini-btn" data-gcdel="${i}" data-gc-mid="${mid||''}" ${off?'disabled':''}>${tr(T('삭제','Remove'))}</button></div>`).join('');
@@ -1796,6 +1854,7 @@ document.addEventListener('click',e=>{
   if(d.tsec){tSec=d.tsec;iq='';pickOpen='';pq='';rerender();return;}
   if(d.iadd2){const[p,id]=d.iadd2.split('|');get(p)[id]=10;toast(tr(T('추가했습니다','Added')));rerender();return;}
   if(d.irm){const k=d.irm.split('.'),id=k.pop();delete get(k.join('.'))[id];rerender();return;}
+  if(d.roster){rosterToggle(d.roster);rerender();return;}
   if(d.gcadd||d.gcdel!=null){const mid=d.gcMid||null,p=mid?`maps.${mid}.groupCap.rules`:'spawn.groupCap.rules',rules=clone(mid?cfgFor(mapById(mid)).groupCap.rules:state.spawn.groupCap.rules);if(d.gcadd)rules.push({size:4,cmp:'ge',count:1});else rules.splice(+d.gcdel,1);writeSetting(p,rules);rerender();return;}
   if(d.lvwho){lvWho=d.lvwho;rerender();return;}
   if(d.wpreset){const [a1,a2]=d.wpreset.split(',').map(Number);state.gear.lv.weights=mixW(a1,a2);toast(tr(T('섞기 표를 바꿨습니다','Mix table updated')));rerender();return;}
@@ -2015,7 +2074,8 @@ function normalizeMapOverrides(mid,raw={}){
   o.override=o.ovr.flow;
 }
 function normalizeMaps(raw={}){MAPS.forEach(m=>normalizeMapOverrides(m.id,raw[m.id]||{}));}
-function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);const o=raw&&raw.orbit;state.orbit.extractRefillMode=o&&['off','infinite','all'].includes(o.extractRefillMode)?o.extractRefillMode:o&&o.refillAfterExtract===false?'off':'infinite';state.orbit.refillAfterExtract=state.orbit.extractRefillMode!=='off'&&state.orbit.extractRefillCap>0;}
+function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
+  if(!(raw&&raw.spawn&&raw.spawn.caps&&raw.spawn.caps.faction)&&raw&&raw.factions&&Object.values(raw.factions).some(f=>f&&f.shareCap))state.spawn.caps.faction.mode='respect';const o=raw&&raw.orbit;state.orbit.extractRefillMode=o&&['off','infinite','all'].includes(o.extractRefillMode)?o.extractRefillMode:o&&o.refillAfterExtract===false?'off':'infinite';state.orbit.refillAfterExtract=state.orbit.extractRefillMode!=='off'&&state.orbit.extractRefillCap>0;}
 function mergeInto(base,over){if(!over||typeof over!=='object'||Array.isArray(over))return over===undefined?base:over;
   const out=Array.isArray(base)?[...base]:{...base};for(const[k,v]of Object.entries(over))out[k]=(base&&typeof base[k]==='object'&&!Array.isArray(base[k])&&v&&typeof v==='object'&&!Array.isArray(v))?mergeInto(base[k],v):v;return out;}
 async function boot(){

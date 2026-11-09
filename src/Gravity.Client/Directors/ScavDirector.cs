@@ -92,7 +92,8 @@ namespace Gravity.Client.Directors
             int alive = Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(Time.time);
             int pending = spawner.SpawnDelaysService?.WaitCount ?? 0;
 
-            int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, aliveScavs / players, players, out bool pmcTurn);
+            // 상한 표 PMC 예약 자리(1.0): 스캐브는 아직 PMC가 안 채운 예약 몫만큼 덜 쓴다(PMC 차례 판정은 전체 상한 그대로).
+            int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, aliveScavs / players, players, out bool pmcTurn, c.PmcReserveLeft());
 
             // PMC 차례는 스캐브 판정(n)과 상관없이 먼저 본다. n은 PMC를 못 넣을 때 대신 넣을 스캐브 수다.
             if (pmcTurn)
@@ -244,6 +245,8 @@ namespace Gravity.Client.Directors
                 Log.Verbose($"{c.S.MapId} 레이드 전체 그룹 제한: 보충 분대 {size}명 → {string.Join("+", parts)}명으로 나눔");
                 size = parts[0];
             }
+            // 상한 표 "PMC 동시 무리 최대"(1.0): 꽉 찼으면 자리가 없는 것과 같이 기다린다(우선 줄에 남음).
+            if (c.PmcGroupsFull()) { st.LastSize = size; return PmcResult.NoRoom; }
             // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
             var wave = WaveFactory.Pmc(g, "");
             st.LastSize = size;

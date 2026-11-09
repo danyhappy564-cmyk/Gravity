@@ -526,3 +526,69 @@ test('레이더·로그 화면은 원래 스폰 유지와 추가 스폰 확률�
   assert.equal(a.run("state.specials.raiders.extra.laboratory"),0);
   assert.equal(a.run("state.specials.raiders.chance.laboratory"),65);
 });
+test('상한 표는 공통·맵별 상한 카드에 있고 옛 팩션 상한 공유를 이어받습니다', () => {
+  const a=app();
+  assert.equal(a.run("state.spawn.caps.boss.mode"),'separate');
+  assert.equal(a.run("state.spawn.caps.pmcReserve"),0);
+  assert.equal(a.run("cardFor('spawn.caps.faction.mode')"),'limits');
+  a.run("page='spawn';spawnTab='all'");
+  const common=a.run('P.spawn.render()');
+  for (const p of ['spawn.caps.pmcReserve','spawn.caps.pmcGroups','spawn.caps.boss.max','spawn.caps.event.max'])
+    assert.ok(common.includes(`data-p="${p}"`), p);
+  assert.match(common,/data-segp="spawn.caps.special.mode" data-v="respect"/);
+  a.run("spawnTab='bigmap';mapSel='bigmap';state.maps.bigmap.ovr.limits=true");
+  assert.match(a.run('P.spawn.render()'),/data-p="maps.bigmap.caps.pmcReserve"/);
+  const b=app();
+  b.run("normalizeState({factions:{ruaf:{shareCap:true}}})");
+  assert.equal(b.run("state.spawn.caps.faction.mode"),'respect');
+  b.run("normalizeState({factions:{ruaf:{shareCap:true}},spawn:{caps:{faction:{mode:'separate'}}}})");
+  assert.equal(b.run("state.spawn.caps.faction.mode"),'separate');
+  b.run("facSel='ruaf';page='factions'");
+  const fac=b.run("P.factions.render()");
+  assert.doesNotMatch(fac,/factions\.ruaf\.shareCap/);
+  assert.match(fac,/종류별 상한/);
+});
+test('맵 미리보기 옆 등장 목록은 원본을 켜 두고 보스·팩션을 더하거나 뺍니다', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap'");
+  const r=a.run("mapRoster(mapById('bigmap'))");
+  const by=(t,id)=>r.items.find(x=>x.type===t&&x.id===id);
+  assert.equal(by('boss','reshala').tag,'van');
+  assert.equal(by('boss','reshala').on,true);
+  assert.equal(by('spec','cultists').on,true);
+  assert.equal(by('spec','raiders'),undefined);
+  assert.ok(r.add.some(x=>x.type==='boss'&&x.id==='killa'));
+  assert.ok(!r.add.some(x=>x.id==='zryachiy'));
+  assert.match(a.run('P.spawn.render()'),/data-roster="boss\|reshala\|bigmap"/);
+  a.click({roster:'boss|reshala|bigmap'});
+  assert.equal(a.run("state.bosses.reshala.maps.bigmap"),false);
+  a.click({roster:'boss|killa|bigmap'});
+  assert.equal(a.run("state.bosses.killa.maps.bigmap"),true);
+  assert.equal(a.run("mapRoster(mapById('bigmap')).items.find(x=>x.id==='killa').tag"),'add');
+  a.click({roster:'spec|cultists|bigmap'});
+  assert.equal(a.run("state.specials.cultists.chance.bigmap"),0);
+  a.click({roster:'spec|cultists|bigmap'});
+  assert.equal(a.run("state.specials.cultists.chance.bigmap"),10);
+  a.click({roster:'spec|raiders|rezervbase'});
+  assert.equal(a.run("state.specials.raiders.keep.rezervbase"),false);
+  assert.equal(a.run("specLane(mapById('rezervbase')).some(x=>x[2]==='raiders')"),false);
+  a.click({roster:'fac|ruaf|bigmap'});
+  assert.equal(a.run("state.factions.ruaf.managed"),true);
+  assert.equal(a.run("state.factions.ruaf.maps.bigmap"),false);
+  // 서버 맵 자료(roster)가 있으면 그것으로 원본을 정한다
+  a.run("serverMeta={maps:[{id:'woods',roster:{bossKojaniy:35,sectantPriest:12}}]}");
+  const w=a.run("mapRoster(mapById('woods'))");
+  assert.equal(w.items.find(x=>x.id==='shturman').tag,'van');
+  assert.equal(w.items.find(x=>x.id==='goons').tag,'add'); // 웹에서 켜 둔 맵이지만 서버 자료에는 없음
+  assert.ok(w.add.some(x=>x.id==='killa'));
+  assert.equal(w.items.find(x=>x.id==='bloodhounds'),undefined);
+});
+test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
+  const a=app();
+  const svg=a.run("timeline(mapById('bigmap'),true)");
+  assert.match(svg,/특수 봇/);
+  assert.match(svg,/컬티스트 10%/);
+  assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[1]).join()"),'원본');
+  a.run("state.specials.raiders.extra.rezervbase=30");
+  assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[1]).join()"),'원본,+30%');
+});

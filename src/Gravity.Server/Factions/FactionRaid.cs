@@ -36,6 +36,15 @@ public static class FactionRaid
         return l.Count == 0 ? null : l;
     }
 
+    /// <summary>상한 표의 "팩션" 종류로 셀 역할(설치된 팩션 모드, 관리 여부와 상관없이, 1.0).</summary>
+    public static HashSet<string> FactionRoleSet(bool ruafInstalled, bool blackDivInstalled)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (ruafInstalled) set.UnionWith(RuafRoles);
+        if (blackDivInstalled) set.UnionWith(BlackDivRoles);
+        return set;
+    }
+
     public static bool IsRuaf(BossLocationSpawn e) => e.BossName?.StartsWith("ruaf", StringComparison.OrdinalIgnoreCase) == true;
 
     /// <summary>RUAF 모드가 넣는 다른 사냥조(레넌트·전 USEC). 맵을 끌 때만 같이 지운다.</summary>

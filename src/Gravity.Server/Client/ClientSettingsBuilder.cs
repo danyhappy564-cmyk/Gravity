@@ -73,8 +73,15 @@ public static class ClientSettingsBuilder
             // 서버 계획이 이미 넣은 PMC 분대 크기: 클라가 "레이드 전체" 그룹 제한을 이어서 센다(Codex 검토 2번).
             plan.Groups.Select(g => g.Size).ToArray(),
             // 계획 분대 웨이브는 TriggerId에 이 표식을 단다(RaidSpawnApplier): 클라가 Gravity 분대만 보정·예약하게(4차 재검토 2번)
-            Gravity.Shared.WaveMark.Prefix);
+            Gravity.Shared.WaveMark.Prefix,
+            CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled));
     }
+
+    /// <summary>상한 표 → 클라 자료(1.0).</summary>
+    internal static Gravity.Shared.CapTableDto CapsDto(CapTable t, bool ruafInstalled, bool blackDivInstalled) =>
+        new(t.PmcReserve, t.PmcGroups,
+            Gravity.Shared.CapKinds.Table.ToDictionary(k => k, k => new Gravity.Shared.CapKindDto(t.For(k).Mode, t.For(k).Max)),
+            Gravity.Factions.FactionRaid.FactionRoleSet(ruafInstalled, blackDivInstalled).ToArray());
 
     private static void FillDefaults(Dictionary<string, double> weights, string[]? zones, IReadOnlyDictionary<string, bool> on)
     {

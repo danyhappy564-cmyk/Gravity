@@ -9,7 +9,8 @@ namespace Gravity.Spawn;
 /// <summary>웹에 보낼 맵 정보.</summary>
 public sealed record MapMeta(string Id, int RaidMin, int BotMax, int BasePmc, int BaseScav,
     string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses, string[]? BossZones = null,
-    bool HasVariant = false, string[]? OriginalPmcZones = null, string[]? OriginalScavZones = null);
+    bool HasVariant = false, string[]? OriginalPmcZones = null, string[]? OriginalScavZones = null,
+    Dictionary<string, double>? Roster = null);
 
 /// <summary>서버 로드 뒤 DB에서 맵별 기본 정보를 한 번 모은다(원본은 읽기만).</summary>
 public sealed class MapCatalog
@@ -109,7 +110,12 @@ public sealed class MapCatalog
             // 보스·특수 봇 항목의 실제 구역 이름(웹 보스 페이지가 고를 목록, 0.3).
             var bossZones = Split(b.BossLocationSpawn.Where(e => e.BossName is { } n2 && !IsPmc(e)
                 && (n2.StartsWith("boss", StringComparison.OrdinalIgnoreCase) || ConfigModel.SpecialRoles.Values.Contains(n2))).Select(e => e.BossZone));
-            _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses, bossZones));
+            // 맵별 등장 목록(1.0): 서버 시작 때 맵 자료에 있는 PMC 밖 역할 → 최대 확률. 저격 스캐브 웨이브가 있으면 marksman.
+            var roster = b.BossLocationSpawn.Where(e => e.BossName is { Length: > 0 } && !IsPmc(e))
+                .GroupBy(e => e.BossName!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Max(e => e.BossChance ?? 0), StringComparer.OrdinalIgnoreCase);
+            if (b.Waves?.Any(w => w.WildSpawnType == WildSpawnType.marksman) == true) roster["marksman"] = 100;
+            _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses, bossZones, Roster: roster));
         }
     }
 

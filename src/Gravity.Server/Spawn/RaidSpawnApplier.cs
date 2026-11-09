@@ -118,7 +118,7 @@ public static class RaidSpawnApplier
                 if (extraRoles.Contains(sr))
                 {
                     // 레이더·로그: 원래 항목(이벤트 포함)은 확률·인원·트리거 그대로. 끄거나 "원래 스폰 유지"를 끄면 그 항목만 0%.
-                    result.Add(!sp.On || !sp.Vanilla ? e with { BossChance = 0 } : e);
+                    result.Add(!sp.On || !sp.KeepOn(mapId) ? e with { BossChance = 0 } : e);
                     continue;
                 }
                 var n = e;

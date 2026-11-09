@@ -165,6 +165,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
         var (hw, xm) = ActiveEvents();
         var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
+        // 상한 표(1.0): 모든 항목을 다 고친 뒤 종류별 상한 무시 표시를 맞춘다(팩션·이벤트·다른 모드 항목 포함)
+        Gravity.Spawn.CapApplier.Apply(loc, cfg.SpawnFor(id).CapsOrDefault, Gravity.Factions.FactionRaid.FactionRoleSet(Detect.Ruaf, Detect.BlackDiv));
         return new RaidBuild(plan, info, pmcWhy, scavNote, otherPmc, facNote, evNote);
     }
 

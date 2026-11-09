@@ -85,9 +85,23 @@ namespace Gravity.Client
             return _disabledZones.Contains(name);
         }
 
-        /// <summary>맵 상한에서 뺄 봇 역할인지(서버 CapExclude: 관리 중이고 상한을 같이 쓰지 않는 팩션, 0.4). 이름이나 번호로 맞춘다.</summary>
+        private HashSet<string>? _factionRoles;
+        private readonly Dictionary<EFT.WildSpawnType, string> _kindCache = new Dictionary<EFT.WildSpawnType, string>();
+
+        /// <summary>상한 표 종류(CapKinds: pmc·scav·boss·special·faction·event·other). 팩션 모드 역할은 이름이나 번호로 맞춘다.</summary>
+        internal string KindOf(EFT.WildSpawnType role)
+        {
+            if (_kindCache.TryGetValue(role, out var k)) return k;
+            if (_factionRoles == null) _factionRoles = new HashSet<string>(S.Caps?.FactionRoles ?? S.CapExclude ?? (IReadOnlyList<string>)Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            k = _factionRoles.Contains(((int)role).ToString()) ? CapKinds.Faction : CapKinds.Of(role.ToString(), _factionRoles);
+            _kindCache[role] = k;
+            return k;
+        }
+
+        /// <summary>맵 상한에서 뺄 봇 역할인지. 상한 표(1.0)가 있으면 "따로 셈" 종류, 옛 서버면 CapExclude(관리 중이고 상한을 같이 쓰지 않는 팩션, 0.4).</summary>
         internal bool IsCapExcluded(EFT.WildSpawnType role)
         {
+            if (S.Caps != null) return CapKinds.Excluded(S.Caps, KindOf(role));
             var l = S.CapExclude;
             if (l == null || l.Count == 0) return false;
             if (_capExclude == null) _capExclude = new HashSet<string>(l, StringComparer.OrdinalIgnoreCase);
@@ -97,7 +111,7 @@ namespace Gravity.Client
         /// <summary>살아 있는 봇 중 맵 상한에서 뺄 팩션 봇 수.</summary>
         internal int CountCapExcluded()
         {
-            if (S.CapExclude == null || S.CapExclude.Count == 0) return 0;
+            if (S.Caps == null && (S.CapExclude == null || S.CapExclude.Count == 0)) return 0;
             var gw = Comfort.Common.Singleton<EFT.GameWorld>.Instance;
             if (gw == null) return 0;
             int n = 0;
@@ -110,6 +124,78 @@ namespace Gravity.Client
             }
             return n;
         }
+
+        /// <summary>살아 있는 봇 중 이 종류 수(상한 표 최대 인원).</summary>
+        internal int CountKind(string kind)
+        {
+            var gw = Comfort.Common.Singleton<EFT.GameWorld>.Instance;
+            if (gw == null) return 0;
+            int n = 0;
+            var alive = gw.AllAlivePlayersList;
+            for (int i = 0; i < alive.Count; i++)
+            {
+                var p = alive[i];
+                var role = p != null && p.IsAI ? p.Profile?.Info?.Settings?.Role : null;
+                if (role != null && KindOf(role.Value) == kind) n++;
+            }
+            return n;
+        }
+
+        /// <summary>살아 있는 PMC 봇 수와 무리(BotsGroup) 수(상한 표 PMC 예약 자리·동시 무리 최대).</summary>
+        internal int CountPmc(out int groups)
+        {
+            groups = 0;
+            var gw = Comfort.Common.Singleton<EFT.GameWorld>.Instance;
+            if (gw == null) return 0;
+            int n = 0;
+            var seen = new HashSet<object>();
+            var alive = gw.AllAlivePlayersList;
+            for (int i = 0; i < alive.Count; i++)
+            {
+                var p = alive[i];
+                var role = p != null && p.IsAI ? p.Profile?.Info?.Settings?.Role : null;
+                if (role == null || KindOf(role.Value) != CapKinds.Pmc) continue;
+                n++;
+                object g = (object?)p!.AIData?.BotOwner?.BotsGroup ?? p;
+                if (seen.Add(g)) groups++;
+            }
+            return n;
+        }
+
+        /// <summary>스캐브·근처 보충이 비워 둘 PMC 예약 자리(아직 PMC가 안 채운 몫). 상한 표가 없거나 0이면 0.</summary>
+        internal int PmcReserveLeft()
+        {
+            int reserve = S.Caps?.PmcReserve ?? 0;
+            return reserve <= 0 ? 0 : CapKinds.ReserveLeft(reserve, CountPmc(out _));
+        }
+
+        /// <summary>PMC 동시 무리 최대에 닿았는지(상한 표, 0이면 제한 없음).</summary>
+        internal bool PmcGroupsFull()
+        {
+            int max = S.Caps?.PmcGroups ?? 0;
+            if (max <= 0) return false;
+            CountPmc(out int groups);
+            return groups >= max;
+        }
+
+        /// <summary>
+        /// 종류별 최대 인원용 "막 들여보낸 무리"(종류, 시각, 인원). 생성이 끝나 생존 집계에 잡히기 전 몇 초 동안 두 무리가 같은 빈자리를 쓰지 않게 15초 동안 센다.
+        /// 생존 집계와 겹쳐 두 번 셀 수 있다: 최대를 넘기는 쪽이 아니라 덜 채우는 쪽이라 그대로 둔다.
+        /// </summary>
+        private readonly List<(string Kind, float At, int Size)> _admitted = new List<(string, float, int)>();
+
+        internal int AdmittedRecently(string kind, float now)
+        {
+            int n = 0;
+            for (int i = _admitted.Count - 1; i >= 0; i--)
+            {
+                if (now - _admitted[i].At > 15f) { _admitted.RemoveAt(i); continue; }
+                if (_admitted[i].Kind == kind) n += _admitted[i].Size;
+            }
+            return n;
+        }
+
+        internal void Admit(string kind, int size, float now) => _admitted.Add((kind, now, size));
 
         /// <summary>맵 동시 상한 예약 장부(1.0, Codex 검토 1번): Gravity가 요청했지만 아직 게임 집계에 안 잡힌 인원.</summary>
         internal readonly CapLedger Ledger = new CapLedger();

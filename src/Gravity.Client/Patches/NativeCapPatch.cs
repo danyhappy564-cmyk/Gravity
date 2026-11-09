@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using EFT;
 using EFT.Game.Spawning;
+using Gravity.Shared;
 using SPT.Reflection.Patching;
 using UnityEngine;
 
@@ -22,11 +23,15 @@ namespace Gravity.Client.Patches
         /// <summary>앞단 예약 없이 들어온 Gravity 분대(서버 계획 분대)면 true: 검사를 통과하는 순간 분대 전체를 예약한다(3차 재검토 1번).</summary>
         internal static bool ReserveOnPass;
 
-        internal static void Set(RaidContext c, object own, bool reserveOnPass = false)
+        /// <summary>Gravity PMC 분대(근처 보충 제외) 검사면 true: 상한 표 "PMC 동시 무리 최대"에 닿았으면 대기열로 보낸다(1.0).</summary>
+        internal static bool PmcWave;
+
+        internal static void Set(RaidContext c, object own, bool reserveOnPass = false, bool pmcWave = false)
         {
             Excluded = c.CountCapExcluded();
             Own = own;
             ReserveOnPass = reserveOnPass;
+            PmcWave = pmcWave;
         }
 
         internal static void Clear()
@@ -34,6 +39,7 @@ namespace Gravity.Client.Patches
             Excluded = -1;
             Own = null;
             ReserveOnPass = false;
+            PmcWave = false;
         }
     }
 
@@ -47,21 +53,57 @@ namespace Gravity.Client.Patches
         protected override MethodBase GetTargetMethod() =>
             typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.Spawn), BindingFlags.Instance | BindingFlags.Public)!;
 
+        /// <summary>종류별 최대 인원 판정을 이미 한 웨이브(대기열 재시도는 다시 세지 않는다).</summary>
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<BossLocationSpawn, object> Checked =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<BossLocationSpawn, object>();
+
         [PatchPrefix]
-        private static void Prefix(BossLocationSpawn wave)
+        private static bool Prefix(BossLocationSpawn wave, ref Task __result)
         {
             NativeScope.Clear();
             try
             {
                 var c = RaidContext.Current;
-                if (c == null || wave == null || !c.Owns(wave)) return; // 다른 모드 PMC·보스는 바닐라 검사(3차 재검토 3번)
-                NativeScope.Set(c, wave, reserveOnPass: !wave.IgnoreMaxBots && !c.Ledger.IsHeld(wave));
+                if (c == null || wave == null) return true;
+                if (c.Owns(wave))
+                {
+                    NativeScope.Set(c, wave, reserveOnPass: !wave.IgnoreMaxBots && !c.Ledger.IsHeld(wave),
+                        pmcWave: wave.BossType.IsPmcBot() && !c.NearWaves.TryGetValue(wave, out _));
+                    return true;
+                }
+                // 옛 서버(상한 표 없음): 다른 모드 PMC·보스는 바닐라 검사(3차 재검토 3번)
+                if (c.S.Caps == null) return true;
+
+                // 상한 표(1.0): 보스·특수·팩션·이벤트 무리는 종류별 최대 인원 안으로 호위 수를 줄이고, 이미 꽉 찼으면 이 무리는 건너뛴다.
+                var kind = c.KindOf(wave.BossType);
+                int max = CapKinds.MaxOf(c.S.Caps, kind);
+                if (max > 0 && Array.IndexOf(CapKinds.Table, kind) >= 0 && !Checked.TryGetValue(wave, out _))
+                {
+                    Checked.Add(wave, wave);
+                    int alive = c.CountKind(kind) + c.AdmittedRecently(kind, Time.time);
+                    int esc = CapKinds.FitEscorts(max, alive, wave.EscortCount);
+                    if (esc < 0)
+                    {
+                        Log.Verbose($"{c.S.MapId} {wave.BossType} 무리 건너뜀: {kind} 최대 {max}명(지금 {alive}명)");
+                        __result = Task.CompletedTask;
+                        return false;
+                    }
+                    if (esc < wave.EscortCount)
+                    {
+                        Log.Verbose($"{c.S.MapId} {wave.BossType} 호위 {wave.EscortCount}→{esc}명: {kind} 최대 {max}명(지금 {alive}명)");
+                        wave.EscortCount = esc;
+                    }
+                    c.Admit(kind, esc + 1, Time.time);
+                }
+                // 맵 상한 검사(상한을 지키는 항목만)도 상한 표대로 센다: "따로 셈" 종류를 빼고 Gravity 진행 중 예약을 더한다. 예약은 하지 않는다.
+                NativeScope.Set(c, wave);
             }
             catch (Exception ex)
             {
                 NativeScope.Clear();
                 Log.ErrorOnce("BossSpawnScope", ex);
             }
+            return true;
         }
 
         /// <summary>표시를 끄고, 생성 Task가 실패·취소로 끝나면 그 분대 예약을 푼다(시간만으로는 풀지 않는다, 3차 재검토 2번).</summary>
@@ -108,6 +150,8 @@ namespace Gravity.Client.Patches
                 int others = c?.Ledger.HeldInFlight(Time.time, NativeScope.Own) ?? 0;
                 int occupied = Math.Max(0, Math.Max(__instance.AllBotsWithLoaded, __instance.AliveAndLoadingBotsCount) - excluded) + others;
                 int room = __instance.MaxBots - occupied;
+                // 상한 표 "PMC 동시 무리 최대"(1.0): 서버 계획 분대도 꽉 찼으면 게임 대기열에서 기다린다
+                if (NativeScope.PmcWave && c != null && c.PmcGroupsFull()) room = 0;
                 if (room <= 0) { toDelay = wantSpawn; toSpawn = 0; }
                 else if (room < wantSpawn) { toDelay = wantSpawn - room; toSpawn = room; }
                 else { toDelay = 0; toSpawn = wantSpawn; }

@@ -23,7 +23,22 @@ public sealed record SpawnSettings(
     double DistWave, double DistBots, bool Smooth, int WaveMin, int WaveMax, HardStop HardStop,
     bool IgnoreCapStart, bool IgnoreCapWaves, Intensity Intensity, double UsecPct,
     double[] Squad, GroupCap GroupCap, double[] Diff, ScavSettings Scav,
-    ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth, bool AllowScavLab);
+    ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth, bool AllowScavLab,
+    CapTable? Caps = null)
+{
+    public CapTable CapsOrDefault => Caps ?? CapTable.Default;
+}
+
+/// <summary>상한 표의 한 줄(보스·특수·팩션·이벤트). Mode: separate·vanilla·respect(Gravity.Shared.CapKinds), Max 0 = 제한 없음.</summary>
+public sealed record CapKindSettings(string Mode, int Max);
+
+/// <summary>종류별 상한 표(1.0, 사용자 11-10). "limits" 카드라 맵별로도 정할 수 있다.</summary>
+public sealed record CapTable(int PmcReserve, int PmcGroups, IReadOnlyDictionary<string, CapKindSettings> Kinds)
+{
+    public static readonly CapTable Default = new(0, 0, Gravity.Shared.CapKinds.Table.ToDictionary(k => k, _ => new CapKindSettings(Gravity.Shared.CapKinds.Separate, 0)));
+
+    public CapKindSettings For(string kind) => Kinds.TryGetValue(kind, out var k) ? k : new CapKindSettings(Gravity.Shared.CapKinds.Separate, 0);
+}
 
 /// <summary>근처 보충(0.2 클라). 값은 웹 단위 그대로(초·m·%).</summary>
 public sealed record NearSettings(
@@ -72,8 +87,12 @@ public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<st
 /// <summary>특수 봇 설정. 레이더·로그(ExtraModel)는 ABPS식(사용자 결정 11-10): 원래 항목(레버·탈출구 이벤트 포함)은 Vanilla면 확률·인원 그대로 두고,
 /// Extra(맵별 확률)·ExtraMin~ExtraMax(인원)는 따로 넣는 "추가 스폰"에만 쓴다. 컬티스트·블러드하운드는 예전처럼 Chance·Min·Max가 원래 항목을 바꾼다.</summary>
 public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max,
-    bool Vanilla = true, IReadOnlyDictionary<string, double>? Extra = null, int ExtraMin = 0, int ExtraMax = 0)
+    bool Vanilla = true, IReadOnlyDictionary<string, double>? Extra = null, int ExtraMin = 0, int ExtraMax = 0,
+    IReadOnlyDictionary<string, bool>? Keep = null)
 {
+    /// <summary>레이더·로그 원래 항목을 이 맵에서 남기는지(맵별 등장 목록, 1.0). 없으면 남긴다.</summary>
+    public bool KeepOn(string mapId) => Vanilla && (Keep == null || !Keep.TryGetValue(mapId, out var k) || k);
+
     /// <summary>원래 항목을 건드리지 않고 추가 스폰만 따로 넣는 역할(레이더 pmcBot·로그 exUsec).</summary>
     public static bool ExtraModel(string id) => id is "raiders" or "rogues";
 }
@@ -124,7 +143,7 @@ public sealed record GravityConfig(
             if (m.Cards?.Scav == true) s = s with { Scav = v.Scav, HardStop = s.HardStop with { ScavPct = v.HardStop.ScavPct } };
             if (m.Cards?.Dist == true) s = s with { Protect = v.Protect, Spacing = v.Spacing };
             if (m.Cards?.Hotspot == true) s = s with { Placement = v.Placement, HotspotShare = v.HotspotShare, HotspotBoost = v.HotspotBoost };
-            if (m.Cards?.Limits == true) s = s with { GroupCap = v.GroupCap };
+            if (m.Cards?.Limits == true) s = s with { GroupCap = v.GroupCap, Caps = v.Caps };
         }
         return s;
     }
@@ -267,8 +286,12 @@ public static partial class ConfigModel
                 foreach (var (k, _) in eo)
                     extra[k] = r.Num(p + "extra." + k, 0, 0, 100);
             var eMin = (int)r.Num(p + "extraMin", 1, 1, 10);
+            var keep = new Dictionary<string, bool>();
+            if (r.Node(p + "keep") is JsonObject ko)
+                foreach (var (k, _) in ko)
+                    keep[k] = r.Bool(p + "keep." + k, true);
             specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)),
-                r.Bool(p + "vanilla", true), extra, eMin, (int)Math.Max(eMin, r.Num(p + "extraMax", eMin, 1, 10)));
+                r.Bool(p + "vanilla", true), extra, eMin, (int)Math.Max(eMin, r.Num(p + "extraMax", eMin, 1, 10)), keep);
         }
 
         var near = ReadNear(r);
@@ -319,6 +342,25 @@ public static partial class ConfigModel
                 (int)r.Num("orbit.extractRefillCap", 20, 0, 100)),
             new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
             new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")));
+    }
+
+    /// <summary>
+    /// 상한 표(spawn.caps.*). 팩션 줄 기본값은 옛 "PMC 동시 상한을 같이 씀"(팩션별 shareCap)에서 이어받는다:
+    /// 하나라도 켜져 있었으면 respect, 아니면 separate(옛 기본과 같은 동작).
+    /// </summary>
+    private static CapTable ReadCaps(Reader r, string sp)
+    {
+        var c = sp + "caps.";
+        bool oldShare = r.Bool("factions.ruaf.shareCap", false) || r.Bool("factions.blackdiv.shareCap", false) || r.Bool("factions.untar.shareCap", false);
+        var kinds = new Dictionary<string, CapKindSettings>();
+        foreach (var k in Gravity.Shared.CapKinds.Table)
+        {
+            var def = k == Gravity.Shared.CapKinds.Faction && oldShare ? Gravity.Shared.CapKinds.Respect : Gravity.Shared.CapKinds.Separate;
+            kinds[k] = new CapKindSettings(
+                r.Str(c + k + ".mode", def, Gravity.Shared.CapKinds.Separate, Gravity.Shared.CapKinds.Vanilla, Gravity.Shared.CapKinds.Respect),
+                (int)r.Num(c + k + ".max", 0, 0, 60));
+        }
+        return new CapTable((int)r.Num(c + "pmcReserve", 0, 0, 60), (int)r.Num(c + "pmcGroups", 0, 0, 30), kinds);
     }
 
     private static SpawnSettings ReadSpawn(Reader r)
@@ -372,7 +414,7 @@ public static partial class ConfigModel
             new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
             r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),
             r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false),
-            r.Bool(sp + "allowScavLab", false));
+            r.Bool(sp + "allowScavLab", false), ReadCaps(r, sp));
         return spawn;
     }
 
@@ -434,7 +476,7 @@ public static partial class ConfigModel
             var p when p.StartsWith("spawn.scav.", StringComparison.Ordinal) || p == "spawn.hardStop.scavPct" => "scav",
             var p when p.StartsWith("spawn.protect.", StringComparison.Ordinal) || p.StartsWith("spawn.spacing.", StringComparison.Ordinal) || p is "spawn.pmcDist" or "spawn.scavDist" => "dist",
             "spawn.placement" or "spawn.hotspotShare" or "spawn.hotspotBoost" => "hotspot",
-            var p when p.StartsWith("spawn.groupCap.", StringComparison.Ordinal) => "limits",
+            var p when p.StartsWith("spawn.groupCap.", StringComparison.Ordinal) || p.StartsWith("spawn.caps.", StringComparison.Ordinal) => "limits",
             var p when p.StartsWith("spawn.squad.", StringComparison.Ordinal) || p.StartsWith("spawn.diff.", StringComparison.Ordinal) || p is "spawn.usecPct" or "spawn.allowPmcLabyrinth" or "spawn.allowScavLab" => "common",
             _ => "flow"
         };

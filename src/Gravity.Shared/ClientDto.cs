@@ -36,7 +36,18 @@ namespace Gravity.Shared
         IReadOnlyList<RefillGroup> RefillGroups, NearDto Near, IReadOnlyList<string>? CapExclude = null,
         bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
         string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
-        IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null);
+        IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null, CapTableDto? Caps = null);
+
+    /// <summary>
+    /// 종류별 상한 표(1.0, 사용자 11-10). Kinds 키: boss·special·faction·event(CapKinds). 방식(CapKinds.Separate 등):
+    /// separate = 상한 무시 + 맵 상한 계산에서 뺌, vanilla = 원본 그대로(나오면 자리 차지), respect = 상한 지킴. Max 0 = 제한 없음.
+    /// PmcReserve = 스캐브·근처 보충이 비워 둘 PMC 자리, PmcGroups = 동시에 살아 있을 PMC 무리 최대(0 = 제한 없음).
+    /// FactionRoles = 팩션 종류로 셀 모드 역할(이름 또는 번호).
+    /// </summary>
+    public sealed record CapTableDto(int PmcReserve, int PmcGroups, IReadOnlyDictionary<string, CapKindDto> Kinds,
+        IReadOnlyList<string>? FactionRoles = null);
+
+    public sealed record CapKindDto(string Mode, int Max);
 
     /// <summary>Spawned 키: pmcUSEC·pmcBEAR·assault·near·other. Dropped 키: noPoint·expired·groupCap·cap(하드 스톱으로 버린 PMC 분대)·scavCap(상한에 막힌 스캐브 차례 구간)·nearCap(상한에 막힌 근처 자리).
     /// AlivePerMinute 원소: [분, PMC, 스캐브, 전체]. Extracted(0.6): 살아서 맵을 떠난 봇(탈출) 수, 키는 Killed와 같다.</summary>
