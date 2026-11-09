@@ -50,6 +50,19 @@ public class FactionTests
     private static string? Run(LocationBase l, string json, string map = "bigmap", int seed = 3, int raidSec = 2400, bool ruaf = true, bool bd = true) =>
         FactionRaid.Apply(l, Cfg(json), map, seed, raidSec, Data, ruaf, bd, ["ZonePmcA"]);
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(99)]
+    public void StartStyle_MovesManagedFactionTimedSpawnsToStart(int seed)
+    {
+        var l = Bigmap();
+        Run(l, """{"factions":{"ruaf":{"managed":true,"style":"start"},"blackdiv":{"managed":true,"style":"start"}}}""", seed: seed);
+        Assert.All(l.BossLocationSpawn.Where(FactionRaid.IsRuaf), e => Assert.Equal(-1, e.Time));
+        Assert.Equal(-1, l.BossLocationSpawn.Single(e => e.BossName == "blackDivAssault").Time);
+        Assert.Equal(38, l.BossLocationSpawn.Single(e => e.BossName == "bossBully").BossChance);
+    }
+
     [Fact]
     public void NotManaged_Untouched()
     {

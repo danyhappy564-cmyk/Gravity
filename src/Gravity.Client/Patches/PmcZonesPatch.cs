@@ -68,6 +68,7 @@ namespace Gravity.Client.Patches
         internal static void Reorder(RaidContext c, List<BotZone> zones)
         {
             var s = c.S;
+            if (s.DisabledZones is { Count: > 0 }) zones.RemoveAll(z => z != null && c.IsZoneDisabled(z.NameZone));
             if (zones.Count < 2 || s.Placement == "vanilla") return;
             double share = s.Placement == "hotspot" ? 1.0 : s.Placement == "mixed" ? s.HotspotShare : 0;
             var w = s.ZoneWeights;

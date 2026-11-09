@@ -48,16 +48,13 @@ namespace Gravity.Client.Directors
             }
         }
 
-        /// <summary>무한 방식 맵에서 PMC가 탈출하면 같은 진영 1인 분대를 보충 목록 끝에 더한다(orbit.refillAfterExtract, 판정 57).</summary>
+        /// <summary>설정한 방식·상한 안에서 탈출 PMC와 같은 진영 1명을 보충한다.</summary>
         private static void OnExtracted(RaidContext c, WildSpawnType role)
         {
-            if (!c.S.RefillAfterExtract || c.S.Inf == null) return;
-            if (role != WildSpawnType.pmcUSEC && role != WildSpawnType.pmcBEAR) return;
-            if (c.S.MapId == "labyrinth" && !c.S.AllowPmcLabyrinth) return;
-            if (c.ExtractRefill >= RaidContext.MaxExtractRefill) return;
+            if (!ExtractRefillRule.CanQueue(c.S, role == WildSpawnType.pmcUSEC || role == WildSpawnType.pmcBEAR, c.ExtractRefill, c.Elapsed)) return;
             c.ExtractRefill++;
             c.ExtractQueue.Enqueue(new RefillGroup(role == WildSpawnType.pmcUSEC, 1, "normal"));
-            Log.Verbose($"{c.S.MapId} PMC 탈출 → 보충 분대 1명 추가({c.ExtractRefill}/{RaidContext.MaxExtractRefill})");
+            Log.Verbose($"{c.S.MapId} PMC 탈출 → 보충 분대 1명 추가({c.ExtractRefill}/{ExtractRefillRule.Cap(c.S)})");
         }
 
         internal static string Key(WildSpawnType role, bool bossOrFollower)

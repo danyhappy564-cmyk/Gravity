@@ -59,7 +59,7 @@ namespace Gravity.Client.Patches
                 }
             }
 
-            if (c != null && !c.ScavFailed && c.S.Scav != null && !c.S.Scav.Managed && c.S.Inf != null)
+            if (c != null && !c.ScavFailed && c.S.Scav != null && !c.S.Scav.Managed && (c.S.Inf != null || c.ExtractQueue.Count > 0))
             {
                 try { ScavDirector.TickPmcOnly(c, ____botsController); }
                 catch (Exception ex)

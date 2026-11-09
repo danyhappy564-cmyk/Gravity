@@ -21,7 +21,15 @@ public sealed class GearContext
     public bool LongOk { get; init; }
     public RoleGear Role => Settings.RoleFor(Pick.RoleId);
 
-    public ItemInfo? Info(string id) => Items.Info.TryGetValue(id, out var x) ? x : null;
+    public ItemInfo? Info(string id)
+    {
+        if (!Items.Info.TryGetValue(id, out var x)) return null;
+        var thermal = (x.Thermal || Settings.ThermalAdd.Contains(id)) && !Settings.ThermalRemove.Contains(id);
+        return thermal == x.Thermal ? x : x with { Thermal = thermal };
+    }
+
+    public int TierOf(string slot, string id) => Settings.ItemTier.TryGetValue(id, out var tier) && tier is >= 1 and <= 7
+        ? tier - 1 : Items.TierOf(slot, id);
 
     /// <summary>블랙리스트·퀘스트 템·이번 판 묶음 밖 모드 아이템·PMC 전용 모드 아이템. 어떤 경우에도 되살리지 않는다.</summary>
     public bool Blocked(string id)
@@ -100,7 +108,7 @@ public static class GearApply
                     bool drop = c.Blocked(id);
                     if (!drop && managed)
                     {
-                        int t = c.Items.TierOf(slot, id);
+                        int t = c.TierOf(slot, id);
                         if (t > pick.Tier) drop = true;
                         else if (info != null && ClassCapped.Contains(slot) && info.ArmorClass > caps.FMax) drop = true;
                         else if (slot == "TacticalVest" && !allowArmouredRig && info != null && (info.ArmorClass > 0 || info.PlateSlots)) drop = true;
@@ -117,8 +125,8 @@ public static class GearApply
                     pool.Clear();
                     if (keep.Count > 0)
                     {
-                        int minT = keep.Min(kv => c.Items.TierOf(slot, kv.Key.ToString()));
-                        foreach (var (k, v) in keep.Where(kv => c.Items.TierOf(slot, kv.Key.ToString()) == minT)) pool[k] = Math.Max(1, v);
+                        int minT = keep.Min(kv => c.TierOf(slot, kv.Key.ToString()));
+                        foreach (var (k, v) in keep.Where(kv => c.TierOf(slot, kv.Key.ToString()) == minT)) pool[k] = Math.Max(1, v);
                     }
                     restored++;
                 }

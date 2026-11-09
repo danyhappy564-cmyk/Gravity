@@ -8,7 +8,8 @@ namespace Gravity.Spawn;
 
 /// <summary>웹에 보낼 맵 정보.</summary>
 public sealed record MapMeta(string Id, int RaidMin, int BotMax, int BasePmc, int BaseScav,
-    string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses, string[]? BossZones = null);
+    string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses, string[]? BossZones = null,
+    bool HasVariant = false, string[]? OriginalPmcZones = null, string[]? OriginalScavZones = null);
 
 /// <summary>서버 로드 뒤 DB에서 맵별 기본 정보를 한 번 모은다(원본은 읽기만).</summary>
 public sealed class MapCatalog
@@ -16,6 +17,38 @@ public sealed class MapCatalog
     private readonly Dictionary<string, MapInfo> _info = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MapMeta> _meta = [];
     public IReadOnlyList<MapMeta> All => _meta;
+    public HashSet<string> AutomaticVariants { get; } = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, MapInfo> _original = new(StringComparer.OrdinalIgnoreCase);
+    public MapInfo? OriginalInfoFor(string id) => _original.GetValueOrDefault(id);
+
+    /// <summary>모든 맵의 지점 id를 SPT 원본과 비교하고, 두 배치의 구역을 준비한다. 파일 오류는 맵별로 제한한다.</summary>
+    public HashSet<string> DiscoverVariants(DetectResult detect, Func<string, string?> readOriginal, Func<string, LocationBase?> parseOriginal)
+    {
+        var active = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AutomaticVariants.Clear();
+        _original.Clear();
+        foreach (var (id, loaded) in _loaded)
+        {
+            string? raw = null;
+            try { raw = readOriginal(id); } catch { }
+            var same = SameSpawnPoints(loaded, raw);
+            if (same == false || (same == null && detect.VariantMaps.ContainsKey(id))) active.Add(id);
+            if (same == false) AutomaticVariants.Add(id);
+            if (active.Contains(id) && raw != null)
+                try
+                {
+                    if (parseOriginal(raw) is { } original) _original[id] = Compute(id, original, _pmcConfig).Info;
+                }
+                catch { }
+        }
+        for (var i = 0; i < _meta.Count; i++)
+        {
+            var m = _meta[i];
+            var original = OriginalInfoFor(m.Id);
+            _meta[i] = m with { HasVariant = active.Contains(m.Id), OriginalPmcZones = original?.PmcZones, OriginalScavZones = original?.ScavZones };
+        }
+        return active;
+    }
 
     public bool TryGet(string id, out MapInfo info) => _info.TryGetValue(id, out info!);
 

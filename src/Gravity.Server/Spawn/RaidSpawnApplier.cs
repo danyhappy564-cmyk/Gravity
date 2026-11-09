@@ -27,7 +27,7 @@ public static class RaidSpawnApplier
     {
         var ms = cfg.MapFor(info.Id);
         var scavZones = Zones(info.ScavZones, ms);
-        var s = cfg.Spawn;
+        var s = cfg.SpawnFor(info.Id);
 
         var keepOther = sptPmc != null && cfg.OtherPmc == "keep";
         var left = keepOther ? new Dictionary<string, int>(sptPmc!) : null;

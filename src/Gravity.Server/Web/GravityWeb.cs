@@ -85,6 +85,8 @@ public class GravityWeb : IHttpListener
                             version = GravityInfo.Version, detect = rt.Detect,
                             locked = new { spawn = rt.Detect.SpawnLocked, gear = rt.Detect.GearLocked },
                             maps = rt.Catalog.All,
+                            automaticVariants = rt.Catalog.AutomaticVariants.OrderBy(id => id).ToArray(),
+                            activeVariants = rt.ActiveVariants?.OrderBy(id => id).ToArray(),
                             client = ClientBody(rt),
                             events = new
                             {

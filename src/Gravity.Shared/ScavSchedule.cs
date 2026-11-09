@@ -6,7 +6,7 @@ namespace Gravity.Shared
     /// ScavSchedule.Tick이 스캐브를 0마리 낸 이유(마지막 틱). None = 막힌 이유 없음(넣을 수를 냈거나 Batch 0 설정).
     /// Cap = 맵 상한(살아 있는+로딩+대기 봇이 cap 이상), SoftCap = 살아 있는 스캐브가 softCap 이상(스캐브만 쉼).
     /// </summary>
-    public enum ScavBlock { None, Quiet, HardStop, Interval, Pending, PerPlayer, SoftCap, Cap }
+    public enum ScavBlock { None, Quiet, HardStop, Interval, Pending, PerPlayer, SoftCap, Cap, StartOnly }
 
     /// <summary>
     /// 스캐브 활동/휴식 창과 시도 간격을 관리하는 순수 일정. 무한 보충이면 Inf 값을 쓴다.
@@ -25,6 +25,7 @@ namespace Gravity.Shared
         private bool _active = true;
         private double _windowEnd;      // 현재 창이 끝나는 경과 초
         private double _nextAttempt;    // 다음 시도 가능 경과 초
+        private double _nextScavAttempt;
 
         /// <summary>마지막 Tick에서 스캐브가 0마리였던 이유. 맵 상한(Cap) 때문에 막힌 차례를 셀 때 쓴다.</summary>
         public ScavBlock LastBlock { get; private set; }
@@ -37,7 +38,9 @@ namespace Gravity.Shared
             _rng = rng;
             // 첫 시도는 StartDelaySec(서버 시작 스캐브와 같은 지연) 뒤. 첫 활동 창도 그때부터 센다.
             _nextAttempt = Math.Max(0, s.StartDelaySec);
+            _nextScavAttempt = _nextAttempt;
             _windowEnd = _nextAttempt + Draw(s.ActiveMin, s.ActiveMax) * 60.0;
+            if (s.Style == "start" || s.Style == "infinite") _nextAttempt = 0;
         }
 
         private double Draw(double min, double max)
@@ -58,6 +61,8 @@ namespace Gravity.Shared
             int spawnedPerPlayer, int players, out bool pmcTurn)
         {
             pmcTurn = false;
+            if (_s.Style == "start" || _s.Style == "infinite")
+                return TickIndependent(raidElapsed, cap, aliveLoadingDelayed, aliveScavs, pending, spawnedPerPlayer, out pmcTurn);
 
             while (raidElapsed >= _windowEnd)
             {
@@ -99,10 +104,30 @@ namespace Gravity.Shared
             return count;
         }
 
+        /// <summary>명시한 스캐브 방식은 PMC 보충 시계와 따로 셉니다. 시작 스캐브는 서버가 넣습니다.</summary>
+        private int TickIndependent(float elapsed, int cap, int alive, int scavs, int pending, int perPlayer, out bool pmcTurn)
+        {
+            pmcTurn = false;
+            if (cap <= alive) return Block(ScavBlock.Cap);
+            if (_inf != null && elapsed >= _nextAttempt)
+            {
+                pmcTurn = _rng.NextDouble() < _inf.PmcShare;
+                Consume(elapsed);
+            }
+            if (_s.Style == "start") return Block(ScavBlock.StartOnly);
+            // PMC 차례를 보냈으면 다음 틱에 스캐브를 확인하므로 스캐브 간격이 PMC 간격에 묶이지 않습니다.
+            if (pmcTurn || elapsed < _nextScavAttempt) return Block(ScavBlock.Interval);
+            var why = ScavGate(elapsed, pending, perPlayer, scavs);
+            if (why != ScavBlock.None) return Block(why);
+            _nextScavAttempt = elapsed + Math.Max(2, _s.RefillSec);
+            LastBlock = ScavBlock.None;
+            return Math.Min(1, Math.Min(cap - alive, _s.SoftCap - scavs));
+        }
+
         /// <summary>스캐브에만 걸리는 판정. 순서: 휴식 창, 스캐브 하드 스톱, 대기 수, 플레이어당 한도, softCap.</summary>
         private ScavBlock ScavGate(float raidElapsed, int pending, int spawnedPerPlayer, int aliveScavs)
         {
-            if (!_active) return ScavBlock.Quiet;
+            if (_s.Style != "infinite" && !_active) return ScavBlock.Quiet;
             if (raidElapsed >= _hardStop) return ScavBlock.HardStop;
             if (pending > _s.Pending) return ScavBlock.Pending;
             if (spawnedPerPlayer >= _s.PerPlayer) return ScavBlock.PerPlayer;

@@ -31,8 +31,10 @@ public sealed class ReportRequestData : IRequestData
     [JsonPropertyName("sanitized")] public int Sanitized { get; set; }
     [JsonPropertyName("alivePerMinute")] public List<int[]> AlivePerMinute { get; set; } = [];
     [JsonPropertyName("killed")] public Dictionary<string, int> Killed { get; set; } = [];
+    [JsonPropertyName("extracted")] public Dictionary<string, int> Extracted { get; set; } = [];
+    [JsonPropertyName("extractRefill")] public int ExtractRefill { get; set; }
 
-    public RaidReport ToReport() => new(MapId, Seed, Spawned, Dropped, Sanitized, AlivePerMinute, Killed);
+    public RaidReport ToReport() => new(MapId, Seed, Spawned, Dropped, Sanitized, AlivePerMinute, Killed, Extracted, ExtractRefill);
 }
 
 /// <summary>

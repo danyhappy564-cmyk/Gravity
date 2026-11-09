@@ -17,7 +17,7 @@ public static class ClientSettingsBuilder
     public static ClientRaidSettings Build(GravityConfig cfg, MapInfo map, SpawnPlan plan, bool managed,
         bool ruafInstalled = false, bool blackDivInstalled = false, OrbitInfo? orbit = null)
     {
-        var s = cfg.Spawn;
+        var s = cfg.SpawnFor(map.Id);
         var ms = cfg.MapFor(map.Id);
         var raid = Math.Max(1, plan.RaidSec);
         // 클라 시계는 실제로 들어간 순간이 0이다. 스캐브 레이드(늦게 시작)는 계획 시각을 simStart만큼 당겨 보낸다.
@@ -31,6 +31,9 @@ public static class ClientSettingsBuilder
         var weights = new Dictionary<string, double>();
         foreach (var (z, w) in ms.ZoneWeights)
             if (!ms.Zones.TryGetValue(z, out var on) || on) weights[z] = w;
+        var scavWeights = new Dictionary<string, double>();
+        foreach (var (z, w) in ms.ScavZoneWeights ?? ms.ZoneWeights)
+            if (!ms.Zones.TryGetValue(z, out var on) || on) scavWeights[z] = w;
 
         var rules = s.GroupCap.Rules.Select(r => new GroupCapRuleDto(r.Size, r.Cmp == "ge" ? "gte" : "eq", r.Count)).ToList();
         var sc = s.Scav;
@@ -57,10 +60,12 @@ public static class ClientSettingsBuilder
             s.Protect.On, s.Protect.Sec, s.Protect.Radius,
             s.Placement, s.HotspotShare / 100, weights, s.AllowPmcLabyrinth,
             new GroupCapDto(s.GroupCap.On, s.GroupCap.Scope, s.GroupCap.Over, rules),
-            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart),
+            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart, ms.ScavStyle),
             // 좁은 맵(공장·미궁)은 ORBIT 수면 거리 밖 지점이 없어 근처 보충이 전부 버려진다(11-09 공장 판 noPoint 5) → 거리 보정 안 함.
-            inf, refill, BuildNear(cfg.Near, ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
-            cfg.OrbitOrDefault.RefillAfterExtract, cfg.DiagOrDefault.Log);
+            inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
+            cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.DiagOrDefault.Log, scavWeights,
+            cfg.OrbitOrDefault.RefillMode, cfg.OrbitOrDefault.ExtractRefillCap,
+            ms.Zones.Where(kv => !kv.Value).Select(kv => kv.Key).ToArray());
     }
 
     /// <summary>근처 보충 설정. ORBIT 봇 재우기와 맞추기(orbit.nearAsGhost)가 켜져 있으면 깨우는 거리 밖에서 시작(0.6).</summary>

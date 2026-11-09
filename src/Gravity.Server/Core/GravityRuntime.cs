@@ -16,7 +16,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
 
     public GravityConfigStore Store { get; } = store;
     public MapCatalog Catalog { get; } = catalog;
-    public DetectResult Detect { get; } = detect;
+    public DetectResult Detect => detect with { LockWithQuestingBots = Store.Current.CompatOrDefault.LockWithQuestingBots };
     public LastRaid? Last { get; private set; }
     public Dictionary<string, int>? MaxBotCap { get; set; }
     public ClientSessions Sessions { get; } = new();
@@ -119,19 +119,15 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var variant = IsVariant(id, current);
         var ms = cfg.MapFor(id);
         if (variant ? !ms.Variant : !ms.Original)
-            return variant ? $"변형 맵({string.Join("·", Detect.VariantMaps.GetValueOrDefault(id) ?? [])})에 Gravity 적용 꺼짐" : "이 맵은 Gravity 적용 꺼짐";
+            return variant ? $"변형 맵({string.Join("·", Detect.VariantMaps.GetValueOrDefault(id) ?? ["자동 감지"])})에 Gravity 적용 꺼짐" : "이 맵은 Gravity 적용 꺼짐";
         return null;
     }
 
-    /// <summary>ORBIT이 장악한 팩션을 Gravity가 관리하지 않게 바꾼 설정(orbit.respectTakeover 끔, 판정 58). 바꿀 것이 없으면 그대로.</summary>
-    public GravityConfig EffectiveConfig(GravityConfig cfg)
-    {
-        if (cfg.OrbitOrDefault.RespectTakeover || !Orbit.Installed) return cfg;
-        var c = cfg;
-        if (c.Ruaf is { Managed: true } r && Orbit.TakesOver("ruaf")) c = c with { Ruaf = r with { Managed = false } };
-        if (c.BlackDiv is { Managed: true } b && Orbit.TakesOver("blackdiv")) c = c with { BlackDiv = b with { Managed = false } };
-        return c;
-    }
+    /// <summary>팩션의 웹 관리 선택이 최종값이다. 옛 respectTakeover는 읽기 호환만 유지한다.</summary>
+    public GravityConfig EffectiveConfig(GravityConfig cfg) => cfg;
+
+    public GravityConfig ConfigForLayout(GravityConfig cfg, string id, LocationBase? current) =>
+        cfg.ForLayout(id, IsVariant(id, current), ActiveVariants?.Contains(id) ?? Detect.VariantMaps.ContainsKey(id));
 
     /// <summary>한 판 계산 결과(복제본에 이미 적용됨).</summary>
     public sealed record RaidBuild(SpawnPlan Plan, MapInfo Info, string? PmcWhy, string? ScavNote, int OtherPmc, string? FacNote, string? EvNote);
@@ -156,8 +152,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         string? scavNote = null;
         if (scavRaid && plan.Groups.Count > 0)
         {
-            var keep = KeepForScavRaid(plan.Groups, cfg.Spawn.Scav.PlayerScavRemain, s);
-            scavNote = $" / 스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.Spawn.Scav.PlayerScavRemain:0}%)";
+            var keep = KeepForScavRaid(plan.Groups, cfg.SpawnFor(id).Scav.PlayerScavRemain, s);
+            scavNote = $" / 스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.SpawnFor(id).Scav.PlayerScavRemain:0}%)";
             plan = plan with { Groups = keep };
         }
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
@@ -183,11 +179,12 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             // 0.6 맵 변형: 지금 걸린 Base로 원본/변형을 가르고, 맵 정보(구역)도 그 Base에서 다시 계산한다(판정 54·55).
             var current = CurrentBase?.Invoke(id);
             var variant = IsVariant(id, current);
+            cfg = ConfigForLayout(cfg, id, current);
             if (Catalog.TryGet(id, out _)) LastLayout[id] = variant ? "variant" : "original";
             if (SkipReason(cfg, id, current, abpsClient) is { } why) return Skip(id, why, gearNote);
             Catalog.TryGet(id, out var info);
             if (current != null && Catalog.InfoFor(id, current) is { } curInfo) info = curInfo;
-            if (BotCfg != null) BotCfg.ChanceAssaultScavHasPlayerScavName = (int)Math.Round(cfg.Spawn.Scav.PscavChance);
+            if (BotCfg != null) BotCfg.ChanceAssaultScavHasPlayerScavName = (int)Math.Round(cfg.SpawnFor(id).Scav.PscavChance);
 
             // 복제본의 EscapeTimeLimit(분)는 SVM·스캐브 단축까지 반영된 "남은" 길이다.
             // 스캐브 레이드는 원래 길이(남은 시간 + 시작 지연)로 계획한 뒤 지연보다 이른 항목을 빼고 당긴다(Codex 검토 반영).
@@ -235,6 +232,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var cfg = EffectiveConfig(Store.Current);
         var hasClient = AnyCompatibleClient;
         var current = CurrentBase?.Invoke(id);
+        cfg = ConfigForLayout(cfg, id, current);
         var layout = IsVariant(id, current) ? "variant" : "original";
         var mi = current != null && Catalog.InfoFor(id, current) is { } ci ? ci : info;
         var rows = new List<SimRow>();
@@ -267,7 +265,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         }
         // 클라 스캐브 관리 조건은 ClientSettingsBuilder와 같다(연구소는 allowScavLab일 때만, 방식과 상관없이).
         var scavManaged = hasClient && (id != "laboratory" || cfg.Spawn.AllowScavLab);
-        var scav = b.Plan.ScavWaves.Sum(w => w.SlotsMax) + (scavManaged ? cfg.Spawn.Scav.SoftCap : 0);
+        var scav = b.Plan.ScavWaves.Sum(w => w.SlotsMax)
+            + (scavManaged && cfg.MapFor(id).ScavStyle != "start" ? cfg.SpawnFor(id).Scav.SoftCap : 0);
         return new SimRow(b.Plan.PmcTotal, scav, bosses.Distinct().ToArray(), specials.Distinct().ToArray(), layout);
     }
 
@@ -280,6 +279,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         if (loc == null) return null;
         var cfg = EffectiveConfig(Store.Current);
         var current = CurrentBase?.Invoke(id);
+        cfg = ConfigForLayout(cfg, id, current);
         var mi = current != null && Catalog.InfoFor(id, current) is { } ci ? ci : info;
         var raidSec = (int)Math.Round((loc.EscapeTimeLimit ?? mi.DbRaidSec / 60.0) * 60);
         var b = BuildRaid(id, loc, cfg, mi, raidSec, 0, seed, AnyCompatibleClient, false);

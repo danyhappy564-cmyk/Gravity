@@ -74,18 +74,19 @@ public class GravityLoader(
         GravityRuntime.Instance.Factions = Gravity.Factions.FactionData.Load(GravityBoot.ModsDir!, sptData, ConfigModel.KnownMaps,
             t => json.Deserialize<List<SPTarkov.Server.Core.Models.Eft.Common.BossLocationSpawn>>(t), m => logger.Warning($"{GravityInfo.Tag} {m}"));
         var fd = GravityRuntime.Instance.Factions;
-        // 0.6: 변형 모드가 설치만 되고 배치를 안 바꾼 맵(Manimal 시험 모드 등)은 변형으로 보지 않는다(SPT 원본 base.json과 스폰 지점 비교).
-        var active = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var id in detect.VariantMaps.Keys)
-        {
-            var b = locations.GetLocation(id)?.Base;
-            string? orig = null;
-            try { if (sptData != null) { var f = Path.Combine(sptData, "database", "locations", id, "base.json"); if (File.Exists(f)) orig = File.ReadAllText(f); } } catch { }
-            var same = b == null ? null : MapCatalog.SameSpawnPoints(b, orig);
-            if (same != true) active.Add(id);
-            else logger.Info($"{GravityInfo.Tag} {id}: 변형 모드({string.Join("·", detect.VariantMaps[id])})가 있지만 배치가 SPT 원본과 같아 원본으로 봅니다");
-        }
+        var active = catalog.DiscoverVariants(detect,
+            id =>
+            {
+                if (sptData == null) return null;
+                var f = Path.Combine(sptData, "database", "locations", id, "base.json");
+                return File.Exists(f) ? File.ReadAllText(f) : null;
+            },
+            raw => json.Deserialize<SPTarkov.Server.Core.Models.Eft.Common.LocationBase>(raw));
         GravityRuntime.Instance.ActiveVariants = active;
+        if (catalog.AutomaticVariants.Count > 0)
+            logger.Info($"{GravityInfo.Tag} 자동 감지된 변형 맵: {string.Join(", ", catalog.AutomaticVariants)}");
+        foreach (var m in catalog.All.Where(m => m.HasVariant && m.OriginalPmcZones == null))
+            logger.Warning($"{GravityInfo.Tag} {m.Id}: SPT 원본 구역을 못 읽어 웹의 원본 배치 편집을 비활성화합니다");
         if (sptData == null) logger.Warning($"{GravityInfo.Tag} SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다");
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();
@@ -124,7 +125,11 @@ public class GravityLoader(
         if (detect.Ruaf) found.Add("RUAF");
         if (detect.Untar) found.Add("UNTAR");
         if (detect.BlackDiv) found.Add("BlackDiv");
-        if (detect.QuestingBots) found.Add("QuestingBots(지원 안 함, 스폰 모듈 잠금)");
+        if (detect.QuestingBots)
+        {
+            found.Add(detect.SpawnLocked ? "QuestingBots(설정에 따라 스폰 잠금)" : "QuestingBots(중복 스폰 주의)");
+            DiagLog.Warn(m => logger.Warning(m))($"{GravityInfo.Tag} Questing Bots의 PMC/플레이어 스캐브 스폰을 끄지 않으면 봇이 두 배로 나올 수 있습니다");
+        }
         if (detect.Blackout) found.Add("Blackout");
         if (detect.MapVariants) found.Add("MapVariants");
         if (detect.VariantMaps.Count > 0) found.Add("변형 맵 " + string.Join(", ", detect.VariantMaps.Select(kv => $"{kv.Key}({string.Join("·", kv.Value)})")));

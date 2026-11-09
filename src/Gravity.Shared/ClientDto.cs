@@ -13,7 +13,7 @@ namespace Gravity.Shared
 
     public sealed record ScavDto(
         bool Managed, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
-        double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0);
+        double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0, string Style = "waves");
 
     public sealed record InfDto(double DelaySec, int Batch, double PmcShare, double Jitter);
 
@@ -33,7 +33,8 @@ namespace Gravity.Shared
         string Placement, double HotspotShare, IReadOnlyDictionary<string, double> ZoneWeights,
         bool AllowPmcLabyrinth, GroupCapDto GroupCap, ScavDto Scav, InfDto? Inf,
         IReadOnlyList<RefillGroup> RefillGroups, NearDto Near, IReadOnlyList<string>? CapExclude = null,
-        bool RefillAfterExtract = false, string LogLevel = "summary");
+        bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
+        string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null);
 
     /// <summary>Spawned 키: pmcUSEC·pmcBEAR·assault·near·other. Dropped 키: noPoint·expired·groupCap·cap(하드 스톱으로 버린 PMC 분대)·scavCap(상한에 막힌 스캐브 차례 구간)·nearCap(상한에 막힌 근처 자리).
     /// AlivePerMinute 원소: [분, PMC, 스캐브, 전체]. Extracted(0.6): 살아서 맵을 떠난 봇(탈출) 수, 키는 Killed와 같다.</summary>

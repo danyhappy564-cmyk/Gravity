@@ -83,11 +83,11 @@ public class V06Tests
     }
 
     [Fact]
-    public void Detect_QuestingBots_LocksSpawn()
+    public void Detect_QuestingBots_WarnsByDefault()
     {
         var d = ModDetector.Detect([], ["SPT-QuestingBots"]);
-        Assert.True(d.SpawnLocked);
-        Assert.Equal("Questing Bots", d.SpawnLockReason);
+        Assert.False(d.SpawnLocked);
+        Assert.Null(d.SpawnLockReason);
         Assert.Null(ModDetector.Detect([], []).SpawnLockReason);
     }
 
@@ -160,12 +160,12 @@ public class V06Tests
     }
 
     [Fact]
-    public void EffectiveConfig_TakeoverOff_UnmanagesFaction()
+    public void EffectiveConfig_WebManagementWinsOverTakeover()
     {
         var (rt, store) = Runtime("""{"factions":{"ruaf":{"managed":true},"blackdiv":{"managed":true}},"orbit":{"respectTakeover":false}}""");
         rt.Orbit = OrbitInfo.Parse(true, null, OrbitJson);
         var c = rt.EffectiveConfig(store.Current);
-        Assert.False(c.Ruaf!.Managed);
+        Assert.True(c.Ruaf!.Managed);
         Assert.True(c.BlackDiv!.Managed); // ORBIT이 블랙 디비전은 장악하지 않음
         store.Save(JsonNode.Parse("""{"factions":{"ruaf":{"managed":true}},"orbit":{"respectTakeover":true}}""")!);
         Assert.True(rt.EffectiveConfig(store.Current).Ruaf!.Managed);

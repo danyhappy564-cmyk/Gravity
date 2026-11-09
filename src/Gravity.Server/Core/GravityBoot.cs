@@ -26,7 +26,7 @@ public static class GravityBoot
             var modsDir = Path.GetDirectoryName(paths.ModDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))!;
             var folders = Directory.Exists(modsDir) ? Directory.GetDirectories(modsDir).Select(Path.GetFileName).OfType<string>() : [];
             var asms = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name).OfType<string>();
-            Detect = ModDetector.Detect(asms, folders);
+            Detect = ModDetector.Detect(asms, folders, store.Current.CompatOrDefault);
             ModsDir = modsDir;
             Paths = paths;
             Store = store;

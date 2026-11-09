@@ -16,14 +16,13 @@ public static class SpawnPlanner
     public static SpawnPlan Plan(GravityConfig cfg, MapInfo map, int raidSec, int simStartSec, int seed, bool clientAliveCap = false)
     {
         var rnd = new Random(seed);
-        var s = cfg.Spawn;
+        var s = cfg.SpawnFor(map.Id);
         var ms = cfg.MapFor(map.Id);
-        var ov = ms.Override;
-        var startPct = ov ? ms.StartPmcPct : s.StartPmcPct;
-        var intervalMin = ov ? ms.IntervalMin : s.IntervalMin;
-        var waveMin = ov ? ms.WaveMin : s.WaveMin;
-        var waveMax = ov ? ms.WaveMax : s.WaveMax;
-        var inten = ov ? ms.Intensity : s.Intensity;
+        var startPct = s.StartPmcPct;
+        var intervalMin = s.IntervalMin;
+        var waveMin = s.WaveMin;
+        var waveMax = s.WaveMax;
+        var inten = s.Intensity;
 
         var raid = Math.Max(1, raidSec) / 60.0;
         var stop = s.HardStop.Mode == "percent" ? raid * (1 - s.HardStop.PmcPct / 100) : raid - s.HardStop.BeforeEndMin;
@@ -56,7 +55,7 @@ public static class SpawnPlanner
                 var n = rnd.Next(lo, hi + 1);
                 var pmcN = (int)R(n * ms.Inf.PmcShare / 100);
                 pmcWaves.Add((tt, pmcN));
-                if (n - pmcN > 0) scav.Add(Wave(tt, n - pmcN));
+                if (ms.ScavStyle == "waves" && tt < raid * (1 - s.HardStop.ScavPct / 100) && n - pmcN > 0) scav.Add(Wave(tt, n - pmcN));
             }
         }
         else if (ms.Style == "waves")
@@ -97,7 +96,7 @@ public static class SpawnPlanner
         }
 
         // 3) 스캐브(무한 보충 방식이 아닐 때 따로 계획)
-        if (ms.Style != "infinite") PlanScavs();
+        PlanScavs();
 
         // 4) 스캐브 레이드 시작 지연: 이른 항목 빼고 시각을 당긴다
         if (simStartSec > 0)
@@ -147,7 +146,16 @@ public static class SpawnPlanner
             var startMin = s.Scav.SeparateStart ? s.Scav.DelayMin : 0;
             var total = map.BaseScav * Math.Max(0, raid - startMin) / Math.Max(1.0, map.DbRaidSec / 60.0);
             var per = total / times.Count;
-            for (var i = 0; i < times.Count; i++) scav.Add(Wave(times[i], Math.Max(1, (int)R(per))) with { IsStart = i < firstWindow });
+            // 시작 인원은 카드의 비율로 정한다. 최대 400개 구간·한정된 시작 인원만 분배한다.
+            var initial = ms.StartScav && s.Scav.StartOn ? (int)R(map.BaseScav * s.Scav.StartPct / 100) : 0;
+            var slots = Math.Min(Math.Max(0, firstWindow), initial);
+            for (var i = 0; i < slots; i++)
+            {
+                var n = initial / slots + (i < initial % slots ? 1 : 0);
+                scav.Add(new ScavWave((int)R(times[i] * 60), (int)R(times[i] * 60) + 30, n, n, true));
+            }
+            if (ms.ScavStyle != "start" && (ms.Style != "infinite" || ms.ScavStyle != "waves"))
+                for (var i = firstWindow; i < times.Count; i++) scav.Add(Wave(times[i], Math.Max(1, (int)R(per))));
         }
 
         double Between(double a, double b) => a >= b ? a : a + rnd.NextDouble() * (b - a);

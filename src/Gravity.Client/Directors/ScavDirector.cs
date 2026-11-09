@@ -41,6 +41,7 @@ namespace Gravity.Client.Directors
             public bool ZonesBuilt;
             /// <summary>PMC만 보충할 때(스캐브 관리 꺼짐) 다음 차례 시각.</summary>
             public float PmcOnlyNext;
+            public float ExtractNext;
 
             /// <summary>저격 아닌 구역과 그 구역 지점 위치(레이드에서 한 번 만든다).</summary>
             public readonly List<KeyValuePair<BotZone, Vec3[]>> Zones = new List<KeyValuePair<BotZone, Vec3[]>>();
@@ -71,6 +72,8 @@ namespace Gravity.Client.Directors
             if (bc == null && Singleton<IBotGame>.Instantiated) bc = Singleton<IBotGame>.Instance.BotsController;
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null || !bc._canSpawn) return;
+
+            if (TryExtract(c, st, bc, spawner, now)) return;
 
             int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
@@ -104,7 +107,7 @@ namespace Gravity.Client.Directors
         /// </summary>
         internal static void TickPmcOnly(RaidContext c, BotsController? bc)
         {
-            if (!c.Started || c.S.Inf == null || (c.Refill.Count == 0 && c.ExtractQueue.Count == 0)) return;
+            if (!c.Started || (c.S.Inf == null && c.ExtractQueue.Count == 0) || (c.Refill.Count == 0 && c.ExtractQueue.Count == 0)) return;
             float now = c.Elapsed;
             var st = c.ScavState;
             if (st == null)
@@ -114,11 +117,13 @@ namespace Gravity.Client.Directors
             }
             if (now < st.NextTick) return;
             st.NextTick = now + TickSec;
-            if (now < st.PmcOnlyNext) return;
 
             if (bc == null && Singleton<IBotGame>.Instantiated) bc = Singleton<IBotGame>.Instance.BotsController;
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null || !bc._canSpawn) return;
+
+            if (TryExtract(c, st, bc, spawner, now)) return;
+            if (c.S.Inf == null || now < st.PmcOnlyNext) return;
 
             var inf = c.S.Inf;
             if (c.Rng.NextDouble() < inf.PmcShare)
@@ -131,7 +136,21 @@ namespace Gravity.Client.Directors
             st.PmcOnlyNext = now + (float)(inf.DelaySec * (1.0 + (j > 0 ? (c.Rng.NextDouble() * 2.0 - 1.0) * j : 0.0)));
         }
 
-        private static PmcResult TryPmc(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)
+        /// <summary>활동/휴식·PMC 비율과 무관하게 대기열을 1명씩 처리한다. 매 틱 최대 1회, 별도 반복문은 없다.</summary>
+        private static bool TryExtract(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)
+        {
+            if (c.ExtractQueue.Count == 0) return false;
+            if (!ExtractRefillRule.CanQueue(c.S, true, 0, now)) { c.ExtractQueue.Clear(); return false; }
+            if (now < st.ExtractNext) return false;
+            var r = TryPmc(c, st, bc, spawner, now, true);
+            if (r == PmcResult.NoRoom) { MarkCap(c, st); return true; }
+            if (r != PmcResult.Spawned) return false;
+            st.CapEpisode = false;
+            st.ExtractNext = now + (float)(c.S.Inf?.DelaySec ?? 45);
+            return true;
+        }
+
+        private static PmcResult TryPmc(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now, bool extractOnly = false)
         {
             if (c.S.MapId == "labyrinth" && !c.S.AllowPmcLabyrinth)
             {
@@ -139,7 +158,7 @@ namespace Gravity.Client.Directors
                 return PmcResult.Unavailable;
             }
             var groups = c.Refill;
-            bool extra = c.ExtractQueue.Count > 0;
+            bool extra = extractOnly && c.ExtractQueue.Count > 0;
             if (!extra && st.RefillIndex >= groups.Count)
             {
                 Log.InfoOnce("ScavDirector.RefillDone:" + c.S.Seed, $"{c.S.MapId} 보충 PMC 분대 목록을 다 씀({groups?.Count ?? 0}개): 남은 차례는 스캐브만");
@@ -188,7 +207,8 @@ namespace Gravity.Client.Directors
             }
 
             double share = s.Placement == "hotspot" ? 1.0 : s.Placement == "mixed" ? s.HotspotShare : 0;
-            var w = s.ZoneWeights;
+            // 옛 서버가 새 필드를 보내지 않으면 기존 공용 비중을 그대로 사용합니다.
+            var w = s.ScavZoneWeights ?? s.ZoneWeights;
             var order = WeightedOrder.Shuffle(st.Eligible, z => w == null ? 1 : w.GetValueOrDefault(z.NameZone, 1), share, c.Rng);
 
             for (int i = 0; i < n; i++)
@@ -219,6 +239,7 @@ namespace Gravity.Client.Directors
             foreach (var z in spawner.SpawnZones(false))
             {
                 if (z == null) continue;
+                if (c.IsZoneDisabled(z.NameZone)) continue;
                 var sps = z.SpawnPoints;
                 if (sps == null || sps.Length == 0) continue;
                 var pos = new Vec3[sps.Length];

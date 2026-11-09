@@ -109,7 +109,7 @@ public static class FactionRaid
             for (var i = 0; i < r.Patrol.Count; i++)
             {
                 var lo = (int)Math.Min(r.Patrol.TMin * 60, tMax);
-                var t = Between(rnd, Math.Max(1, lo), (int)Math.Min(r.Patrol.TMax * 60, tMax));
+                var t = r.Style == "start" ? -1 : Between(rnd, Math.Max(1, lo), (int)Math.Min(r.Patrol.TMax * 60, tMax));
                 list.Add(RuafGroup(Between(rnd, r.Patrol.Min, r.Patrol.Max), r.Patrol.Chance, bag.Next(), t, rnd, ignoreCap));
                 patrols++;
             }
@@ -126,7 +126,7 @@ public static class FactionRaid
         if (r.Hunt.On && r.Hunt.Chance > 0)
         {
             var zones = md?.HuntZones is { Length: > 0 } hz ? hz : string.Join(",", patrolZones);
-            var t = Math.Max(1, (int)Math.Round(raidSec * (0.1 + rnd.NextDouble() * 0.8)));
+            var t = r.Style == "start" ? -1 : Math.Max(1, (int)Math.Round(raidSec * (0.1 + rnd.NextDouble() * 0.8)));
             list.Add(RuafGroup(Between(rnd, r.Hunt.Min, r.Hunt.Max), r.Hunt.Chance, zones, t, rnd, ignoreCap) with
             {
                 TriggerId = "hunt", ForceSpawn = true
@@ -176,7 +176,7 @@ public static class FactionRaid
             list.Add(new BossLocationSpawn
             {
                 BossName = BdAssault, BossEscortType = BdAssault, BossChance = b.Chance, BossEscortAmount = (size - 1).ToString(),
-                BossDifficulty = "normal", BossEscortDifficulty = "normal", BossZone = "", Time = Math.Max(1, Math.Round(raidSec * frac)),
+                BossDifficulty = "normal", BossEscortDifficulty = "normal", BossZone = "", Time = b.Style == "start" ? -1 : Math.Max(1, Math.Round(raidSec * frac)),
                 IsBossPlayer = false, IsRandomTimeSpawn = false, ForceSpawn = true, IgnoreMaxBots = ignoreCap,
                 TriggerId = "hunt", TriggerName = "", Delay = 0, Supports = null!, SpawnMode = Modes, SptId = "gravity"
             });

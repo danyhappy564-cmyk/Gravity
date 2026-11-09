@@ -63,9 +63,8 @@ namespace Gravity.Client
         /// <summary>탈출 보충(0.6) 대기열: 다음 PMC 차례에 Refill보다 먼저 쓴다(목록 끝에 붙이면 하드 스톱 전에 차례가 안 올 수 있음, Codex 지적 4).</summary>
         public readonly Queue<RefillGroup> ExtractQueue = new Queue<RefillGroup>();
 
-        /// <summary>탈출 보충으로 더한 분대 수(판당 MaxExtractRefill까지).</summary>
+        /// <summary>탈출 보충으로 더한 분대 수(서버 ExtractRefillCap까지).</summary>
         public int ExtractRefill;
-        internal const int MaxExtractRefill = 20;
 
         /// <summary>이 레이드의 BotSpawner.OnBotRemoved에 붙었는지(게임 스레드).</summary>
         internal EFT.BotSpawner? DeathHookedTo;
@@ -76,6 +75,15 @@ namespace Gravity.Client
         public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0 };
 
         private HashSet<string>? _capExclude;
+        private HashSet<string>? _disabledZones;
+
+        /// <summary>이번 배치에서 끈 구역. 설정 목록은 레이드에서 한 번만 집합으로 바꾼다.</summary>
+        internal bool IsZoneDisabled(string name)
+        {
+            if (S.DisabledZones == null || S.DisabledZones.Count == 0) return false;
+            if (_disabledZones == null) _disabledZones = new HashSet<string>(S.DisabledZones, StringComparer.Ordinal);
+            return _disabledZones.Contains(name);
+        }
 
         /// <summary>맵 상한에서 뺄 봇 역할인지(서버 CapExclude: 관리 중이고 상한을 같이 쓰지 않는 팩션, 0.4). 이름이나 번호로 맞춘다.</summary>
         internal bool IsCapExcluded(EFT.WildSpawnType role)
@@ -203,6 +211,8 @@ namespace Gravity.Client
                     Log.Info($"{_pendingMap} 서버가 관리하지 않는 레이드: 바닐라로 진행");
                     return true;
                 }
+                // 현재 서버가 이 판 관리를 허용했으므로, 옛 메뉴 Hello의 QB 잠금도 갱신한다.
+                if (Plugin.LastHello is { SpawnLocked: true } hello) Plugin.LastHello = hello with { SpawnLocked = false };
                 _current = new RaidContext(s, _pendingStart);
                 Log.Info($"{s.MapId} 서버 설정 받음: 상한 {s.Cap}, 배치 {s.Placement}");
                 return true;

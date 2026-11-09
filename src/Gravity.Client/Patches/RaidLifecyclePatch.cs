@@ -64,7 +64,9 @@ namespace Gravity.Client.Patches
         {
             try
             {
-                if (!Plugin.SpawnActive || location == null) return;
+                // 웹에서 QB 잠금을 풀면 메뉴의 마지막 Hello는 잠금 상태일 수 있다.
+                // 호환·클라 ABPS만 여기서 확인하고, 현재 서버의 Managed 응답으로 최종 결정한다.
+                if (Plugin.AbpsPresent || Plugin.LastHello?.Compatible != true || location == null) return;
                 RaidContext.BeginFetch(location.Id);
             }
             catch (Exception ex)

@@ -32,6 +32,9 @@ public sealed record GearSettings(
     IReadOnlyList<BlacklistEntry> Blacklist, double ScavPenCap, bool BlockQuest,
     IReadOnlyDictionary<string, GearTable[]> Tables)
 {
+    public IReadOnlyDictionary<string, int> ItemTier { get; init; } = new Dictionary<string, int>();
+    public IReadOnlySet<string> ThermalAdd { get; init; } = new HashSet<string>();
+    public IReadOnlySet<string> ThermalRemove { get; init; } = new HashSet<string>();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
 
     /// <summary>봇의 표: 그 봇 전용 표가 켜져 있으면 그것, 아니면 묶음 표, 없으면 기본식.</summary>
@@ -215,6 +218,13 @@ public static partial class ConfigModel
                 bl.Add(new BlacklistEntry(id.ToLowerInvariant(), bots.Count > 0 ? bots : ["all"]));
             }
 
+        var itemTier = new Dictionary<string, int>();
+        if (r.Node(g + "itemTier") is JsonObject manual)
+            foreach (var (id, v) in manual)
+                if (id.Length == 24 && id.All(char.IsAsciiHexDigit) && v is JsonValue jv && jv.TryGetValue<int>(out var tier) && tier is >= 1 and <= 7)
+                    itemTier[id.ToLowerInvariant()] = tier;
+        HashSet<string> Ids(string path) => r.StringList(path).Where(id => id.Length == 24 && id.All(char.IsAsciiHexDigit))
+            .Select(id => id.ToLowerInvariant()).ToHashSet();
         int fixedTier = (int)r.Num(g + "fixedTier", 4, 1, 7);
         return new GearSettings(r.Bool("modules.gear", true), r.Str(g + "tierMode", "mixed", "level", "mixed", "fixed"),
             fixedTier, (int)r.Num(g + "startTier", 1, 1, 7), lv, tiers, roles,
@@ -223,6 +233,7 @@ public static partial class ConfigModel
             r.Num("weapons.night.nvg", 60, 0, 100), r.Num("weapons.night.thermal", 8, 0, 100),
             r.Bool("mods.subset", true), (int)r.Num("mods.weapons", 30, 0, 1000), (int)r.Num("mods.attachments", 150, 0, 5000),
             (int)r.Num("mods.equipment", 30, 0, 1000), r.Num("mods.mult", 100, 0, 200), r.Bool("mods.pmcOnly", true),
-            bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables);
+            bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
+        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove") };
     }
 }

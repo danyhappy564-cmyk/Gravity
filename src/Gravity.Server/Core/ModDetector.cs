@@ -4,11 +4,12 @@ public sealed record DetectResult(
     bool Abps, bool Apbs, bool Svm, bool Orbit, bool Sain, bool Ruaf, bool Untar, bool BlackDiv,
     bool MoreBots, bool QuestingBots, string? SvmFolder, bool Ppes = false)
 {
-    /// <summary>ABPS나 Questing Bots가 있으면 스폰 모듈을 잠근다(둘 다 PMC 스폰을 스스로 고친다, 판정 59).</summary>
-    public bool SpawnLocked => Abps || QuestingBots;
+    public bool LockWithQuestingBots { get; init; }
+    /// <summary>ABPS는 잠금, Questing Bots는 사용자가 잠금을 선택했을 때만 잠근다.</summary>
+    public bool SpawnLocked => Abps || (QuestingBots && LockWithQuestingBots);
     public bool GearLocked => Apbs;
     /// <summary>스폰 잠금 이유(웹·로그용). 안 잠겼으면 null.</summary>
-    public string? SpawnLockReason => Abps ? "ABPS" : QuestingBots ? "Questing Bots" : null;
+    public string? SpawnLockReason => Abps ? "ABPS" : QuestingBots && LockWithQuestingBots ? "Questing Bots" : null;
 
     /// <summary>ORBIT 서버 모드 폴더 이름(설정 읽기용, 0.6). 없으면 null.</summary>
     public string? OrbitFolder { get; init; }
@@ -21,7 +22,7 @@ public sealed record DetectResult(
 /// <summary>다른 모드 감지: 로드된 어셈블리 이름 + user/mods 폴더 이름(대소문자 무시).</summary>
 public static class ModDetector
 {
-    public static DetectResult Detect(IEnumerable<string> assemblyNames, IEnumerable<string> modFolderNames)
+    public static DetectResult Detect(IEnumerable<string> assemblyNames, IEnumerable<string> modFolderNames, CompatSettings? compat = null)
     {
         var asm = assemblyNames.Select(a => a.ToLowerInvariant()).ToHashSet();
         var folders = modFolderNames.ToList();
@@ -33,11 +34,16 @@ public static class ModDetector
             if (Has(key))
                 foreach (var m in maps)
                     (variants.TryGetValue(m, out var l) ? l : variants[m] = []).Add(label);
+        foreach (var configured in compat?.VariantMods ?? [])
+            if (folders.FirstOrDefault(f => f.Equals(configured, StringComparison.OrdinalIgnoreCase)) is { } folder)
+                foreach (var id in ConfigModel.KnownMaps)
+                    (variants.TryGetValue(id, out var list) ? list : variants[id] = []).Add(folder);
         return new DetectResult(
             Has("acidphantasm-botplacementsystem"), Has("acidphantasm-progressivebotsystem"), svm != null,
             Has("orbit"), Has("sain"), Has("ruafcomehome"), Has("untargh", "tacticaltoaster"), Has("blackdiv"),
             Has("morebots"), Has("questingbots", "skills_extended_questingbots"), svm, Has("pastpresenteventselector", "pastpresent"))
         {
+            LockWithQuestingBots = compat?.LockWithQuestingBots ?? false,
             OrbitFolder = folders.FirstOrDefault(f => f.Equals("ORBIT", StringComparison.OrdinalIgnoreCase))
                 ?? folders.FirstOrDefault(f => f.Contains("orbit", StringComparison.OrdinalIgnoreCase)),
             MapVariants = Has("mapvariants"), Blackout = Has("blackout"),
@@ -45,7 +51,7 @@ public static class ModDetector
         };
     }
 
-    /// <summary>같은 맵 id로 다른 배치를 싣는 모드(폴더·어셈블리 이름 일부, 웹 표시 이름, 맵 id). 목록에 없는 모드는 "원본"으로 보인다.</summary>
+    /// <summary>알려진 변형 모드. 이 목록 밖의 변형은 MapCatalog의 SPT 원본 비교로 감지한다.</summary>
     internal static readonly (string Key, string Label, string[] Maps)[] VariantMods =
     [
         ("manimalinterchange", "Manimal", ["interchange"]),

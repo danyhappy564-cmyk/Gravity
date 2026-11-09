@@ -12,7 +12,8 @@ public sealed record GroupCapRule(int Size, string Cmp, int Count);
 public sealed record GroupCap(bool On, string Scope, string Over, IReadOnlyList<GroupCapRule> Rules);
 public sealed record ScavSettings(
     bool SeparateStart, double DelayMin, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
-    double Refill, int Pending, int SoftCap, int PerPlayer, double PscavChance, bool StartMarksman, double PlayerScavRemain = 60);
+    double Refill, int Pending, int SoftCap, int PerPlayer, double PscavChance, bool StartMarksman, double PlayerScavRemain = 60,
+    bool StartOn = true, double StartPct = 20);
 
 public sealed record ProtectSettings(bool On, double Sec, double Radius);
 public sealed record SpacingSettings(double Player, double Bots);
@@ -39,14 +40,25 @@ public sealed record EventSettings(
     string NewYears, string AprilFools);
 
 public sealed record InfSettings(double DelaySec, int Batch, double PmcShare, double Jitter);
+public sealed record ZoneLayout(IReadOnlyDictionary<string, bool> On,
+    IReadOnlyDictionary<string, double> Pmc, IReadOnlyDictionary<string, double> Scav);
+public sealed record CardOverrides(bool Scav, bool Near, bool Dist, bool Hotspot, bool Limits);
 
 public sealed record MapSettings(
     bool Override, string Style, InfSettings Inf, double StartPmcPct, double IntervalMin, int WaveMin, int WaveMax,
     Intensity Intensity, bool Original, int Cap, IReadOnlyDictionary<string, bool> Zones,
-    double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights, bool Variant = true);
+    double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights, bool Variant = true,
+    string ScavStyle = "waves", IReadOnlyDictionary<string, double>? ScavZoneWeights = null, ZoneLayout? ZonesAlt = null,
+    CardOverrides? Cards = null, SpawnSettings? CardSpawn = null, NearSettings? CardNear = null);
 
 /// <summary>ORBIT 연동(0.6). ORBIT 설정은 읽기만 한다.</summary>
-public sealed record OrbitSettings(bool RefillAfterExtract, bool NearAsGhost, bool RespectTakeover);
+public sealed record OrbitSettings(bool RefillAfterExtract, bool NearAsGhost, bool RespectTakeover,
+    string? ExtractRefillMode = null, int ExtractRefillCap = 20)
+{
+    public string RefillMode => ExtractRefillMode ?? (RefillAfterExtract ? "infinite" : "off");
+}
+
+public sealed record CompatSettings(bool LockWithQuestingBots, IReadOnlyList<string> VariantMods);
 
 /// <summary>진단(0.6). Log: off·summary·verbose.</summary>
 public sealed record DiagSettings(string Log, bool Report, bool BotLog);
@@ -64,24 +76,64 @@ public sealed record FactionKind(bool On, double Chance, int Count, int Min, int
 
 /// <summary>RUAF·UNTAR 같은 순찰형 팩션(0.4). Maps에는 웹에서 정한 맵만 있다(없는 맵 = 모드 설정 기본).</summary>
 public sealed record FactionSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
-    FactionKind Patrol, FactionKind Checkpoint, FactionKind Hunt);
+    FactionKind Patrol, FactionKind Checkpoint, FactionKind Hunt, string Style = "waves");
 
 /// <summary>블랙 디비전(0.4). TMin·TMax는 레이드 %, 연구소 웨지·게이트, 블랙아웃 연동.</summary>
 public sealed record BlackDivSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
     double Chance, double TMin, double TMax, int HuntMin, int HuntMax, double LabsGate, bool Wedge, double WedgeChance,
-    string BlackoutLink, double BlackoutMult);
+    string BlackoutLink, double BlackoutMult, string Style = "waves");
 
 public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
     IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
     FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null,
-    OrbitSettings? Orbit = null, DiagSettings? Diag = null)
+    OrbitSettings? Orbit = null, DiagSettings? Diag = null, CompatSettings? Compat = null)
 {
     public OrbitSettings OrbitOrDefault => Orbit ?? new OrbitSettings(true, false, true);
     public DiagSettings DiagOrDefault => Diag ?? new DiagSettings("summary", true, false);
+    public CompatSettings CompatOrDefault => Compat ?? new CompatSettings(false, []);
 
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
+
+    /// <summary>켜진 카드만 맵 값으로 합친다. 다른 카드는 항상 최신 공통 값을 따른다.</summary>
+    public SpawnSettings SpawnFor(string id)
+    {
+        var m = MapFor(id);
+        var s = Spawn;
+        var v = m.CardSpawn;
+        if (m.Override)
+            s = v == null ? s with { StartPmcPct = m.StartPmcPct, IntervalMin = m.IntervalMin,
+                WaveMin = m.WaveMin, WaveMax = m.WaveMax, Intensity = m.Intensity } : s with
+            {
+                StartPmcPct = m.StartPmcPct, FirstDelaySec = v.FirstDelaySec, IntervalMin = m.IntervalMin,
+                RandomPct = v.RandomPct, MinGapSec = v.MinGapSec, DistWave = v.DistWave, DistBots = v.DistBots,
+                Smooth = v.Smooth, WaveMin = m.WaveMin, WaveMax = m.WaveMax, Intensity = m.Intensity,
+                IgnoreCapStart = v.IgnoreCapStart, IgnoreCapWaves = v.IgnoreCapWaves,
+                HardStop = s.HardStop with { Mode = v.HardStop.Mode, PmcPct = v.HardStop.PmcPct, BeforeEndMin = v.HardStop.BeforeEndMin }
+            };
+        if (v != null)
+        {
+            if (m.Cards?.Scav == true) s = s with { Scav = v.Scav, HardStop = s.HardStop with { ScavPct = v.HardStop.ScavPct } };
+            if (m.Cards?.Dist == true) s = s with { Protect = v.Protect, Spacing = v.Spacing };
+            if (m.Cards?.Hotspot == true) s = s with { Placement = v.Placement, HotspotShare = v.HotspotShare, HotspotBoost = v.HotspotBoost };
+            if (m.Cards?.Limits == true) s = s with { GroupCap = v.GroupCap };
+        }
+        return s;
+    }
+
+    public NearSettings NearFor(string id) => MapFor(id) is { Cards.Near: true, CardNear: { } n } ? n : Near;
+
+    /// <summary>변형이 있는 맵의 원본 판에는 zonesAlt만 쓴다. 없는 설정은 기본 구역·비중이다.</summary>
+    public GravityConfig ForLayout(string id, bool variant, bool hasVariant)
+    {
+        if (variant || !hasVariant) return this;
+        var m = MapFor(id);
+        var z = m.ZonesAlt ?? new ZoneLayout(new Dictionary<string, bool>(), new Dictionary<string, double>(), new Dictionary<string, double>());
+        var maps = Maps.ToDictionary(kv => kv.Key, kv => kv.Value);
+        maps[id] = m with { Zones = z.On, ZoneWeights = z.Pmc, ScavZoneWeights = z.Scav };
+        return this with { Maps = maps };
+    }
 }
 
 public static partial class ConfigModel
@@ -127,6 +179,137 @@ public static partial class ConfigModel
     public static GravityConfig FromState(JsonNode? state, List<string> clamped)
     {
         var r = new Reader(state, clamped);
+        var spawn = ReadSpawn(r);
+
+        var maps = new Dictionary<string, MapSettings>();
+        foreach (var id in KnownMaps)
+        {
+            var d = DefaultMap(id);
+            var p = $"maps.{id}.";
+            var zones = new Dictionary<string, bool>();
+            var zoneW = new Dictionary<string, double>();
+            var scavZoneW = new Dictionary<string, double>();
+            if (r.Node(p + "zones") is JsonObject zo)
+                foreach (var (k, v) in zo)
+                {
+                    zones[k] = v is JsonObject o && o["on"] is JsonValue jv && jv.TryGetValue<bool>(out var on) ? on : true;
+                    var legacy = r.Num($"{p}zones.{k}.w", 100, 0, 1000);
+                    zoneW[k] = r.Node($"{p}zones.{k}.wPmc") == null ? legacy : r.Num($"{p}zones.{k}.wPmc", legacy, 0, 200);
+                    scavZoneW[k] = r.Node($"{p}zones.{k}.wScav") == null ? legacy : r.Num($"{p}zones.{k}.wScav", legacy, 0, 200);
+                }
+            var altOn = new Dictionary<string, bool>();
+            var altPmc = new Dictionary<string, double>();
+            var altScav = new Dictionary<string, double>();
+            if (r.Node(p + "zonesAlt") is JsonObject alt)
+                foreach (var (k, v) in alt)
+                {
+                    altOn[k] = v is JsonObject o && o["on"] is JsonValue jv && jv.TryGetValue<bool>(out var on) ? on : true;
+                    var legacy = r.Num($"{p}zonesAlt.{k}.w", 100, 0, 1000);
+                    altPmc[k] = r.Node($"{p}zonesAlt.{k}.wPmc") == null ? legacy : r.Num($"{p}zonesAlt.{k}.wPmc", legacy, 0, 200);
+                    altScav[k] = r.Node($"{p}zonesAlt.{k}.wScav") == null ? legacy : r.Num($"{p}zonesAlt.{k}.wScav", legacy, 0, 200);
+                }
+            var mr = r.ForMap(id);
+            var effective = ReadSpawn(mr);
+            maps[id] = new MapSettings(
+                mr.CardOn("flow"), r.Str(p + "style", d.Style, "waves", "infinite", "start"),
+                new InfSettings(r.Num(p + "inf.delay", 45, 10, 600), (int)r.Num(p + "inf.batch", 2, 1, 10),
+                    r.Num(p + "inf.pmcShare", 50, 0, 100), r.Num(p + "inf.jitter", 30, 0, 100)),
+                effective.StartPmcPct, effective.IntervalMin, effective.WaveMin, effective.WaveMax,
+                effective.Intensity,
+                r.Bool(p + "original", true), (int)r.Num(p + "cap", d.Cap, 1, 60), zones,
+                mr.Num("spawn.pmcDist", d.PmcDist, 5, 1000), mr.Num("spawn.scavDist", d.ScavDist, 5, 1000),
+                mr.Bool("spawn.scav.startOn", true), zoneW, r.Bool(p + "variant", DefaultVariant(id)),
+                r.Str(p + "scavStyle", "waves", "waves", "infinite", "start"), scavZoneW, new ZoneLayout(altOn, altPmc, altScav),
+                new CardOverrides(mr.CardOn("scav"), mr.CardOn("near"), mr.CardOn("dist"), mr.CardOn("hotspot"), mr.CardOn("limits")),
+                effective, ReadNear(mr));
+        }
+
+        var bosses = new Dictionary<string, BossSettings>();
+        foreach (var (id, ch) in BossDefaultChance)
+        {
+            var p = $"bosses.{id}.";
+            var bm = new Dictionary<string, bool>();
+            if (r.Node(p + "maps") is JsonObject mo)
+                foreach (var (k, v) in mo)
+                    bm[k] = v is JsonValue jv && jv.TryGetValue<bool>(out var b) && b;
+            var zones = new Dictionary<string, string[]>();
+            if (r.Node(p + "zones") is JsonObject zo)
+                foreach (var (k, v) in zo)
+                    if (v is JsonArray za)
+                        zones[k] = za.OfType<JsonValue>().Select(x => x.TryGetValue<string>(out var sv) ? sv : null)
+                            .Where(sv => sv is { Length: > 0 and <= 60 }).Select(sv => sv!).ToArray();
+            var eMin = (int)r.Num(p + "escMin", 0, 0, 10);
+            var tFrom = r.Num(p + "tFrom", 0, 0, 600);
+            bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm,
+                r.Bool(p + "followers", true), eMin, (int)Math.Max(eMin, r.Num(p + "escMax", 0, 0, 10)),
+                tFrom, Math.Max(tFrom, r.Num(p + "tTo", 0, 0, 600)),
+                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random"), r.Bool(p + "extra", false), zones);
+        }
+
+        var specials = new Dictionary<string, SpecialSettings>();
+        foreach (var id in SpecialRoles.Keys.Append("snipers").Append("infected"))
+        {
+            var p = $"specials.{id}.";
+            var chance = new Dictionary<string, double>();
+            if (r.Node(p + "chance") is JsonObject co)
+                foreach (var (k, _) in co)
+                    chance[k] = r.Num(p + "chance." + k, 0, 0, 100);
+            var sMin = (int)r.Num(p + "min", 0, 0, 10);
+            specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)));
+        }
+
+        var near = ReadNear(r);
+
+        string[] modes = ["auto", "on", "off"];
+        var events = new EventSettings(
+            r.Str("eventsOwner", "auto", "auto", "ppes", "svm", "gravity", "spt"), r.Bool("events.detect", true),
+            r.Str("events.halloween.mode", "auto", modes), r.Num("events.halloween.zombies", 30, 0, 100),
+            r.Num("events.halloween.nightCult", 40, 0, 100), r.Bool("events.halloween.summon", true), r.Bool("events.halloween.gear", true),
+            r.Str("events.christmas.mode", "auto", modes), r.Num("events.christmas.santa", 25, 0, 100),
+            r.Bool("events.christmas.gifts", true), r.Bool("events.christmas.snow", true), r.Bool("events.christmas.gear", true),
+            r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes));
+
+        FactionKind Kind(string p, double chance, int count, int min, int max, double tMin, double tMax)
+        {
+            var kMin = (int)r.Num(p + "min", min, 1, 10);
+            var t0 = r.Num(p + "tMin", tMin, 0, 180);
+            return new FactionKind(r.Bool(p + "on", true), r.Num(p + "chance", chance, 0, 100), (int)r.Num(p + "count", count, 0, 10),
+                kMin, (int)Math.Max(kMin, r.Num(p + "max", max, 1, 10)), t0, Math.Max(t0, r.Num(p + "tMax", tMax, 0, 180)));
+        }
+        Dictionary<string, bool> FacMaps(string p)
+        {
+            var d = new Dictionary<string, bool>();
+            if (r.Node(p) is JsonObject mo)
+                foreach (var (k, _) in mo)
+                    if (r.Node(p + "." + k) is JsonValue jv && jv.GetValueKind() is JsonValueKind.True or JsonValueKind.False) d[k] = jv.GetValue<bool>();
+            return d;
+        }
+        const string fr = "factions.ruaf.";
+        var ruaf = new FactionSettings(r.Bool(fr + "managed", false), r.Bool(fr + "shareCap", false), FacMaps(fr + "maps"),
+            Kind(fr + "patrol.", 45, 2, 3, 6, 5, 28), Kind(fr + "checkpoint.", 45, 2, 3, 4, 0, 0), Kind(fr + "hunt.", 20, 1, 3, 4, 0, 0),
+            r.Str(fr + "style", "waves", "waves", "start"));
+        const string fb = "factions.blackdiv.";
+        var bdT0 = r.Num(fb + "bd.tMin", 10, 0, 100);
+        var bdMin = (int)r.Num(fb + "bd.huntMin", 3, 1, 10);
+        var blackDiv = new BlackDivSettings(r.Bool(fb + "managed", false), r.Bool(fb + "shareCap", false), FacMaps(fb + "maps"),
+            r.Num(fb + "bd.chance", 25, 0, 100), bdT0, Math.Max(bdT0, r.Num(fb + "bd.tMax", 80, 0, 100)),
+            bdMin, (int)Math.Max(bdMin, r.Num(fb + "bd.huntMax", 5, 1, 10)), r.Num(fb + "bd.labsGate", 20, 0, 100),
+            r.Bool(fb + "bd.wedge", true), r.Num(fb + "bd.wedgeChance", 15, 0, 100),
+            r.Str("lab.blackoutLink", "boost", "always", "only", "boost"), r.Num("lab.blackoutMult", 3, 1, 5),
+            r.Str(fb + "style", "waves", "waves", "start"));
+
+        return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
+            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events,
+            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"), ParseGear(r),
+            new OrbitSettings(r.Bool("orbit.refillAfterExtract", true), r.Bool("orbit.nearAsGhost", false), r.Bool("orbit.respectTakeover", true),
+                r.Node("orbit.extractRefillMode") == null ? null : r.Str("orbit.extractRefillMode", r.Bool("orbit.refillAfterExtract", true) ? "infinite" : "off", "off", "infinite", "all"),
+                (int)r.Num("orbit.extractRefillCap", 20, 0, 100)),
+            new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
+            new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")));
+    }
+
+    private static SpawnSettings ReadSpawn(Reader r)
+    {
         var sp = "spawn.";
         var squad = new[]
         {
@@ -171,73 +354,17 @@ public static partial class ConfigModel
                 r.Num(sp + "scav.refill", 45, 0, 3600), (int)r.Num(sp + "scav.pending", 3, 0, 20),
                 (int)r.Num(sp + "scav.softCap", 18, 0, 60), (int)r.Num(sp + "scav.perPlayer", 20, 0, 100),
                 r.Num(sp + "scav.pscavChance", 10, 0, 100), r.Bool(sp + "scav.startMarksman", true),
-                r.Num(sp + "scav.playerScavRemain", 60, 0, 100)),
+                r.Num(sp + "scav.playerScavRemain", 60, 0, 100), r.Bool(sp + "scav.startOn", true), r.Num(sp + "scav.startPct", 20, 0, 100)),
             new ProtectSettings(r.Bool(sp + "protect.on", true), r.Num(sp + "protect.sec", 90, 0, 3600), r.Num(sp + "protect.radius", 120, 5, 1000)),
             new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
             r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),
             r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false),
             r.Bool(sp + "allowScavLab", false));
+        return spawn;
+    }
 
-        var maps = new Dictionary<string, MapSettings>();
-        foreach (var id in KnownMaps)
-        {
-            var d = DefaultMap(id);
-            var p = $"maps.{id}.";
-            var zones = new Dictionary<string, bool>();
-            var zoneW = new Dictionary<string, double>();
-            if (r.Node(p + "zones") is JsonObject zo)
-                foreach (var (k, v) in zo)
-                {
-                    zones[k] = v is JsonObject o && o["on"] is JsonValue jv && jv.TryGetValue<bool>(out var on) ? on : true;
-                    zoneW[k] = r.Num($"{p}zones.{k}.w", 100, 0, 1000);
-                }
-            var wMin = (int)r.Num(p + "waveMin", d.WaveMin, 0, 20);
-            maps[id] = new MapSettings(
-                r.Bool(p + "override", d.Override), r.Str(p + "style", d.Style, "waves", "infinite", "start"),
-                new InfSettings(r.Num(p + "inf.delay", 45, 10, 600), (int)r.Num(p + "inf.batch", 2, 1, 10),
-                    r.Num(p + "inf.pmcShare", 50, 0, 100), r.Num(p + "inf.jitter", 30, 0, 100)),
-                r.Num(p + "startPmcPct", d.StartPmcPct, 0, 100), r.Num(p + "interval", d.IntervalMin, 0.5, 60),
-                wMin, (int)Math.Max(wMin, r.Num(p + "waveMax", d.WaveMax, 0, 20)),
-                new Intensity(r.Num(p + "early", 1.2, 0, 3), r.Num(p + "mid", 1, 0, 3), r.Num(p + "late", 0.6, 0, 3)),
-                r.Bool(p + "original", true), (int)r.Num(p + "cap", d.Cap, 1, 60), zones,
-                r.Num(p + "pmcDist", d.PmcDist, 5, 1000), r.Num(p + "scavDist", d.ScavDist, 5, 1000),
-                r.Bool(p + "start.scav", true), zoneW, r.Bool(p + "variant", DefaultVariant(id)));
-        }
-
-        var bosses = new Dictionary<string, BossSettings>();
-        foreach (var (id, ch) in BossDefaultChance)
-        {
-            var p = $"bosses.{id}.";
-            var bm = new Dictionary<string, bool>();
-            if (r.Node(p + "maps") is JsonObject mo)
-                foreach (var (k, v) in mo)
-                    bm[k] = v is JsonValue jv && jv.TryGetValue<bool>(out var b) && b;
-            var zones = new Dictionary<string, string[]>();
-            if (r.Node(p + "zones") is JsonObject zo)
-                foreach (var (k, v) in zo)
-                    if (v is JsonArray za)
-                        zones[k] = za.OfType<JsonValue>().Select(x => x.TryGetValue<string>(out var sv) ? sv : null)
-                            .Where(sv => sv is { Length: > 0 and <= 60 }).Select(sv => sv!).ToArray();
-            var eMin = (int)r.Num(p + "escMin", 0, 0, 10);
-            var tFrom = r.Num(p + "tFrom", 0, 0, 600);
-            bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm,
-                r.Bool(p + "followers", true), eMin, (int)Math.Max(eMin, r.Num(p + "escMax", 0, 0, 10)),
-                tFrom, Math.Max(tFrom, r.Num(p + "tTo", 0, 0, 600)),
-                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random"), r.Bool(p + "extra", false), zones);
-        }
-
-        var specials = new Dictionary<string, SpecialSettings>();
-        foreach (var id in SpecialRoles.Keys.Append("snipers").Append("infected"))
-        {
-            var p = $"specials.{id}.";
-            var chance = new Dictionary<string, double>();
-            if (r.Node(p + "chance") is JsonObject co)
-                foreach (var (k, _) in co)
-                    chance[k] = r.Num(p + "chance." + k, 0, 0, 100);
-            var sMin = (int)r.Num(p + "min", 0, 0, 10);
-            specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)));
-        }
-
+    private static NearSettings ReadNear(Reader r)
+    {
         var nMin = r.Num("near.minDist", 200, 5, 1000);
         var nWaveMin = (int)r.Num("near.waveMin", 3, 0, 20);
         var gMin = (int)r.Num("near.group.min", 2, 1, 10);
@@ -251,54 +378,57 @@ public static partial class ConfigModel
             r.Bool("near.custom.on", false), r.Role("near.custom.t1", "raider"), (int)r.Num("near.custom.cap1", 5, 0, 60),
             r.Role("near.custom.t2", "rogue"), (int)r.Num("near.custom.cap2", 5, 0, 60), r.Num("near.custom.ratio2", 50, 0, 100),
             r.Bool("near.useDefault", true));
-
-        string[] modes = ["auto", "on", "off"];
-        var events = new EventSettings(
-            r.Str("eventsOwner", "auto", "auto", "ppes", "svm", "gravity", "spt"), r.Bool("events.detect", true),
-            r.Str("events.halloween.mode", "auto", modes), r.Num("events.halloween.zombies", 30, 0, 100),
-            r.Num("events.halloween.nightCult", 40, 0, 100), r.Bool("events.halloween.summon", true), r.Bool("events.halloween.gear", true),
-            r.Str("events.christmas.mode", "auto", modes), r.Num("events.christmas.santa", 25, 0, 100),
-            r.Bool("events.christmas.gifts", true), r.Bool("events.christmas.snow", true), r.Bool("events.christmas.gear", true),
-            r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes));
-
-        FactionKind Kind(string p, double chance, int count, int min, int max, double tMin, double tMax)
-        {
-            var kMin = (int)r.Num(p + "min", min, 1, 10);
-            var t0 = r.Num(p + "tMin", tMin, 0, 180);
-            return new FactionKind(r.Bool(p + "on", true), r.Num(p + "chance", chance, 0, 100), (int)r.Num(p + "count", count, 0, 10),
-                kMin, (int)Math.Max(kMin, r.Num(p + "max", max, 1, 10)), t0, Math.Max(t0, r.Num(p + "tMax", tMax, 0, 180)));
-        }
-        Dictionary<string, bool> FacMaps(string p)
-        {
-            var d = new Dictionary<string, bool>();
-            if (r.Node(p) is JsonObject mo)
-                foreach (var (k, _) in mo)
-                    if (r.Node(p + "." + k) is JsonValue jv && jv.GetValueKind() is JsonValueKind.True or JsonValueKind.False) d[k] = jv.GetValue<bool>();
-            return d;
-        }
-        const string fr = "factions.ruaf.";
-        var ruaf = new FactionSettings(r.Bool(fr + "managed", false), r.Bool(fr + "shareCap", false), FacMaps(fr + "maps"),
-            Kind(fr + "patrol.", 45, 2, 3, 6, 5, 28), Kind(fr + "checkpoint.", 45, 2, 3, 4, 0, 0), Kind(fr + "hunt.", 20, 1, 3, 4, 0, 0));
-        const string fb = "factions.blackdiv.";
-        var bdT0 = r.Num(fb + "bd.tMin", 10, 0, 100);
-        var bdMin = (int)r.Num(fb + "bd.huntMin", 3, 1, 10);
-        var blackDiv = new BlackDivSettings(r.Bool(fb + "managed", false), r.Bool(fb + "shareCap", false), FacMaps(fb + "maps"),
-            r.Num(fb + "bd.chance", 25, 0, 100), bdT0, Math.Max(bdT0, r.Num(fb + "bd.tMax", 80, 0, 100)),
-            bdMin, (int)Math.Max(bdMin, r.Num(fb + "bd.huntMax", 5, 1, 10)), r.Num(fb + "bd.labsGate", 20, 0, 100),
-            r.Bool(fb + "bd.wedge", true), r.Num(fb + "bd.wedgeChance", 15, 0, 100),
-            r.Str("lab.blackoutLink", "boost", "always", "only", "boost"), r.Num("lab.blackoutMult", 3, 1, 5));
-
-        return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
-            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events,
-            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"), ParseGear(r),
-            new OrbitSettings(r.Bool("orbit.refillAfterExtract", true), r.Bool("orbit.nearAsGhost", false), r.Bool("orbit.respectTakeover", true)),
-            new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)));
+        return near;
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>
-    internal sealed class Reader(JsonNode? root, List<string> clamped)
+    internal sealed class Reader(JsonNode? root, List<string> clamped, string? mapId = null)
     {
-        public JsonNode? Node(string path)
+        public string[] StringList(string path) => Node(path) is JsonArray a
+            ? a.OfType<JsonValue>().Where(v => v.GetValueKind() == JsonValueKind.String)
+                .Select(v => v.GetValue<string>().Trim()).Where(v => v.Length is > 0 and <= 120)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Take(1000).ToArray() : [];
+
+        public Reader ForMap(string id) => new(root, clamped, id);
+
+        public bool CardOn(string card)
+        {
+            var key = $"maps.{mapId}.ovr.{card}";
+            if (RawNode(key) is JsonValue jv && jv.TryGetValue<bool>(out var on)) return on;
+            return card == "flow" && RawNode($"maps.{mapId}.override") is JsonValue old && old.TryGetValue<bool>(out var legacy) && legacy;
+        }
+
+        public string MapPath(string path)
+        {
+            if (mapId == null) return path;
+            var card = CardFor(path);
+            if (card == "common") return path;
+            var prefix = $"maps.{mapId}.";
+            var legacyDistance = path is "spawn.pmcDist" or "spawn.scavDist";
+            var legacyStart = path == "spawn.scav.startOn";
+            if (!CardOn(card) && !(RawNode(prefix + "ovr." + card) == null && (legacyDistance || legacyStart))) return path;
+            var suffix = path.StartsWith("spawn.", StringComparison.Ordinal) ? path[6..] : path;
+            var canonical = prefix + suffix;
+            if (RawNode(canonical) != null) return canonical;
+            var alias = suffix.StartsWith("intensity.", StringComparison.Ordinal) ? prefix + suffix[10..]
+                : legacyStart ? prefix + "start.scav" : canonical;
+            return RawNode(alias) != null ? alias : path;
+        }
+
+        private static string CardFor(string path) => path switch
+        {
+            var p when p.StartsWith("near.", StringComparison.Ordinal) => "near",
+            var p when p.StartsWith("spawn.scav.", StringComparison.Ordinal) || p == "spawn.hardStop.scavPct" => "scav",
+            var p when p.StartsWith("spawn.protect.", StringComparison.Ordinal) || p.StartsWith("spawn.spacing.", StringComparison.Ordinal) || p is "spawn.pmcDist" or "spawn.scavDist" => "dist",
+            "spawn.placement" or "spawn.hotspotShare" or "spawn.hotspotBoost" => "hotspot",
+            var p when p.StartsWith("spawn.groupCap.", StringComparison.Ordinal) => "limits",
+            var p when p.StartsWith("spawn.squad.", StringComparison.Ordinal) || p.StartsWith("spawn.diff.", StringComparison.Ordinal) || p is "spawn.usecPct" or "spawn.allowPmcLabyrinth" or "spawn.allowScavLab" => "common",
+            _ => "flow"
+        };
+
+        public JsonNode? Node(string path) => RawNode(MapPath(path));
+
+        private JsonNode? RawNode(string path)
         {
             var n = root;
             foreach (var part in path.Split('.'))
@@ -319,7 +449,7 @@ public static partial class ConfigModel
             var v = def;
             if (Node(path) is JsonValue jv && jv.GetValueKind() == JsonValueKind.Number) v = jv.GetValue<double>();
             if (double.IsNaN(v) || double.IsInfinity(v)) v = def;
-            if (v < min || v > max) { clamped.Add(path); v = Math.Clamp(v, min, max); }
+            if (v < min || v > max) { clamped.Add(MapPath(path)); v = Math.Clamp(v, min, max); }
             return v;
         }
 
