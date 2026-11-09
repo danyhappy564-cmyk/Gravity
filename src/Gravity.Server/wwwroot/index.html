@@ -976,7 +976,7 @@ P.flow={desc:T('모든 맵에 적용되는 기본 흐름입니다. 맵별 설정
     +slider(s+'scav.pending',T('대기 봇이 이만큼 쌓이면 스폰','Spawn when this many pending'),'',{min:1,max:8,unit:UI.ppl,adv:true})
     +slider(s+'scav.perPlayer',T('플레이어당 스캐브 한도','Scavs per player'),T('플레이어 한 명당 살아 있을 수 있는 스캐브 수. 스캐브에만 적용됩니다.','Max alive scavs per player. Scavs only.'),{min:0,max:100,unit:UI.ppl,adv:true})
     +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),T('다음 판에서 쓰입니다. 지금은 효과가 없습니다.','Used next version. No effect yet.'),{adv:true})
-    +slider(s+'scav.playerScavRemain',T('스캐브 레이드 때 남는 봇','Bots left for scav raids'),T('다음 판(0.3)에서 쓰입니다.','Used in 0.3.'),{adv:true})
+    +slider(s+'scav.playerScavRemain',T('스캐브 레이드 때 남는 봇','Bots left for scav raids'),T('다음 판(0.4)에서 쓰입니다.','Used in 0.4.'),{adv:true})
     +slider(s+'maxRespawn.scav',T('스캐브 최대 리스폰 (0 = 제한 없음)','Max scav respawns (0 = none)'),'',{min:0,max:200,step:5,unit:'',adv:true})
     +sw(s+'scav.startMarksman',T('시작 저격 스캐브','Starting marksmen'),'',{adv:true})
     +sw(s+'allowScavLab',T('연구소에도 스캐브','Scavs on the Lab'),T('켜야 클라가 연구소 스캐브를 맡습니다. 끄면 연구소에서는 무한 보충 PMC도 돌지 않습니다.','The client manages Lab scavs only when on. When off, endless PMC refill does not run on the Lab either.'),{adv:true}),{icon:'☗'})}
@@ -1671,7 +1671,7 @@ window.addEventListener('beforeunload',e=>{if(changes().length){e.preventDefault
 Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){console.error(k,err);}page=keep;});
 
 /* ================= 실제 서버 연결 (Gravity 0.1.0) ================= */
-const NOT_LIVE=new Set(['specials','factions','events','tiers','tieredit','roles','weapons','items','blacklist','gearpresets','client','orbit','dev']);
+const NOT_LIVE=new Set(['factions','events','tiers','tieredit','roles','weapons','items','blacklist','gearpresets','client','orbit','dev']);
 const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap')};
 function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
 function clientCard(){
@@ -1707,13 +1707,14 @@ function liveBanner(pg){
   if(serverErr)return notice(T('서버에 연결하지 못했습니다: ','Cannot reach the server: ')[lang]+serverErr,'warn');
   let h='';
   if(serverWarn)h+=notice(T(serverWarn,serverWarn),'warn');
+  if(pg==='specials')h+=notice(T('레이더·로그·컬티스트·블러드하운드는 지금 적용됩니다(맵에 원래 있는 무리만). 저격 스캐브·감염자는 다음 판(0.4)입니다.','Raiders, rogues, cultists and bloodhounds apply now (groups the map already has). Sniper scavs and infected come in 0.4.'),'flat');
   if(NOT_LIVE.has(pg))h+=notice(T('이 페이지는 아직 게임에 적용되지 않습니다(다음 판). 값은 저장되므로 미리 맞춰 둘 수 있습니다.','This page is not applied in game yet (next version). Values are saved for later.'),'flat');
   if(pg==='bosses')h+=notice(T('이번 판에서는 보스 켜기·확률·나오는 맵 끄기만 적용됩니다. 태어날 구역·호위 수·새 맵 추가는 다음 판입니다.','This version applies boss on/off, chance and map off only.'),'flat');
   if(pg==='flow'||pg==='maps'||pg==='dashboard'||pg==='near'){
     const c=serverMeta&&serverMeta.client,ok=!!(c&&c.version&&c.compatible);
     if(!ok)h+=notice(T('클라 플러그인 없음(또는 판 다름): 공장·미궁 PMC·스캐브·상한·근처 보충이 꺼져 있습니다.','Client plugin missing (or version differs): Factory/Labyrinth PMCs, scavs, bot cap and near-player refill are off.'),'warn');
-    if(pg==='near')h+=notice(T('"기본: PMC / 스캐브" 칸은 다음 판(0.3)에서 쓰입니다.','The "Default: PMC / Scav" option is used in 0.3.'),'flat');
-    else h+=notice(T('지금 게임에 적용: PMC 시작 인원·웨이브(시각·인원·분대 크기·진영·난이도), 그룹 개수 제한(레이드 전체 기준, 클라가 있으면 "동시에 살아 있는" 기준도), 맵별 방식(웨이브·무한 보충·시작만)·맵 끄기·PMC 구역, 스캐브(시작·활동 창·보충·소프트 캡·플레이어당 한도), 맵 동시 봇 상한, 근처 보충, 시작 보호·스폰 거리, 핫스팟 비중, 보스 확률. 다음 판(0.3): 핫스팟 부스트·상한 무시, 스캐브 레이드 때 남는 봇, 늦게 오는 레이더, 보스 구역·호위, 특수 봇, 이벤트. 플레이어 스캐브 섞일 확률은 이번 판에서 효과가 없습니다.','Applied now: PMC start/waves, group limits (also "alive at once" with the client), map styles, scavs (start, active windows, refill, soft cap, per-player limit), map bot cap, near-player refill, start protection and distances, hotspot share, boss chances. Next (0.3): hotspot boost and cap bypass, bots left for scav raids, late raiders, boss zones/escorts, special bots, events. Player-scav chance has no effect yet.'),'flat');
+    if(pg==='near')h+=notice(T('"기본: PMC / 스캐브" 칸은 다음 판(0.4)에서 쓰입니다.','The "Default: PMC / Scav" option is used in 0.4.'),'flat');
+    else h+=notice(T('지금 게임에 적용: PMC 시작 인원·웨이브(시각·인원·분대 크기·진영·난이도), 그룹 개수 제한(레이드 전체 기준, 클라가 있으면 "동시에 살아 있는" 기준도), 맵별 방식(웨이브·무한 보충·시작만)·맵 끄기·PMC 구역, 스캐브(시작·활동 창·보충·소프트 캡·플레이어당 한도), 맵 동시 봇 상한, 근처 보충, 시작 보호·스폰 거리, 핫스팟 비중, 보스(확률·호위 수·등장 시간·난이도·구역·추가 스폰), 특수 봇 무리(레이더·로그·컬티스트·블러드하운드: 켜기·맵별 확률·인원), 무한 방식 맵의 보충 PMC(스캐브 관리를 끈 연구소 포함). 다음 판(0.4): 보스를 다른 맵에 놓기·바닐라 보스 끄기, 저격 스캐브·감염자 무리, 이벤트, 팩션, 핫스팟 부스트·상한 무시, 스캐브 레이드 때 남는 봇, 늦게 오는 레이더. 플레이어 스캐브 섞일 확률은 이번 판에서 효과가 없습니다.','Applied now: PMC start/waves, group limits (also "alive at once" with the client), map styles, scavs (start, active windows, refill, soft cap, per-player limit), map bot cap, near-player refill, start protection and distances, hotspot share, bosses (chance, escorts, time, difficulty, zones, extra spawn), special groups (raiders, rogues, cultists, bloodhounds: on, per-map chance, size), refill PMCs on infinite maps (incl. Labs with scav management off). Next (0.4): bosses on other maps and vanilla boss off, sniper scav and infected groups, events, factions, hotspot boost and cap bypass, bots left for scav raids, late raiders. Player-scav chance has no effect yet.'),'flat');
   }
   return h;
 }
