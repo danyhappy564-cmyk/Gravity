@@ -44,6 +44,7 @@ select:focus{border-color:var(--primary)}
 .drawer{position:fixed;top:var(--appbar);bottom:0;left:0;width:var(--drawer);background:linear-gradient(180deg,#0e1219,#0a0d13);border-right:1px solid #1b2330;padding:18px 12px 14px;display:flex;flex-direction:column;z-index:35;overflow:auto}
 .mode-note{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;margin:0 0 14px;border-radius:10px;font-size:12.5px;border:1px solid #2b3446;background:#121925}.mode-note b{font-size:12px;padding:2px 8px;border-radius:6px;background:#1f2a3d;color:#cfe0ff}.mode-note.adv b{background:#2e2350;color:#d9c8ff}.mode-note span{color:var(--muted);flex:1}body:not(.easy) .adv .ctl-h>span:first-child::after,body:not(.easy) .card.adv>.card-h h2::after{content:var(--advtxt);font-size:10px;font-weight:600;color:#c9b6ff;border:1px solid #6a55a0;border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:middle}
 .apply-table{width:100%}.apply-table th{text-align:left;font-size:12px;color:var(--muted);font-weight:600}.apply-table td{vertical-align:middle;padding:8px 10px}.apply-table td:first-child,.apply-table td:nth-child(2),.apply-table th:first-child,.apply-table th:nth-child(2){width:1%;white-space:nowrap}
+.tabs.spawn-tabs{flex-wrap:wrap;gap:8px;border-bottom:0;overflow:visible;padding:12px;background:#0f1520;border:1px solid var(--line);border-radius:12px}.tabs.spawn-tabs button{background:#1a2333;border:1px solid #2c3850;border-radius:8px;color:#c3cfdf;padding:7px 12px}.tabs.spawn-tabs button:hover{background:#212c40}.tabs.spawn-tabs button.on{background:#2a4a7a;border-color:#5b8def;color:#fff}.map-changed{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:5px;background:#5a3d10;color:#ffcf73;font-size:11px;font-weight:600}.grid:has(>details.card.fold){grid-template-columns:1fr!important;gap:0}.fold-acts{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.mini-btn.danger{color:#ff9a9a;border-color:#6a3030}details.card.fold{padding:0;margin-bottom:12px}details.card.fold>summary{list-style:none;cursor:pointer;padding:15px 20px;margin:0}details.card.fold>summary::-webkit-details-marker{display:none}details.card.fold>summary h2::before{content:'▸';display:inline-block;width:16px;color:#8fa3c0}details.card.fold[open]>summary h2::before{content:'▾'}details.card.fold[open]>summary{border-bottom:1px solid var(--line)}details.card.fold>summary:hover{background:#151d2b;border-radius:var(--r)}.fold-body{padding:16px 20px 20px}.fold-right{display:flex;justify-content:flex-end;margin-bottom:10px}.sub-sep{border:0;border-top:1px solid #2b3446;margin:12px 0 4px}
 .nav-sep{border:0;border-top:1px solid #1e2836;margin:8px 4px}.nav-group>summary{cursor:pointer;list-style:none;user-select:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:'▸';display:inline-block;width:14px}.nav-group[open]>summary::before{content:'▾'}.nav-group>summary:hover{color:#a9b3c4}
 .nav-cap{font-size:10px;letter-spacing:1.6px;color:#5f6b80;font-weight:650;padding:14px 12px 8px}
 .nav-cap:first-child{padding-top:0}
@@ -749,7 +750,11 @@ function ratio(base,parts,label,t,o={}){
 }
 const num=(p,min,max,o={})=>`<input type="number" min="${min}" max="${max}" step="${o.step||1}" value="${get(p)}" data-p="${p}" data-t="n" ${o.dis?'disabled':''}>`;
 const flipBtn=(p,label,o={})=>`<button class="${get(p)?'on':''} ${o.cls||''}" data-flip="${p}" ${o.dis?'disabled':''}>${label}</button>`;
-const card=(title,body,o={})=>`<section class="card${o.cls?' '+o.cls:''}${o.adv?' adv':''}"${o.style?` style="${o.style}"`:''}><div class="card-h"><div><h2>${o.icon?`<span class="ic">${o.icon}</span>`:''}${tr(title)}</h2>${o.desc?`<p>${tr(o.desc)}</p>`:''}</div>${o.right||''}</div>${body}</section>`;
+let FOLD=null;const FOLD_OPEN=['Raid timeline','Preview'];
+const card=(title,body,o={})=>{
+  if(FOLD&&!o.nofold&&title&&tr(title)){const key=FOLD+':'+(title&&title.en||tr(title)),open=readLocal('gravity.fold.'+key,FOLD_OPEN.includes(title&&title.en)?'1':'0')==='1';
+    return `<details class="card fold${o.cls?' '+o.cls:''}${o.adv?' adv':''}" data-fold="${esc(key)}" ${open?'open':''}><summary class="card-h"><div><h2>${o.icon?`<span class="ic">${o.icon}</span>`:''}${tr(title)}</h2>${o.desc?`<p>${tr(o.desc)}</p>`:''}</div></summary><div class="fold-body">${o.right?`<div class="fold-right">${o.right}</div>`:''}${body}</div></details>`;}
+  return `<section class="card${o.cls?' '+o.cls:''}${o.adv?' adv':''}"${o.style?` style="${o.style}"`:''}><div class="card-h"><div><h2>${o.icon?`<span class="ic">${o.icon}</span>`:''}${tr(title)}</h2>${o.desc?`<p>${tr(o.desc)}</p>`:''}</div>${o.right||''}</div>${body}</section>`;};
 const notice=(t,cls='')=>`<div class="notice ${cls}"><span>ⓘ</span><span>${tr(t)}</span></div>`;
 const pill=(t,cls='')=>`<span class="pill ${cls}">${t}</span>`;
 
@@ -1042,14 +1047,14 @@ function statBox(m){const e=estimate(m);if(!e)return '';return `<div class="kv">
 
 /* ================= pages ================= */
 const NAV=[
- [T('레이드','RAID'),[['dashboard','◈',T('한눈에','Overview')],['spawn','⌁',T('스폰','Spawns')],['near','◌',T('근처 보충','Near-player')],['bosses','★',T('보스','Bosses')],['specials','✦',T('특수 봇','Special bots')],['factions','⚑',T('팩션 모드','Faction mods')],['events','✷',T('이벤트','Events')],['raidpresets','❖',T('레이드 프리셋','Raid presets')]]],
+ [T('레이드','RAID'),[['dashboard','◈',T('한눈에','Overview')],['spawn','⌁',T('스폰','Spawns')],['bosses','★',T('보스','Bosses')],['specials','✦',T('특수 봇','Special bots')],['factions','⚑',T('팩션 모드','Faction mods')],['events','✷',T('이벤트','Events')],['raidpresets','❖',T('레이드 프리셋','Raid presets')]]],
  [T('장비','LOADOUT'),[['tiers','◇',T('장비 티어','Gear tiers')],['tieredit','✎',T('티어 편집기','Tier editor')],['roles','☰',T('봇별 장비','Per-bot gear')],['weapons','⌖',T('무기 구성','Weapon build')],['items','▤',T('모드 아이템','Mod items')],['blacklist','⊘',T('블랙리스트','Blacklist')],['gearpresets','❖',T('장비 프리셋','Loadout presets')]]],
  [T('시스템','SYSTEM'),[['client','⚙',T('게임 안 동작','In-game')],['orbit','◎',T('ORBIT 연동','ORBIT link')],['diag','⊙',T('호환 · 진단','Compatibility')],['dev','⌘',T('개발 · 확인','Dev & testing')],['presets','⇄',T('전체 백업','Full backup')]]]
 ];
 const navTitle=id=>{for(const [,items] of NAV)for(const [i,,t] of items)if(i===id)return t;};
 const P={};
 function selectPage(id,tab){
-  if(id==='flow'){id='spawn';tab='all';}
+  if(id==='flow'||id==='near'){id='spawn';tab='all';}
   else if(id==='maps'){id='spawn';tab=tab??mapSel;}
   page=id==='spawn'||NAV.some(([,items])=>items.some(([k])=>k===id))?id:'dashboard';
   if(tab!==undefined)spawnTab=tab==='all'||mapById(tab)?tab:'all';
@@ -1195,7 +1200,7 @@ function itemOverrideCard(list,title){
 const spawnMap={desc:T('맵마다 웨이브/무한 보충, 레이드 시간, 스폰 구역을 정합니다.','Per map: waves or endless refill, raid time, spawn zones.'),render(){
   const card=mapCard;
   const m=mapById(mapSel),o=state.maps[m.id],pre='maps.'+m.id+'.',inf=o.style==='infinite';
-  const tabs=card(T('여러 맵 동시 설정','Edit several maps at once'),`<div class="tog">${MAPS.map(x=>`<button class="${batch.includes(x.id)||x.id===mapSel?'on':''}" data-batch="${x.id}" ${x.id===mapSel?'disabled':''}>${tr(x.name)}</button>`).join('')}</div><div class="chips" style="margin-top:10px">${batch.length?pill(fmt(tr(T('지금 바꾸는 값이 {n}개 맵에 같이 들어갑니다','Changes also apply to {n} more maps')),{n:batch.length}),'gold'):pill(tr(T('맵을 고르면 바꾸는 값이 함께 들어갑니다','Pick maps to edit them together')))}<button class="mini-btn" data-act="batchAll">${tr(T('모두 선택','Select all'))}</button><button class="mini-btn" data-act="batchNone">${tr(T('선택 해제','Clear'))}</button><button class="mini-btn" data-act="copyMap" ${batch.length?'':'disabled'}>${tr(T('이 맵 설정 전체를 고른 맵에 복사','Copy this map to selected'))}</button></div>`,{icon:'⧉',desc:T('현재 맵에서 값을 바꾸면 고른 맵에도 똑같이 들어갑니다.','Changes on the current map are mirrored to the picked maps.')});
+  const tabs=card(T('여러 맵 동시 설정','Edit several maps at once'),`<div class="tog">${MAPS.map(x=>`<button class="${batch.includes(x.id)||x.id===mapSel?'on':''}" data-batch="${x.id}" ${x.id===mapSel?'disabled':''}>${tr(x.name)}</button>`).join('')}</div><hr class="sub-sep"><div class="chips" style="margin-top:10px">${batch.length?pill(fmt(tr(T('지금 바꾸는 값이 {n}개 맵에 같이 들어갑니다','Changes also apply to {n} more maps')),{n:batch.length}),'gold'):pill(tr(T('맵을 고르면 바꾸는 값이 함께 들어갑니다','Pick maps to edit them together')))}<button class="mini-btn" data-act="batchAll">${tr(T('모두 선택','Select all'))}</button><button class="mini-btn" data-act="batchNone">${tr(T('선택 해제','Clear'))}</button><button class="mini-btn" data-act="copyMap" ${batch.length?'':'disabled'}>${tr(T('이 맵 설정 전체를 고른 맵에 복사','Copy this map to selected'))}</button></div>`,{icon:'⧉',desc:T('현재 맵에서 값을 바꾸면 고른 맵에도 똑같이 들어갑니다.','Changes on the current map are mirrored to the picked maps.')});
   const view=zoneView(m.id),zoneSettings=o[view.key]||{};
   const zones=view.zones.map(z=>{const zz=zoneSettings[z.id]||{on:true,w:z.w},enabled=zz.on!==false,kind={pmc:T('PMC','PMC'),scav:T('스캐브','Scav'),both:T('둘 다','Both')}[z.kind];
     const weight=(key,label)=>{const v=zz[key]??zz.w??100,p=pre+view.key+'.'+z.id+'.'+key;return `<label class="zone-weight"><span>${tr(label)}</span><input type="range" min="0" max="200" step="10" value="${v}" data-p="${p}" data-t="n" data-unit='"%"' style="--p:${v/2}%" ${enabled?'':'disabled'}><span class="val small" data-v="${p}">${v}%</span></label>`;};
@@ -1222,8 +1227,13 @@ const spawnMap={desc:T('맵마다 웨이브/무한 보충, 레이드 시간, 스
 
 P.spawn={desc:T('공통 흐름과 맵별 스폰 설정을 한곳에서 정합니다.','Set shared flow and per-map spawns in one place.'),render(){
   const all=spawnTab==='all';if(!all)mapSel=spawnTab;
-  const tabs=`<div class="tabs spawn-tabs"><button data-spawn-tab="all" class="${all?'on':''}">${tr(T('모든 맵(공통)','All maps (shared)'))}</button>${MAPS.map(m=>`<button data-spawn-tab="${m.id}" class="${spawnTab===m.id?'on':''}">${tr(m.name)}</button>`).join('')}</div>`;
-  return tabs+(all?spawnCommon.render():spawnOff()+spawnMap.render());}};
+  const tabs=`<div class="tabs spawn-tabs"><button data-spawn-tab="all" class="${all?'on':''}">${tr(T('모든 맵(공통)','All maps (shared)'))}</button>${MAPS.map(m=>`<button data-spawn-tab="${m.id}" class="${spawnTab===m.id?'on':''}">${tr(m.name)}${mapChanged(m.id)?`<span class="map-changed">${tr(T('변경됨','changed'))}</span>`:''}</button>`).join('')}</div>`;
+  const acts=`<div class="fold-acts"><button class="mini-btn" data-act="foldAll">${tr(T('모두 열기','Open all'))}</button><button class="mini-btn" data-act="foldNone">${tr(T('모두 닫기','Close all'))}</button>${all?'':`<button class="mini-btn danger" data-act="resetMap" ${mapChanged(mapSel)?'':'disabled'}>${tr(T('이 맵만 원본으로 되돌리기','Reset this map only'))}</button>`}</div>`;
+  FOLD='spawn-'+(all?'all':'map');let body;try{body=all?spawnCommon.render():spawnOff()+spawnMap.render();}finally{FOLD=null;}
+  return tabs+acts+body;}};
+/** 맵 값이 처음 설치값과 다른지(키 순서 무관). */
+const stableJson=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(stableJson).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stableJson(v[k])).join(',')+'}'):JSON.stringify(v);
+function mapChanged(mid){return !!(state.maps[mid]&&DEFAULTS.maps[mid])&&stableJson(state.maps[mid])!==stableJson(DEFAULTS.maps[mid]);}
 
 P.near={desc:T('플레이어 동선 주변에 봇을 계속 던져 넣는 선택 기능입니다. 다른 스폰과 함께 씁니다.','Optional: keeps dropping bots around your route, on top of normal spawns.'),render(mid=null,controlsOnly=false){
   const {slider,range,sw,sel,seg}=scopedControls(mid);
@@ -1752,7 +1762,7 @@ function renderShell(){
   $('#gearPresetSel').value=state.tierPreset;document.body.classList.toggle('easy',mode==='easy');renderNav();
 }
 function render(){
-  if(page==='flow'||page==='maps')selectPage(page);
+  if(page==='flow'||page==='maps'||page==='near')selectPage(page);
   persistNavigation();renderShell();const pg=P[page];$('#main').classList.toggle('wide',page==='tieredit');
   $('#main').innerHTML=`<div class="crumb">${u('settings')} / ${tr(navTitle(page))}</div><div class="head"><div><h1>${tr(navTitle(page))}</h1><p>${tr(pg.desc)}</p></div></div><div id="modeNote"></div>${liveBanner(page)}${svmNotice(page)}${pg.render()}<div id="advNote"></div>`;
   const n=$('#main').querySelectorAll('.adv').length,easy=mode==='easy';
@@ -1922,6 +1932,8 @@ document.addEventListener('click',e=>{
   else if(a==='tlpopClose'){closePop();}
   else if(a==='tFull'){tFull=!tFull;document.body.classList.toggle('noscroll',tFull);render();if(!tFull){const el=document.querySelector('.card .tlay,.card .ttabs');if(el)el.scrollIntoView({block:'start'});}}
   else if(a==='toAdv'){mode='adv';rerender();}
+  else if(a==='foldAll'||a==='foldNone'){document.querySelectorAll('#main details[data-fold]').forEach(d=>{d.open=a==='foldAll';writeLocal('gravity.fold.'+d.dataset.fold,d.open?'1':'0');});}
+  else if(a==='resetMap'){const m=mapById(mapSel);if(confirm(fmt(tr(T('{m}의 맵별 설정(방식·구역·카드별 값)을 모두 지우고 공통 값을 따르게 할까요?','Clear every per-map setting of {m} (style, zones, card values) and follow the shared values?')),{m:tr(m.name)}))){state.maps[m.id]=clone(DEFAULTS.maps[m.id]);presetTouched('maps');toast(fmt(tr(T('{m}을(를) 원본으로 되돌렸습니다','{m} reset')),{m:tr(m.name)}));rerender();}}
   else if(a==='toEasy'){mode='easy';rerender();}
   else if(a==='normalize'){const o=get(arg),ks=Object.keys(o),sum=ks.reduce((s,k)=>s+o[k],0)||1;let acc=0;ks.forEach((k,i)=>{o[k]=i===ks.length-1?100-acc:Math.round(o[k]/sum*100);acc+=o[k];});rerender();}
   else if(a==='zonesReset'){const view=zoneView(mapSel);state.maps[mapSel][view.key]||={};view.zones.forEach(z=>state.maps[mapSel][view.key][z.id]={on:true,w:z.w,wPmc:z.w,wScav:z.w});rerender();}
@@ -2012,7 +2024,7 @@ function applyInfo(id,groups){
   const count=groups.filter(g=>!g.pending).reduce((n,g)=>n+g.items.length,0),open=readLocal('gravity.applyInfo.'+id)==='1';
   return `<details class="apply-info" data-apply-info="${id}" ${open?'open':''}><summary>${fmt(tr(T('지금 적용 중인 항목 {n}개','{n} items currently applied')),{n:count})} <span class="muted">· ${tr(T('자세히 ▾','Details ▾'))}</span></summary><div class="tw"><table><tbody>${groups.map(g=>`<tr><th>${esc(tr(g.label))}</th><td><ul>${g.items.map(x=>`<li>${esc(tr(x))}</li>`).join('')}</ul></td></tr>`).join('')}</tbody></table></div></details>`;
 }
-document.addEventListener('toggle',e=>{const d=e.target.dataset||{};if(d.applyInfo)writeLocal('gravity.applyInfo.'+d.applyInfo,e.target.open?'1':'0');if(d.navGroup!==undefined)writeLocal('gravity.nav.'+d.navGroup,e.target.open?'1':'0');},true);
+document.addEventListener('toggle',e=>{const d=e.target.dataset||{};if(d.applyInfo)writeLocal('gravity.applyInfo.'+d.applyInfo,e.target.open?'1':'0');if(d.navGroup!==undefined)writeLocal('gravity.nav.'+d.navGroup,e.target.open?'1':'0');if(d.fold)writeLocal('gravity.fold.'+d.fold,e.target.open?'1':'0');},true);
 function applyTable(){
   const client=serverMeta?.client,ready=!!(client?.version&&client.compatible),off=spawnLocked()||!state.modules.spawn;
   const ST={on:[T('적용 중','Applied'),'good'],client:ready?[T('적용 중','Applied'),'good']:[T('게임 플러그인 필요','Needs game plugin'),'warn'],restart:[T('켜고 끄기는 서버 재시작 후','On/off after server restart'),'gold'],off:[T('쓰이지 않음','Not used'),''],todo:[T('아직 없음','Not yet'),'']};
