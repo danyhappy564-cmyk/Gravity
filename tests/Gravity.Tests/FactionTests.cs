@@ -215,7 +215,8 @@ public class FactionTests
               "locations": {
                 "Woods": { "patrol": { "patrolZones": ["ZoneHouse", "ZoneMiniHouse"], }, "checkpoint": { "checkpointZones": [ { "checkpointZone": "ZoneRoad", "x": 1 } ] },
                            "hunt": { "hunts": { "remnant": { "huntZones": "A" } } } },
-                "lighthouse": { "patrol": { "patrolZones": [] }, "checkpoint": { "checkpointZones": [] }, "hunt": { "hunts": { "ruaf": { "huntZones": "Zone_DestroyedHouse" } } } }
+                "lighthouse": { "patrol": { "patrolZones": [] }, "checkpoint": { "checkpointZones": [] }, "hunt": { "hunts": { "ruaf": { "huntZones": "Zone_DestroyedHouse" } } } },
+                "shoreline": { "checkpoint": { "enableCheckpoints": false, "checkpointZones": [ { "checkpointZone": "ZoneRailWays" } ] } }
               }
             }
             """);
@@ -223,6 +224,7 @@ public class FactionTests
         Assert.Equal(["ZoneRoad"], ruaf["woods"].CheckpointZones);
         Assert.Null(ruaf["woods"].HuntZones);
         Assert.Equal("Zone_DestroyedHouse", ruaf["lighthouse"].HuntZones);
+        Assert.Empty(ruaf["shoreline"].CheckpointZones); // RUAF가 끈 맵은 좌표가 있어도 검문소 없음
         Assert.Equal(["bigmap", "labyrinth"], FactionData.ReadBlackDivMaps("""{"spawns":{"huntMaps":["bigmap","Labyrinth"]}}"""));
         Assert.Equal(100, FactionData.ReadBlackoutChance("""{"blackoutChance": 100}"""));
     }

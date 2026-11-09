@@ -52,7 +52,9 @@ public sealed class FactionData
         foreach (var (map, node) in locs)
         {
             if (node is not JsonObject m) continue;
-            var cps = m["checkpoint"]?["checkpointZones"] is JsonArray ca
+            // RUAF가 이 맵 검문소를 끈 경우(enableCheckpoints=false)는 좌표가 있어도 세우지 않는다(1.0 전 사용자 요청 확인 중 발견: 해안선).
+            var cpOn = m["checkpoint"]?["enableCheckpoints"] is not JsonValue ev || !ev.TryGetValue<bool>(out var en) || en;
+            var cps = cpOn && m["checkpoint"]?["checkpointZones"] is JsonArray ca
                 ? ca.OfType<JsonObject>().Select(z => Str(z["checkpointZone"])).OfType<string>().Where(z => z.Length > 0).ToArray() : [];
             d[map.ToLowerInvariant()] = new RuafMap(Strings(m["patrol"]?["patrolZones"]), cps, Str(m["hunt"]?["hunts"]?["ruaf"]?["huntZones"]));
         }
