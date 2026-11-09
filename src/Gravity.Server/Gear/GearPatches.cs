@@ -192,14 +192,14 @@ public class GearDynamicModPatch : AbstractPatch
     protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotEquipmentModGenerator), nameof(BotEquipmentModGenerator.GetDynamicModPool));
 
     [PatchPostfix]
-    public static void Postfix(string modSlot, ref HashSet<MongoId> __result)
+    public static void Postfix(string parentItemId, string modSlot, ref HashSet<MongoId> __result)
     {
         var c = GearRuntime.Current;
         if (c == null || __result == null || __result.Count == 0) return;
         try
         {
             var set = new HashSet<MongoId>(__result);
-            GearApply.FilterModSet(set, modSlot ?? "", c);
+            GearApply.FilterModSet(set, modSlot ?? "", c, c.Required(parentItemId, modSlot ?? ""));
             __result = set;
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
@@ -212,17 +212,18 @@ public class GearDynamicGearPatch : AbstractPatch
     protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotInventoryGenerator), nameof(BotInventoryGenerator.GetFilteredDynamicModsForItem));
 
     [PatchPostfix]
-    public static void Postfix(ref Dictionary<string, HashSet<MongoId>> __result)
+    public static void Postfix(MongoId itemTpl, ref Dictionary<string, HashSet<MongoId>> __result)
     {
         var c = GearRuntime.Current;
         if (c == null || __result == null) return;
         try
         {
+            var parent = itemTpl.ToString();
             var copy = new Dictionary<string, HashSet<MongoId>>();
             foreach (var (slot, set) in __result)
             {
                 var s = set == null ? new HashSet<MongoId>() : new HashSet<MongoId>(set);
-                if (s.Count > 0) GearApply.FilterModSet(s, slot, c);
+                if (s.Count > 0) GearApply.FilterModSet(s, slot, c, c.Required(parent, slot));
                 copy[slot] = s;
             }
             __result = copy;

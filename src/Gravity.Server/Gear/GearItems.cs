@@ -3,7 +3,7 @@ namespace Gravity.Gear;
 /// <summary>장비 결정에 쓰는 아이템 한 개의 정보(서버 시작 때 DB에서 한 번 뽑음).</summary>
 public sealed record ItemInfo(double Price, int ArmorClass, double Pen, bool Quest, bool Mod,
     bool Thermal = false, bool LongScope = false, bool Weapon = false, bool Plate = false, bool PlateSlots = false, double MaxDurability = 0,
-    string Cat = "loot");
+    string Cat = "loot", IReadOnlySet<string>? RequiredSlots = null);
 
 /// <summary>
 /// 아이템 정보와 자동 티어. 장비 칸 티어 = 모든 봇 목록에 그 칸으로 나오는 아이템을 가격순으로 7등분(판정 43).

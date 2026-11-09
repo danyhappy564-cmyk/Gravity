@@ -54,7 +54,8 @@ public static class GearItemsBuilder
                 Thermal: IsA(id, ThermalBase) || (parent.GetValueOrDefault(id) == SpecialScope && ThermalName.IsMatch(t.Name ?? "")), LongScope: LongScopeBases.Any(b => IsA(id, b)), Weapon: IsA(id, WeaponBase),
                 Plate: PlateBases.Any(b => IsA(id, b)),
                 PlateSlots: pr?.Slots?.Any(s => s.Name != null && PlateSlotNames.Contains(s.Name.ToLowerInvariant())) ?? false,
-                MaxDurability: pr?.MaxDurability ?? 0, Cat: Category(id, IsA));
+                MaxDurability: pr?.MaxDurability ?? 0, Cat: Category(id, IsA),
+                RequiredSlots: RequiredOf(pr?.Slots));
         }
         var pools = new List<(string, string)>();
         foreach (var (_, bt) in bots.Types)
@@ -89,6 +90,16 @@ public static class GearItemsBuilder
     {
         foreach (var (b, c) in Cats) if (isA(id, b)) return c;
         return "loot";
+    }
+
+    /// <summary>필수 부품 칸 이름(소문자). 없으면 null(대부분 아이템).</summary>
+    private static IReadOnlySet<string>? RequiredOf(IEnumerable<Slot>? slots)
+    {
+        if (slots == null) return null;
+        HashSet<string>? set = null;
+        foreach (var s in slots)
+            if (s?.Required == true && !string.IsNullOrEmpty(s.Name)) (set ??= new(StringComparer.Ordinal)).Add(s.Name.ToLowerInvariant());
+        return set;
     }
 
     public static int[] ExpTable(GlobalTable globals) =>

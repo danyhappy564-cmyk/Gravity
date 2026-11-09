@@ -67,6 +67,36 @@ public class GearTests
     }
 
     [Fact]
+    public void 필수_칸은_다_막혀도_비우지_않는다()
+    {
+        // 1.0 인게임: 묶음 밖 모드 방어구 내장 부품이 다 막혀 필수 칸이 비면 SPT가 봇 생성 전체를 실패했다(Nullable object must have a value)
+        var items = Items(out var info);
+        info[Id(70)] = new ItemInfo(1, 4, 0, false, true, RequiredSlots: new HashSet<string> { "soft_armor_front" });
+        info[Id(71)] = new ItemInfo(1, 2, 0, false, true);
+        items = new GearItems(info, [("mods", Id(71)), ("ArmorVest", Id(70))]);
+        var g = Cfg($$$"""{"blacklist":{"entries":[{"id":"{{{Id(72)}}}","bots":["all"]}]}}""");
+        info[Id(72)] = new ItemInfo(1, 2, 0, false, false);
+        var raid = GearRaid.Pick(items, true, 0, 0, 0, 1);
+        var c = GearApply.Context(g, new GearPick("usec", "pmc", 3, true), items, raid, false, new Random(1));
+        Assert.True(c.Blocked(Id(71)));
+        Assert.True(c.Required(Id(70), "Soft_armor_front"));
+        Assert.False(c.Required(Id(70), "mod_scope"));
+
+        var optional = new HashSet<MongoId> { Id(71) };
+        GearApply.FilterModSet(optional, "soft_armor_front", c);
+        Assert.Empty(optional); // 필수 아님: 예전처럼 비움
+
+        var req = new HashSet<MongoId> { Id(71), Id(72) };
+        var (_, restored) = GearApply.FilterModSet(req, "Soft_armor_front", c, c.Required(Id(70), "Soft_armor_front"));
+        Assert.True(restored);
+        Assert.Equal([Id(71)], req.Select(x => x.ToString())); // 사용자 블랙리스트(72)는 되살리지 않는다
+
+        var onlyBlack = new HashSet<MongoId> { Id(72) };
+        GearApply.FilterModSet(onlyBlack, "soft_armor_front", c, true);
+        Assert.Single(onlyBlack); // 그것뿐이면 원래 목록(봇 생성 실패보다 낫다)
+    }
+
+    [Fact]
     public void 설정을_읽고_범위를_자른다()
     {
         var g = Cfg("""

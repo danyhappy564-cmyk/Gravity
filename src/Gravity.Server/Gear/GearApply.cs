@@ -28,6 +28,10 @@ public sealed class GearContext
         return thermal == x.Thermal ? x : x with { Thermal = thermal };
     }
 
+    /// <summary>부모 아이템의 이 칸이 필수 칸인지(방어구 내장 부품 등). SPT는 필수 칸 후보가 비면 봇 생성 전체가 실패한다.</summary>
+    public bool Required(string? parentId, string slotName) =>
+        parentId != null && Items.Info.TryGetValue(parentId, out var p) && p.RequiredSlots?.Contains(slotName.ToLowerInvariant()) == true;
+
     public int TierOf(string slot, string id) => Settings.ItemTier.TryGetValue(id, out var tier) && tier is >= 1 and <= 7
         ? tier - 1 : Items.TierOf(slot, id);
 
@@ -159,13 +163,14 @@ public static class GearApply
 
         // 3) 부품 목록
         if (inv?.Mods != null)
-            foreach (var (_, slots) in inv.Mods)
+            foreach (var (parentId, slots) in inv.Mods)
             {
                 if (slots == null) continue;
+                var parent = parentId.ToString();
                 foreach (var (slotName, set) in slots)
                 {
                     if (set == null || set.Count == 0) continue;
-                    var (r, back) = FilterModSet(set, slotName, c);
+                    var (r, back) = FilterModSet(set, slotName, c, c.Required(parent, slotName));
                     removed += r;
                     if (back) restored++;
                 }
@@ -189,8 +194,20 @@ public static class GearApply
     /// <summary>
     /// 부품 칸 하나 거르기(봇 목록과 SPT 동적 목록 공통). 막힌 것·방탄판 등급·열화상·배율 조준경을 뺀다.
     /// 다 빠지면: 막힌 것은 빼고 방탄판은 가장 가까운 등급, 조준경·야투경은 열화상 아닌 것만 되살린다(판정 51). 되살릴 게 없으면 비워 둔다. 반환: (뺀 수, 되살림 여부).
+    /// 단 필수 칸(required)은 절대 비우지 않는다(1.0 인게임: 묶음 밖 모드 방어구 내장 부품이 다 막혀 SPT가 "Nullable object must have a value"로 봇 생성 실패).
+    /// 그때는 사용자 블랙리스트에 없는 것을, 그것도 없으면 원래 목록을 되살린다.
     /// </summary>
-    public static (int Removed, bool Restored) FilterModSet(HashSet<MongoId> set, string slotName, GearContext c)
+    public static (int Removed, bool Restored) FilterModSet(HashSet<MongoId> set, string slotName, GearContext c, bool required = false)
+    {
+        var before = set.ToList();
+        var res = FilterCore(set, slotName, c);
+        if (set.Count > 0 || !required || before.Count == 0) return res;
+        var soft = before.Where(m => !c.Black.Contains(m.ToString())).ToList();
+        foreach (var m in soft.Count > 0 ? soft : before) set.Add(m);
+        return (before.Count - set.Count, true);
+    }
+
+    private static (int Removed, bool Restored) FilterCore(HashSet<MongoId> set, string slotName, GearContext c)
     {
         var s = slotName.ToLowerInvariant();
         bool front = s is "front_plate" or "back_plate", side = s is "left_side_plate" or "right_side_plate";
