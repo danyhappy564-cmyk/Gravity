@@ -256,6 +256,19 @@ public class ReleaseBTests
     }
 
     [Fact]
+    public void ImportedPresetTablesNeverUseModItemsEvenWhenModSettingsAllowThem()
+    {
+        var info=new Dictionary<string,ItemInfo>{[Id(81)]=new(1,0,0,false,false){Section="parts",Slot="scope"},[Id(82)]=new(1,0,0,false,true){Section="parts",Slot="scope",Source="SomeParts"}};
+        var items=new GearItems(info,[]);
+        // 모드 설정은 모드 아이템을 전부 허용(묶음 끔·PMC만 끔)
+        var only=Config("""{"mods":{"subset":false,"pmcOnly":false},"tierData":{"pmc":[{"only":true}]}}""");
+        var auto=Config("""{"mods":{"subset":false,"pmcOnly":false}}""");
+        Assert.True(GearApply.Context(only,new("usec","pmc",0,true),items,new(null,0,0,0),false,new(1)).Blocked(Id(82)));
+        Assert.False(GearApply.Context(only,new("usec","pmc",0,true),items,new(null,0,0,0),false,new(1)).Blocked(Id(81)));
+        Assert.False(GearApply.Context(auto,new("usec","pmc",0,true),items,new(null,0,0,0),false,new(1)).Blocked(Id(82)));
+    }
+
+    [Fact]
     public void ZeroAmmoDoesNotRestoreRoundsOrLeaveAWeaponRequiringThoseRounds()
     {
         var items=new GearItems(new Dictionary<string,ItemInfo>{[Id(1)]=new(1,0,0,false,false,Weapon:true){Section="weapons",Slot="ar",Caliber="fixture"},[Id(2)]=new(1,0,5,false,false){Section="ammo",Slot="fixture"}},[("FirstPrimaryWeapon",Id(1))]);

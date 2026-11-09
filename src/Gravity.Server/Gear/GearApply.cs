@@ -42,6 +42,8 @@ public sealed class GearContext
         if (Info(id) is not { } info) return false;
         if (info.Quest && (Settings.NoQuest || Settings.BlockQuest)) return true;
         if (info.Mod && (Settings.DisabledSources.Contains(info.Source) || !Raid.ModAllowed(id) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
+        // 가져온 원작 프리셋 표(only): 모드 아이템은 어느 칸에서도 쓰지 않는다(부착물·탄약·소모품 포함, 모드 설정과 무관).
+        if (info.Mod && Settings.TableFor(Pick.RoleId, Pick.Tier).Only) return true;
         return false;
     }
 }

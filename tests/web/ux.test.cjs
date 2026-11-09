@@ -672,3 +672,23 @@ test('모드 아이템 0개 설정·PMC만 설정은 티어 편집기에서도 �
   a.run(`page='items';modTab='other'`);
   assert.doesNotThrow(()=>a.run('P.items.render()'));
 });
+
+test('원작 프리셋 표는 모든 칸(부착물·탄약 자동 목록 포함)에서 모드 아이템을 보여 주지 않습니다', () => {
+  const a=app(),v='000000000000000000000091',m='000000000000000000000092';
+  a.run(`serverMeta={};GEAR_CATALOG=[{id:'${v}',ko:'바닐라 조준경',en:'Vanilla scope',section:'parts',slot:'scope',equipmentSlots:[],source:'vanilla',mod:false,autoTier:1,armorClass:0,pen:0,price:100},
+    {id:'${m}',ko:'모드 조준경',en:'Mod scope',section:'parts',slot:'scope',equipmentSlots:[],source:'SomeParts',mod:true,autoTier:1,armorClass:0,pen:0,price:100}];rebuildSlots();INSTALLED.SomeParts=true;`);
+  assert.equal(a.run(`Object.keys(poolView('pmc',0,'parts','scope')).length`),2);
+  a.run(`state.tierData.pmc[0].only=true`);
+  assert.deepEqual(JSON.parse(a.run(`JSON.stringify(Object.keys(poolView('pmc',0,'parts','scope')))`)),[v]);
+});
+
+test('커스텀 프리셋 삭제: 사용 중이면 기본 프리셋으로 돌아가고, 다음 커스텀 번호는 지운 번호를 다시 쓰지 않습니다', () => {
+  const a=app();
+  a.run(`serverMeta={};customPresets=[{id:'c1',name:'커스텀 프리셋 1',snap:pickKeys(state,RAID_KEYS)},{id:'c2',name:'커스텀 프리셋 2',snap:pickKeys(state,RAID_KEYS)}];state.preset='c2';confirm=()=>true;`);
+  a.click({act:'delPreset',arg:'c2'});
+  assert.equal(a.run('customPresets.length'),1);
+  assert.equal(a.run('state.preset'),'default');
+  a.click({act:'delPreset',arg:'c1'});
+  a.run(`customPresets=[{id:'c3',name:'커스텀 프리셋 3',snap:{}}]`);
+  assert.equal(a.run('customName(customPresets)'),'커스텀 프리셋 4');
+});
