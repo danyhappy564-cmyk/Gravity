@@ -20,6 +20,9 @@ namespace Gravity.Shared
 
     public sealed record RefillGroup(bool Usec, int Size, string Difficulty);
 
+    /// <summary>서버가 넣은 계획 PMC 분대의 서명(1.0, 3차 재검토 1·3번). 클라 웨이브에는 출처 필드가 없어서 진영·시각·인원·구역으로 알아본다.</summary>
+    public sealed record PlannedPmcDto(bool Usec, int TimeSec, int Size, string Zone);
+
     public sealed record NearDto(
         bool On, double FirstDelay, double Interval, double MinDist, double MaxDist, double Spacing,
         int WaveMin, int WaveMax, double SlotChance, double PmcChance, int Attempts,
@@ -36,7 +39,7 @@ namespace Gravity.Shared
         IReadOnlyList<RefillGroup> RefillGroups, NearDto Near, IReadOnlyList<string>? CapExclude = null,
         bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
         string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
-        IReadOnlyList<int>? PlannedGroups = null);
+        IReadOnlyList<int>? PlannedGroups = null, IReadOnlyList<PlannedPmcDto>? PlannedPmc = null);
 
     /// <summary>Spawned 키: pmcUSEC·pmcBEAR·assault·near·other. Dropped 키: noPoint·expired·groupCap·cap(하드 스톱으로 버린 PMC 분대)·scavCap(상한에 막힌 스캐브 차례 구간)·nearCap(상한에 막힌 근처 자리).
     /// AlivePerMinute 원소: [분, PMC, 스캐브, 전체]. Extracted(0.6): 살아서 맵을 떠난 봇(탈출) 수, 키는 Killed와 같다.</summary>

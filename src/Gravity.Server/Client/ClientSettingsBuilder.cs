@@ -71,7 +71,9 @@ public static class ClientSettingsBuilder
             cfg.OrbitOrDefault.RefillMode, cfg.OrbitOrDefault.ExtractRefillCap,
             ms.Zones.Where(kv => !kv.Value).Select(kv => kv.Key).ToArray(),
             // 서버 계획이 이미 넣은 PMC 분대 크기: 클라가 "레이드 전체" 그룹 제한을 이어서 센다(Codex 검토 2번).
-            plan.Groups.Select(g => g.Size).ToArray());
+            plan.Groups.Select(g => g.Size).ToArray(),
+            // 계획 분대 서명: 클라가 Gravity 분대만 상한 보정·예약하게(다른 모드 PMC는 바닐라 그대로, 3차 재검토 3번)
+            plan.Groups.Select((g, i) => new PlannedPmcDto(g.Usec, Math.Max(1, g.TimeSec), g.Size, RaidSpawnApplier.PmcZoneFor(map.PmcZones, ms, i))).ToArray());
     }
 
     private static void FillDefaults(Dictionary<string, double> weights, string[]? zones, IReadOnlyDictionary<string, bool> on)

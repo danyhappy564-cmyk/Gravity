@@ -47,13 +47,17 @@ public class ReviewFixTests
     }
 
     [Fact]
-    public void CapLedger_ExpiresStuckReservations_AndNoCapMeansUnlimited()
+    public void CapLedger_WaitingShareExpiresWithoutRetry_AndNoCapMeansUnlimited()
     {
+        // 대기 중 예약만 기한이 있다: 대기열 재시도가 3초마다 늘리고, 재시도가 끊기면(대기열에서 사라짐) WaitTtl 뒤 풀린다.
         var l = new CapLedger();
-        Assert.True(l.TryReserve(new object(), 5, 10, 5, 0, 0, ttl: 30));
-        Assert.False(l.TryReserve(new object(), 1, 10, 5, 0, 10));
-        Assert.Equal(0, l.Held(31));
-        Assert.True(l.TryReserve(new object(), 5, 10, 5, 0, 31));
+        object a = new();
+        Assert.True(l.TryReserve(a, 5, 10, 5, 0, 0));
+        l.Shrink(a, 4, waiting: true, now: 0);
+        Assert.False(l.TryReserve(new object(), 2, 10, 5, 0, 10));
+        l.Hold(a, 4, true, 20); // 재시도로 기한 연장
+        Assert.Equal(4, l.Held(20 + CapLedger.WaitTtl - 1));
+        Assert.Equal(0, l.Held(20 + CapLedger.WaitTtl + 1));
         Assert.Equal(int.MaxValue, CapLedger.Room(0, 500, 0, 500));
     }
 
@@ -95,12 +99,71 @@ public class ReviewFixTests
     }
 
     [Fact]
-    public void CapLedger_LongProfileLoad_NotReleasedAt60s()
+    public void CapLedger_InFlightRequest_NeverExpiresByTime()
     {
+        // 3차 재검토 2번: 진행 중인 요청은 시간만으로 풀지 않는다(완료·실패·취소·대기열에서 버림·레이드 끝에만).
         var l = new CapLedger();
-        Assert.True(l.TryReserve(new object(), 5, 24, 19, 0, 0));
-        Assert.Equal(5, l.Held(90));   // 프로필 받기가 90초 걸려도 예약 유지(기본 5분)
-        Assert.Equal(0, l.Held(CapLedger.DefaultTtl + 1));
+        object a = new();
+        Assert.True(l.TryReserve(a, 5, 24, 19, 0, 0));
+        Assert.Equal(5, l.Held(90));
+        Assert.Equal(5, l.Held(100000));
+        Assert.False(l.TryReserve(new object(), 1, 24, 19, 0, 100000));
+        l.Shrink(a, 4, waiting: false, now: 100000); // 분대장 반영 → 대원 몫은 진행 중(기한 없음)
+        Assert.Equal(4, l.Held(1e9f));
+        Assert.True(l.Release(a));
+    }
+
+    [Fact]
+    public void CapLedger_PlannedSquadWithoutPreReservation_HoldsWholeSquad()
+    {
+        // 3차 재검토 1번: 앞단 예약 없는 서버 계획 분대 A(5명)가 게임 상한 검사를 통과하면 그때 5명 전체를 잡는다(Hold).
+        // 기존 19 + A 5 → 분대장만 반영(점유 20, 대원 4 진행 중) → 근처/무한 보충 B 4명은 거부
+        var l = new CapLedger();
+        object a = new(), b = new();
+        l.Shrink(a, 4, false, 0);           // 예약이 없으면 Shrink는 아무것도 안 한다(바닐라 웨이브 보호)
+        Assert.False(l.IsHeld(a));
+        l.Hold(a, 5, false, 0);              // 계획 분대 통과 순간
+        l.Shrink(a, 4, false, 1);            // 분대장 생성 처리
+        Assert.False(l.TryReserve(b, 4, 24, 20, 0, 1));
+        // 계획 분대가 대기열로 가면(게임은 1로 셈) 대원 4명은 대기 중 예약으로 남는다
+        object q = new();
+        l.Hold(q, 4, true, 1);
+        Assert.Equal(8, l.Held(1));
+        Assert.Equal(4, l.HeldInFlight(1, null));
+    }
+
+    [Fact]
+    public void PlannedPmcIndex_ClaimsOnlyServerSquads()
+    {
+        var idx = new PlannedPmcIndex([new PlannedPmcDto(true, 120, 3, "ZoneA"), new PlannedPmcDto(true, 120, 3, ""), new PlannedPmcDto(false, 1, 1, "")]);
+        Assert.Equal(3, idx.Left);
+        Assert.True(idx.TryClaim(true, 120.2f, 3, "ZoneA"));
+        Assert.True(idx.TryClaim(true, 119.8f, 3, "other"));  // 구역 문자열은 보지 않는다
+        Assert.False(idx.TryClaim(true, 120f, 3, "ZoneA"));   // 같은 서명은 계획 수만큼만
+        Assert.False(idx.TryClaim(false, 120f, 3, ""));       // 진영이 다른 다른 모드 PMC
+        Assert.False(idx.TryClaim(false, 1f, 2, ""));         // 인원이 다름
+        Assert.True(idx.TryClaim(false, 0.4f, 1, ""));        // 서버는 시각을 최소 1초로 넣는다
+        Assert.Equal(0, idx.Left);
+        Assert.False(new PlannedPmcIndex(null).TryClaim(true, 1, 1, ""));
+    }
+
+    [Fact]
+    public void Builder_SendsPlannedPmcSignatures_MatchingAppliedWaves()
+    {
+        var map = new MapInfo("bigmap", 16, 20, 2400, ["A", "B"], ["A"]);
+        var cfg = Read("""{"maps":{"bigmap":{"zones":{"B":{"on":false}}}}}""");
+        var plan = SpawnPlanner.Plan(cfg, map, 2400, 0, 9);
+        Assert.NotEmpty(plan.Groups);
+        var dto = ClientSettingsBuilder.Build(cfg, map, plan, true);
+        Assert.Equal(plan.Groups.Count, dto.PlannedPmc!.Count);
+        for (int i = 0; i < plan.Groups.Count; i++)
+        {
+            Assert.Equal(plan.Groups[i].Usec, dto.PlannedPmc[i].Usec);
+            Assert.Equal(Math.Max(1, plan.Groups[i].TimeSec), dto.PlannedPmc[i].TimeSec);
+            Assert.Equal(plan.Groups[i].Size, dto.PlannedPmc[i].Size);
+        }
+        var idx = new PlannedPmcIndex(dto.PlannedPmc);
+        Assert.All(plan.Groups, g => Assert.True(idx.TryClaim(g.Usec, Math.Max(1, g.TimeSec), g.Size, null)));
     }
 
     // ── 2번: 레이드 전체 그룹 제한 장부 ──

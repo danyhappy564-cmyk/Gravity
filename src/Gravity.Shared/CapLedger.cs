@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Gravity.Shared
@@ -11,14 +12,17 @@ namespace Gravity.Shared
     ///   상한을 넘을 수 있다. 그래서 Gravity가 요청한 인원을 요청 순간 예약하고, 게임 집계에 잡힌 만큼만 줄인다(재검토 1번):
     ///   분대는 분대장이 생성 처리에 들어가면(TrySpawn 성공) 대원 수만 남기고, 대원 생성(SpawnBossSupports)이 끝나면 푼다.
     ///   게임 대기열(DelayBossSpawn)은 분대를 1로 세므로 대원 수를 "대기 중" 예약으로 계속 잡는다. 스캐브는 생성 Task가 끝나면 푼다.
-    ///   풀지 못한 예약은 Ttl초(기본 5분) 뒤 저절로 사라진다(분대장이 끝내 활성화되지 않는 등 생성 실패로 영영 남지 않게).
+    ///   진행 중 예약은 시간만으로 풀지 않는다(3차 재검토 2번): 게임은 프로필을 기다리기 전에 상한 검사 결과를 정해 두고 그대로 생성하므로,
+    ///   늦게 재개된 요청 몫을 미리 풀면 상한을 넘는다. 생성 Task 실패·취소, 대원 생성 끝, 대기열에서 버림, 레이드 끝(장부째 사라짐)에만 푼다.
+    ///   대기 중 예약만 WaitTtl초 기한이 있다(대기열 재시도가 3초마다 기한을 늘린다 — 대기열에서 사라졌는데 못 본 경우 대비).
     /// - 게임 자체 상한 검사(NativeCapPatch)는 "진행 중" 예약만 자기 요청을 빼고 더한다: 대기 중 예약까지 세면 대기 분대끼리 서로 막는다.
     /// - 게임 집계와 예약이 잠깐 겹쳐 두 번 셀 수 있다: 상한을 넘기는 쪽이 아니라 몇 초 덜 채우는 쪽이라 그대로 둔다.
     /// 스캐브 생성 Task 끝은 다른 스레드일 수 있어 잠근다.
     /// </summary>
     public sealed class CapLedger
     {
-        public const float DefaultTtl = 300f;
+        public const float InFlight = float.PositiveInfinity;
+        public const float WaitTtl = 30f;
 
         private readonly object _gate = new object();
         private readonly Dictionary<object, (int Size, float Until, bool Waiting)> _held = new Dictionary<object, (int, float, bool)>(RefEq.Instance);
@@ -53,30 +57,43 @@ namespace Gravity.Shared
 
         /// <summary>예약을 remaining명으로 줄인다(0 이하면 푼다). 없는 요청이면 아무것도 안 한다(바닐라·서버 계획 웨이브).
         /// waiting = 게임 대기열에 들어가 게임이 1명만 세는 동안 남은 대원 몫.</summary>
-        public void Shrink(object key, int remaining, bool waiting, float now, float ttl = DefaultTtl)
+        public void Shrink(object key, int remaining, bool waiting, float now)
         {
             if (key == null) return;
             lock (_gate)
             {
                 if (!_held.ContainsKey(key)) return;
-                if (remaining <= 0) _held.Remove(key);
-                else _held[key] = (remaining, now + Math.Max(1f, ttl), waiting);
+                Put(key, remaining, waiting, now);
             }
         }
 
-        public bool IsHeld(object key) { lock (_gate) return key != null && _held.ContainsKey(key); }
+        /// <summary>있든 없든 예약을 remaining명으로 둔다(서버 계획 분대처럼 앞단 예약 없이 들어온 Gravity 분대, 3차 재검토 1번).</summary>
+        public void Hold(object key, int remaining, bool waiting, float now)
+        {
+            if (key == null) return;
+            lock (_gate) Put(key, remaining, waiting, now);
+        }
 
+        private void Put(object key, int remaining, bool waiting, float now)
+        {
+            if (remaining <= 0) _held.Remove(key);
+            else _held[key] = (remaining, waiting ? now + WaitTtl : InFlight, waiting);
+        }
+
+        /// <summary>잡혀 있는 요청 수(레이드 보고 로그용).</summary>
         public int Count { get { lock (_gate) return _held.Count; } }
 
+        public bool IsHeld(object key) { lock (_gate) return key != null && _held.ContainsKey(key); }
+
         /// <summary>자리가 size만큼 있으면 예약하고 true. 없으면 아무것도 안 하고 false.</summary>
-        public bool TryReserve(object key, int size, int cap, int occupied, int excluded, float now, float ttl = DefaultTtl)
+        public bool TryReserve(object key, int size, int cap, int occupied, int excluded, float now)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
             size = Math.Max(1, size);
             lock (_gate)
             {
                 if (Room(cap, occupied, excluded, Held(now)) < size) return false;
-                _held[key] = (size, now + Math.Max(1f, ttl), false);
+                _held[key] = (size, InFlight, false);
                 return true;
             }
         }
@@ -183,6 +200,40 @@ namespace Gravity.Shared
 
         private static bool Matches(GroupCapRuleDto rule, int size) =>
             rule.Cmp == "gte" ? size >= rule.Size : size == rule.Size;
+    }
+
+    /// <summary>
+    /// 서버 계획 PMC 분대 알아보기(3차 재검토 3번): 같은 PMC 역할이라도 다른 모드가 넣은 분대에는 Gravity 상한 보정·예약을 걸지 않는다.
+    /// 서명이 같은 계획 분대가 여럿이면 그 수만큼만 맞춘다(한 번 맞춘 웨이브는 호출하는 쪽이 따로 기억해 재시도에도 쓴다).
+    /// </summary>
+    public sealed class PlannedPmcIndex
+    {
+        private readonly Dictionary<string, int> _left = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        public PlannedPmcIndex(IEnumerable<PlannedPmcDto>? planned)
+        {
+            if (planned == null) return;
+            foreach (var p in planned)
+            {
+                var k = Key(p.Usec, p.TimeSec, p.Size, p.Zone);
+                _left[k] = (_left.TryGetValue(k, out var n) ? n : 0) + 1;
+            }
+        }
+
+        public int Left => _left.Values.Sum();
+
+        /// <summary>서버 웨이브 시각은 정수 초(RaidSpawnApplier: Time = max(1, TimeSec))라 반올림해 맞춘다.</summary>
+        public bool TryClaim(bool usec, float time, int size, string? zone)
+        {
+            var k = Key(usec, (int)Math.Round(time), size, zone);
+            if (!_left.TryGetValue(k, out var n) || n <= 0) return false;
+            _left[k] = n - 1;
+            return true;
+        }
+
+        /// <summary>구역은 서명에 넣지 않는다: 클라 웨이브의 구역 문자열이 바뀌어도(빈 값·목록) 놓치지 않게. 진영·시각·인원만으로 충분히 드물다.</summary>
+        private static string Key(bool usec, int time, int size, string? zone) =>
+            (usec ? "U|" : "B|") + Math.Max(1, time) + "|" + Math.Max(1, size);
     }
 
     /// <summary>구역 비중 읽기(1.0, Codex 검토 4번): 설정에 없는 구역은 웹 기본값 100(보통)이다. 명시한 0은 그대로 0.</summary>

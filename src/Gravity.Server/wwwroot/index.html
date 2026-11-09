@@ -776,7 +776,9 @@ function estimate(m){
   const blocked=c.scavStyle==='start'||!(c.scav.softCap>0)||!(c.scav.perPlayer>0);
   const winFrac=c.scavStyle==='infinite'?1:active/Math.max(1,active+quiet);
   // PMC 차례는 PMC 첫 보충 시각~PMC 중단 사이에만 열린다(재검토 4번): 그 앞뒤 구간과 미궁 PMC 꺼짐은 모든 차례가 스캐브 차례다.
-  const pmcFrom=Math.min(p.end,c.firstDelay/60),pmcTo=m.id==='labyrinth'&&!c.allowPmcLabyrinth?pmcFrom:p.end;
+  // 보충 목록은 서버가 ceil(레이드/간격)개(최대 200)만 보낸다: PMC 차례가 그만큼 쓰이면 그 뒤는 스캐브 차례(3차 재검토 4번).
+  const pmcList=Math.min(200,Math.max(1,Math.ceil(raid*60/Math.max(1,c.inf.delay)))),pmcRate=(c.inf.pmcShare/100)/(Math.max(10,c.inf.delay)/60);
+  const pmcFrom=Math.min(p.end,c.firstDelay/60),pmcTo=m.id==='labyrinth'&&!c.allowPmcLabyrinth?pmcFrom:Math.min(p.end,pmcRate>0?pmcFrom+pmcList/pmcRate:p.end);
   const pmcOverlap=Math.max(0,Math.min(stop,pmcTo)-Math.max(sd,pmcFrom));
   const refill=blocked?0:c.style==='infinite'&&c.scavStyle==='waves'
     ?(duration-pmcOverlap*c.inf.pmcShare/100)/(Math.max(10,c.inf.delay)/60)*Math.max(1,c.inf.batch)*winFrac

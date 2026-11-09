@@ -118,6 +118,25 @@ namespace Gravity.Client
         internal readonly ConditionalWeakTable<EFT.SpawnWave, object> ScavWaves = new ConditionalWeakTable<EFT.SpawnWave, object>();
         internal readonly ConditionalWeakTable<global::BotCreationData, EFT.SpawnWave> ScavData = new ConditionalWeakTable<global::BotCreationData, EFT.SpawnWave>();
 
+        /// <summary>Gravity가 낸 분대 웨이브(무한·탈출 보충 등록 + 서버 계획 분대 중 서명이 맞아 알아본 것). 값 없음.</summary>
+        internal readonly ConditionalWeakTable<BossLocationSpawn, object> Owned = new ConditionalWeakTable<BossLocationSpawn, object>();
+        private readonly PlannedPmcIndex _planned;
+
+        /// <summary>
+        /// 이 분대 웨이브가 Gravity 것인지(3차 재검토 3번): 근처 보충·클라 보충(등록)·서버 계획 분대(서명 대조, 한 번 맞추면 등록).
+        /// 다른 모드가 넣은 PMC는 false → 상한 보정·예약·그룹 제한·대기열 만료를 걸지 않는다. 옛 서버(PlannedPmc 없음)는 예전처럼 PMC 역할이면 true.
+        /// </summary>
+        internal bool Owns(BossLocationSpawn? w)
+        {
+            if (w == null) return false;
+            if (NearWaves.TryGetValue(w, out _) || Owned.TryGetValue(w, out _)) return true;
+            if (!w.BossType.IsPmcBot()) return false;
+            if (S.PlannedPmc == null) return true;
+            if (!_planned.TryClaim(w.BossType == EFT.WildSpawnType.pmcUSEC, w.Time, 1 + Math.Max(0, w.EscortCount), w.BossZone)) return false;
+            Owned.Add(w, w);
+            return true;
+        }
+
         /// <summary>"레이드 전체" 그룹 제한 장부(1.0, Codex 검토 2번): 서버 계획 분대(S.PlannedGroups)로 시작해 클라 보충 분대를 더한다.</summary>
         internal readonly RaidGroupLedger Groups;
 
@@ -186,6 +205,7 @@ namespace Gravity.Client
             Rng = new System.Random(s.Seed);
             Refill = new List<RefillGroup>(s.RefillGroups ?? (IReadOnlyList<RefillGroup>)Array.Empty<RefillGroup>());
             Groups = new RaidGroupLedger(s.GroupCap, s.PlannedGroups);
+            _planned = new PlannedPmcIndex(s.PlannedPmc);
             Log.Level = s.LogLevel ?? "summary";
         }
 

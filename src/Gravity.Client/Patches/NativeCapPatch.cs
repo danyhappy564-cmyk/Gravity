@@ -19,16 +19,21 @@ namespace Gravity.Client.Patches
         internal static int Excluded = -1;
         internal static object? Own;
 
-        internal static void Set(RaidContext c, object own)
+        /// <summary>앞단 예약 없이 들어온 Gravity 분대(서버 계획 분대)면 true: 검사를 통과하는 순간 분대 전체를 예약한다(3차 재검토 1번).</summary>
+        internal static bool ReserveOnPass;
+
+        internal static void Set(RaidContext c, object own, bool reserveOnPass = false)
         {
             Excluded = c.CountCapExcluded();
             Own = own;
+            ReserveOnPass = reserveOnPass;
         }
 
         internal static void Clear()
         {
             Excluded = -1;
             Own = null;
+            ReserveOnPass = false;
         }
     }
 
@@ -49,9 +54,8 @@ namespace Gravity.Client.Patches
             try
             {
                 var c = RaidContext.Current;
-                if (c == null || wave == null) return;
-                if (!wave.BossType.IsPmcBot() && !c.NearWaves.TryGetValue(wave, out _)) return;
-                NativeScope.Set(c, wave);
+                if (c == null || wave == null || !c.Owns(wave)) return; // 다른 모드 PMC·보스는 바닐라 검사(3차 재검토 3번)
+                NativeScope.Set(c, wave, reserveOnPass: !wave.IgnoreMaxBots && !c.Ledger.IsHeld(wave));
             }
             catch (Exception ex)
             {
@@ -60,8 +64,23 @@ namespace Gravity.Client.Patches
             }
         }
 
+        /// <summary>표시를 끄고, 생성 Task가 실패·취소로 끝나면 그 분대 예약을 푼다(시간만으로는 풀지 않는다, 3차 재검토 2번).</summary>
         [PatchPostfix]
-        private static void Postfix() => NativeScope.Clear();
+        private static void Postfix(BossLocationSpawn wave, Task __result)
+        {
+            NativeScope.Clear();
+            try
+            {
+                var c = RaidContext.Current;
+                if (c == null || wave == null || __result == null || !c.Ledger.IsHeld(wave)) return;
+                if (__result.IsCompleted) { if (__result.IsFaulted || __result.IsCanceled) c.Ledger.Release(wave); return; }
+                __result.ContinueWith(t => { if (t.IsFaulted || t.IsCanceled) c.Ledger.Release(wave); }, TaskContinuationOptions.ExecuteSynchronously);
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("BossSpawnScope.Post", ex);
+            }
+        }
 
         [PatchFinalizer]
         private static void Finalizer() => NativeScope.Clear();
@@ -92,6 +111,12 @@ namespace Gravity.Client.Patches
                 if (room <= 0) { toDelay = wantSpawn; toSpawn = 0; }
                 else if (room < wantSpawn) { toDelay = wantSpawn - room; toSpawn = room; }
                 else { toDelay = 0; toSpawn = wantSpawn; }
+                // 서버 계획 분대: 통과하면 분대 전체를 지금 예약(프로필 받는 동안·대원 생성 전까지 다른 요청이 이 자리를 못 쓰게)
+                if (toDelay == 0 && NativeScope.ReserveOnPass && c != null && NativeScope.Own != null)
+                {
+                    c.Ledger.Hold(NativeScope.Own, wantSpawn, false, Time.time);
+                    NativeScope.ReserveOnPass = false;
+                }
                 return false;
             }
             catch (Exception ex)

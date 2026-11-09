@@ -71,8 +71,7 @@ namespace Gravity.Client.Patches
             {
                 var c = RaidContext.Current;
                 // PMC 분대와 근처 보충 웨이브(역할 무관)만: 근처 스캐브 무리도 구역 판정·상한 예약 정리를 같이 받는다(재검토 1번).
-                if (c == null || wave == null || creationData == null) return true;
-                if (!wave.BossType.IsPmcBot() && !c.NearWaves.TryGetValue(wave, out _)) return true;
+                if (c == null || wave == null || creationData == null || !c.Owns(wave)) return true;
                 PmcZones.EnsureZones(c, __instance);
 
                 var ctx = new Ctx { Raid = c, Wave = wave, Data = creationData, Size = 1 + Math.Max(0, wave.EscortCount) };
@@ -248,7 +247,7 @@ namespace Gravity.Client.Patches
                     if (keep) Wait(c, wave); else c.Ledger.Release(wave);
                     return keep;
                 }
-                if (!wave.BossType.IsPmcBot()) return true;
+                if (!c.Owns(wave)) return true; // 다른 모드 PMC·보스는 바닐라 대기열 그대로
                 if (!SpawnExpiry.PastHardStop(c.Elapsed, c.S.HardStopPmcSec)) { Wait(c, wave); return true; }
                 c.Ledger.Release(wave);
                 c.FirstFail.Remove(wave);
@@ -262,8 +261,13 @@ namespace Gravity.Client.Patches
             }
         }
 
-        private static void Wait(RaidContext c, BossLocationSpawn wave) =>
-            c.Ledger.Shrink(wave, Math.Max(0, wave.EscortCount), true, Time.time);
+        /// <summary>대기열에 들어간 Gravity 분대: 게임은 1로 세므로 대원 몫을 "대기 중" 예약으로(앞단 예약이 없던 계획 분대도, 3차 재검토 1번).
+        /// 사용자가 상한 무시를 켠 분대는 상한 밖이므로 잡지 않는다.</summary>
+        private static void Wait(RaidContext c, BossLocationSpawn wave)
+        {
+            if (wave.IgnoreMaxBots) c.Ledger.Release(wave);
+            else c.Ledger.Hold(wave, Math.Max(0, wave.EscortCount), true, Time.time);
+        }
 
         private static bool DropNear(RaidContext c, BotBossSpawn? boss, BossLocationSpawn wave, Directors.NearDirector.Tag near)
         {

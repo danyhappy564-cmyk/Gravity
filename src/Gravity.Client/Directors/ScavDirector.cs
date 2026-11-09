@@ -193,6 +193,7 @@ namespace Gravity.Client.Directors
             // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
             var wave = WaveFactory.Pmc(g, "");
             if (!c.TryReserve(bc, wave, size)) return PmcResult.NoRoom;
+            c.Owned.Add(wave, wave);
 
             c.Groups.TryUse(size);
             if (extra) c.ExtractQueue.Dequeue();

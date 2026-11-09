@@ -475,6 +475,13 @@ test('PMC 첫 보충 전과 PMC 중단 뒤에는 PMC 비율 100%여도 스캐브
   // PMC 중단이 스캐브 중단보다 빠르면 그 뒤 구간도 스캐브 차례
   a.run("state.maps.bigmap.hardStop={...(state.maps.bigmap.hardStop||{}),pmcPct:60,scavPct:5}");
   assert.ok(smax()>early);
+  // PMC 보충 목록 소진: 60분·간격 10초·PMC 100%·첫 보충 0초·중단 0%·활동 60분/휴식 0분 → 목록 200개를 쓴 뒤는 스캐브
+  a.run("state.maps.bigmap.firstDelay=0;state.maps.bigmap.inf.delay=10;state.maps.bigmap.hardStop={...(state.maps.bigmap.hardStop||{}),pmcPct:0,scavPct:0}");
+  a.run("state.maps.bigmap.scav.activeMin=60;state.maps.bigmap.scav.activeMax=60;state.maps.bigmap.scav.quietMin=0;state.maps.bigmap.scav.quietMax=0");
+  if(a.run("raidOf(mapById('bigmap'))")*60/10>200) assert.ok(smax()>0);
+  // 목록이 남는 짧은 간격이 아니면(간격 45초, 레이드 동안 목록이 다 안 떨어짐) PMC 구간 스캐브는 0
+  a.run("state.maps.bigmap.inf.delay=45");
+  assert.equal(smax(),0);
   // 미궁 PMC가 꺼져 있으면 모든 차례가 스캐브
   a.run("ensureOverride('labyrinth','scav');state.maps.labyrinth.scav.startOn=false;state.maps.labyrinth.style='infinite';state.maps.labyrinth.scavStyle='waves';state.maps.labyrinth.inf.pmcShare=100");
   assert.ok(a.run("estimate(mapById('labyrinth')).smax")>0);
