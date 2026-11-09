@@ -41,7 +41,7 @@ public static class EventControl
         };
         bool anyOn = modes.Values.Any(m => m == "on");
         cfg.EnableSeasonalEventDetection = ev.Detect || anyOn;
-        log.Add($"감지 {(cfg.EnableSeasonalEventDetection ? "켬" : "끔")}");
+        log.Add(L.T($"감지 {(cfg.EnableSeasonalEventDetection ? "켬" : "끔")}", $"detection {(cfg.EnableSeasonalEventDetection ? "on" : "off")}"));
 
         foreach (var e in cfg.Events)
         {
@@ -64,11 +64,11 @@ public static class EventControl
                 st.EnableChristmasHideout = ev.Gifts;
                 st.AdjustBotAppearances = ev.Snow;
             }
-            log.Add($"{e.Name} {mode}{(e.Enabled ? "" : "(꺼짐)")}");
+            log.Add($"{e.Name} {mode}{(e.Enabled ? "" : L.T("(꺼짐)", " (off)"))}");
         }
 
-        if (!ev.HalloweenGear && cfg.EventGear.Remove(SeasonalEventType.Halloween)) log.Add("할로윈 이벤트 장비 끔");
-        if (!ev.ChristmasGear && cfg.EventGear.Remove(SeasonalEventType.Christmas)) log.Add("크리스마스 이벤트 장비 끔");
+        if (!ev.HalloweenGear && cfg.EventGear.Remove(SeasonalEventType.Halloween)) log.Add(L.T("할로윈 이벤트 장비 끔", "Halloween event gear off"));
+        if (!ev.ChristmasGear && cfg.EventGear.Remove(SeasonalEventType.Christmas)) log.Add(L.T("크리스마스 이벤트 장비 끔", "Christmas event gear off"));
         return log;
     }
 
@@ -115,15 +115,15 @@ public class GravityEventLoader(ISptLogger<GravityEventLoader> logger, ModHelper
             ResolvedOwner = EventControl.ResolveOwner(ev.Owner, det.Ppes, Svm);
             if (ResolvedOwner != "gravity")
             {
-                logger.Info($"{GravityInfo.Tag} 시즌 이벤트 담당: {ResolvedOwner} (Gravity는 이벤트 봇 확률만)");
+                logger.Info($"{GravityInfo.Tag} {L.T("시즌 이벤트 담당", "Seasonal events handled by")}: {ResolvedOwner} {L.T("(Gravity는 이벤트 봇 확률만)", "(Gravity only sets event bot chances)")}");
                 return Task.CompletedTask;
             }
             Applied.AddRange(EventControl.Apply(seasonal, ev));
-            logger.Info($"{GravityInfo.Tag} 시즌 이벤트 담당: Gravity — {string.Join(", ", Applied)}");
+            logger.Info($"{GravityInfo.Tag} {L.T("시즌 이벤트 담당", "Seasonal events handled by")}: Gravity — {string.Join(", ", Applied)}");
         }
         catch (Exception ex)
         {
-            logger.Warning($"{GravityInfo.Tag} 시즌 이벤트 설정 실패(SPT 기본 그대로): {ex.Message}");
+            logger.Warning($"{GravityInfo.Tag} {L.T("시즌 이벤트 설정 실패(SPT 기본 그대로)", "Seasonal event setup failed (SPT defaults kept)")}: {ex.Message}");
         }
         return Task.CompletedTask;
     }

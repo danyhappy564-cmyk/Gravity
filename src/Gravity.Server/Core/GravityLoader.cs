@@ -23,6 +23,7 @@ public class GravityLoader(
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
+        try { L.Use(locales.GetDesiredServerLocale()); } catch { /* 윈도우 언어 그대로 */ }
         GravityBoot.Ensure(modHelper);
         var paths = GravityBoot.Paths!;
         GravityWebPaths.Paths = paths;
@@ -48,7 +49,7 @@ public class GravityLoader(
                 var f = Path.Combine(GravityBoot.ModsDir!, detect.OrbitFolder, "config.json");
                 if (File.Exists(f)) orbitJson = File.ReadAllText(f);
             }
-            catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} ORBIT 설정을 못 읽음(기본값으로 맞춤): {ex.Message}"); }
+            catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} {L.T("ORBIT 설정을 못 읽음(기본값으로 맞춤)", "Could not read the ORBIT config (using defaults)")}: {ex.Message}"); }
         var orbit = OrbitInfo.Parse(detect.Orbit, orbitVer, orbitJson);
 
         GravityRuntime.Instance = new GravityRuntime(store, catalog, detect, DiagLog.Warn(m => logger.Warning(m)), DiagLog.Info(m => logger.Info(m)))
@@ -84,10 +85,10 @@ public class GravityLoader(
             raw => json.Deserialize<SPTarkov.Server.Core.Models.Eft.Common.LocationBase>(raw));
         GravityRuntime.Instance.ActiveVariants = active;
         if (catalog.AutomaticVariants.Count > 0)
-            logger.Info($"{GravityInfo.Tag} 자동 감지된 변형 맵: {string.Join(", ", catalog.AutomaticVariants)}");
+            logger.Info($"{GravityInfo.Tag} {L.T("자동 감지된 변형 맵", "Auto-detected map variants")}: {string.Join(", ", catalog.AutomaticVariants)}");
         foreach (var m in catalog.All.Where(m => m.HasVariant && m.OriginalPmcZones == null))
-            logger.Warning($"{GravityInfo.Tag} {m.Id}: SPT 원본 구역을 못 읽어 웹의 원본 배치 편집을 비활성화합니다");
-        if (sptData == null) logger.Warning($"{GravityInfo.Tag} SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다");
+            logger.Warning($"{GravityInfo.Tag} {m.Id}: {L.T("SPT 원본 구역을 못 읽어 웹의 원본 배치 편집을 비활성화합니다", "could not read the SPT original zones; original-layout zone editing is disabled in the web UI")}");
+        if (sptData == null) logger.Warning($"{GravityInfo.Tag} {L.T("SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다", "SPT_Data folder not found; other-mod PMC detection and Labs gate restore are off")}");
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();
 
@@ -110,32 +111,40 @@ public class GravityLoader(
             new Gravity.Gear.GearLootPatch().Enable();
             new Gravity.Gear.GearUnheardPatch().Enable();
             var gi = Gravity.Gear.GearRuntime.Items;
-            logger.Info($"{GravityInfo.Tag} 장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}"
-                + (vanilla == null ? " (SPT 원본 목록 없음: 모드 구분 끔)" : "") + $", {sw.ElapsedMilliseconds}ms" + (detect.GearLocked ? " / APBS 감지로 장비 모듈 잠금" : ""));
+            logger.Info($"{GravityInfo.Tag} " + L.T($"장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}",
+                $"Gear data: {gi.Info.Count} items, {gi.SlotTier.Count} gear slots, mod items: {gi.ModWeapons.Count} weapons · {gi.ModEquipment.Count} gear · {gi.ModAttachments.Count} attachments") + $""
+                + (vanilla == null ? L.T(" (SPT 원본 목록 없음: 모드 구분 끔)", " (no SPT original list: mod-item split off)") : "") + $", {sw.ElapsedMilliseconds}ms"
+                + (detect.GearLocked ? L.T(" / APBS 감지로 장비 모듈 잠금", " / gear module locked (APBS detected)") : ""));
         }
-        catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} 장비 모듈 준비 실패, 장비는 SPT 기본: {ex.Message}"); }
+        catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} {L.T("장비 모듈 준비 실패, 장비는 SPT 기본", "Gear module failed to start; gear stays SPT default")}: {ex.Message}"); }
 
-        logger.Info($"{GravityInfo.Tag} {GravityInfo.Version} 로드: 맵 {catalog.All.Count}개, 설정 {(store.RawState == null ? "기본값" : "저장본")}, 웹 /gravity/");
+        logger.Info($"{GravityInfo.Tag} {GravityInfo.Version} " + L.T($"로드: 맵 {catalog.All.Count}개, 설정 {(store.RawState == null ? "기본값" : "저장본")}, 웹 /gravity/",
+            $"loaded: {catalog.All.Count} maps, settings {(store.RawState == null ? "default" : "saved")}, web /gravity/"));
         var found = new List<string>();
-        if (detect.Abps) found.Add("ABPS(스폰 모듈 잠금)");
+        if (detect.Abps) found.Add(L.T("ABPS(스폰 모듈 잠금)", "ABPS (spawn module locked)"));
         if (detect.Apbs) found.Add("APBS");
         if (detect.Svm) found.Add("SVM");
-        if (detect.Orbit) found.Add(orbit.ConfigRead ? $"ORBIT{(orbit.Version != null ? " " + orbit.Version : "")}(봇 재우기 {(orbit.Limiter ? $"켬, 깨우는 거리 {orbit.WakeDistance:0}m" : "끔")})" : "ORBIT(설정 파일 못 읽음)");
+        if (detect.Orbit) found.Add(orbit.ConfigRead
+            ? $"ORBIT{(orbit.Version != null ? " " + orbit.Version : "")}" + (orbit.Limiter
+                ? L.T($"(봇 재우기 켬, 깨우는 거리 {orbit.WakeDistance:0}m)", $"(bot sleeping on, wake distance {orbit.WakeDistance:0}m)")
+                : L.T("(봇 재우기 끔)", "(bot sleeping off)"))
+            : L.T("ORBIT(설정 파일 못 읽음)", "ORBIT (config not readable)"));
         if (detect.Sain) found.Add("SAIN");
         if (detect.Ruaf) found.Add("RUAF");
         if (detect.Untar) found.Add("UNTAR");
         if (detect.BlackDiv) found.Add("BlackDiv");
         if (detect.QuestingBots)
         {
-            found.Add(detect.SpawnLocked ? "QuestingBots(설정에 따라 스폰 잠금)" : "QuestingBots(중복 스폰 주의)");
-            DiagLog.Warn(m => logger.Warning(m))($"{GravityInfo.Tag} Questing Bots의 PMC/플레이어 스캐브 스폰을 끄지 않으면 봇이 두 배로 나올 수 있습니다");
+            found.Add(detect.SpawnLocked ? L.T("QuestingBots(설정에 따라 스폰 잠금)", "QuestingBots (spawns locked by setting)") : L.T("QuestingBots(중복 스폰 주의)", "QuestingBots (watch for double spawns)"));
+            DiagLog.Warn(m => logger.Warning(m))($"{GravityInfo.Tag} {L.T("Questing Bots의 PMC/플레이어 스캐브 스폰을 끄지 않으면 봇이 두 배로 나올 수 있습니다", "Turn off Questing Bots' PMC/player-scav spawning or bots may spawn twice")}");
         }
         if (detect.Blackout) found.Add("Blackout");
         if (detect.MapVariants) found.Add("MapVariants");
-        if (detect.VariantMaps.Count > 0) found.Add("변형 맵 " + string.Join(", ", detect.VariantMaps.Select(kv => $"{kv.Key}({string.Join("·", kv.Value)})")));
-        if (found.Count > 0) { logger.Info($"{GravityInfo.Tag} 감지: {string.Join(", ", found)}"); DiagLog.Remember("INFO", "감지: " + string.Join(", ", found)); }
+        if (detect.VariantMaps.Count > 0) found.Add(L.T("변형 맵 ", "map variants ") + string.Join(", ", detect.VariantMaps.Select(kv => $"{kv.Key}({string.Join("·", kv.Value)})")));
+        if (found.Count > 0) { logger.Info($"{GravityInfo.Tag} {L.T("감지", "Detected")}: {string.Join(", ", found)}"); DiagLog.Remember("INFO", L.T("감지: ", "Detected: ") + string.Join(", ", found)); }
         if (detect.Ruaf || detect.BlackDiv)
-            logger.Info($"{GravityInfo.Tag} 팩션 자료: RUAF 맵 {fd.Ruaf.Count}개, BlackDiv 맵 {fd.BlackDivMaps.Count}개, 연구소 게이트 원본 {fd.LabGateVanilla.Values.Sum(v => v.Count)}개, PMC 지문 맵 {fd.SptPmc.Count}개");
+            logger.Info($"{GravityInfo.Tag} " + L.T($"팩션 자료: RUAF 맵 {fd.Ruaf.Count}개, BlackDiv 맵 {fd.BlackDivMaps.Count}개, 연구소 게이트 원본 {fd.LabGateVanilla.Values.Sum(v => v.Count)}개, PMC 지문 맵 {fd.SptPmc.Count}개",
+                $"Faction data: RUAF {fd.Ruaf.Count} maps, BlackDiv {fd.BlackDivMaps.Count} maps, {fd.LabGateVanilla.Values.Sum(v => v.Count)} original Labs gate entries, PMC fingerprints {fd.SptPmc.Count} maps"));
         return Task.CompletedTask;
     }
 }

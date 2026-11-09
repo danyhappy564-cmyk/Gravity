@@ -93,7 +93,7 @@ public static class FactionRaid
         if (!MapOn(r.Maps, mapId, md != null))
         {
             var others = list.RemoveAll(IsRuafOtherHunt);
-            return existing.Count + others > 0 ? $"RUAF: 이 맵 끔(항목 {existing.Count + others}개 지움)" : "RUAF: 이 맵 끔";
+            return existing.Count + others > 0 ? L.T($"RUAF: 이 맵 끔(항목 {existing.Count + others}개 지움)", $"RUAF: off on this map (removed {existing.Count + others} entries)") : L.T("RUAF: 이 맵 끔", "RUAF: off on this map");
         }
 
         var patrolZones = md is { PatrolZones.Length: > 0 } ? md.PatrolZones
@@ -133,8 +133,8 @@ public static class FactionRaid
             });
             hunts++;
         }
-        return $"RUAF: 순찰 {patrols}·검문소 {checkpoints}·사냥조 {hunts}"
-            + (r.Checkpoint.On && md is not { CheckpointZones.Length: > 0 } ? "(검문소 좌표 없는 맵)" : "");
+        return L.T($"RUAF: 순찰 {patrols}·검문소 {checkpoints}·사냥조 {hunts}", $"RUAF: patrols {patrols} · checkpoints {checkpoints} · hunters {hunts}")
+            + (r.Checkpoint.On && md is not { CheckpointZones.Length: > 0 } ? L.T("(검문소 좌표 없는 맵)", " (no checkpoint coordinates on this map)") : "");
     }
 
     /// <summary>RUAF 무리: 선임 소총수 1명 + 3명마다 전문병 1명 + 나머지 소총수. 항목 모양은 RUAF 모드와 같게(Supports).</summary>
@@ -180,9 +180,9 @@ public static class FactionRaid
                 IsBossPlayer = false, IsRandomTimeSpawn = false, ForceSpawn = true, IgnoreMaxBots = ignoreCap,
                 TriggerId = "hunt", TriggerName = "", Delay = 0, Supports = null!, SpawnMode = Modes, SptId = "gravity"
             });
-            parts.Add($"사냥조 {b.Chance:0}% {size}명");
+            parts.Add(L.T($"사냥조 {b.Chance:0}% {size}명", $"hunters {b.Chance:0}% x{size}"));
         }
-        else parts.Add("사냥조 없음");
+        else parts.Add(L.T("사냥조 없음", "no hunters"));
 
         if (mapId == "laboratory") parts.Add(ApplyLab(list, b, rnd, data, ignoreCap));
         return "BlackDiv: " + string.Join(", ", parts);
@@ -193,7 +193,7 @@ public static class FactionRaid
         var blackout = b.BlackoutLink == "always" ? null : data.BlackoutNow();
         var allowed = !(b.BlackoutLink == "only" && blackout == false);
         var mult = b.BlackoutLink == "boost" && blackout == true ? b.BlackoutMult : 1;
-        var link = blackout == null ? "" : blackout.Value ? "(정전 판" + (mult > 1 ? $" ×{mult:0.#}" : "") + ")" : "(정전 아님)";
+        var link = blackout == null ? "" : blackout.Value ? L.T("(정전 판", " (blackout raid") + (mult > 1 ? $" ×{mult:0.#}" : "") + ")" : L.T("(정전 아님)", " (no blackout)");
 
         // 웨지 무리
         var wedgeChance = Math.Min(100, b.WedgeChance * mult);
@@ -202,7 +202,7 @@ public static class FactionRaid
         if (!b.Wedge || !allowed || wedgeChance <= 0)
         {
             list.RemoveAll(e => e.BossName?.Equals(BdWedge, StringComparison.OrdinalIgnoreCase) == true);
-            wedgeNote = "웨지 없음";
+            wedgeNote = L.T("웨지 없음", "no Wedge");
         }
         else
         {
@@ -214,7 +214,7 @@ public static class FactionRaid
                 IsBossPlayer = false, IsRandomTimeSpawn = false, ForceSpawn = true, IgnoreMaxBots = ignoreCap,
                 TriggerId = "hunt", TriggerName = "", Delay = 0, Supports = null!, SpawnMode = Modes, SptId = "gravity"
             });
-            wedgeNote = $"웨지 {wedgeChance:0}%";
+            wedgeNote = L.T($"웨지 {wedgeChance:0}%", $"Wedge {wedgeChance:0}%");
         }
 
         // 게이트: 트리거마다 원본 항목으로 되돌린 뒤, 굴려서 되면 게이트 구역 항목만 BlackDiv 무리로 바꾼다.
@@ -239,7 +239,7 @@ public static class FactionRaid
                 else list.Add(v with { });
             }
         }
-        var gateNote = data.LabGateVanilla.Count == 0 ? "게이트 원본 없음(그대로)" : $"게이트 {taken}곳({gateChance:0}%)";
-        return $"연구소 {wedgeNote}, {gateNote}{link}";
+        var gateNote = data.LabGateVanilla.Count == 0 ? L.T("게이트 원본 없음(그대로)", "no original gate entries (unchanged)") : L.T($"게이트 {taken}곳({gateChance:0}%)", $"gates {taken} ({gateChance:0}%)");
+        return L.T("연구소 ", "Labs ") + $"{wedgeNote}, {gateNote}{link}";
     }
 }

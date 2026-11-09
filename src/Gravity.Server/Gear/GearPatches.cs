@@ -39,7 +39,8 @@ public static class GearRuntime
         var items = Builder();
         Items = items;
         _names = null;
-        return $"아이템 {items.Info.Count}개, 장비 칸 {items.SlotTier.Count}개, 모드 무기 {items.ModWeapons.Count}·장비 {items.ModEquipment.Count}·부품 {items.ModAttachments.Count}, {sw.ElapsedMilliseconds}ms";
+        return L.T($"아이템 {items.Info.Count}개, 장비 칸 {items.SlotTier.Count}개, 모드 무기 {items.ModWeapons.Count}·장비 {items.ModEquipment.Count}·부품 {items.ModAttachments.Count}",
+            $"{items.Info.Count} items, {items.SlotTier.Count} gear slots, mod {items.ModWeapons.Count} weapons · {items.ModEquipment.Count} gear · {items.ModAttachments.Count} attachments") + $", {sw.ElapsedMilliseconds}ms";
     }
 
     [ThreadStatic] internal static GearContext? Current;
@@ -316,6 +317,6 @@ public class GearBotPatch : AbstractPatch
             if (GearRuntime.Items.Info.TryGetValue(tpl, out var info) && (info.ArmorClass > 0)) armor = Math.Max(armor, info.ArmorClass);
         }
         var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon);
-        return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t방탄 {armor:0}";
+        return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}";
     }
 }

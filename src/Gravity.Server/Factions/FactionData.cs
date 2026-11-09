@@ -101,25 +101,25 @@ public sealed class FactionData
         {
             var p = Path.Combine(parts);
             try { return File.Exists(p) ? File.ReadAllText(p) : null; }
-            catch (Exception ex) { warn($"{p} 읽기 실패: {ex.Message}"); return null; }
+            catch (Exception ex) { warn($"{p} {L.T("읽기 실패", "read failed")}: {ex.Message}"); return null; }
         }
         T? Try<T>(string what, Func<T?> f) where T : class
         {
             try { return f(); }
-            catch (Exception ex) { warn($"{what} 읽기 실패: {ex.Message}"); return null; }
+            catch (Exception ex) { warn($"{what} {L.T("읽기 실패", "read failed")}: {ex.Message}"); return null; }
         }
 
         var folders = Directory.Exists(modsDir) ? Directory.GetDirectories(modsDir).Select(Path.GetFileName).OfType<string>().ToList() : [];
         string? Folder(string key) => folders.FirstOrDefault(f => f.Contains(key, StringComparison.OrdinalIgnoreCase));
 
         var ruafDir = Folder("ruafcomehome");
-        var ruaf = ruafDir != null && Read(modsDir, ruafDir, "config.jsonc") is { } rj ? Try("RUAF 설정", () => ReadRuaf(rj)) : null;
+        var ruaf = ruafDir != null && Read(modsDir, ruafDir, "config.jsonc") is { } rj ? Try(L.T("RUAF 설정", "RUAF config"), () => ReadRuaf(rj)) : null;
         var bdDir = Folder("blackdiv");
-        var bd = bdDir != null && Read(modsDir, bdDir, "config.jsonc") is { } bj ? Try("BlackDiv 설정", () => ReadBlackDivMaps(bj)) : null;
+        var bd = bdDir != null && Read(modsDir, bdDir, "config.jsonc") is { } bj ? Try(L.T("BlackDiv 설정", "BlackDiv config"), () => ReadBlackDivMaps(bj)) : null;
         var boDir = folders.FirstOrDefault(f => f.Equals("Blackout", StringComparison.OrdinalIgnoreCase)) ?? Folder("blackout");
         double? boChance = null;
         if (boDir != null && Read(modsDir, boDir, "config.json") is { } boj)
-            try { boChance = ReadBlackoutChance(boj); } catch (Exception ex) { warn($"Blackout 설정 읽기 실패: {ex.Message}"); }
+            try { boChance = ReadBlackoutChance(boj); } catch (Exception ex) { warn($"{L.T("Blackout 설정 읽기 실패", "Blackout config read failed")}: {ex.Message}"); }
 
         var gates = new Dictionary<string, List<BossLocationSpawn>>();
         var sptPmc = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
@@ -136,7 +136,7 @@ public sealed class FactionData
                 if (pmcJson != null || bossNode != null) sptPmc[map] = bag;
                 if (map == "laboratory" && bossNode != null)
                 {
-                    var all = Try("SPT 연구소 항목", () => deserialize(bossNode.ToJsonString())) ?? [];
+                    var all = Try(L.T("SPT 연구소 항목", "SPT Labs entries"), () => deserialize(bossNode.ToJsonString())) ?? [];
                     foreach (var trig in LabGates.Keys)
                         gates[trig] = all.Where(e => e.TriggerId == trig).ToList();
                 }

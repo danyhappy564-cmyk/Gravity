@@ -131,7 +131,7 @@ public class GravityWeb : IHttpListener
                     {
                         if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 할 수 있습니다" }); return; }
                         var sum = Gravity.Gear.GearRuntime.RebuildItems();
-                        if (sum != null) rt.Note($"{GravityInfo.Tag} 장비 아이템 티어 다시 계산: {sum}");
+                        if (sum != null) rt.Note($"{GravityInfo.Tag} {L.T("장비 아이템 티어 다시 계산", "Gear item tiers recalculated")}: {sum}");
                         await Send(res, sum != null ? 200 : 503, new { ok = sum != null, summary = sum, error = sum == null ? "장비 자료가 준비되지 않았습니다" : null });
                         return;
                     }

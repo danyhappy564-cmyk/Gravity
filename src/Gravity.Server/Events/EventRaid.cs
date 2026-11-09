@@ -26,13 +26,13 @@ public static class EventRaid
             var inf = cfg.Specials?.GetValueOrDefault("infected");
             double chance = inf is { On: true } ? inf.Chance.GetValueOrDefault(mapId, 0) : ev.Zombies;
             if (rnd.NextDouble() * 100 < chance)
-                notes.Add($"감염 판(비율 {h.InfectionPercentage:0}%)");
+                notes.Add(L.T($"감염 판(비율 {h.InfectionPercentage:0}%)", $"infected raid ({h.InfectionPercentage:0}%)"));
             else
             {
                 h.InfectionPercentage = 0;
                 foreach (var b in loc.BossLocationSpawn ?? [])
                     if (b.BossName?.StartsWith("infected", StringComparison.OrdinalIgnoreCase) == true) b.BossChance = 0;
-                notes.Add($"감염 없음(확률 {chance:0}%)");
+                notes.Add(L.T($"감염 없음(확률 {chance:0}%)", $"no infection (chance {chance:0}%)"));
             }
         }
 
@@ -42,8 +42,8 @@ public static class EventRaid
             if (halloween && string.Equals(b.BossName, "sectantPredvestnik", StringComparison.OrdinalIgnoreCase)) { b.BossChance = ev.NightCult; cult++; }
             else if (christmas && string.Equals(b.BossName, "gifter", StringComparison.OrdinalIgnoreCase)) { b.BossChance = ev.Santa; santa++; }
         }
-        if (cult > 0) notes.Add($"밤 컬티스트 {ev.NightCult:0}%");
-        if (santa > 0) notes.Add($"산타 {ev.Santa:0}%");
-        return notes.Count == 0 ? null : "이벤트: " + string.Join(", ", notes);
+        if (cult > 0) notes.Add(L.T($"밤 컬티스트 {ev.NightCult:0}%", $"night cultists {ev.NightCult:0}%"));
+        if (santa > 0) notes.Add(L.T($"산타 {ev.Santa:0}%", $"Santa {ev.Santa:0}%"));
+        return notes.Count == 0 ? null : L.T("이벤트: ", "events: ") + string.Join(", ", notes);
     }
 }

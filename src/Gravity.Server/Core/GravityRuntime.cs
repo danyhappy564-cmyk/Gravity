@@ -41,8 +41,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var locked = Detect.SpawnLocked || r.AbpsClient;
         if (first)
         {
-            if (!ok) warn($"{GravityInfo.Tag} 클라 플러그인 판({r.ClientVersion})이 서버({GravityVersion.Current})와 맞지 않음");
-            else info($"{GravityInfo.Tag} 클라 플러그인 연결: {r.ClientVersion}" + (locked ? $" ({Detect.SpawnLockReason ?? "ABPS"} 감지, 스폰 잠금)" : ""));
+            if (!ok) warn($"{GravityInfo.Tag} " + L.T($"클라 플러그인 판({r.ClientVersion})이 서버({GravityVersion.Current})와 맞지 않음", $"client plugin version ({r.ClientVersion}) does not match the server ({GravityVersion.Current})"));
+            else info($"{GravityInfo.Tag} {L.T("클라 플러그인 연결", "Client plugin connected")}: {r.ClientVersion}" + (locked ? L.T($" ({Detect.SpawnLockReason ?? "ABPS"} 감지, 스폰 잠금)", $" ({Detect.SpawnLockReason ?? "ABPS"} detected, spawns locked)") : ""));
         }
         return new HelloResponse(GravityVersion.Current, ok, locked);
     }
@@ -65,11 +65,11 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
                 layout = LastReportLayout, summary = LastReportPlan != null ? Last?.Summary : null,
                 plan = LastReportPlan, report = r
             }, LastReportAt);
-        info($"{GravityInfo.Tag} 클라 보고 {r.MapId}: 생성 {string.Join(" ", r.Spawned.Select(kv => $"{kv.Key} {kv.Value}"))}"
-            + (r.Dropped.Count > 0 ? $" / 버림 {string.Join(" ", r.Dropped.Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
-            + (r.Killed is { Count: > 0 } k ? $" / 사망 {string.Join(" ", k.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
-            + (r.Extracted is { } x && x.Values.Sum() > 0 ? $" / 탈출 {string.Join(" ", x.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} {kv.Value}"))}" + (r.ExtractRefill > 0 ? $"(보충 {r.ExtractRefill})" : "") : "")
-            + $" / 정리 {r.Sanitized}");
+        info($"{GravityInfo.Tag} {L.T("클라 보고", "Client report")} {r.MapId}: {L.T("생성", "spawned")} {string.Join(" ", r.Spawned.Select(kv => $"{kv.Key} {kv.Value}"))}"
+            + (r.Dropped.Count > 0 ? $" / {L.T("버림", "dropped")} {string.Join(" ", r.Dropped.Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
+            + (r.Killed is { Count: > 0 } k ? $" / {L.T("사망", "killed")} {string.Join(" ", k.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
+            + (r.Extracted is { } x && x.Values.Sum() > 0 ? $" / {L.T("탈출", "extracted")} {string.Join(" ", x.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} {kv.Value}"))}" + (r.ExtractRefill > 0 ? $"({L.T("보충", "refilled")} {r.ExtractRefill})" : "") : "")
+            + $" / {L.T("정리", "sanitized")} {r.Sanitized}");
     }
 
     /// <summary>레이드 맵 복제본에 스폰 계획을 적용한다. 적용했으면 true. 예외는 잡아서 원본 유지.</summary>
@@ -113,13 +113,15 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     /// <summary>스폰을 건너뛸 이유(레이드·개발 페이지 공통). 적용하면 null.</summary>
     public string? SkipReason(GravityConfig cfg, string id, LocationBase? current, bool abpsClient = false)
     {
-        if (!cfg.SpawnModule) return "스폰 모듈 꺼짐";
-        if (Detect.SpawnLocked || abpsClient) return $"{Detect.SpawnLockReason ?? "ABPS"} 감지로 잠김";
-        if (!Catalog.TryGet(id, out _)) return "모르는 맵(커스텀 맵은 건드리지 않음)";
+        if (!cfg.SpawnModule) return L.T("스폰 모듈 꺼짐", "spawn module off");
+        if (Detect.SpawnLocked || abpsClient) return L.T($"{Detect.SpawnLockReason ?? "ABPS"} 감지로 잠김", $"locked ({Detect.SpawnLockReason ?? "ABPS"} detected)");
+        if (!Catalog.TryGet(id, out _)) return L.T("모르는 맵(커스텀 맵은 건드리지 않음)", "unknown map (custom maps are left alone)");
         var variant = IsVariant(id, current);
         var ms = cfg.MapFor(id);
         if (variant ? !ms.Variant : !ms.Original)
-            return variant ? $"변형 맵({string.Join("·", Detect.VariantMaps.GetValueOrDefault(id) ?? ["자동 감지"])})에 Gravity 적용 꺼짐" : "이 맵은 Gravity 적용 꺼짐";
+            return variant
+                ? L.T($"변형 맵({string.Join("·", Detect.VariantMaps.GetValueOrDefault(id) ?? ["자동 감지"])})에 Gravity 적용 꺼짐", $"Gravity is off for the map variant ({string.Join("·", Detect.VariantMaps.GetValueOrDefault(id) ?? ["auto-detected"])})")
+                : L.T("이 맵은 Gravity 적용 꺼짐", "Gravity is off for this map");
         return null;
     }
 
@@ -143,9 +145,9 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         plan = plan with { ScavWaves = hasClient && cfg.MapFor(id).StartScav ? plan.ScavWaves.Where(w => w.IsStart).ToList() : [] };
         // 공장·미궁은 PMC 구역이 없어 클라가 지점을 골라야 한다: 클라가 없으면(미궁은 allowPmcLabyrinth 꺼짐도) Gravity PMC를 넣지 않는다.
         string? pmcWhy = null;
-        if (id.StartsWith("factory4") && !hasClient) pmcWhy = "클라 플러그인 없음";
-        else if (id == "labyrinth" && !hasClient) pmcWhy = "클라 플러그인 없음";
-        else if (id == "labyrinth" && !cfg.Spawn.AllowPmcLabyrinth) pmcWhy = "미궁 PMC 꺼짐";
+        if (id.StartsWith("factory4") && !hasClient) pmcWhy = L.T("클라 플러그인 없음", "no client plugin");
+        else if (id == "labyrinth" && !hasClient) pmcWhy = L.T("클라 플러그인 없음", "no client plugin");
+        else if (id == "labyrinth" && !cfg.Spawn.AllowPmcLabyrinth) pmcWhy = L.T("미궁 PMC 꺼짐", "Labyrinth PMCs off");
         if (pmcWhy != null) plan = plan with { Groups = [] };
         // 무한 방식: 클라가 있으면 0.1의 촘촘한 PMC 웨이브 대신 시작 분대만 넣고, 이후 PMC는 클라가 RefillGroups로 보충한다(spec 4.6).
         else if (hasClient && cfg.MapFor(id).Style == "infinite") plan = plan with { Groups = plan.Groups.Where(g => g.IsStart).ToList() };
@@ -153,7 +155,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         if (scavRaid && plan.Groups.Count > 0)
         {
             var keep = KeepForScavRaid(plan.Groups, cfg.SpawnFor(id).Scav.PlayerScavRemain, s);
-            scavNote = $" / 스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.SpawnFor(id).Scav.PlayerScavRemain:0}%)";
+            scavNote = " / " + L.T($"스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.SpawnFor(id).Scav.PlayerScavRemain:0}%)",
+                $"scav raid: kept {keep.Count} of {plan.Groups.Count} PMC groups ({cfg.SpawnFor(id).Scav.PlayerScavRemain:0}%)");
             plan = plan with { Groups = keep };
         }
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
@@ -195,22 +198,24 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             var plan = b.Plan;
             LastOtherPmc = b.OtherPmc;
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv, Orbit);
-            var summary = plan.Summary + (variant ? " / 변형 맵" : "") + (b.PmcWhy != null ? $" / PMC 항목 안 넣음({b.PmcWhy})" : "") + b.ScavNote
-                + (b.OtherPmc > 0 ? $" / 다른 모드 PMC 항목 {b.OtherPmc}개 유지" : "")
+            var summary = plan.Summary + (variant ? L.T(" / 변형 맵", " / map variant") : "") + (b.PmcWhy != null ? L.T($" / PMC 항목 안 넣음({b.PmcWhy})", $" / no PMC entries ({b.PmcWhy})") : "") + b.ScavNote
+                + (b.OtherPmc > 0 ? L.T($" / 다른 모드 PMC 항목 {b.OtherPmc}개 유지", $" / kept {b.OtherPmc} other-mod PMC entries") : "")
                 + (b.FacNote != null ? " / " + b.FacNote : "") + (b.EvNote != null ? " / " + b.EvNote : "") + (gearNote != null ? " / " + gearNote : "");
             Last = new LastRaid(DateTime.Now, summary, plan, null);
             info_($"{GravityInfo.Tag} {summary}");
             foreach (var g in plan.Groups)
-                Verbose($"{GravityInfo.Tag} {id} PMC {(g.IsStart ? "시작" : "웨이브")} {g.TimeSec}초 {(g.Usec ? "USEC" : "BEAR")} {g.Size}명 {g.Difficulty}");
+                Verbose($"{GravityInfo.Tag} {id} PMC " + L.T($"{(g.IsStart ? "시작" : "웨이브")} {g.TimeSec}초 {(g.Usec ? "USEC" : "BEAR")} {g.Size}명 {g.Difficulty}",
+                    $"{(g.IsStart ? "start" : "wave")} {g.TimeSec}s {(g.Usec ? "USEC" : "BEAR")} x{g.Size} {g.Difficulty}"));
             foreach (var e in loc.BossLocationSpawn ?? [])
                 if (e.BossName is { } bn && !MapCatalog.IsPmc(e))
-                    Verbose($"{GravityInfo.Tag} {id} 보스·특수 {bn} 확률 {e.BossChance ?? 0:0}% 구역 {(string.IsNullOrEmpty(e.BossZone) ? "(아무 데)" : e.BossZone)} 시각 {e.Time ?? -1:0}");
+                    Verbose($"{GravityInfo.Tag} {id} " + L.T($"보스·특수 {bn} 확률 {e.BossChance ?? 0:0}% 구역 {(string.IsNullOrEmpty(e.BossZone) ? "(아무 데)" : e.BossZone)} 시각 {e.Time ?? -1:0}",
+                        $"boss/special {bn} chance {e.BossChance ?? 0:0}% zone {(string.IsNullOrEmpty(e.BossZone) ? "(any)" : e.BossZone)} time {e.Time ?? -1:0}"));
             return true;
         }
         catch (Exception ex)
         {
-            warn($"{GravityInfo.Tag} {id} 스폰 적용 실패, 바닐라로 진행: {ex.Message}");
-            Last = new LastRaid(DateTime.Now, "실패: " + ex.Message, null, ex.ToString());
+            warn($"{GravityInfo.Tag} {id} {L.T("스폰 적용 실패, 바닐라로 진행", "failed to apply spawns, raid runs vanilla")}: {ex.Message}");
+            Last = new LastRaid(DateTime.Now, L.T("실패: ", "Failed: ") + ex.Message, null, ex.ToString());
             return false;
         }
     }
@@ -317,15 +322,15 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         if (Gravity.Gear.GearRuntime.Active() is not { } gear) return null;
         Gravity.Gear.GearRuntime.NewRaid(gear, seed);
         Gravity.Gear.GearRuntime.LogBots = Store.Current.DiagOrDefault.BotLog;
-        if (Gravity.Gear.GearRuntime.LogBots) DiagLog.NewGearRaid($"{DateTime.Now:s} {mapId} 봇 장비 기록(역할 티어 레벨 주무기 방탄)");
+        if (Gravity.Gear.GearRuntime.LogBots) DiagLog.NewGearRaid($"{DateTime.Now:s} {mapId} " + L.T("봇 장비 기록(역할 티어 레벨 주무기 방탄)", "bot gear log (role tier level primary armor)"));
         var gr = Gravity.Gear.GearRuntime.Raid;
-        return gr.Allowed != null ? $"장비: 모드 아이템 무기 {gr.Weapons}·장비 {gr.Equipment}·부품 {gr.Attachments}" : "장비: Gravity";
+        return gr.Allowed != null ? L.T($"장비: 모드 아이템 무기 {gr.Weapons}·장비 {gr.Equipment}·부품 {gr.Attachments}", $"gear: mod items {gr.Weapons} weapons · {gr.Equipment} gear · {gr.Attachments} attachments") : L.T("장비: Gravity", "gear: Gravity");
     }
 
     private bool Skip(string id, string why, string? gearNote = null)
     {
-        if (gearNote != null) info($"{GravityInfo.Tag} {id}: 스폰 적용 안 함({why}) / {gearNote}");
-        Last = new LastRaid(DateTime.Now, $"{id}: 적용 안 함({why})" + (gearNote != null ? " / " + gearNote : ""), null, why);
+        if (gearNote != null) info($"{GravityInfo.Tag} {id}: " + L.T($"스폰 적용 안 함({why})", $"spawns not applied ({why})") + $" / {gearNote}");
+        Last = new LastRaid(DateTime.Now, $"{id}: " + L.T($"적용 안 함({why})", $"not applied ({why})") + (gearNote != null ? " / " + gearNote : ""), null, why);
         return false;
     }
 }

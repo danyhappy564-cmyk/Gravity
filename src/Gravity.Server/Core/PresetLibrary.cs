@@ -40,7 +40,7 @@ public sealed class PresetLibrary(string file, string backupDir)
                 var broken = Path.Combine(backupDir, $"presets-broken-{DateTime.Now:yyyyMMdd-HHmmss-fff}.json");
                 File.Move(file, broken);
                 Current = Empty();
-                LoadWarning = $"프리셋 파일이 깨져 빈 목록으로 시작했습니다. 원래 파일: {broken} ({ex.Message})";
+                LoadWarning = L.T($"프리셋 파일이 깨져 빈 목록으로 시작했습니다. 원래 파일: {broken} ({ex.Message})", $"Presets file was broken; started with an empty list. Original file: {broken} ({ex.Message})");
             }
         }
     }

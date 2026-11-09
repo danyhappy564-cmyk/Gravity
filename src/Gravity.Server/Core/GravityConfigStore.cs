@@ -37,7 +37,7 @@ public sealed class GravityConfigStore(string configFile, string backupDir)
                 File.Move(configFile, broken);
                 RawState = null;
                 Current = ConfigModel.Default();
-                LoadWarning = $"설정 파일이 깨져 기본값으로 시작했습니다. 원래 파일: {broken} ({ex.Message})";
+                LoadWarning = L.T($"설정 파일이 깨져 기본값으로 시작했습니다. 원래 파일: {broken} ({ex.Message})", $"Settings file was broken; started with defaults. Original file: {broken} ({ex.Message})");
                 return new LoadResult(false, LoadWarning);
             }
         }
