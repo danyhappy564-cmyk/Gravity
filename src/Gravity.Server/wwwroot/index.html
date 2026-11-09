@@ -42,6 +42,7 @@ select:focus{border-color:var(--primary)}
 
 /* drawer */
 .drawer{position:fixed;top:var(--appbar);bottom:0;left:0;width:var(--drawer);background:linear-gradient(180deg,#0e1219,#0a0d13);border-right:1px solid #1b2330;padding:18px 12px 14px;display:flex;flex-direction:column;z-index:35;overflow:auto}
+.nav-sep{border:0;border-top:1px solid #1e2836;margin:8px 4px}.nav-group>summary{cursor:pointer;list-style:none;user-select:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:'▸';display:inline-block;width:14px}.nav-group[open]>summary::before{content:'▾'}.nav-group>summary:hover{color:#a9b3c4}
 .nav-cap{font-size:10px;letter-spacing:1.6px;color:#5f6b80;font-weight:650;padding:14px 12px 8px}
 .nav-cap:first-child{padding-top:0}
 .nav-btn{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:#a9b3c4;text-align:left;padding:9px 12px;margin:2px 0;border-radius:8px;font-size:13px;transition:background .15s,color .15s}
@@ -462,7 +463,7 @@ const set=(p,v)=>setIn(state,p,v);
 function rng(n){let a=n>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 
 const UI={
-  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('0.1.0','0.1.0'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
+  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.0.0','1.0.0'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
   offline:T('오프라인 미리보기','Offline preview'),ver:T('SPT 4.1 · 서버 모드','SPT 4.1 · server mod'),
   unsaved:T('저장 안 한 변경 {n}건','{n} unsaved changes'),save:T('저장','Save'),revert:T('되돌리기','Revert'),showChanges:T('바뀐 항목 보기','Show changes'),
   savedT:T('저장했습니다. 다음 레이드부터 적용됩니다.','Saved. Applies from the next raid.'),revertedT:T('마지막 저장 상태로 되돌렸습니다','Reverted to last save'),
@@ -480,7 +481,7 @@ const SVM={on:true,preset:'260907',raidAdd:60,disableEvents:true,forceXmas:false
 const MAPS=[
  ['bigmap','세관','Customs',40,120,'SVM',16,22],['woods','삼림','Woods',40,40,'',14,20],['factory4_day','공장 · 낮','Factory · Day',20,20,'',6,10],
  ['factory4_night','공장 · 밤','Factory · Night',25,25,'',6,10],['rezervbase','리저브','Reserve',40,60,'SVM',13,20],['shoreline','해안선','Shoreline',45,45,'',16,22],
- ['interchange','교차로','Interchange',40,40,'',15,22],['laboratory','연구소','The Lab',35,35,'',10,0],['lighthouse','등대','Lighthouse',40,40,'',13,20],
+ ['interchange','인터체인지','Interchange',40,40,'',15,22],['laboratory','연구소','The Lab',35,35,'',10,0],['lighthouse','등대','Lighthouse',40,40,'',13,20],
  ['tarkovstreets','타르코프 시내','Streets of Tarkov',50,50,'',18,24],['sandbox','그라운드 제로','Ground Zero',35,35,'',8,12],
  ['sandbox_high','그라운드 제로 21+','Ground Zero 21+',35,35,'',10,12],['labyrinth','미궁','The Labyrinth',15,15,'',4,6]
 ].map(([id,ko,en,base,det,src,pmc,scav])=>({id,name:T(ko,en),base,pmc,scav,get det(){return base+(SVM.on?SVM.raidAdd:0);},get src(){return SVM.on&&SVM.raidAdd?'SVM +'+SVM.raidAdd:'';}}));
@@ -1716,7 +1717,12 @@ function conflictNotice(){const a=[];
   return a.join('');}
 function applyConflicts(){if(abpsDemo)state.modules.spawn=false;if(apbsDemo)state.modules.gear=false;}
 /* ================= render ================= */
-function renderNav(){$('#nav').innerHTML=NAV.map(([cap,items])=>`<div class="nav-cap">${tr(cap)}</div>`+items.map(([id,ic,t])=>`<button class="nav-btn ${page===id?'on':''}" data-nav="${id}"><span class="ic">${ic}</span>${tr(t)}${id==='spawn'?`<span class="badge">${MAPS.filter(m=>Object.keys(CARD_FIELDS).some(k=>cardOn(m.id,k))||state.maps[m.id].style==='infinite').length||''}</span>`:''}${id==='factions'?`<span class="badge">${FACTIONS.filter(f=>state.factions[f.id].managed).length||''}</span>`:''}${id==='diag'&&qbDemo?'<span class="badge" style="color:var(--red)">!</span>':''}</button>`).join('')).join('');}
+function renderNav(){
+  const btn=([id,ic,t])=>`<button class="nav-btn ${page===id?'on':''}" data-nav="${id}"><span class="ic">${ic}</span>${tr(t)}${id==='spawn'?`<span class="badge">${MAPS.filter(m=>Object.keys(CARD_FIELDS).some(k=>cardOn(m.id,k))||state.maps[m.id].style==='infinite').length||''}</span>`:''}${id==='factions'?`<span class="badge">${FACTIONS.filter(f=>state.factions[f.id].managed).length||''}</span>`:''}${id==='diag'&&qbDemo?'<span class="badge" style="color:var(--red)">!</span>':''}</button>`;
+  const top=NAV[0][1].find(x=>x[0]==='dashboard');
+  $('#nav').innerHTML=btn(top)+NAV.map(([cap,items],i)=>{const list=items.filter(x=>x[0]!=='dashboard'),open=readLocal('gravity.nav.'+i,'1')!=='0'||list.some(x=>x[0]===page);
+    return `<hr class="nav-sep"><details class="nav-group" data-nav-group="${i}" ${open?'open':''}><summary class="nav-cap">${tr(cap)}</summary>${list.map(btn).join('')}</details>`;}).join('');}
+
 function renderShell(){
   document.documentElement.lang=lang;document.querySelectorAll('[data-k]').forEach(el=>el.textContent=u(el.dataset.k));
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
@@ -1889,7 +1895,7 @@ document.addEventListener('click',e=>{
   else if(a==='tiersReset'){state.gear.tiers=clone(DEFAULTS.gear.tiers);rerender();}
   else if(a==='resetRole'){state.roles[roleSel]=roleDefaults(roleSel);rerender();}
   else if(a==='copyRole'){const grp=ROLE_GROUPS.find(([,l])=>l.some(x=>x[0]===roleSel))[1];grp.forEach(([id])=>{if(id!==roleSel)state.roles[id]=clone(state.roles[roleSel]);});toast(fmt(tr(T('{n}개 봇에 복사했습니다','Copied to {n} bots')),{n:grp.length-1}));rerender();}
-  else if(a==='refreshRaid'){Promise.all([fetch('api/meta').then(r=>r.json()),fetch('api/lastraid').then(r=>r.json())]).then(([m,l])=>{serverMeta=m;lastRaid=l;rerender();}).catch(e=>toast(tr(T('새로고침 실패: ','Refresh failed: '))+e.message));}
+  else if(a==='refreshRaid'){Promise.all([fetch('api/meta').then(r=>r.json()),fetch('api/lastraid').then(r=>r.json())]).then(([m,l])=>{serverMeta=m;if(m&&m.version){UI.mock=T(m.version,m.version);const vb=document.querySelector('[data-k="mock"]');if(vb)vb.textContent=m.version;}lastRaid=l;rerender();}).catch(e=>toast(tr(T('새로고침 실패: ','Refresh failed: '))+e.message));}
   else if(a==='orbitRecommend'){const O=serverMeta&&serverMeta.orbit,w=Math.round(O&&O.installed?Math.max(O.sleepDistance||0,O.wakeDistance||0)+10:260);state.orbit.extractRefillMode='infinite';state.orbit.refillAfterExtract=state.orbit.extractRefillCap>0;state.orbit.nearAsGhost=true;state.near.minDist=Math.max(state.near.minDist,w);state.near.maxDist=Math.max(state.near.maxDist,state.near.minDist+80);toast(fmt(tr(T('ORBIT 권장값을 적용했습니다 (근처 보충 거리 {w}m 이상). 저장을 눌러야 적용됩니다.','Applied ORBIT-friendly values (near-player ≥ {w} m). Save to apply.')),{w}));rerender();}
   else if(a==='attCopyAll'){const D=state.tierData[tBot][tierSel],src=clone(attFor(tBot,tierSel,atWeapon));[...Object.keys(D.weapons.primaryShort||{}),...Object.keys(D.weapons.primaryLong||{}),...Object.keys(D.weapons.holster||{})].forEach(w=>{if(w!==atWeapon)D.attach[w]=clone(src);});toast(tr(T('이 티어의 모든 무기에 적용했습니다','Applied to every weapon in this tier')));rerender();}
   else if(a==='tierImportDemo'){const data=clone(state.tierData);data.pmc[5].weapons.primaryLong.epic_scar=25;data.pmc[5].weapons.primaryLong.ghost_gun=10;data.pmc[6].weapons.primaryLong.epic_scar=30;const obj={format:'gravity-tier-preset',version:1,name:"Friend's chad tiers",exportedAt:new Date().toISOString(),tiers:state.gear.tiers,tables:data,ownTables:[],items:{...tierModItems(data),epic_scar:{source:'Epic Gun Pack',code:'9ec9ac395c1f0e9a7b3d2e6f'},ghost_gun:{source:'Ghost Arms',code:'7a1f00c35c1f0e9a7b3d2e6f'}}};importTierJson(JSON.stringify(obj),'friend-chads.json');}
@@ -1934,7 +1940,7 @@ $('#menuBtn').addEventListener('click',()=>$('#drawer').classList.toggle('open')
 window.addEventListener('beforeunload',e=>{if(changes().length){e.preventDefault();e.returnValue='';}});
 Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){console.error(k,err);}page=keep;});
 
-/* ================= 실제 서버 연결 (Gravity 0.1.0) ================= */
+/* ================= 실제 서버 연결 ================= */
 const NOT_LIVE=new Set(['client']);
 const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap')};
 function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
@@ -1973,7 +1979,7 @@ function applyInfo(id,groups){
   const count=groups.filter(g=>!g.pending).reduce((n,g)=>n+g.items.length,0),open=readLocal('gravity.applyInfo.'+id)==='1';
   return `<details class="apply-info" data-apply-info="${id}" ${open?'open':''}><summary>${fmt(tr(T('지금 적용 중인 항목 {n}개','{n} items currently applied')),{n:count})} <span class="muted">· ${tr(T('자세히 ▾','Details ▾'))}</span></summary><div class="tw"><table><tbody>${groups.map(g=>`<tr><th>${esc(tr(g.label))}</th><td><ul>${g.items.map(x=>`<li>${esc(tr(x))}</li>`).join('')}</ul></td></tr>`).join('')}</tbody></table></div></details>`;
 }
-document.addEventListener('toggle',e=>{const k=e.target.dataset&&e.target.dataset.applyInfo;if(k)writeLocal('gravity.applyInfo.'+k,e.target.open?'1':'0');},true);
+document.addEventListener('toggle',e=>{const d=e.target.dataset||{};if(d.applyInfo)writeLocal('gravity.applyInfo.'+d.applyInfo,e.target.open?'1':'0');if(d.navGroup!==undefined)writeLocal('gravity.nav.'+d.navGroup,e.target.open?'1':'0');},true);
 const APPLICATION=[
   {label:T('PMC','PMC'),items:[
     T('시작 인원·웨이브 시각과 인원·분대 크기·진영·난이도','Start count, wave times and sizes, squads, side and difficulty'),
