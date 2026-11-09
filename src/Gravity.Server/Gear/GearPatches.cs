@@ -38,7 +38,7 @@ public static class GearRuntime
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var items = Builder();
         Items = items;
-        _names = null;
+        _catalog = null;
         return L.T($"아이템 {items.Info.Count}개, 장비 칸 {items.SlotTier.Count}개, 모드 무기 {items.ModWeapons.Count}·장비 {items.ModEquipment.Count}·부품 {items.ModAttachments.Count}",
             $"{items.Info.Count} items, {items.SlotTier.Count} gear slots, mod {items.ModWeapons.Count} weapons · {items.ModEquipment.Count} gear · {items.ModAttachments.Count} attachments") + $", {sw.ElapsedMilliseconds}ms";
     }
@@ -70,26 +70,29 @@ public static class GearRuntime
 
     /// <summary>로케일(언어 → id·이름 표). 로더가 채운다. 시험에서는 null.</summary>
     public static Func<string, Dictionary<string, string>>? Locale { get; set; }
-    private static List<(string Id, string Ko, string En, string Cat, bool Mod)>? _names;
+    private static IReadOnlyList<GearCatalogEntry>? _catalog;
+    private static GearItems? _catalogItems;
+    private static readonly object CatalogLock = new();
+    public static IReadOnlyList<GearCatalogEntry> Catalog()
+    {
+        lock (CatalogLock)
+        {
+            if (_catalog == null || !ReferenceEquals(_catalogItems, Items))
+            {
+                _catalogItems = Items;
+                _catalog = GearCatalog.Build(Items, Locale?.Invoke("kr") ?? [], Locale?.Invoke("en") ?? []);
+            }
+            return _catalog;
+        }
+    }
 
     /// <summary>웹 블랙리스트 검색: 이름(한/영)·id 일부. 봇 목록에 나오는 아이템을 앞에 둔다.</summary>
     public static IEnumerable<object> Search(string q, string cat, int max = 60)
     {
-        if (_names == null)
-        {
-            var ko = Locale?.Invoke("kr") ?? new Dictionary<string, string>();
-            var en = Locale?.Invoke("en") ?? new Dictionary<string, string>();
-            _names = Items.Info.Where(kv => kv.Value.Cat != "loot" || kv.Value.Price > 0)
-                .Select(kv => (kv.Key, ko.GetValueOrDefault(kv.Key + " Name") ?? en.GetValueOrDefault(kv.Key + " Name") ?? "",
-                    en.GetValueOrDefault(kv.Key + " Name") ?? "", kv.Value.Cat, kv.Value.Mod))
-                .Where(x => x.Item2.Length > 0 || x.Item3.Length > 0).ToList();
-        }
-        q = (q ?? "").Trim().ToLowerInvariant();
-        var inPools = Items.SlotTier.Values.SelectMany(d => d.Keys).ToHashSet();
-        return _names.Where(x => (cat == "all" || string.IsNullOrEmpty(cat) || x.Cat == cat)
-                && (q.Length == 0 || x.Id.Contains(q) || x.Ko.ToLowerInvariant().Contains(q) || x.En.ToLowerInvariant().Contains(q)))
-            .OrderByDescending(x => inPools.Contains(x.Id)).ThenBy(x => x.En, StringComparer.OrdinalIgnoreCase)
-            .Take(max).Select(x => new { id = x.Id, ko = x.Ko, en = x.En, cat = x.Cat, mod = x.Mod });
+        q=(q??"").Trim();
+        return Catalog().Where(x=>(cat=="all"||string.IsNullOrEmpty(cat)||x.Cat==cat)
+            && (q.Length==0||x.Id.Contains(q,StringComparison.OrdinalIgnoreCase)||x.Ko.Contains(q,StringComparison.OrdinalIgnoreCase)||x.En.Contains(q,StringComparison.OrdinalIgnoreCase)))
+            .Take(Math.Clamp(max,0,1000)).Select(x=>new {id=x.Id,ko=x.Ko,en=x.En,cat=x.Cat,mod=x.Mod,source=x.Source});
     }
 
     public static string? NameOf(string id)
@@ -199,7 +202,7 @@ public class GearDynamicModPatch : AbstractPatch
         try
         {
             var set = new HashSet<MongoId>(__result);
-            GearApply.FilterModSet(set, modSlot ?? "", c, c.Required(parentItemId, modSlot ?? ""));
+            GearApply.FilterModSet(set, modSlot ?? "", c, c.Required(parentItemId, modSlot ?? ""), parentItemId);
             __result = set;
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
@@ -223,7 +226,7 @@ public class GearDynamicGearPatch : AbstractPatch
             foreach (var (slot, set) in __result)
             {
                 var s = set == null ? new HashSet<MongoId>() : new HashSet<MongoId>(set);
-                if (s.Count > 0) GearApply.FilterModSet(s, slot, c, c.Required(parent, slot));
+                if (s.Count > 0) GearApply.FilterModSet(s, slot, c, c.Required(parent, slot), parent);
                 copy[slot] = s;
             }
             __result = copy;

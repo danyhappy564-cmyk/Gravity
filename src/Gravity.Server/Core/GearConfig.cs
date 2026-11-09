@@ -7,7 +7,10 @@ namespace Gravity.Core;
 
 /// <summary>티어 하나의 상한·범위(웹 gear.tiers[i]). 확률은 %, 등급은 방탄 등급.</summary>
 public sealed record TierCaps(int Min, int Max, double Pen, double Spare, int FMin, int FMax, int Side,
-    double AMin, double AMax, double WMin, double WMax, int Mags, double LongScope, double HelmetAcc, int Meds, int Nades);
+    double AMin, double AMax, double WMin, double WMax, int Mags, double LongScope, double HelmetAcc, int Meds, int Nades)
+{
+    public int SMin { get; init; } = 1;
+}
 
 /// <summary>봇 레벨 기준(웹 gear.lv). Pick: tier(내 티어마다 폭)·flat(단순 폭)·fixed(고정 구간).</summary>
 public sealed record LvRules(string Pick, int Below, int Above, int FixMin, int FixMax,
@@ -19,7 +22,13 @@ public sealed record RoleGear(bool On, string Mode, int Tier, int Offset, double
 
 /// <summary>티어 편집기 "개수·확률" 표 한 칸(웹 tierData.&lt;키&gt;[티어]의 gen·chance·mods).</summary>
 public sealed record GearTable(IReadOnlyDictionary<string, (int Min, int Max)> Gen,
-    IReadOnlyDictionary<string, double> Chance, IReadOnlyDictionary<string, double> Mods);
+    IReadOnlyDictionary<string, double> Chance, IReadOnlyDictionary<string, double> Mods)
+{
+    public IReadOnlyDictionary<string,IReadOnlyDictionary<string,double>> Pools { get; init; } = new Dictionary<string,IReadOnlyDictionary<string,double>>();
+    public IReadOnlyDictionary<string,double> SlotChances { get; init; } = new Dictionary<string,double>();
+    public IReadOnlyDictionary<string,double> PartChances { get; init; } = new Dictionary<string,double>();
+    public IReadOnlyDictionary<string,IReadOnlyDictionary<int,double>> GenWeights { get; init; } = new Dictionary<string,IReadOnlyDictionary<int,double>>();
+}
 
 public sealed record BlacklistEntry(string Id, IReadOnlyList<string> Bots);
 
@@ -35,6 +44,7 @@ public sealed record GearSettings(
     public IReadOnlyDictionary<string, int> ItemTier { get; init; } = new Dictionary<string, int>();
     public IReadOnlySet<string> ThermalAdd { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> ThermalRemove { get; init; } = new HashSet<string>();
+    public IReadOnlySet<string> DisabledSources { get; init; } = new HashSet<string>();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
 
     /// <summary>봇의 표: 그 봇 전용 표가 켜져 있으면 그것, 아니면 묶음 표, 없으면 기본식.</summary>
@@ -147,14 +157,15 @@ public static partial class ConfigModel
             var d = GearDefaults.Tier(i);
             var p = $"{g}tiers.{i}.";
             int fMin = (int)r.Num(p + "fMin", d.FMin, 1, 6);
+            int sMin = (int)r.Num(p + "sMin", 1, 1, 6);
             double aMin = r.Num(p + "aMin", d.AMin, 1, 100), wMin = r.Num(p + "wMin", d.WMin, 1, 100);
             int lvMin = (int)r.Num(p + "min", d.Min, 1, 100);
             tiers.Add(new TierCaps(lvMin, (int)Math.Max(lvMin, r.Num(p + "max", d.Max, 1, 100)),
                 r.Num(p + "pen", d.Pen, 1, 100), r.Num(p + "spare", d.Spare, 1, 100),
-                fMin, (int)Math.Max(fMin, r.Num(p + "fMax", d.FMax, 1, 6)), (int)r.Num(p + "side", d.Side, 1, 6),
+                fMin, (int)Math.Max(fMin, r.Num(p + "fMax", d.FMax, 1, 6)), (int)Math.Max(sMin, r.Num(p + "side", d.Side, 1, 6)),
                 aMin, Math.Max(aMin, r.Num(p + "aMax", d.AMax, 1, 100)), wMin, Math.Max(wMin, r.Num(p + "wMax", d.WMax, 1, 100)),
                 (int)r.Num(p + "mags", d.Mags, 0, 10), r.Num(p + "longScope", d.LongScope, 0, 100),
-                r.Num(p + "helmetAcc", d.HelmetAcc, 0, 100), (int)r.Num(p + "meds", d.Meds, 0, 10), (int)r.Num(p + "nades", d.Nades, 0, 10)));
+                r.Num(p + "helmetAcc", d.HelmetAcc, 0, 100), (int)r.Num(p + "meds", d.Meds, 0, 10), (int)r.Num(p + "nades", d.Nades, 0, 10)) { SMin = sMin });
         }
 
         var ld = GearDefaults.Lv();
@@ -198,7 +209,9 @@ public static partial class ConfigModel
                 });
                 return new GearTable(gen,
                     d.Chance.ToDictionary(kv => kv.Key, kv => r.Num($"{p}chance.{kv.Key}", kv.Value, 0, 100)),
-                    d.Mods.ToDictionary(kv => kv.Key, kv => r.Num($"{p}mods.{kv.Key}", kv.Value, 0, 100)));
+                    d.Mods.ToDictionary(kv => kv.Key, kv => r.Num($"{p}mods.{kv.Key}", kv.Value, 0, 100)))
+                    { Pools = r.Num("gear.poolVer", 0, 0, 99) >= 2 ? Gravity.Gear.GearPools.Read(r, p) : new Dictionary<string, IReadOnlyDictionary<string, double>>(), SlotChances = Gravity.Gear.GearPools.Chances(r,p+"slotChances"),
+                      PartChances = Gravity.Gear.GearPools.Chances(r,p+"partChances"), GenWeights = Gravity.Gear.GearPools.Generation(r,p+"genWeights") };
             }).ToArray();
         }
 
@@ -234,6 +247,6 @@ public static partial class ConfigModel
             r.Bool("mods.subset", true), (int)r.Num("mods.weapons", 30, 0, 1000), (int)r.Num("mods.attachments", 150, 0, 5000),
             (int)r.Num("mods.equipment", 30, 0, 1000), r.Num("mods.mult", 100, 0, 200), r.Bool("mods.pmcOnly", true),
             bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
-        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove") };
+        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal) };
     }
 }

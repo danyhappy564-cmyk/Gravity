@@ -156,6 +156,11 @@ public class GravityWeb : IHttpListener
                     case ("items", "GET"):
                         await Send(res, 200, new { items = Gravity.Gear.GearRuntime.Search(req.Query["q"].ToString(), req.Query["cat"].ToString()) });
                         return;
+                    case ("gear/catalog", "GET"):
+                        var gear = rt.Store.Current.Gear;
+                        await Send(res, 200, new { items = Gravity.Gear.GearRuntime.Catalog().Select(i => i with
+                            { ManualTier = gear?.ItemTier.TryGetValue(i.Id, out var t) == true ? t : null }) });
+                        return;
                     case ("lastraid", "GET"):
                         await Send(res, 200, LastRaidBody(rt));
                         return;

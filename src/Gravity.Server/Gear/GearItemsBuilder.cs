@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Tables;
 
@@ -27,11 +28,22 @@ public static class GearItemsBuilder
         return doc.RootElement.EnumerateObject().Select(o => o.Name.ToLowerInvariant()).ToHashSet();
     }
 
-    public static GearItems Build(TemplateTable templates, BotTable bots, HashSet<string>? vanilla)
+    public static GearItems Build(TemplateTable templates, BotTable bots, HashSet<string>? vanilla, string? modsDir = null,
+        IEnumerable<(string Item, IEnumerable<string> Parts)>? defaultPresets = null)
     {
         var tpls = templates.Items;
         var prices = templates.Prices;
         var hb = templates.Handbook.Items.Where(h => h.Price.HasValue).GroupBy(h => h.Id.ToString()).ToDictionary(g => g.Key, g => g.First().Price!.Value);
+        double PriceOf(string id) => prices.TryGetValue(new MongoId(id), out var pp) ? pp : hb.GetValueOrDefault(id);
+        // 총은 몸통만의 가격이 매우 낮다(SCAR-H 2만대 → 자동 T1). 기본 조립(기본 프리셋) 부품 가격을 모두 더한 값을 쓴다.
+        var assembled = new Dictionary<string, double>(StringComparer.Ordinal);
+        if (defaultPresets != null)
+            foreach (var (item, parts) in defaultPresets)
+            {
+                double sum = 0;
+                foreach (var part in parts) sum += PriceOf(part);
+                if (sum > assembled.GetValueOrDefault(item)) assembled[item] = sum;
+            }
         var parent = tpls.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value.Parent.ToString());
         bool IsA(string id, string baseId)
         {
@@ -44,18 +56,43 @@ public static class GearItemsBuilder
             return false;
         }
         var info = new Dictionary<string, ItemInfo>();
+        var sources = GearItemSource.Scan(modsDir, tpls.Keys.Select(k=>k.ToString()).Where(id=>vanilla != null && !vanilla.Contains(id)).ToHashSet());
+        var positions = new Dictionary<string,HashSet<string>>();
+        foreach (var t in tpls.Values)
+            if (t.Properties?.Slots != null)
+                foreach (var slot in t.Properties.Slots)
+                    if (slot.Name != null && slot.Properties?.Filters != null)
+                        foreach (var filter in slot.Properties.Filters)
+                            if (filter.Filter != null)
+                                foreach (var plate in filter.Filter)
+                                {
+                                    var id = plate.ToString();
+                                    if(!PlateBases.Any(b=>IsA(id,b)))continue;
+                                    if (!positions.TryGetValue(id,out var pos)) positions[id] = pos = [];
+                                    pos.Add(slot.Name.ToLowerInvariant());
+                                }
         foreach (var (mid, t) in tpls)
         {
             var id = mid.ToString();
             var pr = t.Properties;
+            var plateSlots = pr?.Slots?.Any(s => s.Name != null && PlateSlotNames.Contains(s.Name.ToLowerInvariant())) ?? false;
+            var cls = GearCatalog.Classify(b=>IsA(id,b), plateSlots || (pr?.ArmorClass ?? 0) > 0, pr?.Caliber ?? pr?.AmmoCaliber ?? "");
             double price = prices.TryGetValue(mid, out var p) ? p : hb.GetValueOrDefault(id);
+            if (assembled.TryGetValue(id, out var full) && full > price) price = full;
             info[id] = new ItemInfo(price, pr?.ArmorClass ?? 0, pr?.PenetrationPower ?? 0, pr?.QuestItem ?? false,
                 vanilla != null && !vanilla.Contains(id),
                 Thermal: IsA(id, ThermalBase) || (parent.GetValueOrDefault(id) == SpecialScope && ThermalName.IsMatch(t.Name ?? "")), LongScope: LongScopeBases.Any(b => IsA(id, b)), Weapon: IsA(id, WeaponBase),
                 Plate: PlateBases.Any(b => IsA(id, b)),
-                PlateSlots: pr?.Slots?.Any(s => s.Name != null && PlateSlotNames.Contains(s.Name.ToLowerInvariant())) ?? false,
-                MaxDurability: pr?.MaxDurability ?? 0, Cat: Category(id, IsA),
-                RequiredSlots: RequiredOf(pr?.Slots));
+                PlateSlots: plateSlots,
+                MaxDurability: pr?.MaxDurability ?? 0, Cat: cls.Cat,
+                RequiredSlots: RequiredOf(pr?.Slots))
+            {
+                Section = cls.Section, Slot = cls.Slot, EquipmentSlots = cls.Slots,
+                PlatePositions = positions.TryGetValue(id,out var pos) ? pos.Order(StringComparer.Ordinal).ToArray() : [],
+                Source = GearItemSource.Resolve(id,vanilla,sources), Name = t.Name,
+                Caliber = pr?.Caliber ?? pr?.AmmoCaliber ?? "",
+                Available = string.Equals(t.Type, "Item", StringComparison.OrdinalIgnoreCase)
+            };
         }
         var pools = new List<(string, string)>();
         foreach (var (_, bt) in bots.Types)
@@ -71,25 +108,33 @@ public static class GearItemsBuilder
                         foreach (var (_, set) in slots)
                             if (set != null) pools.AddRange(set.Select(k => ("mods", k.ToString())));
         }
-        return new GearItems(info, pools);
-    }
-
-    // 웹 블랙리스트 분류(ICAT)와 같은 이름.
-    private static readonly (string Base, string Cat)[] Cats =
-    [
-        (WeaponBase, "weapon"), ("5485a8684bdc2da71d8b4567", "ammo"), ("55818b164bdc2ddc698b456c", "scope"),
-        ("55818ae44bdc2dde698b456c", "scope"), ("55818add4bdc2d5b648b456f", "scope"), ("55818aeb4bdc2ddc698b456a", "scope"),
-        ("55818ad54bdc2ddc698b4569", "scope"), ("55818acf4bdc2dde698b456b", "scope"),
-        ("5a341c4086f77401f2541505", "helmet"), ("5448e54d4bdc2dcc718b4568", "armor"), ("644120aa86ffbe10ee032b6f", "armor"),
-        ("5448e5284bdc2dcb718b4567", "gear"), ("5448e53e4bdc2d60728b4567", "backpack"), ("543be5e94bdc2df1388b4569", "key"),
-        ("543be5664bdc2dd4348b4569", "med"), ("5448f3a64bdc2d60728b456a", "med"), ("57864a3d24597754843f8721", "gear"),
-        ("5a341c4686f77469e155819e", "gear"), ("5645bcb74bdc2ded0b8b4578", "gear"), ("5448e5724bdc2ddf718b4568", "gear")
-    ];
-
-    private static string Category(string id, Func<string, string, bool> isA)
-    {
-        foreach (var (b, c) in Cats) if (isA(id, b)) return c;
-        return "loot";
+        // 장비 칸은 기존 봇 목록 그대로 가격 7등분한다. 목록 밖 아이템·탄약·부품은 같은 분류로 보충한다.
+        foreach (var (id,i) in info.Where(kv=>kv.Value.Available))
+        {
+            pools.Add((i.Section + "/" + i.Slot,id));
+        }
+        // 봇 원본 목록에 없던 무기/장비를 직접 추가할 때 필요한 호환 부품 그래프도 시작 때 한 번 만든다.
+        var compatibility = new Dictionary<string,IReadOnlyDictionary<string,string[]>>();
+        foreach(var(mid,t) in tpls)
+        {
+            if(t.Properties?.Slots == null)continue;
+            var parentId=mid.ToString();
+            var slots=new Dictionary<string,string[]>();
+            foreach(var slot in t.Properties.Slots)
+            {
+                if(string.IsNullOrEmpty(slot.Name)||slot.Properties?.Filters==null)continue;
+                var filters=slot.Properties.Filters.SelectMany(f=>f.Filter??[]).Select(m=>m.ToString()).ToHashSet();
+                // 대부분 필터는 실제 ID다. 부모 클래스 필터만 실제 자식 아이템으로 펼친다(탐색 최대 20단계).
+                var exact=filters.Where(id=>info.TryGetValue(id,out var i)&&i.Available).ToHashSet();
+                var bases=filters.Where(id=>info.TryGetValue(id,out var i)&&!i.Available).ToArray();
+                if(bases.Length>0)
+                    exact.UnionWith(info.Where(kv=>kv.Value.Available&&bases.Any(b=>IsA(kv.Key,b))).Select(kv=>kv.Key));
+                exact.Remove(parentId);
+                slots[slot.Name]=exact.Order(StringComparer.Ordinal).ToArray();
+            }
+            if(slots.Count>0)compatibility[parentId]=slots;
+        }
+        return new GearItems(info, pools,compatibility);
     }
 
     /// <summary>필수 부품 칸 이름(소문자). 없으면 null(대부분 아이템).</summary>

@@ -3,7 +3,17 @@ namespace Gravity.Gear;
 /// <summary>장비 결정에 쓰는 아이템 한 개의 정보(서버 시작 때 DB에서 한 번 뽑음).</summary>
 public sealed record ItemInfo(double Price, int ArmorClass, double Pen, bool Quest, bool Mod,
     bool Thermal = false, bool LongScope = false, bool Weapon = false, bool Plate = false, bool PlateSlots = false, double MaxDurability = 0,
-    string Cat = "loot", IReadOnlySet<string>? RequiredSlots = null);
+    string Cat = "loot", IReadOnlySet<string>? RequiredSlots = null)
+{
+    public string Section { get; init; } = Weapon ? "weapons" : Pen > 0 ? "ammo" : Plate ? "plates" : "loot";
+    public string Slot { get; init; } = "special";
+    public string[] EquipmentSlots { get; init; } = [];
+    public string[] PlatePositions { get; init; } = [];
+    public string Source { get; init; } = "vanilla";
+    public string? Name { get; init; }
+    public bool Available { get; init; } = true;
+    public string Caliber { get; init; } = "";
+}
 
 /// <summary>
 /// 아이템 정보와 자동 티어. 장비 칸 티어 = 모든 봇 목록에 그 칸으로 나오는 아이템을 가격순으로 7등분(판정 43).
@@ -16,6 +26,8 @@ public sealed class GearItems
     public IReadOnlyDictionary<string, ItemInfo> Info { get; }
     /// <summary>장비 칸 이름 → 아이템 id → 티어(0~6).</summary>
     public IReadOnlyDictionary<string, Dictionary<string, int>> SlotTier { get; }
+    public IReadOnlyDictionary<string,string[]> PoolEquipment { get; }
+    public IReadOnlyDictionary<string,IReadOnlyDictionary<string,string[]>> CompatibleMods { get; }
     /// <summary>모드 아이템 묶음(판마다 일부만 고르는 대상).</summary>
     public IReadOnlyList<string> ModWeapons { get; }
     public IReadOnlyList<string> ModEquipment { get; }
@@ -24,15 +36,17 @@ public sealed class GearItems
     public static readonly string[] WeaponSlots = ["FirstPrimaryWeapon", "SecondPrimaryWeapon", "Holster"];
 
     /// <param name="slotPools">(칸 이름, 아이템 id): 모든 봇 종류의 장비 목록. 부품은 칸 이름 "mods".</param>
-    public GearItems(IReadOnlyDictionary<string, ItemInfo> info, IEnumerable<(string Slot, string Id)> slotPools)
+    public GearItems(IReadOnlyDictionary<string, ItemInfo> info, IEnumerable<(string Slot, string Id)> slotPools,
+        IReadOnlyDictionary<string,IReadOnlyDictionary<string,string[]>>? compatibleMods = null)
     {
         Info = info;
+        CompatibleMods = compatibleMods ?? new Dictionary<string,IReadOnlyDictionary<string,string[]>>();
+        PoolEquipment = info.Values.GroupBy(i=>i.Section+"/"+i.Slot).ToDictionary(g=>g.Key,g=>g.SelectMany(i=>i.EquipmentSlots).Distinct().ToArray());
         var bySlot = slotPools.Where(p => info.ContainsKey(p.Id)).GroupBy(p => p.Slot)
             .ToDictionary(g => g.Key, g => g.Select(p => p.Id).Distinct().ToList());
         var tiers = new Dictionary<string, Dictionary<string, int>>();
         foreach (var (slot, ids) in bySlot)
         {
-            if (slot == "mods") continue;
             var sorted = ids.OrderBy(id => info[id].Price).ThenBy(id => id, StringComparer.Ordinal).ToList();
             var d = new Dictionary<string, int>();
             for (int i = 0; i < sorted.Count; i++) d[sorted[i]] = Math.Min(6, i * 7 / Math.Max(1, sorted.Count));
@@ -41,13 +55,16 @@ public sealed class GearItems
         SlotTier = tiers;
         List<string> Mods(Func<string, bool> slotPick) => bySlot.Where(kv => slotPick(kv.Key)).SelectMany(kv => kv.Value)
             .Where(id => info[id].Mod).Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList();
-        ModWeapons = Mods(s => WeaponSlots.Contains(s));
-        ModEquipment = Mods(s => s != "mods" && !WeaponSlots.Contains(s));
-        ModAttachments = Mods(s => s == "mods");
+        ModWeapons = Mods(s => WeaponSlots.Contains(s)).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="weapons").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
+        ModEquipment = Mods(s => s != "mods" && !WeaponSlots.Contains(s) && !s.Contains('/')).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="armor").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
+        ModAttachments = Mods(s => s == "mods").Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section is "parts" or "plates").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
     }
 
-    public int TierOf(string slot, string id) =>
-        SlotTier.TryGetValue(slot, out var d) && d.TryGetValue(id, out var t) ? t : 0;
+    public int TierOf(string slot, string id)
+    {
+        if(SlotTier.TryGetValue(slot,out var d)&&d.TryGetValue(id,out var t))return t;
+        return Info.TryGetValue(id,out var i)&&SlotTier.TryGetValue(i.Section+"/"+i.Slot,out var byKind)&&byKind.TryGetValue(id,out t)?t:0;
+    }
 }
 
 /// <summary>판마다 정하는 장비 상태: 이번 판 모드 아이템 묶음. 같은 판 봇은 같은 묶음을 쓴다.</summary>

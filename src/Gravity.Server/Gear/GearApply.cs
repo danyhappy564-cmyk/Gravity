@@ -41,7 +41,7 @@ public sealed class GearContext
         if (Black.Contains(id)) return true;
         if (Info(id) is not { } info) return false;
         if (info.Quest && (Settings.NoQuest || Settings.BlockQuest)) return true;
-        if (info.Mod && (!Raid.ModAllowed(id) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
+        if (info.Mod && (Settings.DisabledSources.Contains(info.Source) || !Raid.ModAllowed(id) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
         return false;
     }
 }
@@ -89,38 +89,52 @@ public static class GearApply
     public static Result Apply(BotType bot, GearContext c, bool night, Random rnd)
     {
         int removed = 0, restored = 0;
+        var emptySlots = new List<string>();
         var g = c.Settings;
         var pick = c.Pick;
         var caps = c.Caps;
         var inv = bot.BotInventory;
+        var addedEquipment = new HashSet<string>();
 
         var table = g.TableFor(pick.RoleId, pick.Tier);
         bool allowArmouredRig = rnd.NextDouble() * 100 < table.Chance.GetValueOrDefault("armouredRig", 100);
 
         // 1) 장비 목록
         if (inv?.Equipment != null)
+        {
+            foreach(var slot in Enum.GetValues<SPTarkov.Server.Core.Models.Enums.EquipmentSlots>())
+                if(!inv.Equipment.ContainsKey(slot)&&GearPools.Controls(table,slot.ToString(),c.Items))inv.Equipment[slot]=new();
             foreach (var (slotEnum, pool) in inv.Equipment)
             {
-                if (pool == null || pool.Count == 0) continue;
+                if (pool == null) continue;
                 var slot = slotEnum.ToString();
                 var orig = pool.ToList();
+                bool userSlot = GearPools.Controls(table, slot, c.Items);
+                // 실제 DB에 있고 이 장비 칸에 맞는 아이템만 추가한다. DB 원본은 SPT가 만든 봇 복제본과 분리되어 있다.
+                foreach (var id in GearPools.Seeds(table,c.Items,slot))
+                    if(pool.TryAdd(id,1))addedEquipment.Add(id);
+                var candidates = pool.ToList();
                 bool managed = Managed.Contains(slot);
-                foreach (var (mid, w) in orig)
+                foreach (var (mid, w) in candidates)
                 {
                     var id = mid.ToString();
                     var info = c.Info(id);
+                    var manualWeight = info == null ? null : GearPools.Weight(table, info, id,slot);
+                    if (manualWeight.HasValue) userSlot = true;
                     bool drop = c.Blocked(id);
+                    if (manualWeight is <= 0) drop = true;
+                    if(!managed&&!drop&&manualWeight.HasValue)pool[mid]=manualWeight.Value;
                     if (!drop && managed)
                     {
                         int t = c.TierOf(slot, id);
-                        if (t > pick.Tier) drop = true;
+                        if (g.ItemTier.ContainsKey(id) ? t > pick.Tier : !manualWeight.HasValue && t > pick.Tier) drop = true;
                         else if (info != null && ClassCapped.Contains(slot) && info.ArmorClass > caps.FMax) drop = true;
                         else if (slot == "TacticalVest" && !allowArmouredRig && info != null && (info.ArmorClass > 0 || info.PlateSlots)) drop = true;
-                        else pool[mid] = w * Factor(pick.Tier - t) * (info?.Mod == true ? g.ModMult / 100.0 : 1);
+                        else pool[mid] = manualWeight ?? w * Factor(pick.Tier - t) * (info?.Mod == true ? g.ModMult / 100.0 : 1);
                     }
                     if (drop) { pool.Remove(mid); removed++; }
                 }
-                if (pool.Count == 0 || pool.Values.All(v => v <= 0))
+                if (!userSlot && (pool.Count == 0 || pool.Values.All(v => v <= 0)))
                 {
                     // 다 빠졌으면: 막히지 않은 것 중 가장 낮은 티어만 원래 무게로 되살린다.
                     // 막힌 것은 되살리지 않는다. 주무기만은 봇이 맨손이 되지 않게 원래 목록으로 둔다(판정 50).
@@ -134,24 +148,34 @@ public static class GearApply
                     }
                     restored++;
                 }
+                if (userSlot && pool.Count == 0) emptySlots.Add(slot);
             }
+        }
 
         // 2) 탄약: 관통 상한(스캐브는 블랙리스트 스캐브 상한도), 티어 거리 무게. 칼리버마다 최소 한 개는 남긴다(총은 있는데 탄이 없으면 안 됨).
         double penCap = pick.Group == "scavs" ? Math.Min(caps.Pen, g.ScavPenCap) : caps.Pen;
         if (inv?.Ammo != null)
-            foreach (var (_, pool) in inv.Ammo)
+        {
+            foreach(var key in table.Pools.Keys.Where(k=>k.StartsWith("ammo/")))inv.Ammo.TryAdd(key[5..],new());
+            foreach (var (caliber, pool) in inv.Ammo)
             {
-                if (pool == null || pool.Count == 0) continue;
+                if (pool == null) continue;
                 var orig = pool.ToList();
-                foreach (var (mid, w) in orig)
+                if(table.Pools.TryGetValue("ammo/"+caliber,out var chosenAmmo))
+                    foreach (var (id,w) in chosenAmmo)
+                        if(w>0&&c.Items.Info.TryGetValue(id,out var info)&&info.Section=="ammo"&&info.Slot==caliber)pool.TryAdd(id,1);
+                bool explicitAmmo = chosenAmmo != null;
+                foreach (var (mid, w) in pool.ToList())
                 {
                     var id = mid.ToString();
                     var info = c.Info(id);
+                    var weight = info == null ? null : GearPools.Weight(table, info, id);
+                    explicitAmmo |= weight.HasValue;
                     var pen = info?.Pen ?? 0;
-                    if (c.Blocked(id) || pen > penCap) { pool.Remove(mid); removed++; continue; }
-                    pool[mid] = w * Factor(Math.Max(0, pick.Tier - AmmoTier(g.Tiers, pen))) * (info?.Mod == true ? g.ModMult / 100.0 : 1);
+                    if (c.Blocked(id) || weight is <= 0 || pen > penCap || (g.ItemTier.TryGetValue(id,out var manualTier)&&manualTier>pick.Tier+1)) { pool.Remove(mid); removed++; continue; }
+                    pool[mid] = weight ?? w * Factor(Math.Max(0, pick.Tier - AmmoTier(g.Tiers, pen))) * (info?.Mod == true ? g.ModMult / 100.0 : 1);
                 }
-                if (pool.Count == 0)
+                if (pool.Count == 0 && !explicitAmmo && orig.Count>0)
                 {
                     var keep = orig.Where(kv => !c.Blocked(kv.Key.ToString())).ToList();
                     if (keep.Count == 0) keep = orig;
@@ -159,9 +183,23 @@ public static class GearApply
                     pool[low.Key] = Math.Max(1, low.Value);
                     restored++;
                 }
+                // 탄약을 모두 0으로 정한 구경은 그 탄을 쓰는 총도 빼서 빈 탄약 목록으로 봇 생성이 실패하지 않게 한다.
+                if(pool.Count==0&&explicitAmmo&&inv.Equipment!=null)
+                    foreach(var(slot,weapons) in inv.Equipment)
+                    {
+                        if(!GearItems.WeaponSlots.Contains(slot.ToString()))continue;
+                        foreach(var mid in weapons.Keys.Where(m=>c.Info(m.ToString())?.Caliber==caliber).ToArray())weapons.Remove(mid);
+                        if(weapons.Count==0)emptySlots.Add(slot.ToString());
+                    }
             }
+        }
 
         // 3) 부품 목록
+        if(inv!=null && addedEquipment.Count>0)
+        {
+            inv.Mods??=new();
+            GearCompatibility.AddMissing(inv.Mods,addedEquipment.Where(id=>!c.Blocked(id)),c.Items);
+        }
         if (inv?.Mods != null)
             foreach (var (parentId, slots) in inv.Mods)
             {
@@ -170,7 +208,7 @@ public static class GearApply
                 foreach (var (slotName, set) in slots)
                 {
                     if (set == null || set.Count == 0) continue;
-                    var (r, back) = FilterModSet(set, slotName, c, c.Required(parent, slotName));
+                    var (r, back) = FilterModSet(set, slotName, c, c.Required(parent, slotName), parent);
                     removed += r;
                     if (back) restored++;
                 }
@@ -187,6 +225,8 @@ public static class GearApply
             }
 
         ApplyChances(bot, g, caps, c.Role, table, night);
+        if (bot.BotChances?.EquipmentChances != null)
+            foreach(var slot in emptySlots)bot.BotChances.EquipmentChances[slot]=0;
         ApplyGeneration(bot, caps, c.Role, table, c);
         return new Result(removed, restored);
     }
@@ -197,13 +237,16 @@ public static class GearApply
     /// 단 필수 칸(required)은 절대 비우지 않는다(1.0 인게임: 묶음 밖 모드 방어구 내장 부품이 다 막혀 SPT가 "Nullable object must have a value"로 봇 생성 실패).
     /// 그때는 사용자 블랙리스트에 없는 것을, 그것도 없으면 원래 목록을 되살린다.
     /// </summary>
-    public static (int Removed, bool Restored) FilterModSet(HashSet<MongoId> set, string slotName, GearContext c, bool required = false)
+    public static (int Removed, bool Restored) FilterModSet(HashSet<MongoId> set, string slotName, GearContext c, bool required = false, string? parentId = null)
     {
         var before = set.ToList();
         var res = FilterCore(set, slotName, c);
         if (set.Count > 0 || !required || before.Count == 0) return res;
         var soft = before.Where(m => !c.Black.Contains(m.ToString())).ToList();
         foreach (var m in soft.Count > 0 ? soft : before) set.Add(m);
+        var line = $"필수 칸 복원 / Required slot restored: {c.Pick.RoleId} T{c.Pick.Tier + 1} parent={parentId ?? "?"} slot={slotName} items={string.Join(",", set)} blacklistException={soft.Count == 0}";
+        DiagLog.Remember("WARN", line);
+        DiagLog.GearLine(line);
         return (before.Count - set.Count, true);
     }
 
@@ -220,19 +263,20 @@ public static class GearApply
             if (c.Blocked(id)) return true;
             var info = c.Info(id);
             if (info == null) return false;
+            if (GearPools.Weight(c.Settings.TableFor(c.Pick.RoleId,c.Pick.Tier),info,id) is <=0) return true;
             if (front && info.Plate && (info.ArmorClass < caps.FMin || info.ArmorClass > caps.FMax)) return true;
-            if (side && info.Plate && info.ArmorClass > caps.Side) return true;
+            if (side && info.Plate && (info.ArmorClass < caps.SMin || info.ArmorClass > caps.Side)) return true;
             if (optic && info.Thermal && !c.ThermalOk) return true;
             if (optic && info.LongScope && !info.Thermal && !c.LongOk) return true;
             return false;
         });
         int removed = orig.Count - set.Count;
         if (set.Count > 0) return (removed, false);
-        var ok = orig.Where(m => !c.Blocked(m.ToString())).ToList();
+        var ok = orig.Where(m => !c.Blocked(m.ToString()) && (c.Info(m.ToString()) is not {} i || GearPools.Weight(c.Settings.TableFor(c.Pick.RoleId,c.Pick.Tier),i,m.ToString()) is not <=0)).ToList();
         if (ok.Count == 0) return (removed, false); // 전부 막힘: 비워 둔다
         if (front || side)
         {
-            int lo = front ? caps.FMin : 0, hi = front ? caps.FMax : caps.Side;
+            int lo = front ? caps.FMin : caps.SMin, hi = front ? caps.FMax : caps.Side;
             int Dist(MongoId m) { var cl = c.Info(m.ToString())?.ArmorClass ?? 0; return cl < lo ? lo - cl : cl > hi ? cl - hi : 0; }
             int best = ok.Min(Dist);
             foreach (var m in ok.Where(m => Dist(m) == best)) set.Add(m);
@@ -251,6 +295,8 @@ public static class GearApply
     {
         var ch = bot.BotChances;
         if (ch == null) return;
+        if(ch.EquipmentChances != null)
+            foreach(var(k,v) in table.SlotChances)ch.EquipmentChances[k]=v;
         if (ch.EquipmentChances != null)
             foreach (var (k, key) in new[] { ("headwear", "Headwear"), ("earpiece", "Earpiece"), ("faceCover", "FaceCover"), ("armorVest", "ArmorVest"),
                          ("backpack", "Backpack"), ("holster", "Holster"), ("eyewear", "Eyewear") })
@@ -262,6 +308,8 @@ public static class GearApply
             em["left_side_plate"] = em["right_side_plate"] = role.SidePlate;
             foreach (var k in new[] { "mod_equipment_000", "mod_equipment_001", "mod_equipment_002" }) em[k] = caps.HelmetAcc;
             if (night) em["mod_nvg"] = g.NightNvg;
+            foreach(var(k,v) in table.PartChances)
+                if(k.Contains("plate",StringComparison.OrdinalIgnoreCase) || k is "mod_nvg" or "mod_equipment" or "mod_equipment_000" or "mod_equipment_001" or "mod_equipment_002")em[k]=v;
         }
         var wm = ch.WeaponModsChances;
         if (wm != null)
@@ -275,10 +323,13 @@ public static class GearApply
             };
             foreach (var (prefix, v) in rules)
             {
-                foreach (var key in wm.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList()) wm[key] = v;
+                bool force=prefix=="mod_scope"&&g.ForceScope||prefix=="mod_muzzle"&&g.ForceMuzzle||prefix=="mod_stock"&&g.ForceStock;
+                foreach (var key in wm.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList()) wm[key] = force ? v : table.PartChances.GetValueOrDefault(key,v);
                 wm[prefix] = v;
             }
             if (g.ForceDust) wm["mod_reciever"] = 100;
+            foreach(var(k,v) in table.PartChances)
+                if(k.StartsWith("mod_")&&!rules.Any(r=>k.StartsWith(r.Prefix,StringComparison.OrdinalIgnoreCase))&&!(g.ForceDust&&k=="mod_reciever"))wm[k]=v;
         }
     }
 
@@ -298,6 +349,8 @@ public static class GearApply
         void Set(GenerationData? gd, string key, int? cap = null, bool zero = false)
         {
             if (gd == null) return;
+            if(table.Pools.TryGetValue("meds/"+key,out var custom))
+                gd.Whitelist=custom.Where(kv=>kv.Value>0&&!c.Blocked(kv.Key)&&c.Info(kv.Key)?.Section=="meds").ToDictionary(kv=>(MongoId)kv.Key,kv=>kv.Value);
             // 개수별 고정 목록(화이트리스트)에서도 막힌 것을 뺀다.
             if (gd.Whitelist != null)
                 foreach (var mid in gd.Whitelist.Keys.ToList())
@@ -305,6 +358,15 @@ public static class GearApply
             if (!table.Gen.TryGetValue(key, out var mm)) return;
             int mx = cap.HasValue ? Math.Min(mm.Max, cap.Value) : mm.Max;
             gd.Weights = zero ? Uniform(0, 0) : Uniform(Math.Min(mm.Min, mx), mx);
+            if(!zero && table.GenWeights.TryGetValue(key,out var countWeights))
+            {
+                gd.Weights=new Dictionary<double,double>();
+                foreach(var(count,weight) in countWeights)
+                {
+                    var n=Math.Clamp(count,Math.Min(mm.Min,mx),mx);gd.Weights[n]=gd.Weights.GetValueOrDefault(n)+weight;
+                }
+            }
+            if(table.Pools.TryGetValue("meds/"+key,out _) && gd.Whitelist?.Count==0)gd.Weights=Uniform(0,0);
         }
         Set(items.Magazines, "magazines", caps.Mags);
         Set(items.Healing, "meds", caps.Meds);
