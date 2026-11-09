@@ -42,6 +42,8 @@ select:focus{border-color:var(--primary)}
 
 /* drawer */
 .drawer{position:fixed;top:var(--appbar);bottom:0;left:0;width:var(--drawer);background:linear-gradient(180deg,#0e1219,#0a0d13);border-right:1px solid #1b2330;padding:18px 12px 14px;display:flex;flex-direction:column;z-index:35;overflow:auto}
+.mode-note{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;margin:0 0 14px;border-radius:10px;font-size:12.5px;border:1px solid #2b3446;background:#121925}.mode-note b{font-size:12px;padding:2px 8px;border-radius:6px;background:#1f2a3d;color:#cfe0ff}.mode-note.adv b{background:#2e2350;color:#d9c8ff}.mode-note span{color:var(--muted);flex:1}body:not(.easy) .adv .ctl-h>span:first-child::after,body:not(.easy) .card.adv>.card-h h2::after{content:var(--advtxt);font-size:10px;font-weight:600;color:#c9b6ff;border:1px solid #6a55a0;border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:middle}
+.apply-table{width:100%}.apply-table th{text-align:left;font-size:12px;color:var(--muted);font-weight:600}.apply-table td{vertical-align:middle;padding:8px 10px}.apply-table td:first-child,.apply-table td:nth-child(2),.apply-table th:first-child,.apply-table th:nth-child(2){width:1%;white-space:nowrap}
 .nav-sep{border:0;border-top:1px solid #1e2836;margin:8px 4px}.nav-group>summary{cursor:pointer;list-style:none;user-select:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:'▸';display:inline-block;width:14px}.nav-group[open]>summary::before{content:'▾'}.nav-group>summary:hover{color:#a9b3c4}
 .nav-cap{font-size:10px;letter-spacing:1.6px;color:#5f6b80;font-weight:650;padding:14px 12px 8px}
 .nav-cap:first-child{padding-top:0}
@@ -1735,9 +1737,11 @@ function renderShell(){
 function render(){
   if(page==='flow'||page==='maps')selectPage(page);
   persistNavigation();renderShell();const pg=P[page];$('#main').classList.toggle('wide',page==='tieredit');
-  $('#main').innerHTML=`<div class="crumb">${u('settings')} / ${tr(navTitle(page))}</div><div class="head"><div><h1>${tr(navTitle(page))}</h1><p>${tr(pg.desc)}</p></div></div>${liveBanner(page)}${svmNotice(page)}${pg.render()}<div id="advNote"></div>`;
-  const n=mode==='easy'?$('#main').querySelectorAll('.adv').length:0;
-  $('#advNote').innerHTML=n?`<div class="morebar" style="margin-top:18px">${fmt(u('moreAdv'),{n})}<button class="mini-btn" data-act="toAdv">${u('showAdv')}</button></div>`:'';
+  $('#main').innerHTML=`<div class="crumb">${u('settings')} / ${tr(navTitle(page))}</div><div class="head"><div><h1>${tr(navTitle(page))}</h1><p>${tr(pg.desc)}</p></div></div><div id="modeNote"></div>${liveBanner(page)}${svmNotice(page)}${pg.render()}<div id="advNote"></div>`;
+  const n=$('#main').querySelectorAll('.adv').length,easy=mode==='easy';
+  try{document.documentElement.style.setProperty('--advtxt',JSON.stringify(tr(T('고급','Advanced'))));}catch(_){}
+  $('#modeNote').innerHTML=`<div class="mode-note ${easy?'easy':'adv'}"><b>${tr(easy?T('쉬운 모드','Easy mode'):T('고급 모드','Advanced mode'))}</b><span>${tr(easy?T('자주 쓰는 칸만 보입니다.','Only the common settings are shown.'):T('모든 칸이 보입니다. 보라색 "고급" 표시가 붙은 칸은 쉬운 모드에서 숨겨집니다.','Every setting is shown. Ones marked "Advanced" in purple are hidden in Easy mode.'))}${n?' '+fmt(tr(easy?T('이 페이지에 숨겨진 고급 칸 {n}개.','{n} advanced settings hidden on this page.'):T('이 페이지의 고급 칸 {n}개.','{n} advanced settings on this page.')),{n}):''}</span>${easy?(n?`<button class="mini-btn" data-act="toAdv">${u('showAdv')}</button>`:''):`<button class="mini-btn" data-act="toEasy">${tr(T('쉬운 모드로','Back to Easy'))}</button>`}</div>`;
+  $('#advNote').innerHTML=easy&&n?`<div class="morebar" style="margin-top:18px">${fmt(u('moreAdv'),{n})}<button class="mini-btn" data-act="toAdv">${u('showAdv')}</button></div>`:'';
   updateSavebar();
 }
 function flatten(o,pre='',out={}){for(const[k,v]of Object.entries(o)){const p=pre?pre+'.'+k:k;if(Array.isArray(v)){if(v.length&&typeof v[0]==='object')v.forEach((x,i)=>flatten(x,p+'.'+i,out));else out[p]=v.join(',');}else if(v&&typeof v==='object')flatten(v,p,out);else out[p]=v;}return out;}
@@ -1901,6 +1905,7 @@ document.addEventListener('click',e=>{
   else if(a==='tlpopClose'){closePop();}
   else if(a==='tFull'){tFull=!tFull;document.body.classList.toggle('noscroll',tFull);render();if(!tFull){const el=document.querySelector('.card .tlay,.card .ttabs');if(el)el.scrollIntoView({block:'start'});}}
   else if(a==='toAdv'){mode='adv';rerender();}
+  else if(a==='toEasy'){mode='easy';rerender();}
   else if(a==='normalize'){const o=get(arg),ks=Object.keys(o),sum=ks.reduce((s,k)=>s+o[k],0)||1;let acc=0;ks.forEach((k,i)=>{o[k]=i===ks.length-1?100-acc:Math.round(o[k]/sum*100);acc+=o[k];});rerender();}
   else if(a==='zonesReset'){const view=zoneView(mapSel);state.maps[mapSel][view.key]||={};view.zones.forEach(z=>state.maps[mapSel][view.key][z.id]={on:true,w:z.w,wPmc:z.w,wScav:z.w});rerender();}
   else if(a==='tiersReset'){state.gear.tiers=clone(DEFAULTS.gear.tiers);rerender();}
@@ -1991,32 +1996,23 @@ function applyInfo(id,groups){
   return `<details class="apply-info" data-apply-info="${id}" ${open?'open':''}><summary>${fmt(tr(T('지금 적용 중인 항목 {n}개','{n} items currently applied')),{n:count})} <span class="muted">· ${tr(T('자세히 ▾','Details ▾'))}</span></summary><div class="tw"><table><tbody>${groups.map(g=>`<tr><th>${esc(tr(g.label))}</th><td><ul>${g.items.map(x=>`<li>${esc(tr(x))}</li>`).join('')}</ul></td></tr>`).join('')}</tbody></table></div></details>`;
 }
 document.addEventListener('toggle',e=>{const d=e.target.dataset||{};if(d.applyInfo)writeLocal('gravity.applyInfo.'+d.applyInfo,e.target.open?'1':'0');if(d.navGroup!==undefined)writeLocal('gravity.nav.'+d.navGroup,e.target.open?'1':'0');},true);
-const APPLICATION=[
-  {label:T('PMC','PMC'),items:[
-    T('시작 인원·웨이브 시각과 인원·분대 크기·진영·난이도','Start count, wave times and sizes, squads, side and difficulty'),
-    T('그룹 개수 제한: 레이드 전체 / 클라가 있으면 동시에 살아 있는 수','Group limits: whole raid / alive at once with the client'),
-    T('맵별 방식·맵 끄기·PMC 구역과 비중·카드별 공통/맵 값 선택','Per-map styles, map enablement, PMC zones and weights; shared/map values per card'),
-    T('무한 보충 PMC: 스캐브 관리를 끈 연구소 포함','Endless PMC refill, including Labs without scav management'),
-    T('스캐브 레이드 때 남는 PMC·다른 모드가 넣은 PMC 구분','PMCs left for scav raids and PMCs added by other mods')]},
-  {label:T('스캐브','Scavs'),items:[
-    T('시작 스캐브·활동/휴식·보충·소프트 캡·플레이어당 한도','Starting scavs, active/quiet windows, refill, soft cap and per-player limit'),
-    T('맵별 스캐브 방식·시작 비율·활동/휴식·보충·한도·중단 비율·구역 비중','Per-map scav style, initial share, activity/quiet, refill, limits, hard stop and zone weights'),
-    T('플레이어 스캐브 이름 확률','Player-scav name chance')]},
-  {label:T('보스·특수 봇','Bosses & special bots'),items:[
-    T('보스 확률·호위 수·등장 시각·난이도·구역·추가 스폰','Boss chance, escorts, time, difficulty, zones and extra spawns'),
-    T('원래 없던 맵에 보스 배치','Bosses on maps they normally skip'),
-    T('레이더·로그·컬티스트·블러드하운드: 켜기·맵 확률·인원','Raiders, rogues, cultists and bloodhounds: enablement, per-map chance and size'),
-    T('저격 스캐브: 켜기·맵 확률·인원','Sniper scavs: enablement, per-map chance and size'),
-    T('시즌 이벤트·감염자·밤 컬티스트·산타 확률: 이벤트 켜고 끄기는 서버 재시작 후','Seasonal events, infected, night cult and Santa chances; event enablement needs a server restart')]},
-  {label:T('팩션','Factions'),items:[T('RUAF·블랙 디비전: Gravity가 관리하는 팩션의 확률·인원·웨이브/시작만','RUAF and Black Division: chance, size and waves/start only for Gravity-managed factions')]},
-  {label:T('장비','Loadouts'),items:[T('봇 장비: 장비 메뉴의 적용 항목, APBS가 없을 때','Bot loadouts: applied items in the Loadout menu, when APBS is absent')]},
-  {label:T('연동·진단','Integration & diagnostics'),items:[
-    T('맵 동시 봇 상한·근처 보충','Map bot cap and near-player refill'),
-    T('시작 보호·스폰 거리·핫스팟 비중','Start protection, distances and hotspot share'),
-    T('ORBIT 근처 보충 거리·탈출 보충 범위/상한·팩션 웹 관리 우선','ORBIT near-player distance, extraction refill scope/cap and web faction management priority'),
-    T('변형 맵 자동 감지·배치별 구역 비중·내 프리셋 서버 저장·진단 기록','Automatic variant detection, layout-specific zone weights, server-saved presets and diagnostics')]},
-  {label:T('아직 미적용','Not applied yet'),pending:true,items:[T('게임 안 동작 페이지·레이드 중 넣어 보기','In-game behavior page and in-raid test spawns'),T('핫스팟 부스트·상한 무시','Hotspot boost and cap bypass')]}
-];
+function applyTable(){
+  const client=serverMeta?.client,ready=!!(client?.version&&client.compatible),off=spawnLocked()||!state.modules.spawn;
+  const ST={on:[T('적용 중','Applied'),'good'],client:ready?[T('적용 중','Applied'),'good']:[T('게임 플러그인 필요','Needs game plugin'),'warn'],restart:[T('켜고 끄기는 서버 재시작 후','On/off after server restart'),'gold'],off:[T('쓰이지 않음','Not used'),''],todo:[T('아직 없음','Not yet'),'']};
+  const R=[
+    [T('PMC가 나오는 방식','How PMCs appear'),'on',T('처음에 몇 명, 그 뒤 언제·몇 명씩 더 나오는지, 분대 크기와 진영','How many at the start, when and how many more arrive, squad size and side')],
+    [T('스캐브가 나오는 방식','How scavs appear'),'client',T('처음 스캐브 수, 쉬는 시간, 줄어들면 다시 채우는 규칙','Starting scavs, quiet periods and how they are refilled')],
+    [T('맵 동시 인원 상한','Bots-at-once limit'),'client',T('한 맵에 동시에 살아 있는 봇 수의 최대치','The most bots alive on a map at once')],
+    [T('플레이어 근처 보충','Refill near players'),'client',T('켜 둔 맵에서만 플레이어 주변에 봇을 다시 채움','Adds bots around players, only on maps where it is on')],
+    [T('스폰 구역·거리','Spawn zones and distance'),'client',T('어느 구역에서 나올지, 플레이어와 얼마나 떨어져 나올지','Which zones bots use and how far from players they appear')],
+    [T('보스','Bosses'),'on',T('등장 확률, 호위 수, 나오는 시각과 위치','Spawn chance, escorts, time and place')],
+    [T('특수 봇','Special bots'),'on',T('레이더·로그·컬티스트·저격 스캐브의 확률과 인원','Chance and size of raiders, rogues, cultists and marksmen')],
+    [T('팩션 모드','Faction mods'),'on',T('Gravity가 관리하도록 고른 팩션(RUAF·블랙 디비전)만','Only factions you set Gravity to manage (RUAF, Black Division)')],
+    [T('시즌 이벤트','Seasonal events'),'restart',T('할로윈·크리스마스 등. 등장 확률은 다음 판부터, 이벤트 켜고 끄기는 서버를 다시 켠 뒤','Halloween, Christmas and others. Chances apply next raid; turning events on/off needs a server restart')],
+    [T('레이드 중 직접 넣어 보기','Spawning bots during a raid'),'todo',T('다음 판에서 추가 예정','Planned for a later version')]];
+  const rows=R.map(([n,k,t])=>{const s=ST[off&&k!=='todo'?'off':k];return {n,s,t};}),count=rows.filter(r=>r.s[1]==='good'||r.s[1]==='gold').length,open=readLocal('gravity.applyInfo.spawn')==='1';
+  return `<details class="apply-info" data-apply-info="spawn" ${open?'open':''}><summary>${fmt(tr(T('Gravity가 지금 바꾸는 것 {n}가지','{n} things Gravity changes now')),{n:count})} <span class="muted">· ${tr(T('펼쳐 보기 ▾','Show ▾'))}</span></summary>${off?notice(T('스폰 관리가 꺼져 있거나 다른 스폰 모드가 맡고 있어 아래 항목은 쓰이지 않습니다.','Spawn management is off or another spawn mod is in charge, so nothing below is used.'),'warn'):''}<div class="tw"><table class="apply-table"><thead><tr><th>${tr(T('무엇을','What'))}</th><th>${tr(T('지금 상태','Status'))}</th><th>${tr(T('쉽게 말하면','In plain words'))}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(tr(r.n))}</b></td><td>${pill(tr(r.s[0]),r.s[1])}</td><td class="muted">${esc(tr(r.t))}</td></tr>`).join('')}</tbody></table></div>${ready?'':`<p class="small muted" style="margin:10px 2px 0">${esc(tr(T('"게임 플러그인 필요" 항목은 BepInEx 폴더의 Gravity 클라이언트가 게임에서 서버에 연결되면 자동으로 적용됩니다.','"Needs game plugin" items apply automatically once the Gravity client in BepInEx connects from the game.')))}</p>`}</details>`;
+}
 function liveBanner(pg){
   if(serverErr)return notice(T('서버에 연결하지 못했습니다: ','Cannot reach the server: ')[lang]+serverErr,'warn');
   let h='';
@@ -2037,7 +2033,7 @@ function liveBanner(pg){
     const c=serverMeta&&serverMeta.client,ok=!!(c&&c.version&&c.compatible);
     if(!ok)h+=notice(T('클라 플러그인 없음(또는 판 다름): 공장·미궁 PMC·스캐브·상한·근처 보충이 꺼져 있습니다.','Client plugin missing (or version differs): Factory/Labyrinth PMCs, scavs, bot cap and near-player refill are off.'),'warn');
     if(pg==='near')h+=notice(T('"기본: PMC / 스캐브"를 끄고 직접 고르기를 켜면 모든 자리가 직접 고른 종류로 나옵니다. 둘 다 끄면 기본을 씁니다.','With "Default" off and custom types on, every slot uses the custom types. If both are off, default is used.'),'flat');
-    h+=applyInfo('spawn',APPLICATION);
+    h+=applyTable();
   }
   return h;
 }

@@ -93,8 +93,8 @@ test('접힌 적용 안내와 저장소 차단 환경을 지원합니다', () =>
   const a = app({denied: true});
   const out = a.run("liveBanner('spawn')");
   assert.match(out, /<details[^>]*data-apply-info/);
-  assert.match(out, /지금 적용 중인 항목 \d+개/);
-  assert.match(out, /아직 미적용/);
+  assert.match(out, /Gravity가 지금 바꾸는 것 \d+가지/);
+  assert.match(out, /아직 없음/);
   assert.ok(!out.includes('진단 기록(0.6)'));
   for (const page of ['tiers', 'roles', 'weapons', 'items']) {
     const note = a.run(`liveBanner('${page}')`);
