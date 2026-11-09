@@ -660,3 +660,15 @@ test('부착물: 티어 이하만 보이고 직접 뺀 것이 우선이며, 티�
   a.run(`itSec='parts';page='itemtiers'`);
   assert.match(a.run('P.itemtiers.render()'),/비싼 조준경/);
 });
+
+test('모드 아이템 0개 설정·PMC만 설정은 티어 편집기에서도 막힘으로 보이고, 모드 아이템 기타 탭이 깨지지 않습니다', () => {
+  const a=app(),p='000000000000000000000071';
+  a.run(`serverMeta={};GEAR_CATALOG=[{id:'${p}',ko:'모드 조준경',en:'Mod scope',section:'parts',slot:'scope',equipmentSlots:[],source:'SomeParts',mod:true,autoTier:1,armorClass:0,pen:0,price:100,tierGroup:'parts/scope',tierRank:1,tierSize:7}];rebuildSlots();INSTALLED.SomeParts=true;`);
+  a.run(`state.mods.subset=true;state.mods.attachments=0`);
+  assert.equal(a.run(`blockOf(findItem('parts','scope','${p}'),'parts','pmc').k`),'mod');
+  a.run(`state.mods.attachments=10;state.mods.pmcOnly=true`);
+  assert.equal(a.run(`blockOf(findItem('parts','scope','${p}'),'parts','pmc')`),null);
+  assert.equal(a.run(`blockOf(findItem('parts','scope','${p}'),'parts','scavs').k`),'mod');
+  a.run(`page='items';modTab='other'`);
+  assert.doesNotThrow(()=>a.run('P.items.render()'));
+});

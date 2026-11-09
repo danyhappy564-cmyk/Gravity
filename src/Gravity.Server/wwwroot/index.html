@@ -744,7 +744,7 @@ function labelFor(p){
   if(k[0]==='specials'){const s=SPECIALS.find(x=>x[0]===k[1]);return `${tr(s[1])} · ${k[2]==='chance'||k[2]==='extra'?mname(k[3]):k[2]}`;}
   if(k[0]==='factions'){const f=FACTIONS.find(x=>x.id===k[1]);return `${tr(f.name)} · ${k.slice(2).map(x=>MAPS.some(m=>m.id===x)?mname(x):x).join('.')}`;}
   if(k[0]==='weapons'&&k[1]==='range')return `${tr(T('원거리 무기 비중','Long-range share'))} · ${mname(k[2])}`;
-  if(k[0]==='mods'&&k[1]==='allowed'){const it=MODS[k[2]].find(x=>x[0]===k[3]);return `${tr(T('허용 모드','Allowed mod'))} · ${it?it[1]:k[3]}`;}
+  if(k[0]==='mods'&&k[1]==='allowed'){const it=(MODS[k[2]]||[]).find(x=>x[0]===k[3]);return `${tr(T('허용 모드','Allowed mod'))} · ${it?it[1]:k[3]}`;}
   if(k[0]==='blacklist'&&k[1]==='entries')return `${tr(T('블랙리스트','Blacklist'))} · ${itemName(get('blacklist.entries.'+k[2]+'.id')||k[2])} · ${k[3]}`;
   if(k[0]==='dev')return `${tr(T('개발','Dev'))} · ${k[1]}`;
   if(p==='preset')return tr(T('레이드 프리셋','Raid preset'));
@@ -1468,8 +1468,8 @@ P.tieredit={desc:T('봇마다 T1~T7에 들고 나올 아이템과 비율을 고�
 
 P.items={desc:T('모드로 추가된 무기·장비를 봇이 얼마나 쓸지 정합니다. 레이드마다 일부만 쓰면 램을 크게 아낍니다.','How much modded gear bots use. A per-raid subset saves a lot of RAM.'),render(){
   const m=state.mods,dis=!m.subset;
-  const all=MODS[modTab].filter(([,n])=>n.toLowerCase().includes(modSearch.toLowerCase()));
-  const sel=MODS[modTab].filter(([id])=>m.allowed[modTab][id]).reduce((a,[, ,c])=>a+c,0);
+  const all=(MODS[modTab]||[]).filter(([,n])=>n.toLowerCase().includes(modSearch.toLowerCase()));
+  const sel=(MODS[modTab]||[]).filter(([id])=>(m.allowed[modTab]||{})[id]).reduce((a,[, ,c])=>a+c,0);
   const save=Math.round(((200-m.weapons)/200*90+(1000-m.attachments)/1000*60+(200-m.equipment)/200*35+(100-m.clothing)/100*10)*(m.subset?1:0));
   return `<div class="stack">${gearOff()}<div class="grid g2">
   ${card(T('레이드마다 일부만 사용','Per-raid subset'),sw('mods.subset',T('켜기 (램 절약)','Enable (save RAM)'),T('레이드 시작 때 이번 판 모드 아이템을 뽑습니다. 무기를 뽑으면 그 무기 전용 부품은 자동 포함.','Rolls this raid’s mod items. A rolled weapon brings its own parts.'))
@@ -1612,6 +1612,10 @@ const BL_SCOPE={all:()=>true,pmc:b=>b==='pmc',scav:b=>b==='scav',boss:b=>b==='bo
 function blockOf(it,sec,bot){const tk=bot;bot=grpOf(bot);
   if(!INSTALLED[it.src])return {k:'miss',l:T('모드 없음','Mod missing')};
   if(!modAllowed(it.src,sec))return {k:'mod',l:T('허용 안 한 모드','Mod not allowed')};
+  // 서버 GearContext.Blocked와 같게: 판마다 일부만 쓰기에서 그 종류 0개, 모드 장비는 PMC만
+  if(it.mod){const m=state.mods,cat=sec==='weapons'?'weapons':sec==='parts'?'attachments':sec==='armor'?'equipment':null;
+    if(m.subset&&cat&&!(m[cat]>0))return {k:'mod',l:{weapons:T('모드 무기 0개 설정','Mod weapons set to 0'),attachments:T('모드 부착물 0개 설정','Mod attachments set to 0'),equipment:T('모드 장비 0개 설정','Mod gear set to 0')}[cat]};
+    if(m.pmcOnly&&bot!=='pmc')return {k:'mod',l:T('모드 아이템은 PMC만','Mod items: PMC only')};}
   if(state.blacklist.entries.some(x=>x.id===it.id&&blHit(x,tk)==='full'))return {k:'bl',l:T('블랙리스트','Blacklisted')};
   if(sec==='ammo'&&bot==='scavs'&&it.x!=null&&it.x>state.blacklist.scavPenCap)return {k:'pen',l:T('스캐브 관통 상한','Scav pen cap')};
   return null;}
