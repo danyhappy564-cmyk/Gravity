@@ -17,6 +17,8 @@ namespace Gravity.Gear;
 public static class GearRuntime
 {
     public static GearItems Items { get; set; } = GearItems.Empty;
+    /// <summary>SPT 아이템 템플릿(충돌 확인용, 로더가 채움). 없으면 대체 부품 고르기를 건너뛴다.</summary>
+    public static IReadOnlyDictionary<MongoId, TemplateItem>? Templates { get; set; }
     /// <summary>레벨별 경험치(SPT globals). PMC 레벨을 바꿀 때 경험치도 맞춘다.</summary>
     public static int[] ExpTable { get; set; } = [];
     public static ProfileActivityService? Activity { get; set; }
@@ -209,6 +211,72 @@ public class GearDynamicModPatch : AbstractPatch
     }
 }
 
+/// <summary>
+/// 무기 부품 칸 하나를 고를 때 SPT가 쓰는 최종 목록. 봇 목록 밖에서 새로 만든 목록(새로 고른 부품의 하위 칸:
+/// GetRequiredModsForWeaponSlot·GetModsForWeaponSlot, 조준경 마운트의 DB 호환 목록, 기본 프리셋 부품)도 여기를 지나므로
+/// 같은 기준으로 거른다(1.0 점검: 원작 프리셋 판에 모드 가늠자·총열이 섞임). SPT 캐시 집합을 건드리지 않게 복사본을 돌려준다.
+/// </summary>
+public class GearModPoolPatch : AbstractPatch
+{
+    protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotEquipmentModGenerator), nameof(BotEquipmentModGenerator.GetModPoolForSlot));
+
+    [PatchPostfix]
+    public static void Postfix(ModToSpawnRequest request, ref HashSet<MongoId>? __result)
+    {
+        var c = GearRuntime.Current;
+        if (c == null || __result == null || __result.Count == 0 || request?.ParentTemplate == null) return;
+        try
+        {
+            var slot = request.ModSlot ?? "";
+            var parent = request.ParentTemplate.Id.ToString();
+            var set = new HashSet<MongoId>(__result);
+            GearApply.FilterModSet(set, slot, c, c.Required(parent, slot), parent);
+            __result = set;
+        }
+        catch (Exception ex) { GearRuntime.LastError = ex.Message; }
+    }
+}
+
+/// <summary>
+/// 필수 칸에 맞는 부품을 못 찾으면 SPT는 DB 호환 목록 전체에서 아무거나 고른다. 고른 것이 이 봇에 막힌 아이템(모드 묶음 밖·원작 표 등)이면
+/// 같은 칸의 허용 부품 중 지금 무기와 충돌하지 않는 것으로 바꾼다. 그런 게 없으면 SPT 선택을 그대로 둔다(총이 깨지는 것보다 낫다).
+/// </summary>
+public class GearItemDbModPatch : AbstractPatch
+{
+    protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotEquipmentModGenerator), nameof(BotEquipmentModGenerator.GetRandomModTplFromItemDb));
+
+    [PatchPostfix]
+    public static void Postfix(Slot parentSlot, string modSlot, IEnumerable<Item> items, ref MongoId? __result)
+    {
+        var c = GearRuntime.Current;
+        var tpls = GearRuntime.Templates;
+        if (c == null || tpls == null || __result == null || !c.Blocked(__result.Value.ToString())) return;
+        try
+        {
+            var filter = parentSlot?.Properties?.Filters?.FirstOrDefault()?.Filter;
+            if (filter == null || filter.Count == 0) return;
+            var set = new HashSet<MongoId>(filter.Where(m => !c.Blocked(m.ToString())));
+            if (set.Count == 0) return;
+            GearApply.FilterModSet(set, modSlot ?? "", c, true);
+            var have = items?.Select(i => i.Template).ToList() ?? [];
+            var ok = set.Where(m => !c.Blocked(m.ToString()) && tpls.TryGetValue(m, out var t) && !Conflicts(t, have, tpls)).ToList();
+            if (ok.Count > 0) __result = ok[Random.Shared.Next(ok.Count)];
+        }
+        catch (Exception ex) { GearRuntime.LastError = ex.Message; }
+    }
+
+    private static bool Conflicts(TemplateItem t, List<MongoId> have, IReadOnlyDictionary<MongoId, TemplateItem> tpls)
+    {
+        var mine = t.Properties?.ConflictingItems;
+        foreach (var h in have)
+        {
+            if (mine != null && mine.Contains(h)) return true;
+            if (tpls.TryGetValue(h, out var ht) && ht.Properties?.ConflictingItems?.Contains(t.Id) == true) return true;
+        }
+        return false;
+    }
+}
+
 /// <summary>무작위 방어구 칸의 부품 목록(SPT가 DB에서 새로 만듦)을 복제해 거른다.</summary>
 public class GearDynamicGearPatch : AbstractPatch
 {
@@ -238,6 +306,12 @@ public class GearDynamicGearPatch : AbstractPatch
 /// <summary>SPT 전리품 캐시(역할별)가 돌려준 목록에서 이 봇에 막힌 아이템을 뺀다. 보안 컨테이너는 그대로.</summary>
 public class GearLootPatch : AbstractPatch
 {
+    /// <summary>소모품 캐시 종류 → 웹 소모품 종류(진통제 DrugItems는 표 목록 없이 티어만).</summary>
+    private static readonly Dictionary<string, string?> MedKinds = new()
+    {
+        ["HealingItems"] = "meds", ["StimItems"] = "stims", ["GrenadeItems"] = "grenades", ["FoodItems"] = "food", ["DrinkItems"] = "drink", ["DrugItems"] = null,
+    };
+
     protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotLootCacheService), nameof(BotLootCacheService.GetLootFromCache));
 
     [PatchPostfix]
@@ -245,7 +319,11 @@ public class GearLootPatch : AbstractPatch
     {
         var c = GearRuntime.Current;
         if (c == null || __result == null || __result.Count == 0 || lootType == "SecuredContainer") return;
-        try { __result = __result.Where(kv => !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value); }
+        try
+        {
+            __result = __result.Where(kv => !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value);
+            if (MedKinds.TryGetValue(lootType, out var kind)) __result = GearApply.FilterConsumables(__result, kind, c);
+        }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }
 }

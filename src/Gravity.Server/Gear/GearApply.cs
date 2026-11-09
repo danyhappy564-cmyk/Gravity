@@ -257,6 +257,37 @@ public static class GearApply
         return (before.Count - set.Count, true);
     }
 
+    /// <summary>
+    /// SPT 소모품 캐시(역할별 공용, 그 역할의 첫 봇 목록으로 한 번만 만들어짐)를 이 봇 티어에 맞춘다(1.0 점검: T1 봇에 AFAK가 쏟아짐).
+    /// kind 종류에 표 직접 목록이 있으면 그 종류는 그 목록(무게&gt;0, 막힌 것·직접 티어 위 제외)으로 바꾸고,
+    /// 없으면 의약품류마다 같은 종류 안 가격 티어가 봇 티어 위인 것을 뺀다(그 종류가 다 빠지면 가장 낮은 티어만 남김). 의약품류가 아닌 것은 그대로.
+    /// </summary>
+    public static Dictionary<MongoId, double> FilterConsumables(Dictionary<MongoId, double> pool, string? kind, GearContext c)
+    {
+        var table = c.Settings.TableFor(c.Pick.RoleId, c.Pick.Tier);
+        string? KindOf(MongoId m) => c.Info(m.ToString()) is { Section: "meds" } i ? i.Slot : null;
+        int TierOf(MongoId m) => c.TierOf("meds/" + KindOf(m), m.ToString());
+        var res = new Dictionary<MongoId, double>(pool);
+        if (kind != null && table.Pools.TryGetValue("meds/" + kind, out var own))
+        {
+            foreach (var m in res.Keys.Where(m => KindOf(m) == kind).ToList()) res.Remove(m);
+            foreach (var (id, w) in own)
+                if (w > 0 && !c.Blocked(id) && c.Info(id) is { Section: "meds" } i && i.Slot == kind
+                    && !(c.Settings.ItemTier.ContainsKey(id) && c.TierOf("meds/" + kind, id) > c.Pick.Tier))
+                    res[id] = w;
+            return res;
+        }
+        foreach (var grp in res.Keys.Where(m => KindOf(m) != null).GroupBy(KindOf).ToList())
+        {
+            var list = grp.ToList();
+            var over = list.Where(m => TierOf(m) > c.Pick.Tier).ToList();
+            if (over.Count < list.Count) { foreach (var m in over) res.Remove(m); continue; }
+            int lo = list.Min(TierOf);
+            foreach (var m in list.Where(m => TierOf(m) > lo)) res.Remove(m);
+        }
+        return res;
+    }
+
     /// <summary>부착물 티어(같은 종류 안 가격 순위, 직접 지정 우선). 부착물이 아니면 0.</summary>
     private static int PartTier(string id, GearContext c) => c.Info(id) is { Section: "parts" } i ? c.TierOf("parts/" + i.Slot, id) : 0;
 

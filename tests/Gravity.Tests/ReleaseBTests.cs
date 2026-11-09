@@ -238,6 +238,25 @@ public class ReleaseBTests
     }
 
     [Fact]
+    public void ConsumablesFromTheSharedLootCacheFollowEachBotsTier()
+    {
+        // SPT 소모품 캐시는 역할별 공용이라(첫 봇 기준) 봇마다 티어로 다시 거른다. 의약품 7개(가격 1~7) → T1~T7, 음식 1개(T7 뿐).
+        var info=new Dictionary<string,ItemInfo>();
+        for(int i=1;i<=7;i++)info[Id(60+i)]=new(i,0,0,false,false){Section="meds",Slot="meds"};
+        info[Id(70)]=new(1,0,0,false,false){Section="meds",Slot="food"};
+        info[Id(71)]=new(1,0,0,false,false){Section="loot",Slot="loot"};
+        var items=new GearItems(info,info.Keys.Where(k=>info[k].Section=="meds").Select(id=>("meds/"+info[id].Slot,id)));
+        Dictionary<MongoId,double> Pool()=>info.Keys.ToDictionary(k=>(MongoId)k,_=>1.0);
+        string[] Run(string json,int tier,string? kind){var c=GearApply.Context(Config(json),new("usec","pmc",tier,true),items,new(null,0,0,0),false,new(1));
+            return GearApply.FilterConsumables(Pool(),kind,c).Keys.Select(x=>x.ToString()).Order().ToArray();}
+        Assert.Equal(new[]{Id(61),Id(70),Id(71)},Run("{}",0,"meds"));                       // T1: T1 의약품만, 같은 종류 하나뿐인 음식은 그대로, 의약품 아닌 것은 그대로
+        Assert.Equal(new[]{Id(61),Id(62),Id(63),Id(70),Id(71)},Run("{}",2,"meds"));         // T3: T1~T3
+        // 표에 직접 넣은 목록이 있으면 그 목록(무게>0)만: 다른 티어 봇이 만든 캐시라도 이 티어 목록으로 바뀐다
+        var own="""{"tierData":{"pmc":[{"meds":{"meds":{"A":5,"B":0}}}]}}""".Replace("A",Id(67)).Replace("B",Id(61));
+        Assert.Equal(new[]{Id(67),Id(70),Id(71)},Run(own,0,"meds"));
+    }
+
+    [Fact]
     public void AttachmentsUsePriceTiersButNeverLeaveAFittingSlotEmpty()
     {
         // 조준경 7개(가격 1~7) → T1~T7

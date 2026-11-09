@@ -116,12 +116,15 @@ public class GravityLoader(
             Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
+            Gravity.Gear.GearRuntime.Templates = templates.Items;
             Gravity.Gear.GearRuntime.Locale = lang => locales.GetLocaleDb(lang);
             new Gravity.Gear.GearLevelPatch().Enable();
             new Gravity.Gear.GearFilterPatch().Enable();
             new Gravity.Gear.GearPlatePatch().Enable();
             new Gravity.Gear.GearBotPatch().Enable();
             new Gravity.Gear.GearDynamicModPatch().Enable();
+            new Gravity.Gear.GearModPoolPatch().Enable();
+            new Gravity.Gear.GearItemDbModPatch().Enable();
             new Gravity.Gear.GearDynamicGearPatch().Enable();
             new Gravity.Gear.GearLootPatch().Enable();
             new Gravity.Gear.GearUnheardPatch().Enable();
