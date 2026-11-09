@@ -255,6 +255,17 @@ public static class GearApply
         return (before.Count - set.Count, true);
     }
 
+    /// <summary>부착물 티어(같은 종류 안 가격 순위, 직접 지정 우선). 부착물이 아니면 0.</summary>
+    private static int PartTier(string id, GearContext c) => c.Info(id) is { Section: "parts" } i ? c.TierOf("parts/" + i.Slot, id) : 0;
+
+    /// <summary>부착물 티어 규칙: 봇 티어보다 높은 부착물은 뺀다. 부착물 표에 직접 허용(무게&gt;0)한 것은 직접 티어를 정한 경우에만 티어로 막는다.</summary>
+    private static bool AboveTier(ItemInfo info, string id, double? weight, GearContext c)
+    {
+        if (!c.Settings.PartTiers || info.Section != "parts") return false;
+        if (weight is > 0 && !c.Settings.ItemTier.ContainsKey(id)) return false;
+        return c.TierOf("parts/" + info.Slot, id) > c.Pick.Tier;
+    }
+
     private static (int Removed, bool Restored) FilterCore(HashSet<MongoId> set, string slotName, GearContext c)
     {
         var s = slotName.ToLowerInvariant();
@@ -268,7 +279,9 @@ public static class GearApply
             if (c.Blocked(id)) return true;
             var info = c.Info(id);
             if (info == null) return false;
-            if (GearPools.Weight(c.Settings.TableFor(c.Pick.RoleId,c.Pick.Tier),info,id) is <=0) return true;
+            var pw = GearPools.Weight(c.Settings.TableFor(c.Pick.RoleId,c.Pick.Tier),info,id);
+            if (pw is <=0) return true;
+            if (AboveTier(info, id, pw, c)) return true;
             if (front && info.Plate && (info.ArmorClass < caps.FMin || info.ArmorClass > caps.FMax)) return true;
             if (side && info.Plate && (info.ArmorClass < caps.SMin || info.ArmorClass > caps.Side)) return true;
             if (optic && info.Thermal && !c.ThermalOk) return true;
@@ -291,6 +304,12 @@ public static class GearApply
             // 조준경·야투경: 열화상은 되살리지 않는다(남는 게 열화상뿐이면 칸을 비움). 배율 조준경만 되살릴 수 있다.
             var cand = optic && !c.ThermalOk ? ok.Where(m => c.Info(m.ToString())?.Thermal != true).ToList() : ok;
             if (cand.Count == 0) return (removed, false);
+            // 부착물 티어로 다 빠졌으면 맞는 것 중 가장 낮은 티어만 되살린다(부착물이 아예 안 달리는 일 방지).
+            if (c.Settings.PartTiers && cand.Any(m => c.Info(m.ToString())?.Section == "parts"))
+            {
+                int lo = cand.Min(m => PartTier(m.ToString(), c));
+                cand = cand.Where(m => PartTier(m.ToString(), c) == lo).ToList();
+            }
             foreach (var m in cand) set.Add(m);
         }
         return (orig.Count - set.Count, true);

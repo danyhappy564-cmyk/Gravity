@@ -45,6 +45,8 @@ public static class GearPools
     public static double? Weight(GearTable table, ItemInfo info, string id, string? equipmentSlot = null)
     {
         if (equipmentSlot == "SecondPrimaryWeapon" && table.Pools.TryGetValue("secondaryWeapons/"+info.Slot,out var secondary)) return secondary.GetValueOrDefault(id);
+        // 부착물 표는 허용 목록이 아니라 '직접 정한 것'만: 표에 없는 부착물은 자동(티어 규칙)으로 둔다. 표를 고쳐도 어떤 총에 맞는 부착물이 전부 빠지지 않게.
+        if (info.Section == "parts") return table.Pools.TryGetValue("parts/" + info.Slot, out var parts) && parts.TryGetValue(id, out var pw) ? pw : null;
         if (table.Pools.TryGetValue(info.Section + "/" + info.Slot, out var pool)) return pool.GetValueOrDefault(id);
         if (info.Section == "weapons" && info.Slot is not ("holster" or "scabbard"))
         {

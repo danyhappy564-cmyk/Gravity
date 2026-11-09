@@ -644,3 +644,19 @@ test('아이템 티어: 꺼진 모드 아이템을 표시하고 의약품 탭과
   assert.match(a.run('P.itemtiers.render()'),/시험 약/);
   assert.match(a.run(`itWhy(GEAR_CATALOG[1])`),/의약품 10개/);
 });
+
+test('부착물: 티어 이하만 보이고 직접 뺀 것이 우선이며, 티어를 끄면 전부 보입니다', () => {
+  const a=app(),cheap='000000000000000000000061',dear='000000000000000000000062';
+  a.run(`serverMeta={};GEAR_CATALOG=[{id:'${cheap}',ko:'싼 조준경',en:'Cheap scope',section:'parts',slot:'scope',equipmentSlots:[],source:'vanilla',mod:false,autoTier:1,armorClass:0,pen:0,price:100,tierGroup:'parts/scope',tierRank:1,tierSize:7},
+    {id:'${dear}',ko:'비싼 조준경',en:'Dear scope',section:'parts',slot:'scope',equipmentSlots:[],source:'vanilla',mod:false,autoTier:7,armorClass:0,pen:0,price:9000,tierGroup:'parts/scope',tierRank:7,tierSize:7}];rebuildSlots();`);
+  assert.deepEqual(JSON.parse(a.run(`JSON.stringify(Object.keys(poolView('pmc',0,'parts','scope')))`)),[cheap]);
+  a.run(`state.tierData.pmc[0].parts.scope['${cheap}']=0`);
+  assert.equal(a.run(`poolView('pmc',0,'parts','scope')['${cheap}']`),0);
+  a.run(`state.weapons.partTiers=false`);
+  assert.equal(a.run(`Object.keys(poolView('pmc',0,'parts','scope')).length`),2);
+  a.run(`tBot='pmc';tierSel=0;tSec='parts';page='tieredit'`);
+  assert.match(a.run('tierEditor()'),/부착물 티어가 꺼져 있습니다/);
+  assert.match(a.run(`tierSummary('pmc',0)`),/data-sum="p:scope"/);
+  a.run(`itSec='parts';page='itemtiers'`);
+  assert.match(a.run('P.itemtiers.render()'),/비싼 조준경/);
+});

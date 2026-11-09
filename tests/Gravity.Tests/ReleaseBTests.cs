@@ -238,6 +238,24 @@ public class ReleaseBTests
     }
 
     [Fact]
+    public void AttachmentsUsePriceTiersButNeverLeaveAFittingSlotEmpty()
+    {
+        // 조준경 7개(가격 1~7) → T1~T7
+        var info=Enumerable.Range(1,7).ToDictionary(i=>Id(50+i),i=>new ItemInfo(i,0,0,false,false){Section="parts",Slot="scope"});
+        var items=new GearItems(info,info.Keys.Select(id=>("parts/scope",id)));
+        HashSet<MongoId> Run(string json,int tier,params int[] ids){var g=Config(json);var c=GearApply.Context(g,new("usec","pmc",tier,true),items,new(null,0,0,0),false,new(1));
+            HashSet<MongoId> set=[..ids.Select(i=>(MongoId)Id(50+i))];GearApply.FilterModSet(set,"mod_scope",c);return set;}
+        string[] Ids(HashSet<MongoId> s)=>s.Select(x=>x.ToString()).Order().ToArray();
+        Assert.Equal(new[]{Id(51)},Ids(Run("{}",0,1,2,3,7)));                                  // T1 봇: T1 조준경만
+        Assert.Equal(new[]{Id(51),Id(52),Id(53)},Ids(Run("{}",2,1,2,3,7)));                     // T3 봇: T1~T3
+        Assert.Equal(new[]{Id(55)},Ids(Run("{}",0,5,6,7)));                                     // 맞는 게 다 티어 위: 가장 낮은 것 되살림(안 달리는 일 없음)
+        Assert.Equal(4,Run("""{"weapons":{"partTiers":false}}""",0,1,2,3,7).Count);              // 끄면 티어 무시
+        Assert.Contains((MongoId)Id(57),Run("""{"tierData":{"pmc":[{"parts":{"scope":{"ID7":5}}}]}}""".Replace("ID7",Id(57)),0,1,7)); // 직접 허용은 티어 무관
+        // 표에 없는 부착물은 자동: 0으로 뺀 것만 빠지고 나머지는 남는다
+        Assert.Equal(new[]{Id(52)},Ids(Run("""{"weapons":{"partTiers":false},"tierData":{"pmc":[{"parts":{"scope":{"ID1":0}}}]}}""".Replace("ID1",Id(51)),0,1,2)));
+    }
+
+    [Fact]
     public void ZeroAmmoDoesNotRestoreRoundsOrLeaveAWeaponRequiringThoseRounds()
     {
         var items=new GearItems(new Dictionary<string,ItemInfo>{[Id(1)]=new(1,0,0,false,false,Weapon:true){Section="weapons",Slot="ar",Caliber="fixture"},[Id(2)]=new(1,0,5,false,false){Section="ammo",Slot="fixture"}},[("FirstPrimaryWeapon",Id(1))]);
