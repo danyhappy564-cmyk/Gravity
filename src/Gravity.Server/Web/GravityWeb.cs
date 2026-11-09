@@ -117,7 +117,7 @@ public class GravityWeb : IHttpListener
             report = new
             {
                 at = rt.LastReportAt, mapId = r.MapId, seed = r.Seed,
-                spawned = r.Spawned, dropped = r.Dropped, sanitized = r.Sanitized, alivePerMinute = r.AlivePerMinute,
+                spawned = r.Spawned, dropped = r.Dropped, sanitized = r.Sanitized, alivePerMinute = r.AlivePerMinute, killed = r.Killed,
                 plan = p is null ? null : new
                 {
                     startPmcs = p.StartPmcs, wavePmcs = p.PmcTotal - p.StartPmcs, pmcTotal = p.PmcTotal,

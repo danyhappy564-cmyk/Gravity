@@ -471,4 +471,8 @@ public class ClientSettingsTests
         Assert.NotNull(s.Inf);
         Assert.NotEmpty(s.RefillGroups);
     }
+
+    [Fact]
+    public void Build_Laboratory_PmcDist80() =>
+        Assert.Equal(80, ClientSettingsBuilder.Build(ConfigModel.Default(), Laboratory, SpawnPlanner.Plan(ConfigModel.Default(), Laboratory, 2400, 0, 1), true).PmcDist);
 }

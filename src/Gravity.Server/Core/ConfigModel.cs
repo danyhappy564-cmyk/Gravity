@@ -80,7 +80,8 @@ public static class ConfigModel
 
     // 공장·미궁은 좁아서 큰 맵 거리(120·80m)로는 지점이 남지 않는다(11-09 미궁 판: 스캐브 지점 9개 전부 80m 안).
     private static bool Small(string map) => map.StartsWith("factory") || map == "labyrinth";
-    public static double DefaultPmcDist(string map) => Small(map) ? 40 : 120;
+    // 연구소는 중간 크기라 120m면 시작 분대가 지점을 못 찾아 만료된다(11-09 0.3 판: 7분에 만료 2) → 80m.
+    public static double DefaultPmcDist(string map) => Small(map) ? 40 : map == "laboratory" ? 80 : 120;
     public static double DefaultScavDist(string map) => Small(map) ? 30 : 80;
 
     public static MapSettings DefaultMap(string id) => new(
