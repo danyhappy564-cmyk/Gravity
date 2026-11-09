@@ -122,4 +122,18 @@ public class SpawnPlannerTests
         var longP = SpawnPlanner.Plan(Cfg(), Customs, 6000, 0, 4);
         Assert.True(longP.Groups.Count(g => !g.IsStart) > shortP.Groups.Count(g => !g.IsStart));
     }
+
+    [Fact]
+    public void GroupCap_AliveScope_ClientHandles_NoRaidWideCap()
+    {
+        var cfg = Cfg("""{"spawn":{"waveMin":5,"waveMax":5,"squad":{"s1":0,"s2":0,"s3":0,"s4":0,"s5":100},"groupCap":{"on":true,"scope":"alive","over":"drop","rules":[{"size":5,"cmp":"eq","count":1}]}}}""");
+        var server = SpawnPlanner.Plan(cfg, Busy, 2400, 0, 5);
+        Assert.True(server.Groups.Count(g => g.Size == 5) <= 1);
+        var client = SpawnPlanner.Plan(cfg, Busy, 2400, 0, 5, clientAliveCap: true);
+        Assert.True(client.Groups.Count(g => g.Size == 5) > 1);
+        Assert.Equal(0, client.DroppedPmcs);
+        // scope=raid는 클라가 있어도 서버가 건다
+        var raidCfg = Cfg("""{"spawn":{"waveMin":5,"waveMax":5,"squad":{"s1":0,"s2":0,"s3":0,"s4":0,"s5":100},"groupCap":{"on":true,"scope":"raid","over":"drop","rules":[{"size":5,"cmp":"eq","count":1}]}}}""");
+        Assert.True(SpawnPlanner.Plan(raidCfg, Busy, 2400, 0, 5, clientAliveCap: true).Groups.Count(g => g.Size == 5) <= 1);
+    }
 }

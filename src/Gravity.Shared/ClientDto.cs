@@ -13,7 +13,7 @@ namespace Gravity.Shared
 
     public sealed record ScavDto(
         bool Managed, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
-        double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance);
+        double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0);
 
     public sealed record InfDto(double DelaySec, int Batch, double PmcShare, double Jitter);
 
@@ -33,7 +33,7 @@ namespace Gravity.Shared
         bool AllowPmcLabyrinth, GroupCapDto GroupCap, ScavDto Scav, InfDto? Inf,
         IReadOnlyList<RefillGroup> RefillGroups, NearDto Near);
 
-    /// <summary>Spawned 키: pmcUSEC·pmcBEAR·assault·near·other. Dropped 키: noPoint·expired·groupCap·cap.
+    /// <summary>Spawned 키: pmcUSEC·pmcBEAR·assault·near·other. Dropped 키: noPoint·expired·groupCap·cap(하드 스톱으로 버린 PMC 분대)·scavCap(상한에 막힌 스캐브 차례 구간)·nearCap(상한에 막힌 근처 자리).
     /// AlivePerMinute 원소: [분, PMC, 스캐브, 전체].</summary>
     public sealed record RaidReport(
         string MapId, int Seed,

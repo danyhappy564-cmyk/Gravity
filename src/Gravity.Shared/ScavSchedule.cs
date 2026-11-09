@@ -35,8 +35,9 @@ namespace Gravity.Shared
             _inf = inf;
             _hardStop = hardStopScavSec;
             _rng = rng;
-            _windowEnd = Draw(s.ActiveMin, s.ActiveMax) * 60.0;
-            _nextAttempt = 0;
+            // 첫 시도는 StartDelaySec(서버 시작 스캐브와 같은 지연) 뒤. 첫 활동 창도 그때부터 센다.
+            _nextAttempt = Math.Max(0, s.StartDelaySec);
+            _windowEnd = _nextAttempt + Draw(s.ActiveMin, s.ActiveMax) * 60.0;
         }
 
         private double Draw(double min, double max)
@@ -52,7 +53,7 @@ namespace Gravity.Shared
         /// </summary>
         /// <param name="aliveLoadingDelayed">살아 있는+로딩 중+대기 중 봇 전체(맵 상한 판정).</param>
         /// <param name="aliveScavs">살아 있는 스캐브(assault) 수(softCap 판정).</param>
-        /// <param name="spawnedPerPlayer">이 레이드에서 넣은 스캐브 ÷ 사람 수(스캐브만 막는다).</param>
+        /// <param name="spawnedPerPlayer">살아 있는 스캐브 ÷ 사람 수(웹 뜻 "한 명당 살아 있을 수 있는 수", 스캐브만 막는다).</param>
         public int Tick(float raidElapsed, int cap, int aliveLoadingDelayed, int aliveScavs, int pending,
             int spawnedPerPlayer, int players, out bool pmcTurn)
         {

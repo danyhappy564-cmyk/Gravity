@@ -38,7 +38,12 @@ public class RaidStartPatch : AbstractPatch
         _pending = null;
         var session = _session;
         _session = null;
-        if (!generateLoot || __result is null || string.Equals(name, "hideout", StringComparison.OrdinalIgnoreCase)) return;
+        if (!generateLoot || __result is null || string.Equals(name, "hideout", StringComparison.OrdinalIgnoreCase))
+        {
+            // 손대지 않는 판에 지난 판의 클라 설정이 남지 않게 지운다(클라는 Unmanaged를 받는다).
+            if (name is not null) GravityRuntime.Instance?.LastClientSettings.TryRemove(name.ToLowerInvariant(), out _);
+            return;
+        }
         GravityRuntime.Instance?.TryApplyToRaid(name, __result, changes, session);
     }
 }

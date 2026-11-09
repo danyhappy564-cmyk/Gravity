@@ -11,7 +11,9 @@ public static class SpawnPlanner
     private static readonly string[] DiffNames = ["easy", "normal", "hard", "impossible"];
     private const int MaxWaves = 400;
 
-    public static SpawnPlan Plan(GravityConfig cfg, MapInfo map, int raidSec, int simStartSec, int seed)
+    /// <param name="clientAliveCap">클라 플러그인이 "동시에 살아 있는" 그룹 제한을 직접 거는 세션이면 true:
+    /// scope=alive일 때 서버는 레이드 전체 기준 제한을 대신 걸지 않는다(죽거나 탈출하면 다시 나올 수 있어야 함).</param>
+    public static SpawnPlan Plan(GravityConfig cfg, MapInfo map, int raidSec, int simStartSec, int seed, bool clientAliveCap = false)
     {
         var rnd = new Random(seed);
         var s = cfg.Spawn;
@@ -32,7 +34,7 @@ public static class SpawnPlanner
 
         var groups = new List<PmcGroup>();
         var scav = new List<ScavWave>();
-        var cap = new CapTracker(s.GroupCap);
+        var cap = new CapTracker(clientAliveCap && s.GroupCap.Scope == "alive" ? s.GroupCap with { On = false } : s.GroupCap);
         var dropped = 0;
 
         // 1) 시작 PMC

@@ -75,7 +75,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             var simStart = (int)Math.Max(0, changes?.SimulatedRaidStartSeconds ?? 0);
             var raidSec = (int)Math.Round((loc.EscapeTimeLimit ?? info.DbRaidSec / 60.0) * 60) + simStart;
             var s = seed ?? Random.Shared.Next(1, int.MaxValue);
-            var plan = SpawnPlanner.Plan(cfg, info, raidSec, simStart, s);
+            var plan = SpawnPlanner.Plan(cfg, info, raidSec, simStart, s, clientAliveCap: hasClient);
             // 스캐브: 클라 플러그인이 없으면 바닐라 그대로(웨이브 밖 자동 스폰이 있어 웨이브만 바꿔서는 통제가 안 된다).
             // 클라가 있으면 시작 스캐브(첫 활동 구간)만 서버가 넣고 이후는 클라의 ScavDirector가 맡는다.
             plan = plan with { ScavWaves = hasClient && cfg.MapFor(id).StartScav ? plan.ScavWaves.Where(w => w.IsStart).ToList() : [] };
@@ -85,6 +85,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             else if (id == "labyrinth" && !hasClient) pmcWhy = "클라 플러그인 없음";
             else if (id == "labyrinth" && !cfg.Spawn.AllowPmcLabyrinth) pmcWhy = "미궁 PMC 꺼짐";
             if (pmcWhy != null) plan = plan with { Groups = [] };
+            // 무한 방식: 클라가 있으면 0.1의 촘촘한 PMC 웨이브 대신 시작 분대만 넣고, 이후 PMC는 클라가 RefillGroups로 보충한다(spec 4.6).
+            else if (hasClient && cfg.MapFor(id).Style == "infinite") plan = plan with { Groups = plan.Groups.Where(g => g.IsStart).ToList() };
             RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient);
             RaidSpawnApplier.ApplyBosses(loc, cfg, id);
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true);

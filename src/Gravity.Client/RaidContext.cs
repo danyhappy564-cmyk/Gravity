@@ -54,7 +54,7 @@ namespace Gravity.Client
         /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
         /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번) + 상한에 막힌 근처 보충 자리 수.
         /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
-        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0 };
+        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0 };
 
         /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
         public readonly List<int[]> AlivePerMinute = new List<int[]>();
@@ -68,6 +68,8 @@ namespace Gravity.Client
         internal bool DueForSample(out int minute)
         {
             minute = _nextSampleMinute;
+            // 시작 전 Elapsed는 LocalGame.Create 기준이라 분 번호가 밀린다: OnGameStarted 뒤부터만 기록.
+            if (!Started) return false;
             if (Elapsed < _nextSampleMinute * 60f) return false;
             _nextSampleMinute = Math.Max(_nextSampleMinute + 1, (int)(Elapsed / 60f) + 1);
             minute = _nextSampleMinute - 1;

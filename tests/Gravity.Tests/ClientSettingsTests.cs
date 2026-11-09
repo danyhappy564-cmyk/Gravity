@@ -384,4 +384,69 @@ public class ClientSettingsTests
         var r = JsonSerializer.Deserialize<ReportRequestData>("""{"mapId":"bigmap","seed":4,"spawned":{"near":2},"dropped":{},"sanitized":1,"alivePerMinute":[[0,1,2,3]]}""")!;
         Assert.Equal(2, r.ToReport().Spawned["near"]);
     }
+
+    // ----- 0.2 전체 검토 수정 묶음 -----
+
+    [Fact]
+    public void Apply_WithClient_Infinite_OnlyStartPmcGroups()
+    {
+        var state = """{"maps":{"bigmap":{"style":"infinite"}}}""";
+        var (rt, _) = Runtime(state);
+        Hello(rt, "s1");
+        rt.TryApplyToRaid("bigmap", Loc("bigmap", 40), null, "s1", 5);
+        Assert.NotNull(rt.Last.Plan);
+        Assert.NotEmpty(rt.Last.Plan!.Groups);
+        Assert.All(rt.Last.Plan.Groups, g => Assert.True(g.IsStart));
+        Assert.NotEmpty(rt.ClientRaidFor("bigmap").RefillGroups);
+
+        var (rt2, _) = Runtime(state);
+        rt2.TryApplyToRaid("bigmap", Loc("bigmap", 40), null, "s1", 5);
+        Assert.Contains(rt2.Last.Plan!.Groups, g => !g.IsStart);
+    }
+
+    [Fact]
+    public void Apply_VersionMismatchClient_IsNoClient()
+    {
+        var (rt, _) = Runtime();
+        rt.OnHello("s1", new HelloRequest("9.9.9", false));
+        var loc = Loc("bigmap", 40);
+        rt.TryApplyToRaid("bigmap", loc, null, "s1", 5);
+        Assert.Contains(loc.Waves, w => w.WildSpawnType == WildSpawnType.assault && w.SptId == null);
+        Assert.False(rt.ClientRaidFor("bigmap").Managed);
+    }
+
+    [Fact]
+    public void Build_ScavRaid_TimesShiftedBySimStart()
+    {
+        var cfg = ConfigModel.Default();
+        var full = ClientSettingsBuilder.Build(cfg, Big, SpawnPlanner.Plan(cfg, Big, 2400, 0, 1), true);
+        var late = ClientSettingsBuilder.Build(cfg, Big, SpawnPlanner.Plan(cfg, Big, 2400, 600, 1), true);
+        Assert.Equal(full.HardStopPmcSec - 600, late.HardStopPmcSec);
+        Assert.Equal(full.HardStopScavSec - 600, late.HardStopScavSec);
+        Assert.Equal(full.RaidSec - 600, late.RaidSec);
+    }
+
+    [Fact]
+    public void Build_ScavStartDelay_FromSeparateStart()
+    {
+        var cfg = ConfigModel.Default(); // separateStart true, delay 4분
+        Assert.Equal(240, ClientSettingsBuilder.Build(cfg, Big, SpawnPlanner.Plan(cfg, Big, 2400, 0, 1), true).Scav.StartDelaySec);
+        Assert.Equal(0, ClientSettingsBuilder.Build(cfg, Big, SpawnPlanner.Plan(cfg, Big, 2400, 600, 1), true).Scav.StartDelaySec);
+        var off = ConfigModel.FromState(JsonNode.Parse("""{"spawn":{"scav":{"separateStart":false}}}"""), []);
+        Assert.Equal(0, ClientSettingsBuilder.Build(off, Big, SpawnPlanner.Plan(off, Big, 2400, 0, 1), true).Scav.StartDelaySec);
+    }
+
+    [Theory]
+    [InlineData("raider", "pmcBot")]
+    [InlineData("rogue", "exUsec")]
+    [InlineData("usec", "pmcUSEC")]
+    [InlineData("bear", "pmcBEAR")]
+    [InlineData("pmc", "pmc")]
+    [InlineData("scav", "assault")]
+    [InlineData("marksman", "marksman")]
+    [InlineData("cultist", "assault")]
+    [InlineData("boss", "assault")]
+    [InlineData("ruaf", "assault")]
+    public void NearRole_WebNameToSpawnType(string web, string role) =>
+        Assert.Equal(role, ClientSettingsBuilder.NearRole(web));
 }

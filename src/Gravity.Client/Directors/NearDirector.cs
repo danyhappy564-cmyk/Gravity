@@ -24,7 +24,7 @@ namespace Gravity.Client.Directors
     ///   PmcPointsPatch가 근처 보충 웨이브면 고른 지점을 그대로 넣는다(RaidContext.NearWaves).
     /// - 시야(Near.Sight): 시도마다 고른 후보 1개만 Physics.Linecast(눈 위치 → 지점 + 1.5m, 지형·하이폴리 벽 레이어)로 본다.
     ///   막힘이 없으면(보이면) 그 시도는 실패하고 다시 섞어 고른다(Near.Attempts번까지). 후보 전체를 훑지 않는다.
-    /// - 맵 상한: 차례 처음에 BotSpawner.CheckOnMax로 빈자리를 읽고 넣을 때마다 줄인다. 무리가 안 들어가면 그 자리는 Dropped["cap"]. 바닐라가 대기열(DelayBossSpawn)에
+    /// - 맵 상한: 차례 처음에 BotSpawner.CheckOnMax로 빈자리를 읽고 넣을 때마다 줄인다. 무리가 안 들어가면 그 자리는 Dropped["nearCap"]. 바닐라가 대기열(DelayBossSpawn)에
     ///   넣었다가 나중에 낡은 위치에 내는 일은 PmcCapDelayPatch가 막는다(근처 보충 웨이브는 대기열에 넣지 않고 버림).
     /// - 지점을 못 찾으면 그 자리는 건너뛰고 Dropped["noPoint"]. 넣으면 Spawned["near"] += 무리 크기(요청 기준, 스캐브 assault와 같음).
     /// </summary>
@@ -115,7 +115,7 @@ namespace Gravity.Client.Directors
 
                 if (size > room)
                 {
-                    c.Dropped["cap"]++;
+                    c.Dropped["nearCap"]++;
                     continue;
                 }
 
@@ -204,6 +204,9 @@ namespace Gravity.Client.Directors
         /// <summary>NearSlot.Role → WildSpawnType(대소문자 무시). 숫자나 모르는 이름이면 assault(한 번 경고).</summary>
         internal static WildSpawnType ParseRole(string? name)
         {
+            // 서버가 "pmc"(무작위 PMC)를 보내면 자리마다 진영을 반반으로 고른다.
+            if (string.Equals(name, "pmc", StringComparison.OrdinalIgnoreCase))
+                return UnityEngine.Random.value < 0.5f ? WildSpawnType.pmcUSEC : WildSpawnType.pmcBEAR;
             if (!string.IsNullOrWhiteSpace(name) && !char.IsDigit(name![0]) && name[0] != '-'
                 && Enum.TryParse<WildSpawnType>(name, true, out var r) && Enum.IsDefined(typeof(WildSpawnType), r))
                 return r;

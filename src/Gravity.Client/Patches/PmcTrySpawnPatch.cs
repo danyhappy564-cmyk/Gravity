@@ -135,6 +135,8 @@ namespace Gravity.Client.Patches
                     return;
                 }
 
+                // 시작 전(로딩 중) 실패는 만료 시계에 넣지 않는다: 시계가 OnGameStarted 때 0으로 돌아가므로 시작 뒤부터 센다.
+                if (!c.Started) return;
                 var first = c.FirstFail.GetValue(wave, _ => new StrongBox<float>(now));
                 if (!SpawnExpiry.Expired(first.Value, now, c.Elapsed, c.S.HardStopPmcSec)) return;
 
@@ -185,7 +187,7 @@ namespace Gravity.Client.Patches
     /// 하드 스톱 뒤 첫 재시도에서 여기로 와서 빠진다. DelayBossSpawn을 부르는 곳은 Spawn의 두 곳(:283·:288)뿐이고,
     /// TrySpawn 실패 경로(:283)는 하드 스톱이면 PmcTrySpawnPatch가 이미 true로 바꿔 여기까지 오지 않으므로 여기서 버리는 것은 상한 대기 몫이다.
     /// 근처 보충(F8) 웨이브(RaidContext.NearWaves, 역할 무관)는 대기열에 넣지 않고 바로 버린다: 나중에 내면 그때 플레이어 위치와 맞지 않는
-    /// 낡은 지점에 나기 때문이다. 상한 때문이면 Dropped["cap"], 아니면(지점·구역 실패) Dropped["noPoint"], Spawned["near"]에서 뺀다.
+    /// 낡은 지점에 나기 때문이다. 상한 때문이면 Dropped["nearCap"], 아니면(지점·구역 실패) Dropped["noPoint"], Spawned["near"]에서 뺀다.
     /// 단 봇 프로필을 아직 다 못 읽었으면(BotSpawner.IsProfilesLoaded=false, TrySpawn이 바로 false, BotBossSpawn.cs:305) 바닐라처럼 대기열에 둔다.
     /// </summary>
     internal sealed class PmcCapDelayPatch : ModulePatch
@@ -222,7 +224,7 @@ namespace Gravity.Client.Patches
             spawner?.CheckOnMax(near.Size, out toDelay, out _);
             c.NearWaves.Remove(wave);
             c.Spawned["near"] -= near.Size;
-            c.Dropped[toDelay > 0 ? "cap" : "noPoint"]++;
+            c.Dropped[toDelay > 0 ? "nearCap" : "noPoint"]++;
             return false;
         }
     }

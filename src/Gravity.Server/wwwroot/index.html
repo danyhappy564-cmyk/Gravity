@@ -1028,7 +1028,7 @@ P.near={desc:T('플레이어 동선 주변에 봇을 계속 던져 넣는 선택
   ${card(T('그룹','Groups'),slider(n+'group.chance',T('그룹으로 나올 확률','Group chance'),'',{dis:off})+range(n+'group.min',n+'group.max',T('그룹 크기','Group size'),'',{min:2,max:6,unit:UI.ppl,dis:off})+sw(n+'group.scavOff',T('스캐브는 혼자만','Scavs spawn solo only'),'',{adv:true,dis:off}),{icon:'⚇',cls:off?'off':''})}
   </div>
   ${card(T('봇 종류','Bot types'),`<div class="grid g2"><div>`+sw(n+'useDefault',T('기본: PMC / 스캐브','Default: PMC / Scav'),'',{dis:off})+slider(n+'pmcChance',T('PMC 확률 (나머지 스캐브)','PMC chance (rest scav)'),'',{dis:off||!N.useDefault})+`</div><div>`
-     +sw(n+'custom.on',T('직접 고르기 (2종)','Custom types (2)'),T('기본과 함께 켜면 둘을 섞습니다.','Mixes with default when both on.'),{dis:off})
+     +sw(n+'custom.on',T('직접 고르기 (2종)','Custom types (2)'),T('기본과 함께 켜면 둘을 섞습니다. 지금 판은 PMC·USEC·BEAR·스캐브·저격 스캐브·레이더·로그만 그대로 나오고, 컬티스트·감염자·보스·팩션은 다음 판까지 스캐브로 나옵니다.','Mixes with default when both on. This version spawns PMC, USEC, BEAR, Scav, Marksman, Raider and Rogue as chosen; Cultist, Infected, Boss and factions spawn as Scavs until the next version.'),{dis:off})
      +sel(n+'custom.t1',T('1번 종류','Type 1'),'',types,{dis:off||!cu.on})+slider(n+'custom.cap1',T('1번 맵 안 최대','Type 1 max on map'),'',{min:1,max:20,unit:UI.ppl,dis:off||!cu.on})
      +sel(n+'custom.t2',T('2번 종류','Type 2'),'',types,{dis:off||!cu.on})+slider(n+'custom.cap2',T('2번 맵 안 최대','Type 2 max on map'),'',{min:1,max:20,unit:UI.ppl,dis:off||!cu.on})
      +slider(n+'custom.ratio2',T('2번이 뽑힐 확률','Type 2 ratio'),'',{dis:off||!cu.on})
@@ -1671,7 +1671,7 @@ Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){
 
 /* ================= 실제 서버 연결 (Gravity 0.1.0) ================= */
 const NOT_LIVE=new Set(['specials','factions','events','tiers','tieredit','roles','weapons','items','blacklist','gearpresets','client','orbit','dev']);
-const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('맵 상한 하드 스톱','Map cap hard stop')};
+const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap')};
 function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
 function clientCard(){
   const c=serverMeta&&serverMeta.client,has=!!(c&&c.version);

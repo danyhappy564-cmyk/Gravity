@@ -24,7 +24,7 @@ namespace Gravity.Client.Directors
     ///   목록을 다 썼거나 PMC 하드 스톱이 지났거나 미궁 PMC가 꺼져 있으면(allowPmcLabyrinth=false, 결정 12) 그 차례는 스캐브 차례로 쓴다
     ///   (스캐브 판정을 거친 수만큼).
     /// - 플레이어 스캐브 확률(scav.pscavChance)은 0.2에서 적용하지 않는다: SpawnWave.IsPlayers를 바닐라가 읽지 않는다(결정 14, WaveFactory.Scav).
-    /// - Dropped["cap"]: 차례가 맵 상한에 막히면(ScavBlock.Cap 또는 PMC 분대가 안 들어감) 그 구간에서 한 번만 센다. 무엇이든 넣으면 구간이 끝난다.
+    /// - Dropped["scavCap"]: 차례가 맵 상한에 막히면(ScavBlock.Cap 또는 PMC 분대가 안 들어감) 그 구간에서 한 번만 센다. 무엇이든 넣으면 구간이 끝난다.
     ///   softCap(살아 있는 스캐브 한도)에 막힌 것은 버림이 아니므로 세지 않는다.
     /// </summary>
     internal static class ScavDirector
@@ -75,7 +75,7 @@ namespace Gravity.Client.Directors
             int alive = bc.AliveLoadingDelayedBotsCount;
             int pending = spawner.SpawnDelaysService?.WaitCount ?? 0;
 
-            int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, st.ScavSpawned / players, players, out bool pmcTurn);
+            int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, aliveScavs / players, players, out bool pmcTurn);
 
             // PMC 차례는 스캐브 판정(n)과 상관없이 먼저 본다. n은 PMC를 못 넣을 때 대신 넣을 스캐브 수다.
             if (pmcTurn)
@@ -159,7 +159,7 @@ namespace Gravity.Client.Directors
         {
             if (st.CapEpisode) return;
             st.CapEpisode = true;
-            c.Dropped["cap"]++;
+            c.Dropped["scavCap"]++;
         }
 
         /// <summary>저격 아닌 구역과 지점 위치를 한 번 모은다. 지점이 없는 구역은 뺀다.</summary>

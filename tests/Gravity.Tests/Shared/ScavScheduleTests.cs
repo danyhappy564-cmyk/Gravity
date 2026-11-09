@@ -265,4 +265,14 @@ public class ScavScheduleTests
             if (sch.Tick(t, 10, 4, 2, 0, 100, 1, out var pmc) >= 0 && pmc) late++;
         Assert.True(late >= 5, $"늦은 PMC 차례 {late}");
     }
+
+    [Fact]
+    public void Scav_StartDelay_NoSpawnBefore()
+    {
+        var sch = Make(Dto(refill: 10, aMin: 5, aMax: 5) with { StartDelaySec = 240 });
+        Assert.Equal(0, sch.Tick(0f, 24, 0, 0, 0, 0, 1, out _));
+        Assert.Equal(ScavBlock.Interval, sch.LastBlock);
+        Assert.Equal(0, sch.Tick(239f, 24, 0, 0, 0, 0, 1, out _));
+        Assert.Equal(1, sch.Tick(240f, 24, 0, 0, 0, 0, 1, out _));
+    }
 }

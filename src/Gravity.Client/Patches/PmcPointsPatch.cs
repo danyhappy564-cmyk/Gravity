@@ -89,7 +89,7 @@ namespace Gravity.Client.Patches
             var s = c.S;
             var rules = new PickRules(
                 PmcDist: s.PmcDist, BotDist: s.SpacingBots, ReserveDist: s.PmcDist,
-                ProtectActive: s.ProtectOn && c.Elapsed < s.ProtectSec, ProtectRadius: s.ProtectRadius);
+                ProtectActive: s.ProtectOn && (!c.Started || c.Elapsed < s.ProtectSec), ProtectRadius: s.ProtectRadius);
             var r = PointPicker.PickSquad(cands, PmcZones.Actors(), reserved, size, rules, c.Rng);
             if (r.Ids.Count == 0) return false;
 
