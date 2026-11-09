@@ -242,7 +242,7 @@ public static partial class ConfigModel
                     r.Num(p + "inf.pmcShare", 50, 0, 100), r.Num(p + "inf.jitter", 30, 0, 100)),
                 effective.StartPmcPct, effective.IntervalMin, effective.WaveMin, effective.WaveMax,
                 effective.Intensity,
-                r.Bool(p + "original", true), (int)r.Num(p + "cap", d.Cap, 1, 60), zones,
+                r.Bool(p + "original", true), EffectiveCap(r, p, d.Cap), zones,
                 mr.Num("spawn.pmcDist", d.PmcDist, 5, 1000), mr.Num("spawn.scavDist", d.ScavDist, 5, 1000),
                 mr.Bool("spawn.scav.startOn", true), zoneW, r.Bool(p + "variant", DefaultVariant(id)),
                 r.Str(p + "scavStyle", "waves", "waves", "infinite", "start"), scavZoneW, new ZoneLayout(altOn, altPmc, altScav),
@@ -347,6 +347,19 @@ public static partial class ConfigModel
     }
 
     /// <summary>
+    /// <summary>
+    /// 1.0 동시 봇 상한: maps.&lt;id&gt;.capOn이면 그 맵 값, 아니면 spawn.botCap(0이면 맵 기본값).
+    /// capOn이 없는 옛 설정은 맵 값이 기본값과 다르면 따로 정한 것으로 본다.
+    /// </summary>
+    internal static int EffectiveCap(Reader r, string p, int mapDefault)
+    {
+        var own = (int)r.Num(p + "cap", mapDefault, 1, 60);
+        bool on = r.Node(p + "capOn") is JsonValue ? r.Bool(p + "capOn", false) : r.Node(p + "cap") is JsonValue && own != mapDefault;
+        if (on) return own;
+        var shared = (int)r.Num("spawn.botCap", 0, 0, 60);
+        return shared > 0 ? shared : mapDefault;
+    }
+
     /// 상한 표(spawn.caps.*). 팩션 줄 기본값은 옛 "PMC 동시 상한을 같이 씀"(팩션별 shareCap)에서 이어받는다:
     /// 하나라도 켜져 있었으면 respect, 아니면 separate(옛 기본과 같은 동작).
     /// </summary>

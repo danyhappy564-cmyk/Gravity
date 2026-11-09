@@ -260,4 +260,17 @@ public class BossTests
         Assert.Equal(120, w.TimeMin);
         Assert.Equal(240, w.TimeMax);
     }
+
+    [Theory]
+    [InlineData("""{}""", 24)]                                                         // 공통 0 → 맵 기본(세관 24)
+    [InlineData("""{"spawn":{"botCap":30}}""", 30)]                                   // 공통 값
+    [InlineData("""{"spawn":{"botCap":30},"maps":{"bigmap":{"cap":12,"capOn":true}}}""", 12)]   // 이 맵만 따로
+    [InlineData("""{"spawn":{"botCap":30},"maps":{"bigmap":{"cap":12,"capOn":false}}}""", 30)]  // 따로 끔 → 공통
+    [InlineData("""{"spawn":{"botCap":30},"maps":{"bigmap":{"cap":18}}}""", 18)]      // 옛 설정: 기본과 다르면 따로 정한 것
+    [InlineData("""{"spawn":{"botCap":30},"maps":{"bigmap":{"cap":24}}}""", 30)]      // 옛 설정: 기본과 같으면 공통
+    public void BotCap_SharedThenMapOverride(string json, int expected)
+    {
+        var cfg = Cfg(json);
+        Assert.Equal(expected, cfg.Maps["bigmap"].Cap);
+    }
 }
