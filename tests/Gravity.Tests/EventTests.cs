@@ -177,4 +177,23 @@ public class EventTests
         Assert.False(c.Specials!["infected"].On);
         Assert.True(c.Specials["raiders"].On);
     }
+
+    [Fact]
+    public void Svm_RaidTime_ReadsSelectedPresetOnly()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "gravity-svm-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(dir, "Loader"));
+        Directory.CreateDirectory(Path.Combine(dir, "Presets"));
+        File.WriteAllText(Path.Combine(dir, "Loader", "loader.json"), """{"CurrentlySelectedPreset":"mine"}""");
+        File.WriteAllText(Path.Combine(dir, "Presets", "mine.json"), """{"Raids":{"EnableRaids":true,"RaidTime":60}}""");
+        File.WriteAllText(Path.Combine(dir, "Presets", "other.json"), """{"Raids":{"EnableRaids":true,"RaidTime":5}}""");
+        try
+        {
+            Assert.Equal(60, Gravity.Events.EventControl.ReadSvmRaidMinutes(dir));
+            File.WriteAllText(Path.Combine(dir, "Presets", "mine.json"), """{"Raids":{"EnableRaids":false,"RaidTime":60}}""");
+            Assert.Equal(0, Gravity.Events.EventControl.ReadSvmRaidMinutes(dir));
+            Assert.Equal(0, Gravity.Events.EventControl.ReadSvmRaidMinutes(null));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }

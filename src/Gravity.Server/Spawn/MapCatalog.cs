@@ -10,7 +10,7 @@ namespace Gravity.Spawn;
 public sealed record MapMeta(string Id, int RaidMin, int BotMax, int BasePmc, int BaseScav,
     string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses, string[]? BossZones = null,
     bool HasVariant = false, string[]? OriginalPmcZones = null, string[]? OriginalScavZones = null,
-    Dictionary<string, double>? Roster = null);
+    Dictionary<string, double>? Roster = null, int SvmAddMin = 0);
 
 /// <summary>서버 로드 뒤 DB에서 맵별 기본 정보를 한 번 모은다(원본은 읽기만).</summary>
 public sealed class MapCatalog
@@ -18,6 +18,24 @@ public sealed class MapCatalog
     private readonly Dictionary<string, MapInfo> _info = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MapMeta> _meta = [];
     public IReadOnlyList<MapMeta> All => _meta;
+
+    /// <summary>
+    /// SVM 추가 레이드 시간(분)을 웹 맵 정보에 반영한다. SVM은 Gravity보다 늦게 DB를 바꿀 수 있어서,
+    /// SPT 원본 길이(originalMin)와 지금 DB 길이가 같으면(아직 안 더해짐) 더하고, 이미 더해져 있으면 그대로 둔다.
+    /// 레이드 중 계획은 SVM이 반영된 복제본 길이를 그대로 쓴다.
+    /// </summary>
+    public void ApplySvmRaidTime(int addMin, Func<string, int?> originalMin)
+    {
+        if (addMin <= 0) return;
+        for (var i = 0; i < _meta.Count; i++)
+        {
+            var m = _meta[i];
+            var orig = originalMin(m.Id);
+            if (orig == null) continue;
+            if (m.RaidMin == orig.Value) _meta[i] = m with { RaidMin = orig.Value + addMin, SvmAddMin = addMin };
+            else if (m.RaidMin == orig.Value + addMin) _meta[i] = m with { SvmAddMin = addMin };
+        }
+    }
     public HashSet<string> AutomaticVariants { get; } = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MapInfo> _original = new(StringComparer.OrdinalIgnoreCase);
     public MapInfo? OriginalInfoFor(string id) => _original.GetValueOrDefault(id);

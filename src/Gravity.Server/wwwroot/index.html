@@ -2097,7 +2097,7 @@ function applyMeta(meta){
   abpsDemo=!!(meta.detect&&meta.detect.abps);apbsDemo=!!(meta.locked&&meta.locked.gear);qbDemo=!!(meta.detect&&meta.detect.questingBots);
   SVM.on=!!(meta.detect&&meta.detect.svm);SVM.raidAdd=0;
   (meta.maps||[]).forEach(mm=>{const m=mapById(mm.id);if(!m)return;
-    m.base=mm.raidMin;m.pmc=mm.basePmc;m.scav=mm.baseScav;
+    m.base=mm.raidMin-(mm.svmAddMin||0);if(mm.svmAddMin)SVM.raidAdd=mm.svmAddMin;m.pmc=mm.basePmc;m.scav=mm.baseScav;
     const zones=(pmc,scav)=>{const kind={};(pmc||[]).forEach(z=>kind[z]='pmc');(scav||[]).forEach(z=>kind[z]=kind[z]==='pmc'?'both':'scav');return Object.keys(kind).map(z=>Z(z,zoneLabel(z),zoneLabel(z),kind[z]));};
     ZONES[mm.id]=zones(mm.pmcZones,mm.scavZones);
     if(Array.isArray(mm.originalPmcZones)&&Array.isArray(mm.originalScavZones))originalZones[mm.id]=zones(mm.originalPmcZones,mm.originalScavZones);else delete originalZones[mm.id];

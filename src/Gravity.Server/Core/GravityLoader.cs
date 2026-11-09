@@ -84,6 +84,20 @@ public class GravityLoader(
             },
             raw => json.Deserialize<SPTarkov.Server.Core.Models.Eft.Common.LocationBase>(raw));
         GravityRuntime.Instance.ActiveVariants = active;
+        // 1.0: SVM 추가 레이드 시간(사용 중인 프리셋)을 웹 맵 정보에 반영
+        var svmAdd = detect.SvmFolder == null ? 0 : Gravity.Events.EventControl.ReadSvmRaidMinutes(Path.Combine(GravityBoot.ModsDir!, detect.SvmFolder));
+        if (svmAdd > 0)
+        {
+            catalog.ApplySvmRaidTime(svmAdd, id =>
+            {
+                if (sptData == null) return null;
+                var f = Path.Combine(sptData, "database", "locations", id, "base.json");
+                if (!File.Exists(f)) return null;
+                var b = json.Deserialize<SPTarkov.Server.Core.Models.Eft.Common.LocationBase>(File.ReadAllText(f));
+                return b?.EscapeTimeLimit is { } e ? (int)Math.Round(e) : null;
+            });
+            logger.Info($"{GravityInfo.Tag} " + L.T($"SVM 추가 레이드 시간 +{svmAdd}분 반영", $"SVM extra raid time +{svmAdd} min applied"));
+        }
         if (catalog.AutomaticVariants.Count > 0)
             logger.Info($"{GravityInfo.Tag} {L.T("자동 감지된 변형 맵", "Auto-detected map variants")}: {string.Join(", ", catalog.AutomaticVariants)}");
         foreach (var m in catalog.All.Where(m => m.HasVariant && m.OriginalPmcZones == null))

@@ -72,6 +72,29 @@ public static class EventControl
         return log;
     }
 
+    /// <summary>
+    /// SVM이 지금 쓰는 프리셋(Loader/loader.json의 CurrentlySelectedPreset)의 추가 레이드 시간(Raids.RaidTime, 분).
+    /// Raids.EnableRaids가 꺼져 있으면 SVM은 레이드 칸을 적용하지 않으므로 0. 못 읽으면 0.
+    /// </summary>
+    public static int ReadSvmRaidMinutes(string? svmDir)
+    {
+        try
+        {
+            if (svmDir == null) return 0;
+            var loader = JsonNode.Parse(File.ReadAllText(Path.Combine(svmDir, "Loader", "loader.json")));
+            var preset = loader?["CurrentlySelectedPreset"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(preset) || preset.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return 0;
+            var raids = JsonNode.Parse(File.ReadAllText(Path.Combine(svmDir, "Presets", preset + ".json")))?["Raids"];
+            if (raids == null) return 0;
+            if (raids["EnableRaids"] is JsonValue en && en.TryGetValue<bool>(out var on) && !on) return 0;
+            return raids["RaidTime"] is JsonValue v && v.TryGetValue<double>(out var t) ? Math.Max(0, (int)Math.Round(t)) : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     /// <summary>SVM 폴더의 Loader/loader.json이 고른 프리셋에서 Raids.RaidEvents를 읽는다. 못 읽으면 null.</summary>
     public static SvmEvents? ReadSvm(string? svmDir)
     {
