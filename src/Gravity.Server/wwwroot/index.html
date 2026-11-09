@@ -2344,6 +2344,8 @@ async function boot(){
   if(serverMeta)loadCatalog();
 }
 async function saveToServer(){
+  // 서버 없이 열린 화면은 실제 설정이 아니라 기본값을 들고 있다: 이 상태로 저장하면 서버 설정을 기본값으로 덮어쓴다.
+  if(!serverMeta){toast(tr(T('서버에 연결되지 않은 채 열린 화면이라 저장하지 않았습니다. 서버를 켠 뒤 새로고침(F5)하고 다시 바꿔 주세요.','Not saved: this page was opened without a server connection. Start the server, reload (F5), then edit again.')));return;}
   state.orbit.refillAfterExtract=state.orbit.extractRefillMode!=='off'&&state.orbit.extractRefillCap>0;
   try{
     const r=await fetch('api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state})});
