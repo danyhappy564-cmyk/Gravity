@@ -1408,9 +1408,11 @@ const classTierOf=x=>{if(!(x.armorClass>0)||!(x.equipmentSlots||[]).some(s=>['He
 const itAuto=x=>x.section==='ammo'?ammoTierOf(x.pen):(x.autoTier||1);
 const itMan=x=>state.gear.itemTier?.[x.id]||0;
 const itEff=x=>itMan(x)||itAuto(x);
+/** 비교 묶음 이름: 장비 칸(봇 기본 목록에 있는 아이템) 또는 종류(목록에 없는 아이템, 주로 모드 아이템). */
+function itGroupLabel(g){if(IT_GROUP[g])return tr(IT_GROUP[g]);const [sec,kind]=String(g).split('/');const l=sec==='weapons'?(GUN_KINDS.find(k=>k[0]===kind)||[])[1]:sec==='armor'?ARMOR_LABELS[kind]:null;return l?fmt(tr(T('봇 기본 목록 밖의 {k}','{k} outside bot default lists')),{k:tr(l)}):g;}
 function itWhy(x){
   if(x.section==='ammo'){const t=ammoTierOf(x.pen);return fmt(tr(T('관통 {p} → 관통 상한이 {p} 이상인 첫 티어 = T{t} (T{t} 상한 {c})','Pen {p} → first tier whose pen cap ≥ {p} = T{t} (cap {c})')),{p:Math.round(x.pen),t,c:state.gear.tiers[t-1].pen});}
-  let s=x.tierSize?fmt(tr(T('{g} {n}개를 가격순(싼 것부터)으로 줄 세운 {r}번째 → 7등분 T{t}','#{r} of {n} {g} sorted by price (cheapest first) → T{t} of 7')),{g:tr(IT_GROUP[x.tierGroup]||T(x.tierGroup,x.tierGroup)),n:x.tierSize,r:x.tierRank,t:x.autoTier||1})
+  let s=x.tierSize?fmt(tr(T('{g} {n}개를 가격순(싼 것부터)으로 줄 세운 {r}번째 → 7등분 T{t}','#{r} of {n} {g} sorted by price (cheapest first) → T{t} of 7')),{g:itGroupLabel(x.tierGroup),n:x.tierSize,r:x.tierRank,t:x.autoTier||1})
     :fmt(tr(T('가격 {p} 기준 T{t}','By price {p}: T{t}')),{p:rub(x.price),t:x.autoTier||1});
   const ct=classTierOf(x);if(ct>1)s+=' · '+fmt(tr(T('방탄 {c}등급이라 판 등급 상한이 {c} 이상인 T{t}부터 나옴','class {c}: appears from T{t}, where the plate cap reaches {c}')),{c:x.armorClass,t:Math.min(7,ct)});
   return s;}
@@ -1425,7 +1427,7 @@ P.itemtiers={desc:T('무기·방어구·탄약이 몇 티어부터 나오는지 
   if(!GEAR_CATALOG)return `<div class="stack">${gearOff()}${notice(T('서버에 연결하면 설치된 아이템(바닐라·모드) 목록이 여기 나옵니다.','Installed items (vanilla + mods) appear here once the server is connected.'),'flat')}</div>`;
   const man=state.gear.itemTier||{},manCount=Object.keys(man).length;
   const how=`<details class="card fold how"${itHowOpen?' open':''} data-ithow><summary><h2>ⓘ ${tr(T('티어는 이렇게 정해집니다','How tiers are decided'))}</h2></summary><div class="howgrid">
-    <div><b>⌖ ${tr(T('무기 · 방어구 · 장비','Weapons · armor · gear'))}</b><p>${tr(T('같은 장비 칸(예: 주무기, 헬멧)에 들어가는 아이템을 가격순으로 줄 세워 7등분합니다. 가장 싼 1/7이 T1, 가장 비싼 1/7이 T7입니다. 총은 기본 부품을 단 조립 가격으로 봅니다. 그래서 같은 가격이라도 그 칸에 아이템(모드 포함)이 많고 적음에 따라 티어가 달라질 수 있습니다.','Items of the same gear slot (e.g. primary weapons, headwear) are sorted by price and split into 7 equal parts: cheapest 1/7 = T1, most expensive 1/7 = T7. Guns use their assembled (default build) price, so the tier also depends on how many items (mods included) share the slot.'))}</p></div>
+    <div><b>⌖ ${tr(T('무기 · 방어구 · 장비','Weapons · armor · gear'))}</b><p>${tr(T('같은 장비 칸(예: 주무기, 헬멧)에 들어가는 아이템을 가격순으로 줄 세워 7등분합니다. 가장 싼 1/7이 T1, 가장 비싼 1/7이 T7입니다. 총은 기본 부품을 단 조립 가격으로 봅니다. 봇 기본 장비 목록에 없는 아이템(주로 모드 아이템)은 같은 종류끼리(예: 돌격소총끼리) 비교합니다. 그래서 같은 가격이라도 비교 묶음의 크기에 따라 티어가 달라질 수 있습니다.','Items of the same gear slot (e.g. primary weapons, headwear) are sorted by price and split into 7 equal parts: cheapest 1/7 = T1, most expensive 1/7 = T7. Guns use their assembled (default build) price, items not in any bot default list (mostly mod items) are compared within their type (e.g. assault rifles), so the same price can land in different tiers.'))}</p></div>
     <div><b>⛨ ${tr(T('방탄 등급','Armor class'))}</b><p>${tr(T('헬멧·방탄복·방탄 리그는 가격 티어와 별개로, 그 티어의 판 등급 상한(티어 편집기 → 상한·방탄판)보다 등급이 높으면 나오지 않습니다.','Helmets, vests and armored rigs also never appear above the tier\'s plate class cap (Tier editor → Caps & plates).'))}</p></div>
     <div><b>⁍ ${tr(T('탄약','Ammo'))}</b><p>${tr(T('가격이 아니라 관통력으로 정합니다. 티어마다 정한 관통 상한이 그 탄의 관통력 이상인 첫 티어가 그 탄의 티어입니다. 상한을 바꾸면 탄약 티어도 같이 바뀝니다.','Decided by penetration, not price: the first tier whose pen cap is at least the round\'s pen. Changing the caps moves ammo tiers too.'))}</p></div>
     <div><b>✎ ${tr(T('직접 정하기','Manual tier'))}</b><p>${tr(T('여기서 T1~T7을 고르면 자동 대신 그 값을 씁니다. 봇은 자기 티어 이하 아이템을 쓰고, 낮은 티어 아이템일수록 적게 고릅니다. 티어 편집기에 직접 넣은 아이템은 무게대로 쓰지만, 여기서 티어를 정한 아이템은 그 티어부터만 나옵니다.','Picking T1–T7 here overrides the automatic tier. Bots use items up to their own tier, lower tiers less often. Items added in the Tier editor follow their weights, but an item with a manual tier here only appears from that tier.'))}</p></div></div></details>`;
