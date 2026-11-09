@@ -291,10 +291,10 @@ public class ClientSettingsTests
     public void Hello_ReportsCompatibilityAndLock()
     {
         var (rt, _) = Runtime();
-        var ok = rt.OnHello("s1", new HelloRequest("0.5.7", false));
+        var ok = rt.OnHello("s1", new HelloRequest("0.6.7", false));
         Assert.True(ok.Compatible);
         Assert.False(ok.SpawnLocked);
-        Assert.Equal("0.5.7", rt.Sessions.LastVersion);
+        Assert.Equal("0.6.7", rt.Sessions.LastVersion);
         var bad = rt.OnHello("s2", new HelloRequest("0.2.0", false));
         Assert.False(bad.Compatible);
         Assert.True(rt.OnHello("s3", new HelloRequest("0.2.0", true)).SpawnLocked);

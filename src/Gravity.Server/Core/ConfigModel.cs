@@ -43,7 +43,13 @@ public sealed record InfSettings(double DelaySec, int Batch, double PmcShare, do
 public sealed record MapSettings(
     bool Override, string Style, InfSettings Inf, double StartPmcPct, double IntervalMin, int WaveMin, int WaveMax,
     Intensity Intensity, bool Original, int Cap, IReadOnlyDictionary<string, bool> Zones,
-    double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights);
+    double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights, bool Variant = true);
+
+/// <summary>ORBIT 연동(0.6). ORBIT 설정은 읽기만 한다.</summary>
+public sealed record OrbitSettings(bool RefillAfterExtract, bool NearAsGhost, bool RespectTakeover);
+
+/// <summary>진단(0.6). Log: off·summary·verbose.</summary>
+public sealed record DiagSettings(string Log, bool Report, bool BotLog);
 
 /// <summary>보스 하나. EscMin·EscMax 둘 다 0, TFrom·TTo 둘 다 0, Diff 빈 값, 구역 없음 = 바닐라 유지(0.3).</summary>
 public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<string, bool> Maps,
@@ -69,8 +75,12 @@ public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
     IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
-    FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null)
+    FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null,
+    OrbitSettings? Orbit = null, DiagSettings? Diag = null)
 {
+    public OrbitSettings OrbitOrDefault => Orbit ?? new OrbitSettings(true, false, true);
+    public DiagSettings DiagOrDefault => Diag ?? new DiagSettings("summary", true, false);
+
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
 }
 
@@ -99,7 +109,7 @@ public static partial class ConfigModel
         map == "labyrinth" ? 10 : map.StartsWith("factory") ? 14 : map == "tarkovstreets" ? 30 : 24;
 
     // 공장·미궁은 좁아서 큰 맵 거리(120·80m)로는 지점이 남지 않는다(11-09 미궁 판: 스캐브 지점 9개 전부 80m 안).
-    private static bool Small(string map) => map.StartsWith("factory") || map == "labyrinth";
+    public static bool Small(string map) => map.StartsWith("factory") || map == "labyrinth";
     // 연구소는 중간 크기라 120m면 시작 분대가 지점을 못 찾아 만료된다(11-09 0.3 판: 7분에 만료 2) → 80m.
     public static double DefaultPmcDist(string map) => Small(map) ? 40 : map == "laboratory" ? 80 : 120;
     public static double DefaultScavDist(string map) => Small(map) ? 30 : 80;
@@ -107,7 +117,10 @@ public static partial class ConfigModel
     public static MapSettings DefaultMap(string id) => new(
         false, id == "labyrinth" ? "infinite" : "waves", new InfSettings(45, 2, 50, 30), 35, 6, 2, 4,
         new Intensity(1.2, 1, 0.6), true, DefaultCap(id), new Dictionary<string, bool>(),
-        DefaultPmcDist(id), DefaultScavDist(id), true, new Dictionary<string, double>());
+        DefaultPmcDist(id), DefaultScavDist(id), true, new Dictionary<string, double>(), DefaultVariant(id));
+
+    /// <summary>변형 맵 적용 기본값(웹 makeDefaults와 같음): 등대만 끔(Manimal 등대는 스폰 모드를 스스로 끈다).</summary>
+    public static bool DefaultVariant(string id) => id != "lighthouse";
 
     public static GravityConfig Default() => FromState(null, []);
 
@@ -188,7 +201,7 @@ public static partial class ConfigModel
                 new Intensity(r.Num(p + "early", 1.2, 0, 3), r.Num(p + "mid", 1, 0, 3), r.Num(p + "late", 0.6, 0, 3)),
                 r.Bool(p + "original", true), (int)r.Num(p + "cap", d.Cap, 1, 60), zones,
                 r.Num(p + "pmcDist", d.PmcDist, 5, 1000), r.Num(p + "scavDist", d.ScavDist, 5, 1000),
-                r.Bool(p + "start.scav", true), zoneW);
+                r.Bool(p + "start.scav", true), zoneW, r.Bool(p + "variant", DefaultVariant(id)));
         }
 
         var bosses = new Dictionary<string, BossSettings>();
@@ -277,7 +290,9 @@ public static partial class ConfigModel
 
         return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
             r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events,
-            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"), ParseGear(r));
+            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"), ParseGear(r),
+            new OrbitSettings(r.Bool("orbit.refillAfterExtract", true), r.Bool("orbit.nearAsGhost", false), r.Bool("orbit.respectTakeover", true)),
+            new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)));
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>

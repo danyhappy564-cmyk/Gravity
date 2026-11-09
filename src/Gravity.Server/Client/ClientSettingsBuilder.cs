@@ -15,7 +15,7 @@ public static class ClientSettingsBuilder
         BuildNear(ConfigModel.Default().Near));
 
     public static ClientRaidSettings Build(GravityConfig cfg, MapInfo map, SpawnPlan plan, bool managed,
-        bool ruafInstalled = false, bool blackDivInstalled = false)
+        bool ruafInstalled = false, bool blackDivInstalled = false, OrbitInfo? orbit = null)
     {
         var s = cfg.Spawn;
         var ms = cfg.MapFor(map.Id);
@@ -58,11 +58,20 @@ public static class ClientSettingsBuilder
             s.Placement, s.HotspotShare / 100, weights, s.AllowPmcLabyrinth,
             new GroupCapDto(s.GroupCap.On, s.GroupCap.Scope, s.GroupCap.Over, rules),
             new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart),
-            inf, refill, BuildNear(cfg.Near), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled));
+            // 좁은 맵(공장·미궁)은 ORBIT 수면 거리 밖 지점이 없어 근처 보충이 전부 버려진다(11-09 공장 판 noPoint 5) → 거리 보정 안 함.
+            inf, refill, BuildNear(cfg.Near, ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
+            cfg.OrbitOrDefault.RefillAfterExtract, cfg.DiagOrDefault.Log);
     }
 
-    private static NearDto BuildNear(NearSettings n) => new(
-        n.On, n.FirstDelay, n.Interval, n.MinDist, n.MaxDist, n.Spacing, n.WaveMin, n.WaveMax,
+    /// <summary>근처 보충 설정. ORBIT 봇 재우기와 맞추기(orbit.nearAsGhost)가 켜져 있으면 깨우는 거리 밖에서 시작(0.6).</summary>
+    private static NearDto BuildNear(NearSettings n, OrbitInfo? orbit = null, bool nearAsGhost = false)
+    {
+        var (min, max) = (orbit ?? OrbitInfo.None).NearRange(n.MinDist, n.MaxDist, nearAsGhost);
+        return BuildNear(n, min, max);
+    }
+
+    private static NearDto BuildNear(NearSettings n, double min, double max) => new(
+        n.On, n.FirstDelay, n.Interval, min, max, n.Spacing, n.WaveMin, n.WaveMax,
         n.SlotChance / 100, n.PmcChance / 100, n.Attempts, n.Sight, n.StopAtCap, n.GroupScavOff,
         n.GroupChance / 100, n.GroupMin, n.GroupMax, n.CustomOn, NearRole(n.CustomT1), n.CustomCap1, NearRole(n.CustomT2), n.CustomCap2, n.CustomRatio2 / 100, n.UseDefault);
 

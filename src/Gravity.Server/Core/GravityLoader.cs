@@ -18,7 +18,8 @@ namespace Gravity.Core;
 public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
     PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json,
-    TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales) : IOnLoad
+    TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales,
+    SPTarkov.Server.Core.Utils.Cloners.ICloner cloner) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -33,8 +34,30 @@ public class GravityLoader(
         var catalog = new MapCatalog();
         catalog.Build(locations, pmcConfig, botConfig);
 
-        GravityRuntime.Instance = new GravityRuntime(store, catalog, detect, m => logger.Warning(m), m => logger.Info(m))
+        // 0.6 진단: 로그 수준(diag.log)은 저장된 설정을 그때그때 읽는다. 경고·알림은 최근 목록(웹)에도 남긴다.
+        DiagLog.Level = () => store.Current.DiagOrDefault.Log;
+        DiagLog.ReportsDir = paths.ReportsDir;
+        var library = new PresetLibrary(paths.PresetsFile, paths.BackupDir);
+        library.Load();
+        if (library.LoadWarning != null) logger.Warning($"{GravityInfo.Tag} {library.LoadWarning}");
+        var orbitVer = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name is "Orbit.Server" or "ORBIT.Server")?.GetName().Version?.ToString(3);
+        string? orbitJson = null;
+        if (detect.Orbit && detect.OrbitFolder != null)
+            try
+            {
+                var f = Path.Combine(GravityBoot.ModsDir!, detect.OrbitFolder, "config.json");
+                if (File.Exists(f)) orbitJson = File.ReadAllText(f);
+            }
+            catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} ORBIT 설정을 못 읽음(기본값으로 맞춤): {ex.Message}"); }
+        var orbit = OrbitInfo.Parse(detect.Orbit, orbitVer, orbitJson);
+
+        GravityRuntime.Instance = new GravityRuntime(store, catalog, detect, DiagLog.Warn(m => logger.Warning(m)), DiagLog.Info(m => logger.Info(m)))
         {
+            Orbit = orbit,
+            Library = library,
+            Verbose = DiagLog.Verbose(m => logger.Info(m)),
+            CurrentBase = id => locations.GetLocation(id)?.Base,
+            CloneBase = id => locations.GetLocation(id)?.Base is { } b ? cloner.Clone(b) : null,
             MaxBotCap = botConfig.MaxBotCap,
             BotCfg = botConfig,
             ActiveEvents = () =>
@@ -51,6 +74,18 @@ public class GravityLoader(
         GravityRuntime.Instance.Factions = Gravity.Factions.FactionData.Load(GravityBoot.ModsDir!, sptData, ConfigModel.KnownMaps,
             t => json.Deserialize<List<SPTarkov.Server.Core.Models.Eft.Common.BossLocationSpawn>>(t), m => logger.Warning($"{GravityInfo.Tag} {m}"));
         var fd = GravityRuntime.Instance.Factions;
+        // 0.6: 변형 모드가 설치만 되고 배치를 안 바꾼 맵(Manimal 시험 모드 등)은 변형으로 보지 않는다(SPT 원본 base.json과 스폰 지점 비교).
+        var active = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in detect.VariantMaps.Keys)
+        {
+            var b = locations.GetLocation(id)?.Base;
+            string? orig = null;
+            try { if (sptData != null) { var f = Path.Combine(sptData, "database", "locations", id, "base.json"); if (File.Exists(f)) orig = File.ReadAllText(f); } } catch { }
+            var same = b == null ? null : MapCatalog.SameSpawnPoints(b, orig);
+            if (same != true) active.Add(id);
+            else logger.Info($"{GravityInfo.Tag} {id}: 변형 모드({string.Join("·", detect.VariantMaps[id])})가 있지만 배치가 SPT 원본과 같아 원본으로 봅니다");
+        }
+        GravityRuntime.Instance.ActiveVariants = active;
         if (sptData == null) logger.Warning($"{GravityInfo.Tag} SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다");
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();
@@ -60,7 +95,8 @@ public class GravityLoader(
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var vanilla = Gravity.Gear.GearItemsBuilder.VanillaIds(sptData);
-            Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla);
+            Gravity.Gear.GearRuntime.Builder = () => Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla);
+            Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
             Gravity.Gear.GearRuntime.Locale = lang => locales.GetLocaleDb(lang);
@@ -83,13 +119,16 @@ public class GravityLoader(
         if (detect.Abps) found.Add("ABPS(스폰 모듈 잠금)");
         if (detect.Apbs) found.Add("APBS");
         if (detect.Svm) found.Add("SVM");
-        if (detect.Orbit) found.Add("ORBIT");
+        if (detect.Orbit) found.Add(orbit.ConfigRead ? $"ORBIT{(orbit.Version != null ? " " + orbit.Version : "")}(봇 재우기 {(orbit.Limiter ? $"켬, 깨우는 거리 {orbit.WakeDistance:0}m" : "끔")})" : "ORBIT(설정 파일 못 읽음)");
         if (detect.Sain) found.Add("SAIN");
         if (detect.Ruaf) found.Add("RUAF");
         if (detect.Untar) found.Add("UNTAR");
         if (detect.BlackDiv) found.Add("BlackDiv");
-        if (detect.QuestingBots) found.Add("QuestingBots(지원 안 함)");
-        if (found.Count > 0) logger.Info($"{GravityInfo.Tag} 감지: {string.Join(", ", found)}");
+        if (detect.QuestingBots) found.Add("QuestingBots(지원 안 함, 스폰 모듈 잠금)");
+        if (detect.Blackout) found.Add("Blackout");
+        if (detect.MapVariants) found.Add("MapVariants");
+        if (detect.VariantMaps.Count > 0) found.Add("변형 맵 " + string.Join(", ", detect.VariantMaps.Select(kv => $"{kv.Key}({string.Join("·", kv.Value)})")));
+        if (found.Count > 0) { logger.Info($"{GravityInfo.Tag} 감지: {string.Join(", ", found)}"); DiagLog.Remember("INFO", "감지: " + string.Join(", ", found)); }
         if (detect.Ruaf || detect.BlackDiv)
             logger.Info($"{GravityInfo.Tag} 팩션 자료: RUAF 맵 {fd.Ruaf.Count}개, BlackDiv 맵 {fd.BlackDivMaps.Count}개, 연구소 게이트 원본 {fd.LabGateVanilla.Values.Sum(v => v.Count)}개, PMC 지문 맵 {fd.SptPmc.Count}개");
         return Task.CompletedTask;

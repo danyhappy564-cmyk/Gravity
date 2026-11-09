@@ -54,6 +54,19 @@ namespace Gravity.Client
         /// <summary>죽은 봇 수(0.3): pmcUSEC·pmcBEAR·assault(assaultGroup 포함)·marksman·boss(보스·호위)·other. BotSpawner.OnBotRemoved(=BotDied)로 센다.</summary>
         public readonly Dictionary<string, int> Killed = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0, ["marksman"] = 0, ["boss"] = 0, ["other"] = 0 };
 
+        /// <summary>살아서 맵을 떠난 봇 수(0.6, 판정 56): BotDespawn도 BotDied를 거치므로 OnBotRemoved 때 살아 있으면 탈출로 센다.</summary>
+        public readonly Dictionary<string, int> Extracted = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0, ["marksman"] = 0, ["boss"] = 0, ["other"] = 0 };
+
+        /// <summary>무한 방식 PMC 보충 목록(서버 RefillGroups 복사본).</summary>
+        public readonly List<RefillGroup> Refill;
+
+        /// <summary>탈출 보충(0.6) 대기열: 다음 PMC 차례에 Refill보다 먼저 쓴다(목록 끝에 붙이면 하드 스톱 전에 차례가 안 올 수 있음, Codex 지적 4).</summary>
+        public readonly Queue<RefillGroup> ExtractQueue = new Queue<RefillGroup>();
+
+        /// <summary>탈출 보충으로 더한 분대 수(판당 MaxExtractRefill까지).</summary>
+        public int ExtractRefill;
+        internal const int MaxExtractRefill = 20;
+
         /// <summary>이 레이드의 BotSpawner.OnBotRemoved에 붙었는지(게임 스레드).</summary>
         internal EFT.BotSpawner? DeathHookedTo;
 
@@ -141,6 +154,8 @@ namespace Gravity.Client
             S = s;
             StartTime = startTime;
             Rng = new System.Random(s.Seed);
+            Refill = new List<RefillGroup>(s.RefillGroups ?? (IReadOnlyList<RefillGroup>)Array.Empty<RefillGroup>());
+            Log.Level = s.LogLevel ?? "summary";
         }
 
         /// <summary>레이드 시작 뒤 지난 초(게임 스레드에서만).</summary>
@@ -227,7 +242,8 @@ namespace Gravity.Client
             ClientLink.SendReport(new RaidReport(
                 c.S.MapId, c.S.Seed,
                 new Dictionary<string, int>(c.Spawned), new Dictionary<string, int>(c.Dropped),
-                c.Sanitized, new List<int[]>(c.AlivePerMinute), new Dictionary<string, int>(c.Killed)));
+                c.Sanitized, new List<int[]>(c.AlivePerMinute), new Dictionary<string, int>(c.Killed),
+                new Dictionary<string, int>(c.Extracted), c.ExtractRefill));
         }
     }
 }

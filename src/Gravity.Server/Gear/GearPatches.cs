@@ -25,6 +25,22 @@ public static class GearRuntime
     public static ConcurrentDictionary<string, int[]> Stats { get; } = new();
     public static int Dressed;
     public static string? LastError { get; set; }
+    /// <summary>봇마다 장비 기록 한 줄(diag.botLog, 0.6). 판마다 레이드 시작 때 정한다.</summary>
+    public static bool LogBots;
+
+    /// <summary>아이템 자료를 다시 만드는 함수(로더가 채움, 웹 "설치된 아이템으로 다시 만들기"). 시험에서는 null.</summary>
+    public static Func<GearItems>? Builder { get; set; }
+
+    /// <summary>아이템 가격 티어를 다시 계산한다(LiveFleaPrices처럼 가격이 바뀌는 모드용). 요약 한 줄, 못 하면 null.</summary>
+    public static string? RebuildItems()
+    {
+        if (Builder == null) return null;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var items = Builder();
+        Items = items;
+        _names = null;
+        return $"아이템 {items.Info.Count}개, 장비 칸 {items.SlotTier.Count}개, 모드 무기 {items.ModWeapons.Count}·장비 {items.ModEquipment.Count}·부품 {items.ModAttachments.Count}, {sw.ElapsedMilliseconds}ms";
+    }
 
     [ThreadStatic] internal static GearContext? Current;
     [ThreadStatic] internal static int? PmcLevel;
@@ -283,7 +299,23 @@ public class GearBotPatch : AbstractPatch
                 rep.MaxDurability = info.MaxDurability;
                 rep.Durability = Math.Round(info.MaxDurability * pct / 100.0, 1);
             }
+            if (GearRuntime.LogBots) Gravity.Core.DiagLog.GearLine(BotLine(pick, __result));
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
+    }
+
+    /// <summary>장비 기록 한 줄: 역할 티어 레벨 주무기 방탄 최고 등급(조끼·리그·헬멧·판).</summary>
+    internal static string BotLine(GearPick pick, BotBase bot)
+    {
+        string? weapon = null;
+        double armor = 0;
+        foreach (var it in bot.Inventory!.Items!)
+        {
+            var tpl = it.Template.ToString();
+            if (it.SlotId == "FirstPrimaryWeapon") weapon = tpl;
+            if (GearRuntime.Items.Info.TryGetValue(tpl, out var info) && (info.ArmorClass > 0)) armor = Math.Max(armor, info.ArmorClass);
+        }
+        var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon);
+        return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t방탄 {armor:0}";
     }
 }

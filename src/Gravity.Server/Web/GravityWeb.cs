@@ -16,6 +16,23 @@ public class GravityWeb : IHttpListener
 {
     private const string Prefix = "/gravity";
     private const int MaxBody = 2 * 1024 * 1024;
+    /// <summary>내 프리셋 목록(장비 프리셋은 티어 표를 통째로 담아 커서 따로, Codex 0.6 지적 7).</summary>
+    private const int MaxLibrary = 16 * 1024 * 1024;
+
+    /// <summary>본문을 최대 max바이트까지만 읽어 JSON으로. 넘으면 InvalidDataException(Content-Length 없는 요청도 막음).</summary>
+    internal static async Task<JsonNode?> ReadJson(HttpRequest req, int max, CancellationToken ct)
+    {
+        using var ms = new MemoryStream();
+        var buf = new byte[81920];
+        int n;
+        while ((n = await req.Body.ReadAsync(buf, ct)) > 0)
+        {
+            if (ms.Length + n > max) throw new InvalidDataException("too large");
+            ms.Write(buf, 0, n);
+        }
+        ms.Position = 0;
+        return await JsonNode.ParseAsync(ms, cancellationToken: ct);
+    }
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     internal static JsonSerializerOptions JsonOptions => Json;
 
@@ -54,7 +71,8 @@ public class GravityWeb : IHttpListener
                         if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 저장할 수 있습니다" }); return; }
                         if (req.ContentLength > MaxBody) { await Send(res, 413, new { error = "너무 큽니다" }); return; }
                         JsonNode? node;
-                        try { node = await JsonNode.ParseAsync(req.Body, cancellationToken: cancellationToken); }
+                        try { node = await ReadJson(req, MaxBody, cancellationToken); }
+                        catch (InvalidDataException) { await Send(res, 413, new { ok = false, error = "너무 큽니다" }); return; }
                         catch (JsonException ex) { await Send(res, 400, new { ok = false, error = "JSON 형식 오류: " + ex.Message }); return; }
                         var state = node?["state"] ?? node;
                         if (state is not JsonObject) { await Send(res, 400, new { ok = false, error = "state 객체가 필요합니다" }); return; }
@@ -83,8 +101,55 @@ public class GravityWeb : IHttpListener
                                 blackout = new { installed = rt.Factions.BlackoutChance != null, chance = rt.Factions.BlackoutChance, now = rt.Factions.BlackoutNow() },
                                 otherPmc = rt.LastOtherPmc, pmcSigMaps = rt.Factions.SptPmc.Count
                             },
-                            gear = GearBody(rt)
+                            gear = GearBody(rt),
+                            orbit = rt.Orbit,
+                            lockReason = rt.Detect.SpawnLockReason,
+                            layout = rt.LastLayout,
+                            recent = DiagLog.RecentEntries().Select(e => new { at = e.At.ToString("HH:mm:ss"), level = e.Level, text = e.Text }),
+                            reports = new { dir = DiagLog.ReportsDir, last = rt.LastReportFile }
                         });
+                        return;
+                    case ("library", "GET"):
+                        await Send(res, 200, new { library = rt.Library?.Current, loadWarning = rt.Library?.LoadWarning });
+                        return;
+                    case ("library", "POST"):
+                    {
+                        if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 저장할 수 있습니다" }); return; }
+                        if (req.ContentLength > MaxLibrary) { await Send(res, 413, new { ok = false, error = "너무 큽니다" }); return; }
+                        if (rt.Library is null) { await Send(res, 503, new { ok = false, error = "프리셋 저장소 없음" }); return; }
+                        JsonNode? lib;
+                        try { lib = await ReadJson(req, MaxLibrary, cancellationToken); }
+                        catch (InvalidDataException) { await Send(res, 413, new { ok = false, error = "너무 큽니다" }); return; }
+                        catch (JsonException ex) { await Send(res, 400, new { ok = false, error = "JSON 형식 오류: " + ex.Message }); return; }
+                        var r = rt.Library.Save(lib?["library"] ?? lib);
+                        await Send(res, r.Ok ? 200 : 400, new { ok = r.Ok, error = r.Error });
+                        return;
+                    }
+                    case ("gear/rebuild", "POST"):
+                    {
+                        if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 할 수 있습니다" }); return; }
+                        var sum = Gravity.Gear.GearRuntime.RebuildItems();
+                        if (sum != null) rt.Note($"{GravityInfo.Tag} 장비 아이템 티어 다시 계산: {sum}");
+                        await Send(res, sum != null ? 200 : 503, new { ok = sum != null, summary = sum, error = sum == null ? "장비 자료가 준비되지 않았습니다" : null });
+                        return;
+                    }
+                    case ("dev/sim", "GET"):
+                    {
+                        var map = req.Query["map"].ToString();
+                        int.TryParse(req.Query["n"].ToString(), out var n);
+                        var sim = rt.Simulate(map, n <= 0 ? 10 : n, Random.Shared.Next(1, int.MaxValue));
+                        await Send(res, sim != null ? 200 : 404, sim != null ? new { rows = sim.Rows, skip = sim.Skip, client = sim.Client } : new { error = "모르는 맵" });
+                        return;
+                    }
+                    case ("dev/plan", "GET"):
+                    {
+                        var map = req.Query["map"].ToString();
+                        var plan = rt.PlanPreview(map, int.TryParse(req.Query["seed"].ToString(), out var sd) && sd > 0 ? sd : Random.Shared.Next(1, int.MaxValue));
+                        await Send(res, plan != null ? 200 : 404, plan ?? new { error = "모르는 맵" });
+                        return;
+                    }
+                    case ("reports", "GET"):
+                        await Send(res, 200, new { dir = DiagLog.ReportsDir, files = DiagLog.ReportFiles(), last = rt.LastReportFile });
                         return;
                     case ("items", "GET"):
                         await Send(res, 200, new { items = Gravity.Gear.GearRuntime.Search(req.Query["q"].ToString(), req.Query["cat"].ToString()) });
@@ -154,6 +219,7 @@ public class GravityWeb : IHttpListener
             {
                 at = rt.LastReportAt, mapId = r.MapId, seed = r.Seed,
                 spawned = r.Spawned, dropped = r.Dropped, sanitized = r.Sanitized, alivePerMinute = r.AlivePerMinute, killed = r.Killed,
+                extracted = r.Extracted, extractRefill = r.ExtractRefill, layout = rt.LastReportLayout,
                 plan = p is null ? null : new
                 {
                     startPmcs = p.StartPmcs, wavePmcs = p.PmcTotal - p.StartPmcs, pmcTotal = p.PmcTotal,

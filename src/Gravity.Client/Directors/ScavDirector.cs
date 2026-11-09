@@ -63,7 +63,7 @@ namespace Gravity.Client.Directors
             if (st == null)
             {
                 st = c.ScavState = new State(new ScavSchedule(c.S.Scav, c.S.Inf, c.S.HardStopScavSec, c.Rng));
-                Log.Info($"{c.S.MapId} 스캐브 관리 시작(바닐라 자동 스폰 대신){(c.S.Inf != null ? ", 무한 보충 PMC 분대 " + (c.S.RefillGroups?.Count ?? 0) + "개" : "")}");
+                Log.Info($"{c.S.MapId} 스캐브 관리 시작(바닐라 자동 스폰 대신){(c.S.Inf != null ? ", 무한 보충 PMC 분대 " + c.Refill.Count + "개" : "")}");
             }
             if (now < st.NextTick) return;
             st.NextTick = now + TickSec;
@@ -104,13 +104,13 @@ namespace Gravity.Client.Directors
         /// </summary>
         internal static void TickPmcOnly(RaidContext c, BotsController? bc)
         {
-            if (!c.Started || c.S.Inf == null || c.S.RefillGroups == null || c.S.RefillGroups.Count == 0) return;
+            if (!c.Started || c.S.Inf == null || (c.Refill.Count == 0 && c.ExtractQueue.Count == 0)) return;
             float now = c.Elapsed;
             var st = c.ScavState;
             if (st == null)
             {
                 st = c.ScavState = new State(new ScavSchedule(c.S.Scav, c.S.Inf, c.S.HardStopScavSec, c.Rng));
-                Log.Info($"{c.S.MapId} 스캐브는 바닐라, 무한 보충 PMC만(분대 {c.S.RefillGroups.Count}개)");
+                Log.Info($"{c.S.MapId} 스캐브는 바닐라, 무한 보충 PMC만(분대 {c.Refill.Count}개)");
             }
             if (now < st.NextTick) return;
             st.NextTick = now + TickSec;
@@ -138,19 +138,21 @@ namespace Gravity.Client.Directors
                 Log.InfoOnce("ScavDirector.LabPmcOff:" + c.S.Seed, "labyrinth 미궁 PMC 꺼짐(allowPmcLabyrinth): 보충 PMC 없이 스캐브만");
                 return PmcResult.Unavailable;
             }
-            var groups = c.S.RefillGroups;
-            if (groups == null || st.RefillIndex >= groups.Count)
+            var groups = c.Refill;
+            bool extra = c.ExtractQueue.Count > 0;
+            if (!extra && st.RefillIndex >= groups.Count)
             {
                 Log.InfoOnce("ScavDirector.RefillDone:" + c.S.Seed, $"{c.S.MapId} 보충 PMC 분대 목록을 다 씀({groups?.Count ?? 0}개): 남은 차례는 스캐브만");
                 return PmcResult.Unavailable;
             }
             if (SpawnExpiry.PastHardStop(now, c.S.HardStopPmcSec)) return PmcResult.Unavailable;
 
-            var g = groups[st.RefillIndex];
+            var g = extra ? c.ExtractQueue.Peek() : groups[st.RefillIndex];
             spawner.CheckOnMax(Math.Max(1, g.Size), out int toDelay, out _);
             if (toDelay > 0) return PmcResult.NoRoom;
 
-            st.RefillIndex++;
+            if (extra) c.ExtractQueue.Dequeue();
+            else st.RefillIndex++;
             bc.ActivateBotsByWave(WaveFactory.Pmc(g, ""));
             return PmcResult.Spawned;
         }

@@ -5,7 +5,7 @@ namespace Gravity.Shared
     /// <summary>서버와 클라 판 번호 비교. 앞 두 자리(주.부)가 같으면 호환.</summary>
     public static class GravityVersion
     {
-        public const string Current = "0.5.0";
+        public const string Current = "0.6.0";
 
         public static bool Compatible(string? a, string? b)
         {

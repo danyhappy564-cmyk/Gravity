@@ -89,7 +89,12 @@ namespace Gravity.Client
 
         public static void Init(ManualLogSource src) => _src = src;
 
-        public static void Info(string msg) => _src?.LogInfo("[Gravity] " + msg);
+        /// <summary>서버 diag.log(off·summary·verbose, 0.6). off면 알림은 안 남기고 경고·오류만.</summary>
+        public static string Level = "summary";
+
+        public static void Info(string msg) { if (Level != "off") _src?.LogInfo("[Gravity] " + msg); }
+
+        public static void Verbose(string msg) { if (Level == "verbose") _src?.LogInfo("[Gravity] " + msg); }
 
         public static void Warn(string msg) => _src?.LogWarning("[Gravity] " + msg);
 

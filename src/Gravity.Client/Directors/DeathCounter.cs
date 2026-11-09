@@ -1,5 +1,6 @@
 using System;
 using EFT;
+using Gravity.Shared;
 
 namespace Gravity.Client.Directors
 {
@@ -31,12 +32,32 @@ namespace Gravity.Client.Directors
             {
                 var settings = bot?.Profile?.Info?.Settings;
                 if (settings == null) return;
-                c.Killed[Key(settings.Role, settings.IsBoss() || settings.IsFollower())]++;
+                var key = Key(settings.Role, settings.IsBoss() || settings.IsFollower());
+                // BotDespawn(탈출·다른 모드의 정리)도 BotDied를 거친다: 그때 플레이어가 아직 살아 있으면 탈출(판정 56).
+                var hc = bot!.GetPlayer?.HealthController;
+                if (hc != null && hc.IsAlive)
+                {
+                    c.Extracted[key]++;
+                    OnExtracted(c, settings.Role);
+                }
+                else c.Killed[key]++;
             }
             catch (Exception ex)
             {
                 Log.ErrorOnce("DeathCounter.Count", ex);
             }
+        }
+
+        /// <summary>무한 방식 맵에서 PMC가 탈출하면 같은 진영 1인 분대를 보충 목록 끝에 더한다(orbit.refillAfterExtract, 판정 57).</summary>
+        private static void OnExtracted(RaidContext c, WildSpawnType role)
+        {
+            if (!c.S.RefillAfterExtract || c.S.Inf == null) return;
+            if (role != WildSpawnType.pmcUSEC && role != WildSpawnType.pmcBEAR) return;
+            if (c.S.MapId == "labyrinth" && !c.S.AllowPmcLabyrinth) return;
+            if (c.ExtractRefill >= RaidContext.MaxExtractRefill) return;
+            c.ExtractRefill++;
+            c.ExtractQueue.Enqueue(new RefillGroup(role == WildSpawnType.pmcUSEC, 1, "normal"));
+            Log.Verbose($"{c.S.MapId} PMC 탈출 → 보충 분대 1명 추가({c.ExtractRefill}/{RaidContext.MaxExtractRefill})");
         }
 
         internal static string Key(WildSpawnType role, bool bossOrFollower)

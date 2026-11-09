@@ -17,10 +17,10 @@ public static class FactionRaid
     private const string BdAssault = "blackDivAssault", BdWedge = "bossWedge", BdGuard = "blackDivIb";
 
     // 모드가 등록한 봇 종류(이름과 번호). 클라는 역할 이름이 번호로 보일 수도 있어 둘 다 보낸다.
-    private static readonly string[] RuafRoles =
+    internal static readonly string[] RuafRoles =
         ["ruafRifleman", "ruafRiflemanSenior", "ruafAutorifleman", "ruafGrenadier", "ruafMarksman", "ruafMachinegunner", "remnantRifleman",
          "848400", "848401", "848402", "848403", "848404", "848405", "848406"];
-    private static readonly string[] BlackDivRoles =
+    internal static readonly string[] BlackDivRoles =
         ["blackDivLead", "blackDivAssault", "blackDivBreacher", "blackDivSupport", "bossWedge", "blackDivIb",
          "848420", "848421", "848422", "848423", "848424", "848426"];
 
