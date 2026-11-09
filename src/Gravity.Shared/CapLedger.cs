@@ -209,11 +209,19 @@ namespace Gravity.Shared
     public static class WaveMark
     {
         public const string Prefix = "gravity:";
+        public const string ExtraSpecialPrefix = Prefix + "extra-special:";
+
+        public static string ExtraSpecial(string map, string role) => ExtraSpecialPrefix + map + ":" + role;
+
+        public static bool IsExtraSpecial(string? triggerId, string? triggerName) =>
+            string.IsNullOrEmpty(triggerName) && triggerId != null && triggerId.StartsWith(ExtraSpecialPrefix, StringComparison.Ordinal);
 
         public static string For(string map, int seed, int index) => Prefix + map + ":" + seed + ":" + index;
 
+        /// <summary>서버 계획 PMC 분대 표식인지. 추가 특수 봇 표식(gravity:extra-special:)은 같은 머리말이라 따로 뺀다.</summary>
         public static bool Is(string? triggerId, string? triggerName) =>
-            string.IsNullOrEmpty(triggerName) && triggerId != null && triggerId.StartsWith(Prefix, StringComparison.Ordinal);
+            string.IsNullOrEmpty(triggerName) && triggerId != null && triggerId.StartsWith(Prefix, StringComparison.Ordinal)
+            && !triggerId.StartsWith(ExtraSpecialPrefix, StringComparison.Ordinal);
     }
 
     /// <summary>구역 비중 읽기(1.0, Codex 검토 4번): 설정에 없는 구역은 웹 기본값 100(보통)이다. 명시한 0은 그대로 0.</summary>

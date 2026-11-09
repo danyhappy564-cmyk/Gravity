@@ -136,7 +136,7 @@ public class BossTests
         Assert.Equal(25, extra.BossChance);
         Assert.Equal(RaidSpawnApplier.Range(1, 2), extra.BossEscortAmount);
         Assert.Equal("ZoneRaiders,ZoneSubCommand", extra.BossZone);
-        Assert.Equal("", extra.TriggerId);
+        Assert.True(Gravity.Shared.WaveMark.IsExtraSpecial(extra.TriggerId, extra.TriggerName));
         Assert.Equal("", extra.TriggerName);
         Assert.False(extra.IgnoreMaxBots);
         Assert.Equal(-1, extra.Time);

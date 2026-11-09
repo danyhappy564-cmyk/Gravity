@@ -49,8 +49,7 @@ namespace Gravity.Client.Directors
             /// 잡아 두고 2초마다 다시 시도한다. 그동안 스캐브·근처 보충은 그 자리를 못 쓰므로, 자리가 모이면 PMC가 먼저 나온다.
             /// </summary>
             public readonly object PendingKey = new object();
-            public int PendingSize;
-            public bool PendingExtract;
+            public readonly RefillPriority Priority = new RefillPriority();
             public int LastSize;
 
             /// <summary>저격 아닌 구역과 그 구역 지점 위치(레이드에서 한 번 만든다).</summary>
@@ -83,8 +82,9 @@ namespace Gravity.Client.Directors
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null || !bc._canSpawn) return;
 
-            if (TryExtract(c, st, bc, spawner, now)) return;
+            st.Priority.BeginTick();
             if (RetryPending(c, st, bc, spawner, now)) return;
+            if (!st.Priority.Attempted && TryExtract(c, st, bc, spawner, now)) return;
 
             int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
@@ -96,11 +96,11 @@ namespace Gravity.Client.Directors
             int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, aliveScavs / players, players, out bool pmcTurn, c.PmcReserveLeft());
 
             // PMC 차례는 스캐브 판정(n)과 상관없이 먼저 본다. n은 PMC를 못 넣을 때 대신 넣을 스캐브 수다.
-            if (pmcTurn)
+            if (pmcTurn && !st.Priority.Attempted)
             {
                 var r = TryPmc(c, st, bc, spawner, now);
                 if (r == PmcResult.Spawned) { st.CapEpisode = false; return; }
-                if (r == PmcResult.NoRoom) { MarkCap(c, st); return; }
+                if (r == PmcResult.NoRoom) MarkCap(c, st);
                 // Unavailable: 이 차례는 스캐브로
             }
 
@@ -137,9 +137,10 @@ namespace Gravity.Client.Directors
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null || !bc._canSpawn) return;
 
-            if (TryExtract(c, st, bc, spawner, now)) return;
+            st.Priority.BeginTick();
             if (RetryPending(c, st, bc, spawner, now)) return;
-            if (c.S.Inf == null || now < st.PmcOnlyNext) return;
+            if (!st.Priority.Attempted && TryExtract(c, st, bc, spawner, now)) return;
+            if (st.Priority.Attempted || c.S.Inf == null || now < st.PmcOnlyNext) return;
 
             var inf = c.S.Inf;
             if (c.Rng.NextDouble() < inf.PmcShare)
@@ -159,52 +160,54 @@ namespace Gravity.Client.Directors
             if (!ExtractRefillRule.CanQueue(c.S, true, 0, now))
             {
                 c.ExtractQueue.Clear();
-                if (st.PendingExtract) ClearPending(c, st);
+                if (st.Priority.Extract) ClearPending(c, st);
                 return false;
             }
             if (now < st.ExtractNext) return false;
             var r = TryPmc(c, st, bc, spawner, now, true);
-            if (r == PmcResult.NoRoom) { MarkCap(c, st); return true; }
+            if (r == PmcResult.NoRoom) { MarkCap(c, st); return false; }
             if (r != PmcResult.Spawned) return false;
             st.CapEpisode = false;
             st.ExtractNext = now + (float)(c.S.Inf?.DelaySec ?? 45);
             return true;
         }
 
-        /// <summary>줄 서 있는 보충 분대(탈출 보충 제외 — 그쪽은 TryExtract가 매 틱 다시 본다)를 2초마다 다시 넣어 본다. 막혀 있으면 이 틱은 끝(true).</summary>
+        /// <summary>줄 서 있는 보충 분대를 2초마다 한 번 다시 넣어 봅니다. 임시 대기 중에는 스캐브 처리를 계속합니다.</summary>
         private static bool RetryPending(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)
         {
-            if (st.PendingSize <= 0 || st.PendingExtract) return false;
-            var r = TryPmc(c, st, bc, spawner, now);
+            if (st.Priority.Size <= 0) return false;
+            if (st.Priority.Extract && !ExtractRefillRule.CanQueue(c.S, true, 0, now))
+            {
+                c.ExtractQueue.Clear(); ClearPending(c, st); return false;
+            }
+            var r = TryPmc(c, st, bc, spawner, now, st.Priority.Extract);
             if (r == PmcResult.Spawned) { st.CapEpisode = false; return true; }
-            if (r == PmcResult.NoRoom) { MarkCap(c, st); return true; }
+            if (r == PmcResult.NoRoom) { MarkCap(c, st); return false; }
             return false;
         }
 
         private static void ClearPending(RaidContext c, State st)
         {
             c.Ledger.Release(st.PendingKey);
-            st.PendingSize = 0;
-            st.PendingExtract = false;
+            st.Priority.Clear();
         }
 
         /// <summary>보충 PMC 분대 하나를 넣어 본다. 상한에 막히면 그 분대 몫을 대기 중 예약으로 잡아 PMC 우선 줄에 세운다.</summary>
         private static PmcResult TryPmc(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now, bool extractOnly = false)
         {
             // 줄 서 있던 내 몫은 자리 계산에서 빼고 다시 본다(내 예약이 나를 막지 않게)
+            if (!st.Priority.TryAttempt(extractOnly)) return PmcResult.Unavailable;
             c.Ledger.Release(st.PendingKey);
             st.LastSize = 0;
             var r = TryPmcCore(c, st, bc, spawner, now, extractOnly);
             if (r == PmcResult.NoRoom && st.LastSize > 0)
             {
-                st.PendingSize = st.LastSize;
-                st.PendingExtract = extractOnly && c.ExtractQueue.Count > 0;
-                c.Ledger.Hold(st.PendingKey, st.PendingSize, true, Time.time);
+                st.Priority.Wait(st.LastSize, extractOnly && c.ExtractQueue.Count > 0);
+                c.Ledger.Hold(st.PendingKey, st.Priority.Size, true, Time.time);
             }
             else
             {
-                st.PendingSize = 0;
-                st.PendingExtract = false;
+                st.Priority.Clear();
             }
             return r;
         }
@@ -227,6 +230,11 @@ namespace Gravity.Client.Directors
 
             var g = extra ? c.ExtractQueue.Peek() : groups[st.RefillIndex];
             int size = Math.Max(1, g.Size);
+            if (!extra && SpawnCapacity.SplitPmc(groups, st.RefillIndex, bc._maxCount))
+            {
+                g = groups[st.RefillIndex];
+                size = g.Size;
+            }
             // "레이드 전체" 그룹 제한: 계획 밖 분대(무한·탈출 보충)도 같은 장부로 센다(Codex 검토 2번).
             // 초과 처리가 split이면 서버 계획과 같은 규칙으로 작은 분대로 나눠 이번 차례에 첫 조각, 나머지는 목록 바로 뒤에(재검토 2번).
             if (!c.Groups.CanAdd(size))
@@ -305,7 +313,7 @@ namespace Gravity.Client.Directors
                 var d = difficulties != null && difficulties.Count > 0 ? difficulties.Random() : BotDifficulty.normal;
                 // 플레이어 스캐브(pscavChance)는 0.2에서 적용하지 않는다(IsPlayers를 바닐라가 읽지 않음, 결정 14).
                 var wave = WaveFactory.Scav(zone.NameZone, d, false);
-                if (!c.TryReserve(bc, wave, 1)) break;
+                if (!c.TryReserveScav(bc, wave, 1)) break;
                 c.ScavWaves.Add(wave, wave);
                 Watch(c, wave, bc.ActivateBotsByWave(wave));
                 done++;
@@ -365,7 +373,7 @@ namespace Gravity.Client.Directors
                     var role = p.Profile?.Info?.Settings?.Role;
                     // 무리로 나온 스캐브는 역할이 assaultGroup이다(11-09 세관 판에서 확인): 둘 다 센다.
                     if (role != null && (role.Value == WildSpawnType.assault || role.Value == WildSpawnType.assaultGroup)) scavs++;
-                    else if (role != null && c.IsCapExcluded(role.Value)) excluded++;
+                    if (role != null && c.IsCapExcluded(p)) excluded++;
                     continue;
                 }
                 Vector3 v = p.Position;

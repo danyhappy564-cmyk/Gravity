@@ -112,7 +112,7 @@ namespace Gravity.Client.Directors
                 int size = Math.Max(1, slot.Count);
                 bool pmc = role.IsPmcBot();
 
-                if (size > c.Room(bc))
+                if (size > c.ScavRoom(bc))
                 {
                     c.Dropped["nearCap"]++;
                     continue;
@@ -143,7 +143,7 @@ namespace Gravity.Client.Directors
                 Vec3 pos = Find(pool, id);
                 st.Taken.Add(pos);
                 var wave = WaveFactory.AtPoint(role, size, pos, zone.NameZone);
-                if (!c.TryReserve(bc, wave, size)) { c.Dropped["nearCap"]++; continue; }
+                if (!c.TryReserveScav(bc, wave, size)) { c.Dropped["nearCap"]++; continue; }
                 c.NearWaves.Add(wave, new Tag(pmc ? id : -1, size));
                 bc.ActivateBotsByWave(wave);
                 c.Spawned["near"] += size;

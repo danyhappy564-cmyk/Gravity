@@ -66,6 +66,10 @@ namespace Gravity.Client
                 Enable(new CheckOnMaxPatch());
                 // 분대 대원 생성이 끝날 때 남은 예약 풀기, Gravity 스캐브 요청의 생성 자료 표시(게임 상한 검사에 팩션 제외, 재검토 1·3번)
                 Enable(new BossSupportsPatch());
+                Enable(new SpawnEscortPatch());
+                Enable(new CreateProfilesPatch());
+                Enable(new BotOwnerDisposePatch());
+                Enable(new StopCreationPatch());
                 Enable(new SpawnBossMainPatch());
                 Enable(new ActivateBotPatch());
                 Enable(new ScavWaveScopePatch());

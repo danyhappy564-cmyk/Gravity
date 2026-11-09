@@ -24,7 +24,8 @@ public static class CapApplier
             var kind = CapKinds.Of(e.BossName, factionRoles);
             if (Array.IndexOf(CapKinds.Table, kind) < 0) continue;
             var mode = t.For(kind).Mode;
-            bool? want = mode == CapKinds.Separate ? true : mode == CapKinds.Respect ? false : null;
+            bool? want = WaveMark.IsExtraSpecial(e.TriggerId, e.TriggerName) ? false
+                : mode == CapKinds.Separate ? true : mode == CapKinds.Respect ? false : null;
             if (want == null || e.IgnoreMaxBots == want) continue;
             list[i] = e with { IgnoreMaxBots = want.Value };
             changed++;

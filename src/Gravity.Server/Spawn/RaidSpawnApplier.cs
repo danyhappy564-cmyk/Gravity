@@ -236,7 +236,7 @@ public static class RaidSpawnApplier
             {
                 BossChance = chance, BossZone = string.Join(",", zones),
                 BossEscortAmount = Range(Math.Max(0, sp.ExtraMin - 1), Math.Max(0, Math.Max(sp.ExtraMin, sp.ExtraMax) - 1)),
-                TriggerId = "", TriggerName = "", Time = SpecialTime(sp.XFrom, sp.XTo, rnd, raidSec), Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
+                TriggerId = Gravity.Shared.WaveMark.ExtraSpecial(mapId, role), TriggerName = "", Time = SpecialTime(sp.XFrom, sp.XTo, rnd, raidSec), Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
             });
         }
     }

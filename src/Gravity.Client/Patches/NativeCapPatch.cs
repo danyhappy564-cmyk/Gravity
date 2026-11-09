@@ -25,6 +25,7 @@ namespace Gravity.Client.Patches
 
         /// <summary>Gravity PMC 분대(근처 보충 제외) 검사면 true: 상한 표 "PMC 동시 무리 최대"에 닿았으면 대기열로 보낸다(1.0).</summary>
         internal static bool PmcWave;
+        internal static bool Blocked;
 
         internal static void Set(RaidContext c, object own, bool reserveOnPass = false, bool pmcWave = false)
         {
@@ -40,6 +41,7 @@ namespace Gravity.Client.Patches
             Own = null;
             ReserveOnPass = false;
             PmcWave = false;
+            Blocked = false;
         }
     }
 
@@ -53,50 +55,40 @@ namespace Gravity.Client.Patches
         protected override MethodBase GetTargetMethod() =>
             typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.Spawn), BindingFlags.Instance | BindingFlags.Public)!;
 
-        /// <summary>종류별 최대 인원 판정을 이미 한 웨이브(대기열 재시도는 다시 세지 않는다).</summary>
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<BossLocationSpawn, object> Checked =
-            new System.Runtime.CompilerServices.ConditionalWeakTable<BossLocationSpawn, object>();
-
         [PatchPrefix]
-        private static bool Prefix(BossLocationSpawn wave, ref Task __result)
+        private static bool Prefix(BotBossSpawn __instance, BossLocationSpawn wave, BotSpawnParams spawnParams,
+            BotCreationData data, ref Task __result, ref bool __state)
         {
             NativeScope.Clear();
+            __state = wave != null && wave.IgnoreMaxBots;
             try
             {
                 var c = RaidContext.Current;
                 if (c == null || wave == null) return true;
-                if (c.Owns(wave))
-                {
-                    NativeScope.Set(c, wave, reserveOnPass: !wave.IgnoreMaxBots && !c.Ledger.IsHeld(wave),
-                        pmcWave: wave.BossType.IsPmcBot() && !c.NearWaves.TryGetValue(wave, out _));
-                    return true;
-                }
-                // 옛 서버(상한 표 없음): 다른 모드 PMC·보스는 바닐라 검사(3차 재검토 3번)
-                if (c.S.Caps == null) return true;
-
-                // 상한 표(1.0): 보스·특수·팩션·이벤트 무리는 종류별 최대 인원 안으로 호위 수를 줄이고, 이미 꽉 찼으면 이 무리는 건너뛴다.
+                bool owned = c.Owns(wave);
                 var kind = c.KindOf(wave.BossType);
+                if (!owned && (c.S.Caps == null || Array.IndexOf(CapKinds.Table, kind) < 0)) return true;
+                var watch = c.WatchWave(wave, spawnParams);
+                if (watch.Life.Terminal) { __result = Task.CompletedTask; return false; }
+                if (data != null) c.WatchSquad(data, wave);
+                c.SyncRequests();
+                bool blocked = wave.BossType.IsPmcBot() && c.PmcGroupsFull(wave);
+                int escorts = ActualEscorts(wave);
                 int max = CapKinds.MaxOf(c.S.Caps, kind);
-                if (max > 0 && Array.IndexOf(CapKinds.Table, kind) >= 0 && !Checked.TryGetValue(wave, out _))
+                if (max > 0)
                 {
-                    Checked.Add(wave, wave);
-                    int alive = c.CountKind(kind) + c.AdmittedRecently(kind, Time.time);
-                    int esc = CapKinds.FitEscorts(max, alive, wave.EscortCount);
-                    if (esc < 0)
-                    {
-                        Log.Verbose($"{c.S.MapId} {wave.BossType} 무리 건너뜀: {kind} 최대 {max}명(지금 {alive}명)");
-                        __result = Task.CompletedTask;
-                        return false;
-                    }
-                    if (esc < wave.EscortCount)
-                    {
-                        Log.Verbose($"{c.S.MapId} {wave.BossType} 호위 {wave.EscortCount}→{esc}명: {kind} 최대 {max}명(지금 {alive}명)");
-                        wave.EscortCount = esc;
-                    }
-                    c.Admit(kind, esc + 1, Time.time);
+                    int used = c.CountKind(kind) + c.Requests.Pending(kind, wave);
+                    int fit = CapKinds.FitEscorts(max, used, escorts);
+                    if (fit < 0) blocked = true;
+                    else if (!c.Requests.Contains(wave)) escorts = fit;
+                    else if (used + escorts + 1 > max) blocked = true;
                 }
-                // 맵 상한 검사(상한을 지키는 항목만)도 상한 표대로 센다: "따로 셈" 종류를 빼고 Gravity 진행 중 예약을 더한다. 예약은 하지 않는다.
-                NativeScope.Set(c, wave);
+                TrimEscorts(wave, escorts);
+                if (!blocked) c.Requests.Claim(wave, kind, escorts + 1, wave.BossType.IsPmcBot());
+                // 개수/종류 제한은 IgnoreMaxBots와 독립입니다. 차단된 상한 무시 웨이브도 게임의 기존 대기열을 탑니다.
+                if (blocked) wave.IgnoreMaxBots = false;
+                NativeScope.Set(c, wave, reserveOnPass: !__state);
+                NativeScope.Blocked = blocked;
             }
             catch (Exception ex)
             {
@@ -106,26 +98,46 @@ namespace Gravity.Client.Patches
             return true;
         }
 
-        /// <summary>표시를 끄고, 생성 Task가 실패·취소로 끝나면 그 분대 예약을 푼다(시간만으로는 풀지 않는다, 3차 재검토 2번).</summary>
+        private static int ActualEscorts(BossLocationSpawn wave)
+        {
+            var list = wave.GetEscors();
+            if (list == null) return Math.Max(0, wave.EscortCount);
+            int n = 0;
+            for (int i = 0; i < list.Count; i++) n += Math.Max(0, list[i].BossEscortAmount);
+            return n;
+        }
+
+        private static void TrimEscorts(BossLocationSpawn wave, int budget)
+        {
+            var list = wave.GetEscors();
+            if (list != null)
+            {
+                budget = EscortBudget.Apply(list, budget, x => x.BossEscortAmount, (x, n) => x.BossEscortAmount = n);
+                // Init 이전 자료에도 같은 수를 남깁니다. 실제 생성은 위 _subDatas를 사용합니다.
+                if (wave.Supports != null)
+                    for (int i = 0; i < wave.Supports.Length; i++) wave.Supports[i].BossEscortAmount = i < list.Count ? list[i].BossEscortAmount : 0;
+            }
+            wave.EscortCount = budget;
+        }
+
         [PatchPostfix]
-        private static void Postfix(BossLocationSpawn wave, Task __result)
+        private static void Postfix(BossLocationSpawn wave, Task __result, bool __state)
         {
             NativeScope.Clear();
-            try
-            {
-                var c = RaidContext.Current;
-                if (c == null || wave == null || __result == null || !c.Ledger.IsHeld(wave)) return;
-                if (__result.IsCompleted) { if (__result.IsFaulted || __result.IsCanceled) c.Ledger.Release(wave); return; }
-                __result.ContinueWith(t => { if (t.IsFaulted || t.IsCanceled) c.Ledger.Release(wave); }, TaskContinuationOptions.ExecuteSynchronously);
-            }
-            catch (Exception ex)
-            {
-                Log.ErrorOnce("BossSpawnScope.Post", ex);
-            }
+            if (wave != null) wave.IgnoreMaxBots = __state;
+            var c = RaidContext.Current;
+            if (c == null || wave == null || __result == null || !c.Tracks(wave)) return;
+            if (__result.IsCompleted) { if (__result.IsFaulted || __result.IsCanceled) c.CancelWave(wave); return; }
+            __result.ContinueWith(t => { if (t.IsFaulted || t.IsCanceled) c.CancelWave(wave); }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         [PatchFinalizer]
-        private static void Finalizer() => NativeScope.Clear();
+        private static void Finalizer(BossLocationSpawn wave, bool __state, Exception __exception)
+        {
+            NativeScope.Clear();
+            if (wave != null) wave.IgnoreMaxBots = __state;
+            if (__exception != null && wave != null) RaidContext.Current?.CancelWave(wave);
+        }
     }
 
     /// <summary>
@@ -143,15 +155,15 @@ namespace Gravity.Client.Patches
         private static bool Prefix(BotSpawner __instance, int wantSpawn, ref int toDelay, ref int toSpawn, bool calcOnlySimpleBots)
         {
             int excluded = NativeScope.Excluded;
-            if (excluded < 0 || calcOnlySimpleBots || __instance == null || __instance.MaxBots == 0) return true;
+            if (excluded < 0 || calcOnlySimpleBots || __instance == null) return true;
             try
             {
                 var c = RaidContext.Current;
                 int others = c?.Ledger.HeldInFlight(Time.time, NativeScope.Own) ?? 0;
                 int occupied = Math.Max(0, Math.Max(__instance.AllBotsWithLoaded, __instance.AliveAndLoadingBotsCount) - excluded) + others;
-                int room = __instance.MaxBots - occupied;
+                int room = __instance.MaxBots <= 0 ? int.MaxValue : __instance.MaxBots - occupied;
                 // 상한 표 "PMC 동시 무리 최대"(1.0): 서버 계획 분대도 꽉 찼으면 게임 대기열에서 기다린다
-                if (NativeScope.PmcWave && c != null && c.PmcGroupsFull()) room = 0;
+                if (NativeScope.Blocked) room = 0;
                 if (room <= 0) { toDelay = wantSpawn; toSpawn = 0; }
                 else if (room < wantSpawn) { toDelay = wantSpawn - room; toSpawn = room; }
                 else { toDelay = 0; toSpawn = wantSpawn; }
@@ -181,28 +193,46 @@ namespace Gravity.Client.Patches
         protected override MethodBase GetTargetMethod() =>
             typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.SpawnBossSupports), BindingFlags.Instance | BindingFlags.Public)!;
 
-        /// <summary>대원 생성이 시작됐다: 이제 분대장이 죽어도 대원 예약은 이 작업이 끝날 때 푼다.</summary>
         [PatchPrefix]
-        private static void Prefix(BossLocationSpawn wave)
+        private static bool Prefix(BossLocationSpawn wave, ref Task __result)
         {
             var c = RaidContext.Current;
-            if (c != null && wave != null && c.WatchOf.TryGetValue(wave, out var w)) w.SupportsStarted = true;
+            if (c == null || wave == null || !c.WatchOf.TryGetValue(wave, out var w)) return true;
+            if (w.Life.StartSupports()) return true;
+            __result = Task.CompletedTask;
+            return false;
         }
 
         [PatchPostfix]
         private static void Postfix(BossLocationSpawn wave, Task __result)
         {
-            try
-            {
-                var c = RaidContext.Current;
-                if (c == null || wave == null || !c.Ledger.IsHeld(wave)) return;
-                if (__result == null || __result.IsCompleted) { c.Ledger.Release(wave); return; }
-                __result.ContinueWith(_ => c.Ledger.Release(wave), TaskContinuationOptions.ExecuteSynchronously);
-            }
-            catch (Exception ex)
-            {
-                Log.ErrorOnce("BossSupports", ex);
-            }
+            var c = RaidContext.Current;
+            if (c == null || wave == null || !c.WatchOf.TryGetValue(wave, out var w) || w.EscortTask) return;
+            Finish(c, w, __result);
+        }
+
+        internal static void Finish(RaidContext c, RaidContext.SquadWatch w, Task task)
+        {
+            if (task == null || task.IsCompleted) { c.FinishSubmission(w); return; }
+            task.ContinueWith(_ => c.FinishSubmission(w), TaskContinuationOptions.ExecuteSynchronously);
+        }
+    }
+
+    /// <summary>Supports 경로는 SpawnBossSupports가 기다리지 않는 별도 Task입니다. 이 실제 작업 끝에서 예약을 정리합니다.</summary>
+    internal sealed class SpawnEscortPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod() => typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.SpawnEscort))!;
+        [PatchPrefix]
+        private static void Prefix(BossLocationSpawn wave)
+        {
+            var c = RaidContext.Current;
+            if (c != null && c.WatchOf.TryGetValue(wave, out var w)) w.EscortTask = true;
+        }
+        [PatchPostfix]
+        private static void Postfix(BossLocationSpawn wave, Task __result)
+        {
+            var c = RaidContext.Current;
+            if (c != null && c.WatchOf.TryGetValue(wave, out var w)) BossSupportsPatch.Finish(c, w, __result);
         }
     }
 
@@ -227,7 +257,7 @@ namespace Gravity.Client.Patches
                 {
                     try
                     {
-                        w.LeaderSeen = true;
+                        if (!w.Life.SeeLeader()) return;
                         if (owner != null && !c.LeaderOf.TryGetValue(owner, out _))
                         {
                             c.LeaderOf.Add(owner, w);
@@ -266,20 +296,72 @@ namespace Gravity.Client.Patches
             typeof(BotCreatorClient).GetMethod(nameof(BotCreatorClient.ActivateBot), BindingFlags.Instance | BindingFlags.Public, null,
                 new[] { typeof(BotCreationData), typeof(BotZone), typeof(bool), typeof(Func<BotOwner, BotZone, BotsGroup>), typeof(Action<BotOwner>), typeof(System.Threading.CancellationToken) }, null)!;
 
-        [PatchPostfix]
-        private static void Postfix(BotCreationData data, Task __result)
+        internal sealed class Activation
         {
-            try
+            internal RaidContext Raid = null!;
+            internal RaidContext.SquadWatch Watch = null!;
+            internal bool Callback;
+        }
+
+        [PatchPrefix]
+        private static bool Prefix(BotCreationData data, ref Action<BotOwner> callback, ref Task __result, ref Activation? __state)
+        {
+            var c = RaidContext.Current;
+            if (c == null || data == null || !c.DataOf.TryGetValue(data, out var w)) return true;
+            bool leader = ReferenceEquals(w.LeaderData, data);
+            if (w.Life.Terminal && (leader || !w.SupportsStarted)) data.StopSpawn();
+            var state = __state = new Activation { Raid = c, Watch = w };
+            var inner = callback;
+            callback = owner =>
             {
-                var c = RaidContext.Current;
-                if (c == null || data == null || __result == null || !c.SquadOf.TryGetValue(data, out var w)) return;
-                if (__result.IsCompleted) { if (!w.LeaderSeen) c.SquadFailed(w, "생성 실패"); return; }
-                __result.ContinueWith(_ => { if (!w.LeaderSeen) c.SquadFailed(w, "생성 실패·취소"); }, TaskContinuationOptions.ExecuteSynchronously);
-            }
-            catch (Exception ex)
+                if (owner == null) return;
+                if (w.Life.Terminal && (leader || !w.SupportsStarted))
+                {
+                    // 네이티브 완료 콜백은 취소 상태에서 카운터·플레이어를 정리하며 분대장 콜백은 호출하지 않습니다.
+                    data.StopSpawn();
+                    inner?.Invoke(owner);
+                    return;
+                }
+                state.Callback = true;
+                c.Requests.Register(w.Wave, owner.Profile.Id);
+                if (leader && !c.LeaderOf.TryGetValue(owner, out _)) c.LeaderOf.Add(owner, w);
+                Action<EBotState>? onState = null;
+                onState = value =>
+                {
+                    if (value == EBotState.Active) owner.OnBotStateChange -= onState;
+                    else if (value == EBotState.ActiveFail)
+                    {
+                        owner.OnBotStateChange -= onState;
+                        c.Requests.Retire(owner.Profile.Id);
+                        if (leader) c.SquadFailed(w, "활성화 실패");
+                    }
+                };
+                if (owner.BotState == EBotState.ActiveFail)
+                {
+                    c.Requests.Retire(owner.Profile.Id);
+                    if (leader) c.SquadFailed(w, "활성화 실패");
+                }
+                else if (owner.BotState != EBotState.Active) owner.OnBotStateChange += onState;
+                if (WaveMark.IsExtraSpecial(w.Wave.TriggerId, w.Wave.TriggerName)) c.ExtraSpecialProfiles.Add(owner.Profile.Id);
+                inner?.Invoke(owner);
+                if (w.Wave.EscortCount == 0 && leader) c.FinishSubmission(w);
+            };
+            return true;
+        }
+
+        [PatchPostfix]
+        private static void Postfix(BotCreationData data, Task __result, Activation? __state)
+        {
+            if (__state == null) return;
+            var a = __state;
+            void Done(Task t)
             {
-                Log.ErrorOnce("ActivateBot", ex);
+                if (a.Callback) return;
+                a.Raid.Requests.Fail(a.Watch.Wave, 1);
+                if (ReferenceEquals(data, a.Watch.LeaderData)) a.Raid.SquadFailed(a.Watch, "생성 실패·취소");
             }
+            if (__result == null || __result.IsCompleted) Done(__result!);
+            else __result.ContinueWith(Done, TaskContinuationOptions.ExecuteSynchronously);
         }
     }
 
@@ -320,17 +402,19 @@ namespace Gravity.Client.Patches
         [PatchPostfix]
         private static void Postfix(BotCreationData __instance)
         {
-            var wave = ScavWaveScopePatch.Current;
-            if (wave == null || __instance == null) return;
+            if (__instance == null) return;
             try
             {
                 var c = RaidContext.Current;
-                if (c != null && !c.ScavData.TryGetValue(__instance, out _)) c.ScavData.Add(__instance, wave);
+                if (c == null) return;
+                var wave = ScavWaveScopePatch.Current;
+                if (wave != null && !c.ScavData.TryGetValue(__instance, out _)) c.ScavData.Add(__instance, wave);
+                var parameters = __instance.SpawnParams;
+                if (parameters == null || !c.ParamsOf.TryGetValue(parameters, out var w)) return;
+                if (!c.DataOf.TryGetValue(__instance, out _)) c.DataOf.Add(__instance, w);
+                if (w.LeaderData == null) c.WatchSquad(__instance, w.Wave);
             }
-            catch (Exception ex)
-            {
-                Log.ErrorOnce("CreationDataMark", ex);
-            }
+            catch (Exception ex) { Log.ErrorOnce("CreationDataMark", ex); }
         }
     }
 

@@ -71,13 +71,13 @@ namespace Gravity.Client.Patches
             {
                 var c = RaidContext.Current;
                 // PMC 분대와 근처 보충 웨이브(역할 무관)만: 근처 스캐브 무리도 구역 판정·상한 예약 정리를 같이 받는다(재검토 1번).
-                if (c == null || wave == null || creationData == null || !c.Owns(wave)) return true;
-                PmcZones.EnsureZones(c, __instance);
+                if (c == null || wave == null || creationData == null || !c.Tracks(wave)) return true;
+                if (wave.BossType.IsPmcBot()) PmcZones.EnsureZones(c, __instance);
 
                 var ctx = new Ctx { Raid = c, Wave = wave, Data = creationData, Size = 1 + Math.Max(0, wave.EscortCount) };
                 _active = ctx;
                 // 분대장 생성·활성화 실패를 따라가 대원 예약을 풀 수 있게(4차 재검토 1번, NativeCapPatch의 SpawnBossMain·ActivateBot 패치)
-                if (wave.EscortCount > 0) c.WatchSquad(creationData, wave);
+                c.WatchSquad(creationData, wave);
 
                 if (c.NearWaves.TryGetValue(wave, out var near))
                 {
@@ -85,6 +85,7 @@ namespace Gravity.Client.Patches
                     return true;
                 }
 
+                if (!wave.BossType.IsPmcBot()) return true;
                 var cap = c.S.GroupCap;
                 if (cap != null && cap.Scope == "alive"
                     && AliveGroupRule.Check(AliveGravitySquads(), ctx.Size, cap) == CapVerdict.Wait)
@@ -137,7 +138,7 @@ namespace Gravity.Client.Patches
                 bool spawned = original && ctx != null && ReferenceEquals(ctx.Wave, wave)
                     && PmcTally.Classify(true, ctx.ZonesSeen, ctx.ZonesOk) == PmcOutcome.Spawned;
                 if (spawned) c.Ledger.Shrink(wave, Math.Max(0, wave.EscortCount), false, Time.time);
-                else c.Ledger.Release(wave);
+                else c.CancelWave(wave);
             }
             catch (Exception ex)
             {
@@ -162,6 +163,7 @@ namespace Gravity.Client.Patches
                     }
                     return;
                 }
+                if (!wave.BossType.IsPmcBot()) return;
                 var now = Time.time;
 
                 if (__result)
@@ -246,12 +248,13 @@ namespace Gravity.Client.Patches
                 if (c.NearWaves.TryGetValue(wave, out var near))
                 {
                     bool keep = DropNear(c, __instance, wave, near);
-                    if (keep) Wait(c, wave); else c.Ledger.Release(wave);
+                    if (keep) Wait(c, wave); else c.CancelWave(wave);
                     return keep;
                 }
-                if (!c.Owns(wave)) return true; // 다른 모드 PMC·보스는 바닐라 대기열 그대로
-                if (!SpawnExpiry.PastHardStop(c.Elapsed, c.S.HardStopPmcSec)) { Wait(c, wave); return true; }
-                c.Ledger.Release(wave);
+                if (!c.Tracks(wave)) return true; // 다른 모드 PMC·보스는 바닐라 대기열 그대로
+                int stop = wave.BossType.IsPmcBot() ? c.S.HardStopPmcSec : c.S.RaidSec;
+                if (!SpawnExpiry.PastHardStop(c.Elapsed, stop)) { Wait(c, wave); return true; }
+                c.CancelWave(wave);
                 c.FirstFail.Remove(wave);
                 c.Dropped["cap"]++;
                 return false; // 대기열에 넣지 않음 = 버림

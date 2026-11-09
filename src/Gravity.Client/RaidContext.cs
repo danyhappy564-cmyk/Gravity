@@ -109,6 +109,10 @@ namespace Gravity.Client
         }
 
         /// <summary>살아 있는 봇 중 맵 상한에서 뺄 팩션 봇 수.</summary>
+        internal readonly HashSet<string> ExtraSpecialProfiles = new HashSet<string>(StringComparer.Ordinal);
+        internal bool IsCapExcluded(EFT.Player p) => !ExtraSpecialProfiles.Contains(p.Profile.Id)
+            && p.Profile?.Info?.Settings != null && IsCapExcluded(p.Profile.Info.Settings.Role);
+
         internal int CountCapExcluded()
         {
             if (S.Caps == null && (S.CapExclude == null || S.CapExclude.Count == 0)) return 0;
@@ -120,7 +124,7 @@ namespace Gravity.Client
             {
                 var p = alive[i];
                 var role = p != null && p.IsAI ? p.Profile?.Info?.Settings?.Role : null;
-                if (role != null && IsCapExcluded(role.Value)) n++;
+                if (role != null && IsCapExcluded(p!)) n++;
             }
             return n;
         }
@@ -142,13 +146,16 @@ namespace Gravity.Client
         }
 
         /// <summary>살아 있는 PMC 봇 수와 무리(BotsGroup) 수(상한 표 PMC 예약 자리·동시 무리 최대).</summary>
+        private readonly HashSet<object> _pmcGroups = new HashSet<object>();
+
         internal int CountPmc(out int groups)
         {
             groups = 0;
             var gw = Comfort.Common.Singleton<EFT.GameWorld>.Instance;
             if (gw == null) return 0;
             int n = 0;
-            var seen = new HashSet<object>();
+            var seen = _pmcGroups;
+            seen.Clear();
             var alive = gw.AllAlivePlayersList;
             for (int i = 0; i < alive.Count; i++)
             {
@@ -166,36 +173,36 @@ namespace Gravity.Client
         internal int PmcReserveLeft()
         {
             int reserve = S.Caps?.PmcReserve ?? 0;
-            return reserve <= 0 ? 0 : CapKinds.ReserveLeft(reserve, CountPmc(out _));
+            if (reserve <= 0) return 0;
+            SyncRequests();
+            return CapKinds.ReserveLeft(reserve, CountPmc(out _) + Requests.Pending(CapKinds.Pmc) + (ScavState?.Priority.Size ?? 0));
         }
 
         /// <summary>PMC 동시 무리 최대에 닿았는지(상한 표, 0이면 제한 없음).</summary>
-        internal bool PmcGroupsFull()
+        internal bool PmcGroupsFull(object? except = null)
         {
             int max = S.Caps?.PmcGroups ?? 0;
             if (max <= 0) return false;
             CountPmc(out int groups);
-            return groups >= max;
+            SyncRequests();
+            return groups + Requests.PendingPmcGroups(except) >= max;
         }
 
-        /// <summary>
-        /// 종류별 최대 인원용 "막 들여보낸 무리"(종류, 시각, 인원). 생성이 끝나 생존 집계에 잡히기 전 몇 초 동안 두 무리가 같은 빈자리를 쓰지 않게 15초 동안 센다.
-        /// 생존 집계와 겹쳐 두 번 셀 수 있다: 최대를 넘기는 쪽이 아니라 덜 채우는 쪽이라 그대로 둔다.
-        /// </summary>
-        private readonly List<(string Kind, float At, int Size)> _admitted = new List<(string, float, int)>();
+        internal readonly SpawnRequestLedger Requests = new SpawnRequestLedger();
 
-        internal int AdmittedRecently(string kind, float now)
+        /// <summary>생존 목록으로 넘어간 예약만 빼며 버퍼를 재사용합니다. 프레임 루프에서는 호출하지 않습니다.</summary>
+        internal void SyncRequests()
         {
-            int n = 0;
-            for (int i = _admitted.Count - 1; i >= 0; i--)
+            Requests.BeginSnapshot();
+            var gw = Comfort.Common.Singleton<EFT.GameWorld>.Instance;
+            if (gw == null) return;
+            var alive = gw.AllAlivePlayersList;
+            for (int i = 0; i < alive.Count; i++)
             {
-                if (now - _admitted[i].At > 15f) { _admitted.RemoveAt(i); continue; }
-                if (_admitted[i].Kind == kind) n += _admitted[i].Size;
+                var p = alive[i];
+                if (p != null && p.IsAI) Requests.Observe(p.Profile.Id);
             }
-            return n;
         }
-
-        internal void Admit(string kind, int size, float now) => _admitted.Add((kind, now, size));
 
         /// <summary>맵 동시 상한 예약 장부(1.0, Codex 검토 1번): Gravity가 요청했지만 아직 게임 집계에 안 잡힌 인원.</summary>
         internal readonly CapLedger Ledger = new CapLedger();
@@ -230,27 +237,62 @@ namespace Gravity.Client
         internal sealed class SquadWatch
         {
             public readonly BossLocationSpawn Wave;
-            public volatile bool LeaderSeen;
-            public volatile bool SupportsStarted;
+            public readonly SquadLifecycle Life = new SquadLifecycle();
+            public bool LeaderSeen => Life.LeaderSeen;
+            public bool SupportsStarted => Life.SupportsStarted;
+            public global::BotCreationData? LeaderData;
+            public bool EscortTask;
+            public bool Submitted;
+            public int Requested;
             public SquadWatch(BossLocationSpawn wave) => Wave = wave;
         }
 
+        internal readonly ConditionalWeakTable<global::BotSpawnParams, SquadWatch> ParamsOf = new ConditionalWeakTable<global::BotSpawnParams, SquadWatch>();
+        internal readonly ConditionalWeakTable<global::BotCreationData, SquadWatch> DataOf = new ConditionalWeakTable<global::BotCreationData, SquadWatch>();
         internal readonly ConditionalWeakTable<global::BotCreationData, SquadWatch> SquadOf = new ConditionalWeakTable<global::BotCreationData, SquadWatch>();
         internal readonly ConditionalWeakTable<BossLocationSpawn, SquadWatch> WatchOf = new ConditionalWeakTable<BossLocationSpawn, SquadWatch>();
         internal readonly ConditionalWeakTable<EFT.BotOwner, SquadWatch> LeaderOf = new ConditionalWeakTable<EFT.BotOwner, SquadWatch>();
+
+        internal SquadWatch WatchWave(BossLocationSpawn wave, global::BotSpawnParams? parameters)
+        {
+            if (!WatchOf.TryGetValue(wave, out var w)) WatchOf.Add(wave, w = new SquadWatch(wave));
+            if (parameters != null && !ParamsOf.TryGetValue(parameters, out _)) ParamsOf.Add(parameters, w);
+            return w;
+        }
+
+        internal bool Tracks(BossLocationSpawn wave) => WatchOf.TryGetValue(wave, out _) || Owns(wave);
+
+        internal void CancelWave(BossLocationSpawn wave)
+        {
+            Ledger.Release(wave);
+            Requests.Abort(wave);
+            if (WatchOf.TryGetValue(wave, out var w)) w.Life.Terminate();
+        }
+
+        internal void FinishSubmission(SquadWatch w)
+        {
+            if (w.Submitted) return;
+            w.Submitted = true;
+            Ledger.Release(w.Wave);
+            // 요청조차 하지 못한 대원만 뺍니다. 로딩·대기·활성화 중인 자료의 예약은 그대로 유지합니다.
+            Requests.Fail(w.Wave, Math.Max(0, 1 + w.Wave.EscortCount - w.Requested));
+        }
 
         /// <summary>분대장 생성 자료에 분대 추적을 붙인다(같은 자료로 다시 와도 하나만).</summary>
         internal void WatchSquad(global::BotCreationData data, BossLocationSpawn wave)
         {
             if (data == null || wave == null || SquadOf.TryGetValue(data, out _)) return;
             if (!WatchOf.TryGetValue(wave, out var w)) WatchOf.Add(wave, w = new SquadWatch(wave));
+            w.LeaderData = data;
             SquadOf.Add(data, w);
+            if (!DataOf.TryGetValue(data, out _)) DataOf.Add(data, w);
         }
 
         /// <summary>대원 생성 전에 분대가 끝났다: 남은 대원 예약을 푼다(대원 생성이 이미 시작됐으면 그 끝에서 푼다).</summary>
         internal void SquadFailed(SquadWatch w, string why)
         {
-            if (w == null || w.SupportsStarted) return;
+            if (w == null || !w.Life.Terminate()) return;
+            Requests.Abort(w.Wave);
             if (Ledger.Release(w.Wave)) Log.Verbose($"{S.MapId} 분대장 {why}: 대원 예약을 풂");
         }
 
@@ -268,6 +310,12 @@ namespace Gravity.Client
         /// <summary>자리가 있으면 size명을 예약한다(key = 생성 요청: 분대 웨이브 또는 스캐브 요청 표식).</summary>
         internal bool TryReserve(EFT.BotsController bc, object key, int size) =>
             Ledger.TryReserve(key, size, bc._maxCount, Occupied(bc.BotSpawner), CountCapExcluded(), Time.time);
+
+        internal int ScavRoom(EFT.BotsController bc) => SpawnCapacity.RoomForScavs(bc._maxCount,
+            Occupied(bc.BotSpawner), CountCapExcluded(), Ledger.Held(Time.time), PmcReserveLeft());
+
+        internal bool TryReserveScav(EFT.BotsController bc, object key, int size) =>
+            ScavRoom(bc) >= size && TryReserve(bc, key, size);
 
         /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
         public readonly List<int[]> AlivePerMinute = new List<int[]>();

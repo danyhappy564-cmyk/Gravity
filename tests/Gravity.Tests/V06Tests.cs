@@ -11,6 +11,7 @@ using Path = System.IO.Path;
 namespace Gravity.Tests;
 
 /// <summary>0.6: 맵 변형·ORBIT 연동·프리셋 저장소·진단.</summary>
+[Collection("DiagLog")]
 public class V06Tests
 {
     private static string TempDir() => Path.Combine(Path.GetTempPath(), "gravity-06-" + Guid.NewGuid().ToString("N"));
