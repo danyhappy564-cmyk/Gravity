@@ -223,6 +223,18 @@ public class ReleaseBTests
     }
 
     [Fact]
+    public void CatalogShowsWhyAnItemHasItsAutomaticTier()
+    {
+        // 같은 칸(주무기) 14개를 가격순으로 7등분: 가장 비싼 것은 14개 중 14위 → T7, 가장 싼 것은 1위 → T1
+        var info=Enumerable.Range(1,14).ToDictionary(Id,i=>new ItemInfo(i*100,0,0,false,false,Weapon:true){Section="weapons",Slot="ar",EquipmentSlots=["FirstPrimaryWeapon"]});
+        var items=new GearItems(info,info.Keys.Select(id=>("FirstPrimaryWeapon",id)));
+        var cat=GearCatalog.Build(items,new Dictionary<string,string>(),new Dictionary<string,string>()).ToDictionary(x=>x.Id);
+        Assert.Equal(("FirstPrimaryWeapon",14,14,7),(cat[Id(14)].TierGroup,cat[Id(14)].TierRank,cat[Id(14)].TierSize,cat[Id(14)].AutoTier));
+        Assert.Equal((1,1),(cat[Id(1)].TierRank,cat[Id(1)].AutoTier));
+        Assert.Equal((5,3),(cat[Id(5)].TierRank,cat[Id(5)].AutoTier));
+    }
+
+    [Fact]
     public void LegacyMockOnlyPools_AreIgnored_AsAuto()
     {
         // 0.5~0.6 웹은 예시 아이템(가짜 ID)으로 무게 표를 저장했다. 그런 칸은 자동이어야 한다(빈 표로 읽으면 주무기가 전부 빠짐).

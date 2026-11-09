@@ -26,6 +26,8 @@ public sealed class GearItems
     public IReadOnlyDictionary<string, ItemInfo> Info { get; }
     /// <summary>장비 칸 이름 → 아이템 id → 티어(0~6).</summary>
     public IReadOnlyDictionary<string, Dictionary<string, int>> SlotTier { get; }
+    /// <summary>자동 티어 근거: 칸마다 가격 순위(0부터)와 그 칸의 아이템 수.</summary>
+    public IReadOnlyDictionary<string, Dictionary<string, (int Rank, int Size)>> SlotRank { get; }
     public IReadOnlyDictionary<string,string[]> PoolEquipment { get; }
     public IReadOnlyDictionary<string,IReadOnlyDictionary<string,string[]>> CompatibleMods { get; }
     /// <summary>모드 아이템 묶음(판마다 일부만 고르는 대상).</summary>
@@ -45,19 +47,29 @@ public sealed class GearItems
         var bySlot = slotPools.Where(p => info.ContainsKey(p.Id)).GroupBy(p => p.Slot)
             .ToDictionary(g => g.Key, g => g.Select(p => p.Id).Distinct().ToList());
         var tiers = new Dictionary<string, Dictionary<string, int>>();
+        var ranks = new Dictionary<string, Dictionary<string, (int, int)>>();
         foreach (var (slot, ids) in bySlot)
         {
             var sorted = ids.OrderBy(id => info[id].Price).ThenBy(id => id, StringComparer.Ordinal).ToList();
             var d = new Dictionary<string, int>();
-            for (int i = 0; i < sorted.Count; i++) d[sorted[i]] = Math.Min(6, i * 7 / Math.Max(1, sorted.Count));
-            tiers[slot] = d;
+            var r = new Dictionary<string, (int, int)>();
+            for (int i = 0; i < sorted.Count; i++) { d[sorted[i]] = Math.Min(6, i * 7 / Math.Max(1, sorted.Count)); r[sorted[i]] = (i, sorted.Count); }
+            tiers[slot] = d; ranks[slot] = r;
         }
-        SlotTier = tiers;
+        SlotTier = tiers; SlotRank = ranks;
         List<string> Mods(Func<string, bool> slotPick) => bySlot.Where(kv => slotPick(kv.Key)).SelectMany(kv => kv.Value)
             .Where(id => info[id].Mod).Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList();
         ModWeapons = Mods(s => WeaponSlots.Contains(s)).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="weapons").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
         ModEquipment = Mods(s => s != "mods" && !WeaponSlots.Contains(s) && !s.Contains('/')).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="armor").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
         ModAttachments = Mods(s => s == "mods").Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section is "parts" or "plates").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>TierOf가 실제로 쓴 비교 묶음과 그 안의 가격 순위. 없으면 null.</summary>
+    public (string Group, int Rank, int Size)? TierBasis(string slot, string id)
+    {
+        if (SlotRank.TryGetValue(slot, out var d) && d.TryGetValue(id, out var r)) return (slot, r.Rank, r.Size);
+        if (Info.TryGetValue(id, out var i) && SlotRank.TryGetValue(i.Section + "/" + i.Slot, out var byKind) && byKind.TryGetValue(id, out r)) return (i.Section + "/" + i.Slot, r.Rank, r.Size);
+        return null;
     }
 
     public int TierOf(string slot, string id)

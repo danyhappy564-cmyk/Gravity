@@ -267,7 +267,7 @@ test('아이템 검색은 실제 API를 쓰고 늦게 도착한 이전 검색 �
   calls[0].resolve({ok:true,json:async()=>({items:[{id:'000000000000000000000001',ko:'옛 조준경',en:'Old scope',cat:'scope'}]})});
   await first;
   assert.equal(a.run('itemResults[0].ko'),'새 조준경');
-  assert.match(a.run('P.items.render()'),/새 조준경/);
+  assert.match(a.run("page='weapons';P.weapons.render()"),/새 조준경/);
 });
 
 test('티어 자동 선택과 탈출 방식은 옛 서버용 값도 함께 저장합니다', () => {
@@ -613,4 +613,19 @@ test('1.0 기본 프리셋은 잠기고 값을 바꾸면 커스텀 프리셋 N�
   a.run("customTierPresets=[];state.tierPreset='auto';writeSetting('gear.itemTier.abc',3)");
   assert.equal(a.run('customTierPresets.length'), 1);
   assert.equal(a.run('state.tierPreset'), a.run('customTierPresets[0].id'));
+});
+
+test('아이템 티어: 자동 티어 근거를 보여 주고 선택한 아이템을 한꺼번에 지정합니다', () => {
+  const a=app(),gun='000000000000000000000011',ammo='000000000000000000000012';
+  a.run(`serverMeta={};GEAR_CATALOG=[{id:'${gun}',ko:'시험 소총',en:'Test rifle',section:'weapons',slot:'ar',equipmentSlots:['FirstPrimaryWeapon','SecondPrimaryWeapon'],source:'vanilla',mod:false,autoTier:3,armorClass:0,pen:0,price:50000,tierGroup:'FirstPrimaryWeapon',tierRank:5,tierSize:14},
+    {id:'${ammo}',ko:'시험 탄',en:'Test round',section:'ammo',slot:'Caliber556x45NATO',equipmentSlots:[],source:'vanilla',mod:false,autoTier:7,armorClass:0,pen:40,price:900}];rebuildSlots();page='itemtiers';`);
+  const html=a.run('P.itemtiers.render()');
+  assert.match(html,/주무기 14개를 가격순/);
+  assert.match(a.run(`itWhy(GEAR_CATALOG[1])`),/관통 40/);
+  a.click({itsel:gun});a.click({itbulk:'5'});
+  assert.equal(a.run(`state.gear.itemTier['${gun}']`),5);
+  a.click({itset:`${gun}|0`});
+  assert.equal(a.run(`state.gear.itemTier['${gun}']`),undefined);
+  assert.match(a.run(`tierSummary('pmc',0)`),/주무기/);
+  assert.match(a.run(`tierSummary('pmc',0)`),/방탄판/);
 });

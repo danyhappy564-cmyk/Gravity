@@ -5,7 +5,8 @@ namespace Gravity.Gear;
 /// <summary>모든 장비 화면이 공유하는 DB 카탈로그. 자동 티어와 이름은 재계산 때만 만든다.</summary>
 public sealed record GearCatalogEntry(string Id, string Ko, string En, string Cat, string Section, string Slot,
     string GunKind, string[] EquipmentSlots, string Source, bool Mod, int AutoTier, int? ManualTier,
-    int ArmorClass, string[] PlateSlots, double Pen, bool Thermal, double Price);
+    int ArmorClass, string[] PlateSlots, double Pen, bool Thermal, double Price,
+    string TierGroup = "", int TierRank = 0, int TierSize = 0);
 
 public static class GearCatalog
 {
@@ -65,9 +66,12 @@ public static class GearCatalog
         {
             var (id, i) = kv;
             string eng = (en.GetValueOrDefault(id + " Name") ?? i.Name ?? id).Trim();
+            var slotKey = i.EquipmentSlots.FirstOrDefault() ?? i.Section + "/" + i.Slot;
+            var basis = items.TierBasis(slotKey, id);
             return new GearCatalogEntry(id, ko.GetValueOrDefault(id + " Name")?.Trim() ?? eng, eng, i.Cat, i.Section, i.Slot,
                 i.Section == "weapons" ? i.Slot : "", i.EquipmentSlots, i.Source, i.Mod,
-                items.TierOf(i.EquipmentSlots.FirstOrDefault() ?? i.Section + "/" + i.Slot, id) + 1,
-                null, i.ArmorClass, i.PlatePositions, i.Pen, i.Thermal, i.Price);
+                items.TierOf(slotKey, id) + 1,
+                null, i.ArmorClass, i.PlatePositions, i.Pen, i.Thermal, i.Price,
+                basis?.Group ?? "", (basis?.Rank ?? 0) + 1, basis?.Size ?? 0);
         }).ToArray();
 }
