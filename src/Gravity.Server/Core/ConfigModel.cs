@@ -69,7 +69,14 @@ public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<st
     bool Extra = false, IReadOnlyDictionary<string, string[]>? Zones = null);
 
 /// <summary>특수 봇 무리(레이더·로그·컬티스트·블러드하운드). Chance는 맵별(없는 맵은 바닐라 확률 유지), Min·Max는 무리 전체 인원.</summary>
-public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max);
+/// <summary>특수 봇 설정. 레이더·로그(ExtraModel)는 ABPS식(사용자 결정 11-10): 원래 항목(레버·탈출구 이벤트 포함)은 Vanilla면 확률·인원 그대로 두고,
+/// Extra(맵별 확률)·ExtraMin~ExtraMax(인원)는 따로 넣는 "추가 스폰"에만 쓴다. 컬티스트·블러드하운드는 예전처럼 Chance·Min·Max가 원래 항목을 바꾼다.</summary>
+public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max,
+    bool Vanilla = true, IReadOnlyDictionary<string, double>? Extra = null, int ExtraMin = 0, int ExtraMax = 0)
+{
+    /// <summary>원래 항목을 건드리지 않고 추가 스폰만 따로 넣는 역할(레이더 pmcBot·로그 exUsec).</summary>
+    public static bool ExtraModel(string id) => id is "raiders" or "rogues";
+}
 
 /// <summary>팩션 무리 종류 하나(순찰·검문소·사냥조, 0.4). TMin·TMax는 분(검문소·사냥조는 안 씀).</summary>
 public sealed record FactionKind(bool On, double Chance, int Count, int Min, int Max, double TMin, double TMax);
@@ -255,7 +262,13 @@ public static partial class ConfigModel
                 foreach (var (k, _) in co)
                     chance[k] = r.Num(p + "chance." + k, 0, 0, 100);
             var sMin = (int)r.Num(p + "min", 0, 0, 10);
-            specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)));
+            var extra = new Dictionary<string, double>();
+            if (r.Node(p + "extra") is JsonObject eo)
+                foreach (var (k, _) in eo)
+                    extra[k] = r.Num(p + "extra." + k, 0, 0, 100);
+            var eMin = (int)r.Num(p + "extraMin", 1, 1, 10);
+            specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)),
+                r.Bool(p + "vanilla", true), extra, eMin, (int)Math.Max(eMin, r.Num(p + "extraMax", eMin, 1, 10)));
         }
 
         var near = ReadNear(r);

@@ -120,21 +120,52 @@ namespace Gravity.Client
 
         /// <summary>Gravity가 낸 분대 웨이브(무한·탈출 보충 등록 + 서버 계획 분대 중 서명이 맞아 알아본 것). 값 없음.</summary>
         internal readonly ConditionalWeakTable<BossLocationSpawn, object> Owned = new ConditionalWeakTable<BossLocationSpawn, object>();
-        private readonly PlannedPmcIndex _planned;
 
         /// <summary>
-        /// 이 분대 웨이브가 Gravity 것인지(3차 재검토 3번): 근처 보충·클라 보충(등록)·서버 계획 분대(서명 대조, 한 번 맞추면 등록).
-        /// 다른 모드가 넣은 PMC는 false → 상한 보정·예약·그룹 제한·대기열 만료를 걸지 않는다. 옛 서버(PlannedPmc 없음)는 예전처럼 PMC 역할이면 true.
+        /// 이 분대 웨이브가 Gravity 것인지: 근처 보충·클라 보충(등록)·서버 계획 분대(TriggerId 표식 gravity:…, 4차 재검토 2번).
+        /// 다른 모드가 넣은 PMC는 false → 상한 보정·예약·그룹 제한·대기열 만료를 걸지 않는다. 옛 서버(WaveMark 없음)는 예전처럼 PMC 역할이면 true.
         /// </summary>
         internal bool Owns(BossLocationSpawn? w)
         {
             if (w == null) return false;
             if (NearWaves.TryGetValue(w, out _) || Owned.TryGetValue(w, out _)) return true;
             if (!w.BossType.IsPmcBot()) return false;
-            if (S.PlannedPmc == null) return true;
-            if (!_planned.TryClaim(w.BossType == EFT.WildSpawnType.pmcUSEC, w.Time, 1 + Math.Max(0, w.EscortCount), w.BossZone)) return false;
+            if (S.WaveMark == null) return true;
+            if (!Gravity.Shared.WaveMark.Is(w.TriggerId, w.TriggerName)) return false;
             Owned.Add(w, w);
             return true;
+        }
+
+        /// <summary>
+        /// 분대 생성 추적(4차 재검토 1번). 분대장 생성 자료 → 분대, 분대장 봇 → 분대. 분대장이 만들어지지 못했거나(생성 Task가 콜백 없이 끝남)
+        /// 활성화에 실패했거나(ActiveFail) 대원 생성 전에 맵에서 빠지면, 대원은 영영 나오지 않으므로 남은 대원 예약을 푼다.
+        /// 대원 생성이 시작됐으면(SupportsStarted) 그 작업이 끝날 때 BossSupportsPatch가 푼다.
+        /// </summary>
+        internal sealed class SquadWatch
+        {
+            public readonly BossLocationSpawn Wave;
+            public volatile bool LeaderSeen;
+            public volatile bool SupportsStarted;
+            public SquadWatch(BossLocationSpawn wave) => Wave = wave;
+        }
+
+        internal readonly ConditionalWeakTable<global::BotCreationData, SquadWatch> SquadOf = new ConditionalWeakTable<global::BotCreationData, SquadWatch>();
+        internal readonly ConditionalWeakTable<BossLocationSpawn, SquadWatch> WatchOf = new ConditionalWeakTable<BossLocationSpawn, SquadWatch>();
+        internal readonly ConditionalWeakTable<EFT.BotOwner, SquadWatch> LeaderOf = new ConditionalWeakTable<EFT.BotOwner, SquadWatch>();
+
+        /// <summary>분대장 생성 자료에 분대 추적을 붙인다(같은 자료로 다시 와도 하나만).</summary>
+        internal void WatchSquad(global::BotCreationData data, BossLocationSpawn wave)
+        {
+            if (data == null || wave == null || SquadOf.TryGetValue(data, out _)) return;
+            if (!WatchOf.TryGetValue(wave, out var w)) WatchOf.Add(wave, w = new SquadWatch(wave));
+            SquadOf.Add(data, w);
+        }
+
+        /// <summary>대원 생성 전에 분대가 끝났다: 남은 대원 예약을 푼다(대원 생성이 이미 시작됐으면 그 끝에서 푼다).</summary>
+        internal void SquadFailed(SquadWatch w, string why)
+        {
+            if (w == null || w.SupportsStarted) return;
+            if (Ledger.Release(w.Wave)) Log.Verbose($"{S.MapId} 분대장 {why}: 대원 예약을 풂");
         }
 
         /// <summary>"레이드 전체" 그룹 제한 장부(1.0, Codex 검토 2번): 서버 계획 분대(S.PlannedGroups)로 시작해 클라 보충 분대를 더한다.</summary>
@@ -205,7 +236,6 @@ namespace Gravity.Client
             Rng = new System.Random(s.Seed);
             Refill = new List<RefillGroup>(s.RefillGroups ?? (IReadOnlyList<RefillGroup>)Array.Empty<RefillGroup>());
             Groups = new RaidGroupLedger(s.GroupCap, s.PlannedGroups);
-            _planned = new PlannedPmcIndex(s.PlannedPmc);
             Log.Level = s.LogLevel ?? "summary";
         }
 

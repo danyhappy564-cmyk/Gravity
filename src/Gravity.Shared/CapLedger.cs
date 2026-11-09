@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Gravity.Shared
@@ -203,37 +202,18 @@ namespace Gravity.Shared
     }
 
     /// <summary>
-    /// 서버 계획 PMC 분대 알아보기(3차 재검토 3번): 같은 PMC 역할이라도 다른 모드가 넣은 분대에는 Gravity 상한 보정·예약을 걸지 않는다.
-    /// 서명이 같은 계획 분대가 여럿이면 그 수만큼만 맞춘다(한 번 맞춘 웨이브는 호출하는 쪽이 따로 기억해 재시도에도 쓴다).
+    /// Gravity 분대 웨이브 표식(4차 재검토 2번). 서버가 계획 PMC 분대의 TriggerId에 "gravity:<맵>:<시드>:<번호>"를 넣는다.
+    /// 게임은 TriggerName이 비어 있으면(TriggerType none) TriggerId를 보지 않는다(BossSpawnScenario.ActivateByTriggerId는
+    /// interactObject·botEvent·byQuest 웨이브에만 불림) — 그래서 타이머 웨이브 그대로 나오고, 클라는 이 표식으로 다른 모드 PMC와 확실히 구분한다.
     /// </summary>
-    public sealed class PlannedPmcIndex
+    public static class WaveMark
     {
-        private readonly Dictionary<string, int> _left = new Dictionary<string, int>(StringComparer.Ordinal);
+        public const string Prefix = "gravity:";
 
-        public PlannedPmcIndex(IEnumerable<PlannedPmcDto>? planned)
-        {
-            if (planned == null) return;
-            foreach (var p in planned)
-            {
-                var k = Key(p.Usec, p.TimeSec, p.Size, p.Zone);
-                _left[k] = (_left.TryGetValue(k, out var n) ? n : 0) + 1;
-            }
-        }
+        public static string For(string map, int seed, int index) => Prefix + map + ":" + seed + ":" + index;
 
-        public int Left => _left.Values.Sum();
-
-        /// <summary>서버 웨이브 시각은 정수 초(RaidSpawnApplier: Time = max(1, TimeSec))라 반올림해 맞춘다.</summary>
-        public bool TryClaim(bool usec, float time, int size, string? zone)
-        {
-            var k = Key(usec, (int)Math.Round(time), size, zone);
-            if (!_left.TryGetValue(k, out var n) || n <= 0) return false;
-            _left[k] = n - 1;
-            return true;
-        }
-
-        /// <summary>구역은 서명에 넣지 않는다: 클라 웨이브의 구역 문자열이 바뀌어도(빈 값·목록) 놓치지 않게. 진영·시각·인원만으로 충분히 드물다.</summary>
-        private static string Key(bool usec, int time, int size, string? zone) =>
-            (usec ? "U|" : "B|") + Math.Max(1, time) + "|" + Math.Max(1, size);
+        public static bool Is(string? triggerId, string? triggerName) =>
+            string.IsNullOrEmpty(triggerName) && triggerId != null && triggerId.StartsWith(Prefix, StringComparison.Ordinal);
     }
 
     /// <summary>구역 비중 읽기(1.0, Codex 검토 4번): 설정에 없는 구역은 웹 기본값 100(보통)이다. 명시한 0은 그대로 0.</summary>

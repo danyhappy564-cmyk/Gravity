@@ -44,6 +44,15 @@ namespace Gravity.Client.Directors
             public float PmcOnlyNext;
             public float ExtractNext;
 
+            /// <summary>
+            /// PMC 우선 줄(사용자 결정 11-10, ABPS 비교 추천안 나): 보충 PMC 분대가 상한에 막히면 그 분대 인원을 "대기 중" 예약(PendingKey)으로
+            /// 잡아 두고 2초마다 다시 시도한다. 그동안 스캐브·근처 보충은 그 자리를 못 쓰므로, 자리가 모이면 PMC가 먼저 나온다.
+            /// </summary>
+            public readonly object PendingKey = new object();
+            public int PendingSize;
+            public bool PendingExtract;
+            public int LastSize;
+
             /// <summary>저격 아닌 구역과 그 구역 지점 위치(레이드에서 한 번 만든다).</summary>
             public readonly List<KeyValuePair<BotZone, Vec3[]>> Zones = new List<KeyValuePair<BotZone, Vec3[]>>();
 
@@ -75,6 +84,7 @@ namespace Gravity.Client.Directors
             if (bc == null || spawner == null || !bc._canSpawn) return;
 
             if (TryExtract(c, st, bc, spawner, now)) return;
+            if (RetryPending(c, st, bc, spawner, now)) return;
 
             int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
@@ -127,6 +137,7 @@ namespace Gravity.Client.Directors
             if (bc == null || spawner == null || !bc._canSpawn) return;
 
             if (TryExtract(c, st, bc, spawner, now)) return;
+            if (RetryPending(c, st, bc, spawner, now)) return;
             if (c.S.Inf == null || now < st.PmcOnlyNext) return;
 
             var inf = c.S.Inf;
@@ -144,7 +155,12 @@ namespace Gravity.Client.Directors
         private static bool TryExtract(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)
         {
             if (c.ExtractQueue.Count == 0) return false;
-            if (!ExtractRefillRule.CanQueue(c.S, true, 0, now)) { c.ExtractQueue.Clear(); return false; }
+            if (!ExtractRefillRule.CanQueue(c.S, true, 0, now))
+            {
+                c.ExtractQueue.Clear();
+                if (st.PendingExtract) ClearPending(c, st);
+                return false;
+            }
             if (now < st.ExtractNext) return false;
             var r = TryPmc(c, st, bc, spawner, now, true);
             if (r == PmcResult.NoRoom) { MarkCap(c, st); return true; }
@@ -154,7 +170,45 @@ namespace Gravity.Client.Directors
             return true;
         }
 
+        /// <summary>줄 서 있는 보충 분대(탈출 보충 제외 — 그쪽은 TryExtract가 매 틱 다시 본다)를 2초마다 다시 넣어 본다. 막혀 있으면 이 틱은 끝(true).</summary>
+        private static bool RetryPending(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)
+        {
+            if (st.PendingSize <= 0 || st.PendingExtract) return false;
+            var r = TryPmc(c, st, bc, spawner, now);
+            if (r == PmcResult.Spawned) { st.CapEpisode = false; return true; }
+            if (r == PmcResult.NoRoom) { MarkCap(c, st); return true; }
+            return false;
+        }
+
+        private static void ClearPending(RaidContext c, State st)
+        {
+            c.Ledger.Release(st.PendingKey);
+            st.PendingSize = 0;
+            st.PendingExtract = false;
+        }
+
+        /// <summary>보충 PMC 분대 하나를 넣어 본다. 상한에 막히면 그 분대 몫을 대기 중 예약으로 잡아 PMC 우선 줄에 세운다.</summary>
         private static PmcResult TryPmc(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now, bool extractOnly = false)
+        {
+            // 줄 서 있던 내 몫은 자리 계산에서 빼고 다시 본다(내 예약이 나를 막지 않게)
+            c.Ledger.Release(st.PendingKey);
+            st.LastSize = 0;
+            var r = TryPmcCore(c, st, bc, spawner, now, extractOnly);
+            if (r == PmcResult.NoRoom && st.LastSize > 0)
+            {
+                st.PendingSize = st.LastSize;
+                st.PendingExtract = extractOnly && c.ExtractQueue.Count > 0;
+                c.Ledger.Hold(st.PendingKey, st.PendingSize, true, Time.time);
+            }
+            else
+            {
+                st.PendingSize = 0;
+                st.PendingExtract = false;
+            }
+            return r;
+        }
+
+        private static PmcResult TryPmcCore(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now, bool extractOnly)
         {
             if (c.S.MapId == "labyrinth" && !c.S.AllowPmcLabyrinth)
             {
@@ -192,6 +246,7 @@ namespace Gravity.Client.Directors
             }
             // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
             var wave = WaveFactory.Pmc(g, "");
+            st.LastSize = size;
             if (!c.TryReserve(bc, wave, size)) return PmcResult.NoRoom;
             c.Owned.Add(wave, wave);
 

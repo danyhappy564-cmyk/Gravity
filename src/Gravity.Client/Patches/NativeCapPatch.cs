@@ -137,6 +137,14 @@ namespace Gravity.Client.Patches
         protected override MethodBase GetTargetMethod() =>
             typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.SpawnBossSupports), BindingFlags.Instance | BindingFlags.Public)!;
 
+        /// <summary>대원 생성이 시작됐다: 이제 분대장이 죽어도 대원 예약은 이 작업이 끝날 때 푼다.</summary>
+        [PatchPrefix]
+        private static void Prefix(BossLocationSpawn wave)
+        {
+            var c = RaidContext.Current;
+            if (c != null && wave != null && c.WatchOf.TryGetValue(wave, out var w)) w.SupportsStarted = true;
+        }
+
         [PatchPostfix]
         private static void Postfix(BossLocationSpawn wave, Task __result)
         {
@@ -150,6 +158,83 @@ namespace Gravity.Client.Patches
             catch (Exception ex)
             {
                 Log.ErrorOnce("BossSupports", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// BotBossSpawn.SpawnBossMain(BotBossSpawn.cs:555) 앞: 추적 중인 분대(RaidContext.SquadOf)의 분대장 생성 콜백을 감싸,
+    /// 분대장이 실제로 만들어졌는지 표시하고 활성화 실패(ActiveFail)를 지켜본다(4차 재검토 1번). 게임 콜백은 그대로 부른다.
+    /// </summary>
+    internal sealed class SpawnBossMainPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod() =>
+            typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.SpawnBossMain), BindingFlags.Instance | BindingFlags.Public)!;
+
+        [PatchPrefix]
+        private static void Prefix(BotCreationData creationData, ref Action<BotOwner> callback)
+        {
+            try
+            {
+                var c = RaidContext.Current;
+                if (c == null || creationData == null || !c.SquadOf.TryGetValue(creationData, out var w)) return;
+                var inner = callback;
+                callback = owner =>
+                {
+                    try
+                    {
+                        w.LeaderSeen = true;
+                        if (owner != null && !c.LeaderOf.TryGetValue(owner, out _))
+                        {
+                            c.LeaderOf.Add(owner, w);
+                            Action<EBotState>? onState = null;
+                            onState = state =>
+                            {
+                                if (state == EBotState.Active) owner.OnBotStateChange -= onState;
+                                else if (state == EBotState.ActiveFail) { owner.OnBotStateChange -= onState; c.SquadFailed(w, "활성화 실패"); }
+                            };
+                            if (owner.BotState == EBotState.ActiveFail) c.SquadFailed(w, "활성화 실패");
+                            else if (owner.BotState != EBotState.Active) owner.OnBotStateChange += onState;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ErrorOnce("SpawnBossMain.Watch", ex);
+                    }
+                    inner?.Invoke(owner!);
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("SpawnBossMain", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// BotCreatorClient.ActivateBot(BotCreationData, …)(BotCreatorClient.cs:165) 뒤: 봇 하나를 만드는 Task. 분대장 생성 자료의 Task가 끝났는데
+    /// 분대장 콜백이 없었으면(프로필·플레이어 생성 null·취소) 분대장은 만들어지지 않았다 → 남은 대원 예약을 푼다(4차 재검토 1번).
+    /// 성공이면 콜백이 이 Task 안에서 먼저 불린다(method_0 → method_3 → callback).
+    /// </summary>
+    internal sealed class ActivateBotPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod() =>
+            typeof(BotCreatorClient).GetMethod(nameof(BotCreatorClient.ActivateBot), BindingFlags.Instance | BindingFlags.Public, null,
+                new[] { typeof(BotCreationData), typeof(BotZone), typeof(bool), typeof(Func<BotOwner, BotZone, BotsGroup>), typeof(Action<BotOwner>), typeof(System.Threading.CancellationToken) }, null)!;
+
+        [PatchPostfix]
+        private static void Postfix(BotCreationData data, Task __result)
+        {
+            try
+            {
+                var c = RaidContext.Current;
+                if (c == null || data == null || __result == null || !c.SquadOf.TryGetValue(data, out var w)) return;
+                if (__result.IsCompleted) { if (!w.LeaderSeen) c.SquadFailed(w, "생성 실패"); return; }
+                __result.ContinueWith(_ => { if (!w.LeaderSeen) c.SquadFailed(w, "생성 실패·취소"); }, TaskContinuationOptions.ExecuteSynchronously);
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("ActivateBot", ex);
             }
         }
     }

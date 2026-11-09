@@ -30,6 +30,8 @@ namespace Gravity.Client.Directors
         {
             try
             {
+                // 분대장이 대원 생성 전에 맵에서 빠지면 대원은 나오지 않는다: 남은 대원 예약을 푼다(4차 재검토 1번).
+                if (bot != null && c.LeaderOf.TryGetValue(bot, out var squad)) c.SquadFailed(squad, "이 대원 생성 전에 빠짐");
                 var settings = bot?.Profile?.Info?.Settings;
                 if (settings == null) return;
                 var key = Key(settings.Role, settings.IsBoss() || settings.IsFollower());

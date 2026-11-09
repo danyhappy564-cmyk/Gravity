@@ -103,12 +103,76 @@ public class BossTests
     [Fact]
     public void Specials_OffChanceSize()
     {
+        // 컬티스트·블러드하운드는 예전처럼 원래 항목의 확률·인원을 바꾼다. 레이더는 옛 chance·min·max를 무시(원래 항목 그대로).
         var l = Loc();
-        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"specials":{"raiders":{"on":true,"chance":{"bigmap":70},"min":3,"max":5},"cultists":{"on":false}}}"""), "bigmap", 1, 2400);
-        Assert.Equal(70, Boss(l, "pmcBot").BossChance);
-        Assert.Equal("2,3,4", Boss(l, "pmcBot").BossEscortAmount);
-        Assert.Equal(0, Boss(l, "sectantPriest").BossChance);
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"specials":{"raiders":{"on":true,"chance":{"bigmap":70},"min":3,"max":5},"cultists":{"on":true,"chance":{"bigmap":70},"min":3,"max":5}}}"""), "bigmap", 1, 2400);
+        Assert.Equal(40, Boss(l, "pmcBot").BossChance);
+        Assert.Equal("1,2", Boss(l, "pmcBot").BossEscortAmount);
+        Assert.Equal(70, Boss(l, "sectantPriest").BossChance);
         Assert.Equal("2,3,4", Boss(l, "sectantPriest").BossEscortAmount);
+        var off = Loc();
+        RaidSpawnApplier.ApplyBosses(off, Cfg("""{"specials":{"cultists":{"on":false}}}"""), "bigmap", 1, 2400);
+        Assert.Equal(0, Boss(off, "sectantPriest").BossChance);
+    }
+
+    [Fact]
+    public void Raiders_VanillaAndLeverUntouched_ExtraSpawnSeparate()
+    {
+        // 사용자 결정 11-10(ABPS식): 레버 레이더는 30%·2~4명·트리거·상한 무시 그대로, 추가 스폰만 따로(상한 지킴, 트리거 없음)
+        var l = Loc();
+        l.BossLocationSpawn.Add(new BossLocationSpawn { BossName = "pmcBot", BossChance = 30, BossZone = "ZoneSubCommand", BossEscortAmount = "2,2,3",
+            TriggerId = "autoId_00000_D2_LEVER", TriggerName = "interactObject", Time = -1, IgnoreMaxBots = true });
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"specials":{"raiders":{"extra":{"bigmap":25},"extraMin":2,"extraMax":3}}}"""), "bigmap", 1, 2400);
+        var raiders = l.BossLocationSpawn.Where(e => e.BossName == "pmcBot").ToList();
+        Assert.Equal(3, raiders.Count);
+        Assert.Equal(40, raiders[0].BossChance);
+        Assert.Equal("1,2", raiders[0].BossEscortAmount);
+        var lever = raiders.Single(e => e.TriggerName == "interactObject");
+        Assert.Equal(30, lever.BossChance);
+        Assert.Equal("2,2,3", lever.BossEscortAmount);
+        Assert.Equal("autoId_00000_D2_LEVER", lever.TriggerId);
+        Assert.True(lever.IgnoreMaxBots);
+        var extra = raiders.Single(e => e.SptId == "gravity");
+        Assert.Equal(25, extra.BossChance);
+        Assert.Equal(RaidSpawnApplier.Range(1, 2), extra.BossEscortAmount);
+        Assert.Equal("ZoneRaiders,ZoneSubCommand", extra.BossZone);
+        Assert.Equal("", extra.TriggerId);
+        Assert.Equal("", extra.TriggerName);
+        Assert.False(extra.IgnoreMaxBots);
+        Assert.Equal(-1, extra.Time);
+    }
+
+    [Fact]
+    public void Rogues_ZeroStaysZero_VanillaSwitchAndOff()
+    {
+        LocationBase Light() => new()
+        {
+            Id = "lighthouse", EscapeTimeLimit = 40, BotMax = 20,
+            BossLocationSpawn =
+            [
+                new BossLocationSpawn { BossName = "exUsec", BossChance = 80, BossZone = "Zone_RoofRocks", BossEscortAmount = "0", Time = -1, IgnoreMaxBots = true },
+                new BossLocationSpawn { BossName = "exUsec", BossChance = 0, BossZone = "Zone_Island", BossEscortAmount = "2", Time = -1, IgnoreMaxBots = true }
+            ]
+        };
+        // 웹 기본값 그대로(옛 chance 75 저장돼 있어도): 원래 꺼진 섬 로그 0%, 1인 자리 1명 그대로
+        var a = Light();
+        RaidSpawnApplier.ApplyBosses(a, Cfg("""{"specials":{"rogues":{"chance":{"lighthouse":75},"min":3,"max":6}}}"""), "lighthouse", 1, 2400);
+        Assert.Equal([80.0, 0.0], a.BossLocationSpawn.Select(e => e.BossChance ?? -1).ToArray());
+        Assert.Equal("0", a.BossLocationSpawn[0].BossEscortAmount);
+        // 원래 스폰 유지 끔 → 원래 항목 0%, 추가만
+        var b = Light();
+        RaidSpawnApplier.ApplyBosses(b, Cfg("""{"specials":{"rogues":{"vanilla":false,"extra":{"lighthouse":50}}}}"""), "lighthouse", 1, 2400);
+        Assert.All(b.BossLocationSpawn.Where(e => e.SptId != "gravity"), e => Assert.Equal(0, e.BossChance));
+        Assert.Equal(50, b.BossLocationSpawn.Single(e => e.SptId == "gravity").BossChance);
+        // 끄기 → 원래도 추가도 없음
+        var c = Light();
+        RaidSpawnApplier.ApplyBosses(c, Cfg("""{"specials":{"rogues":{"on":false,"extra":{"lighthouse":50}}}}"""), "lighthouse", 1, 2400);
+        Assert.All(c.BossLocationSpawn, e => Assert.Equal(0, e.BossChance));
+        Assert.DoesNotContain(c.BossLocationSpawn, e => e.SptId == "gravity");
+        // 원래 무리가 없는 맵에는 추가하지 않는다(구역을 모름)
+        var d = Loc();
+        RaidSpawnApplier.ApplyBosses(d, Cfg("""{"specials":{"rogues":{"extra":{"bigmap":50}}}}"""), "bigmap", 1, 2400);
+        Assert.DoesNotContain(d.BossLocationSpawn, e => e.BossName == "exUsec");
     }
 
     [Fact]

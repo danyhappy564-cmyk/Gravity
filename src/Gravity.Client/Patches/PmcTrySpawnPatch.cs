@@ -76,6 +76,8 @@ namespace Gravity.Client.Patches
 
                 var ctx = new Ctx { Raid = c, Wave = wave, Data = creationData, Size = 1 + Math.Max(0, wave.EscortCount) };
                 _active = ctx;
+                // 분대장 생성·활성화 실패를 따라가 대원 예약을 풀 수 있게(4차 재검토 1번, NativeCapPatch의 SpawnBossMain·ActivateBot 패치)
+                if (wave.EscortCount > 0) c.WatchSquad(creationData, wave);
 
                 if (c.NearWaves.TryGetValue(wave, out var near))
                 {

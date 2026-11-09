@@ -133,37 +133,40 @@ public class ReviewFixTests
     }
 
     [Fact]
-    public void PlannedPmcIndex_ClaimsOnlyServerSquads()
+    public void WaveMark_OnlyGravityTimerWaves()
     {
-        var idx = new PlannedPmcIndex([new PlannedPmcDto(true, 120, 3, "ZoneA"), new PlannedPmcDto(true, 120, 3, ""), new PlannedPmcDto(false, 1, 1, "")]);
-        Assert.Equal(3, idx.Left);
-        Assert.True(idx.TryClaim(true, 120.2f, 3, "ZoneA"));
-        Assert.True(idx.TryClaim(true, 119.8f, 3, "other"));  // 구역 문자열은 보지 않는다
-        Assert.False(idx.TryClaim(true, 120f, 3, "ZoneA"));   // 같은 서명은 계획 수만큼만
-        Assert.False(idx.TryClaim(false, 120f, 3, ""));       // 진영이 다른 다른 모드 PMC
-        Assert.False(idx.TryClaim(false, 1f, 2, ""));         // 인원이 다름
-        Assert.True(idx.TryClaim(false, 0.4f, 1, ""));        // 서버는 시각을 최소 1초로 넣는다
-        Assert.Equal(0, idx.Left);
-        Assert.False(new PlannedPmcIndex(null).TryClaim(true, 1, 1, ""));
+        // 4차 재검토 2번: 진영·시각·인원이 같은 다른 모드 PMC와 확실히 구분(표식은 TriggerName이 빈 타이머 웨이브에만)
+        var mark = WaveMark.For("bigmap", 77, 3);
+        Assert.Equal("gravity:bigmap:77:3", mark);
+        Assert.True(WaveMark.Is(mark, ""));
+        Assert.True(WaveMark.Is(mark, null));
+        Assert.False(WaveMark.Is("", ""));                      // 다른 모드 PMC(표식 없음)
+        Assert.False(WaveMark.Is(null, ""));
+        Assert.False(WaveMark.Is("autoId_00000_D2_LEVER", "interactObject"));
+        Assert.False(WaveMark.Is(mark, "interactObject"));       // 트리거 웨이브는 Gravity 분대로 보지 않는다
+        Assert.False(WaveMark.Is("hunt", ""));                   // 팩션 사냥조 표식
     }
 
     [Fact]
-    public void Builder_SendsPlannedPmcSignatures_MatchingAppliedWaves()
+    public void Applier_MarksEveryPlannedPmcWave_AndBuilderSendsPrefix()
     {
         var map = new MapInfo("bigmap", 16, 20, 2400, ["A", "B"], ["A"]);
-        var cfg = Read("""{"maps":{"bigmap":{"zones":{"B":{"on":false}}}}}""");
+        var cfg = Read("{}");
         var plan = SpawnPlanner.Plan(cfg, map, 2400, 0, 9);
         Assert.NotEmpty(plan.Groups);
-        var dto = ClientSettingsBuilder.Build(cfg, map, plan, true);
-        Assert.Equal(plan.Groups.Count, dto.PlannedPmc!.Count);
-        for (int i = 0; i < plan.Groups.Count; i++)
+        var loc = new SPTarkov.Server.Core.Models.Eft.Common.LocationBase
         {
-            Assert.Equal(plan.Groups[i].Usec, dto.PlannedPmc[i].Usec);
-            Assert.Equal(Math.Max(1, plan.Groups[i].TimeSec), dto.PlannedPmc[i].TimeSec);
-            Assert.Equal(plan.Groups[i].Size, dto.PlannedPmc[i].Size);
-        }
-        var idx = new PlannedPmcIndex(dto.PlannedPmc);
-        Assert.All(plan.Groups, g => Assert.True(idx.TryClaim(g.Usec, Math.Max(1, g.TimeSec), g.Size, null)));
+            Id = "bigmap", EscapeTimeLimit = 40, BotMax = 20,
+            BossLocationSpawn = [new() { BossName = "pmcUSEC", BossChance = 100, Time = 30, TriggerId = "", TriggerName = "" }],
+            Waves = []
+        };
+        RaidSpawnApplier.Apply(loc, plan, cfg, map, true, null);
+        var pmc = loc.BossLocationSpawn.Where(e => e.BossName is "pmcUSEC" or "pmcBEAR").ToList();
+        Assert.Equal(plan.Groups.Count, pmc.Count);
+        Assert.All(pmc, e => Assert.True(WaveMark.Is(e.TriggerId, e.TriggerName)));
+        Assert.Equal(pmc.Count, pmc.Select(e => e.TriggerId).Distinct().Count()); // 분대마다 다른 표식
+        var dto = ClientSettingsBuilder.Build(cfg, map, plan, true);
+        Assert.Equal(WaveMark.Prefix, dto.WaveMark);
     }
 
     // ── 2번: 레이드 전체 그룹 제한 장부 ──
@@ -384,10 +387,13 @@ public class ReviewFixTests
         var cfg = Read("""{"maps":{"bigmap":{"style":"infinite"}}}""");
         var json = JsonNode.Parse(JsonConvert.SerializeObject(ClientSettingsBuilder.Build(cfg, map, SpawnPlanner.Plan(cfg, map, 2400, 0, 1), true), Wire))!.AsObject();
         Assert.NotNull(json["plannedGroups"]);
+        Assert.NotNull(json["waveMark"]);
         json.Remove("plannedGroups");
+        json.Remove("waveMark");
         json["inf"]!.AsObject().Remove("firstDelaySec");
         var back = JsonConvert.DeserializeObject<ClientRaidSettings>(json.ToJsonString(), Wire)!;
         Assert.Null(back.PlannedGroups);
+        Assert.Null(back.WaveMark); // 옛 서버: 클라는 예전처럼 PMC 역할이면 Gravity 분대로 본다
         Assert.Null(back.Inf!.FirstDelaySec);
         Assert.True(new RaidGroupLedger(back.GroupCap, back.PlannedGroups).CanAdd(1) || back.GroupCap.On);
 

@@ -486,3 +486,43 @@ test('PMC 첫 보충 전과 PMC 중단 뒤에는 PMC 비율 100%여도 스캐브
   a.run("ensureOverride('labyrinth','scav');state.maps.labyrinth.scav.startOn=false;state.maps.labyrinth.style='infinite';state.maps.labyrinth.scavStyle='waves';state.maps.labyrinth.inf.pmcShare=100");
   assert.ok(a.run("estimate(mapById('labyrinth')).smax")>0);
 });
+test('웹 스캐브 견적은 레이드 전체 그룹 제한의 거절·분할을 따릅니다', () => {
+  const a=app();
+  const smax=()=>a.run("estimate(mapById('bigmap')).smax");
+  a.run("ensureOverride('bigmap','scav');Object.assign(state.maps.bigmap.scav,{startOn:false,separateStart:false,activeMin:60,activeMax:60,quietMin:0,quietMax:0})");
+  a.run("state.maps.bigmap.style='infinite';state.maps.bigmap.scavStyle='waves';state.maps.bigmap.inf.pmcShare=100");
+  a.run("ensureOverride('bigmap','flow');state.maps.bigmap.firstDelay=0;state.maps.bigmap.hardStop={...(state.maps.bigmap.hardStop||{}),pmcPct:0,scavPct:0}");
+  // 1) 간격 45초: 목록이 안 떨어져 PMC 100%면 스캐브 0 → 1인 이상 0개(drop)면 모든 PMC 차례가 스캐브로
+  a.run("state.maps.bigmap.inf.delay=45");
+  assert.equal(smax(),0);
+  a.run("state.spawn.groupCap={on:true,scope:'raid',over:'drop',rules:[{size:1,cmp:'ge',count:0}]}");
+  assert.ok(smax()>0);
+  // 2) 간격 10초·5인 분대 100%: 제한 없으면 목록(최대 200)이 떨어져 스캐브가 나오지만, 2인 이상 0개(split)면 1인 5개로 나뉘어 목록이 남는다
+  a.run("state.spawn.groupCap={on:false,scope:'raid',over:'split',rules:[]};state.spawn.squad={s1:0,s2:0,s3:0,s4:0,s5:100};state.maps.bigmap.inf.delay=10");
+  const exhausted=smax();
+  if(a.run("raidOf(mapById('bigmap'))")*6>200) assert.ok(exhausted>0);
+  a.run("state.spawn.groupCap={on:true,scope:'raid',over:'split',rules:[{size:2,cmp:'ge',count:0}]}");
+  assert.equal(smax(),0);
+  // alive 범위는 레이드 전체 장부를 쓰지 않는다
+  a.run("state.spawn.groupCap={on:true,scope:'alive',over:'drop',rules:[{size:1,cmp:'ge',count:0}]}");
+  assert.equal(smax(),exhausted);
+});
+
+test('레이더·로그 화면은 원래 스폰 유지와 추가 스폰 확률을 따로 저장합니다', () => {
+  const a=app();
+  assert.equal(a.run("state.specials.raiders.vanilla"),true);
+  assert.equal(a.run("state.specials.raiders.extra.rezervbase"),0);
+  assert.equal(a.run("specChance('raiders','rezervbase')"),0);
+  assert.equal(a.run("specChance('cultists','woods')"),12);
+  a.run("specSel='rogues';page='specials'");
+  const html=a.run("P.specials.render()");
+  assert.match(html,/specials\.rogues\.vanilla/);
+  assert.match(html,/specials\.rogues\.extra\.lighthouse/);
+  assert.doesNotMatch(html,/specials\.rogues\.chance\./);
+  a.run("specSel='cultists'");
+  assert.match(a.run("P.specials.render()"),/specials\.cultists\.chance\.woods/);
+  a.run("specSel='raiders';state.specials.raiders.extra.laboratory=30");
+  a.click({act:'specZero'});
+  assert.equal(a.run("state.specials.raiders.extra.laboratory"),0);
+  assert.equal(a.run("state.specials.raiders.chance.laboratory"),65);
+});

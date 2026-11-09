@@ -51,7 +51,8 @@ public static class RaidSpawnApplier
                 BossDifficulty = g.Difficulty, BossEscortDifficulty = g.Difficulty,
                 BossEscortAmount = (g.Size - 1).ToString(), BossZone = PmcZoneFor(info.PmcZones, ms, i),
                 IsBossPlayer = false, IsRandomTimeSpawn = false, Time = Math.Max(1, g.TimeSec),
-                TriggerId = "", TriggerName = "", Delay = 0, ForceSpawn = false,
+                // TriggerName이 비어 있으면 게임은 TriggerId를 보지 않는다(타이머 웨이브): Gravity 분대 표식으로 쓴다(4차 재검토 2번)
+                TriggerId = Gravity.Shared.WaveMark.For(info.Id, plan.Seed, i), TriggerName = "", Delay = 0, ForceSpawn = false,
                 IgnoreMaxBots = g.IsStart ? s.IgnoreCapStart : s.IgnoreCapWaves,
                 Supports = null!, SpawnMode = Modes, SptId = "gravity"
             });
@@ -97,6 +98,8 @@ public static class RaidSpawnApplier
             .Where(kv => ConfigModel.SpecialRoles.ContainsKey(kv.Key))
             .ToDictionary(kv => ConfigModel.SpecialRoles[kv.Key], kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
+        var extraRoles = new HashSet<string>((cfg.Specials ?? new Dictionary<string, SpecialSettings>()).Keys
+            .Where(SpecialSettings.ExtraModel).Select(k => ConfigModel.SpecialRoles[k]), StringComparer.OrdinalIgnoreCase);
         var result = new List<BossLocationSpawn>(loc.BossLocationSpawn.Count);
         var extra = new List<BossLocationSpawn>();
         foreach (var e in loc.BossLocationSpawn)
@@ -112,6 +115,12 @@ public static class RaidSpawnApplier
             }
             if (e.BossName is { } sr && specialByRole.TryGetValue(sr, out var sp))
             {
+                if (extraRoles.Contains(sr))
+                {
+                    // 레이더·로그: 원래 항목(이벤트 포함)은 확률·인원·트리거 그대로. 끄거나 "원래 스폰 유지"를 끄면 그 항목만 0%.
+                    result.Add(!sp.On || !sp.Vanilla ? e with { BossChance = 0 } : e);
+                    continue;
+                }
                 var n = e;
                 if (!sp.On) n = n with { BossChance = 0 };
                 else
@@ -140,6 +149,7 @@ public static class RaidSpawnApplier
                 if (b.Extra) result.Add(n with { });
             }
         result.AddRange(extra);
+        AddExtraSpecials(loc.BossLocationSpawn, result, cfg, mapId);
         loc.BossLocationSpawn = result;
 
         // 0.4: 저격 스캐브(바닐라 marksman 웨이브). 끄면 지우고, 맵 확률이 있으면 웨이브마다 그 확률로 남기며, 인원 칸이 있으면 바꾼다.
@@ -182,6 +192,33 @@ public static class RaidSpawnApplier
     }
 
     /// <summary>바닐라 호위 수 형식: 가능한 수를 쉼표로(클라가 하나를 고름). 예: 2~4 → "2,3,4".</summary>
+    /// <summary>
+    /// 레이더·로그 "추가 스폰"(ABPS식, 사용자 결정 11-10): 원래 항목과 별개로 판 시작 때 한 무리를 이 맵 확률로 더 넣는다.
+    /// 본보기·구역은 이 맵의 원래 항목(이벤트 항목 포함)에서 가져오고, 원래 항목이 없는 맵에는 넣지 않는다(구역을 모름).
+    /// 추가분은 맵 상한을 지킨다(IgnoreMaxBots=false). 트리거는 비운다(타이머 웨이브).
+    /// </summary>
+    internal static void AddExtraSpecials(IReadOnlyList<BossLocationSpawn> original, List<BossLocationSpawn> result, GravityConfig cfg, string mapId)
+    {
+        if (cfg.Specials == null) return;
+        foreach (var (id, sp) in cfg.Specials)
+        {
+            if (!SpecialSettings.ExtraModel(id) || !sp.On || sp.Extra == null) continue;
+            if (!sp.Extra.TryGetValue(mapId, out var chance) || chance <= 0) continue;
+            var role = ConfigModel.SpecialRoles[id];
+            var own = original.Where(e => string.Equals(e.BossName, role, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (own.Count == 0) continue;
+            var tpl = own.FirstOrDefault(e => string.IsNullOrEmpty(e.TriggerName)) ?? own[0];
+            var zones = own.SelectMany(e => (e.BossZone ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                .Distinct(StringComparer.Ordinal).ToArray();
+            result.Add(tpl with
+            {
+                BossChance = chance, BossZone = string.Join(",", zones),
+                BossEscortAmount = Range(Math.Max(0, sp.ExtraMin - 1), Math.Max(0, Math.Max(sp.ExtraMin, sp.ExtraMax) - 1)),
+                TriggerId = "", TriggerName = "", Time = -1, Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
+            });
+        }
+    }
+
     internal static string Range(int min, int max) =>
         string.Join(",", Enumerable.Range(min, Math.Max(0, max - min) + 1));
 

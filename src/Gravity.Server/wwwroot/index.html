@@ -504,6 +504,8 @@ const BOSSES=[
  B('zryachiy','즈랴치','Zryachiy',['lighthouse'],100,[2,2],[0,0],{lighthouse:['house']}),B('goons','나이트 3인방','The Goons',['bigmap','woods','shoreline','lighthouse'],30,[2,2],[5,25]),
  B('partisan','파르티잔','Partisan',['bigmap','woods','shoreline','lighthouse'],25,[0,0],[3,30])
 ];
+const SPEC_EXTRA=['raiders','rogues'];
+const specChance=(id,mid)=>{const sp=state.specials[id];return SPEC_EXTRA.includes(id)?(sp.extra?.[mid]||0):(sp.chance[mid]||0);};
 const SPECIALS=[
  ['raiders',T('레이더','Raiders'),{laboratory:65,rezervbase:40},[3,5]],['rogues',T('로그','Rogues'),{lighthouse:75},[3,6]],
  ['cultists',T('컬티스트','Cultists'),{bigmap:10,woods:12,shoreline:10,factory4_night:25,sandbox_high:4},[3,5]],
@@ -600,7 +602,9 @@ function makeDefaults(){
       cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,zones:z,zonesAlt:{}};});
   const bosses={};BOSSES.forEach(b=>{const mm={},zz={};MAPS.forEach(m=>{mm[m.id]=b.maps.includes(m.id);zz[m.id]=b.zones[m.id]?[...b.zones[m.id]]:['default'];});
     bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'normal',maps:mm,zones:zz};});
-  const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1]};});
+  const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1]};
+    // 레이더·로그(ABPS식): 원래 스폰(레버·탈출구 이벤트 포함)은 그대로 두고, 맵 확률·인원은 따로 넣는 "추가 스폰"에만(기본 0% = 원래 스폰만)
+    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1]});});
   const factions={};FACTIONS.forEach(f=>{factions[f.id]={managed:false,style:'waves',shareCap:false,maps:Object.fromEntries(MAPS.map(m=>[m.id,f.maps.includes(m.id)])),
     patrol:{on:true,chance:45,count:2,min:3,max:6,tMin:5,tMax:28},checkpoint:{on:true,chance:45,count:2,min:3,max:4,radius:20},hunt:{on:true,chance:20,min:3,max:4},
     bd:{chance:25,tMin:10,tMax:80,huntMin:3,huntMax:5,labsGate:20,labsStart:15,wedge:true,wedgeChance:15}};});
@@ -677,7 +681,7 @@ function labelFor(p){
   if(k[0]==='gear'&&k[1]==='lv'){if(k[2]==='deltas'||k[2]==='scavDeltas')return `${tr(T('봇 레벨','Bot level'))} · ${k[2]==='scavDeltas'?tr(T('스캐브','Scavs')):'PMC'} · T${+k[3]+1} ${k[4]==='b'?tr(T('아래로','below')):tr(T('위로','above'))}`;if(k[2]==='weights')return `${tr(T('섞기 표','Mix table'))} · T${+k[3]+1} → T${+k[4]+1}`;return `${tr(T('봇 레벨','Bot level'))} · ${k[2]}`;}
   if(k[0]==='gear'&&k[1]==='tiers')return `T${+k[2]+1} · ${tr(TIERF[k[3]])}`;
   if(k[0]==='roles')return `${roleName(k[1])} · ${k.slice(2).join('.')}`;
-  if(k[0]==='specials'){const s=SPECIALS.find(x=>x[0]===k[1]);return `${tr(s[1])} · ${k[2]==='chance'?mname(k[3]):k[2]}`;}
+  if(k[0]==='specials'){const s=SPECIALS.find(x=>x[0]===k[1]);return `${tr(s[1])} · ${k[2]==='chance'||k[2]==='extra'?mname(k[3]):k[2]}`;}
   if(k[0]==='factions'){const f=FACTIONS.find(x=>x.id===k[1]);return `${tr(f.name)} · ${k.slice(2).map(x=>MAPS.some(m=>m.id===x)?mname(x):x).join('.')}`;}
   if(k[0]==='weapons'&&k[1]==='range')return `${tr(T('원거리 무기 비중','Long-range share'))} · ${mname(k[2])}`;
   if(k[0]==='mods'&&k[1]==='allowed'){const it=MODS[k[2]].find(x=>x[0]===k[3]);return `${tr(T('허용 모드','Allowed mod'))} · ${it?it[1]:k[3]}`;}
@@ -764,6 +768,16 @@ function plan(m,c=cfgFor(m)){
 }
 const bossChance=b=>state.bossCommon.on&&b.id!=='zryachiy'?state.bossCommon.chance:state.bosses[b.id].chance;
 const bossesOn=m=>BOSSES.filter(b=>state.bosses[b.id].on&&state.bosses[b.id].maps[m.id]&&bossChance(b)>0);
+/** 분대 크기 분포(spawn.squad s1~s5)로 뽑은 크기 목록(서버 PlanRefill처럼 시드가 같으면 같은 목록). */
+function squadList(c,n,sd){const w=[1,2,3,4,5].map(k=>Math.max(0,+(c.squad?.['s'+k]??0))),tot=w.reduce((a,b)=>a+b,0),r=rng(sd),res=[];
+  for(let i=0;i<n;i++){let x=r()*(tot||1),k=0;if(tot>0){for(;k<4;k++){x-=w[k];if(x<0)break;}}res.push(k+1);}return res;}
+/** 레이드 전체 그룹 제한 장부(클라 RaidGroupLedger·서버 CapTracker와 같은 규칙). 꺼져 있거나 alive면 늘 허용. */
+function raidGroupCap(c){const g=c.groupCap||{},rules=g.on&&g.scope==='raid'?(g.rules||[]):[],used={};
+  const ok=(r,k)=>r.cmp==='ge'||r.cmp==='gte'?k>=r.size:k===r.size,cnt=r=>Object.entries(used).reduce((a,[k,v])=>a+(ok(r,+k)?v:0),0);
+  const can=k=>rules.every(r=>!ok(r,k)||cnt(r)<r.count),use=k=>{if(rules.length)used[k]=(used[k]||0)+1;};
+  const split=want=>{if(!rules.length||g.over!=='split')return[];const save={...used},res=[];let left=want;while(left>0){let k=Math.min(left,5);while(k>=1&&!can(k))k--;if(!k)break;use(k);res.push(k);left-=k;}
+    Object.keys(used).forEach(k=>delete used[k]);Object.assign(used,save);return res;};
+  return{can,use,split};}
 function estimate(m){
   if(!state.modules.spawn)return null;const c=cfgFor(m),p=plan(m,c),raid=p.raid,cap=state.maps[m.id].cap;
   let pmin=p.start+p.waves.reduce((a,w)=>a+w.min,0),pmax=p.start+p.waves.reduce((a,w)=>a+w.max,0);
@@ -775,14 +789,27 @@ function estimate(m){
   // 웨이브 방식+PMC 무한은 무한 차례 간격(inf.delay)·묶음(inf.batch)·스캐브 차례 비율(1-pmcShare)을 쓰고, 그 밖은 스캐브 시계(scav.refill)에 1명씩.
   const blocked=c.scavStyle==='start'||!(c.scav.softCap>0)||!(c.scav.perPlayer>0);
   const winFrac=c.scavStyle==='infinite'?1:active/Math.max(1,active+quiet);
-  // PMC 차례는 PMC 첫 보충 시각~PMC 중단 사이에만 열린다(재검토 4번): 그 앞뒤 구간과 미궁 PMC 꺼짐은 모든 차례가 스캐브 차례다.
-  // 보충 목록은 서버가 ceil(레이드/간격)개(최대 200)만 보낸다: PMC 차례가 그만큼 쓰이면 그 뒤는 스캐브 차례(3차 재검토 4번).
-  const pmcList=Math.min(200,Math.max(1,Math.ceil(raid*60/Math.max(1,c.inf.delay)))),pmcRate=(c.inf.pmcShare/100)/(Math.max(10,c.inf.delay)/60);
-  const pmcFrom=Math.min(p.end,c.firstDelay/60),pmcTo=m.id==='labyrinth'&&!c.allowPmcLabyrinth?pmcFrom:Math.min(p.end,pmcRate>0?pmcFrom+pmcList/pmcRate:p.end);
-  const pmcOverlap=Math.max(0,Math.min(stop,pmcTo)-Math.max(sd,pmcFrom));
-  const refill=blocked?0:c.style==='infinite'&&c.scavStyle==='waves'
-    ?(duration-pmcOverlap*c.inf.pmcShare/100)/(Math.max(10,c.inf.delay)/60)*Math.max(1,c.inf.batch)*winFrac
-    :duration/(Math.max(2,c.scav.refill)/60)*winFrac;
+  // PMC 무한+스캐브 웨이브는 차례를 클라(ScavSchedule·ScavDirector.TryPmc)와 같은 규칙으로 흉내 낸다(4차 재검토 3번):
+  // PMC 차례는 PMC 첫 보충~PMC 중단 사이에만(미궁 PMC 꺼짐이면 없음), 보충 목록은 ceil(레이드/간격)개(최대 200)라 다 쓰면 스캐브 차례,
+  // 레이드 전체 그룹 제한은 서버 계획 분대(시작 PMC)를 먼저 세고, 막힌 분대는 split이면 나눠 첫 조각(목록이 늘어남), drop이면 버리고 스캐브 차례.
+  let refill=0;
+  if(!blocked&&c.style==='infinite'&&c.scavStyle==='waves'){
+    const step=Math.max(10,c.inf.delay)/60,pmcOk=!(m.id==='labyrinth'&&!c.allowPmcLabyrinth),pmcFrom=Math.min(p.end,c.firstDelay/60);
+    const list=squadList(c,Math.min(200,Math.max(1,Math.ceil(raid*60/Math.max(1,c.inf.delay)))),seed*53+MAPS.indexOf(m)),gc=raidGroupCap(c);
+    let left=p.start;for(const k of squadList(c,400,seed*59+MAPS.indexOf(m))){if(left<=0)break;const w=Math.min(k,left);if(gc.can(w))gc.use(w);left-=w;}
+    let acc=0,i=0,scavTurns=0;
+    for(let t=Math.min(sd,pmcFrom),n=0;t<stop&&n<5000;t+=step,n++){
+      let pmc=false;
+      if(pmcOk&&t>=pmcFrom&&t<p.end){acc+=c.inf.pmcShare/100;if(acc>=1-1e-9){acc-=1;pmc=true;}}
+      if(pmc){
+        let done=false;
+        while(i<list.length){const k=list[i];if(gc.can(k)){gc.use(k);i++;done=true;break;}const parts=gc.split(k);if(parts.length)list.splice(i,1,...parts);else{i++;break;}}
+        if(done)continue;
+      }
+      if(t>=sd)scavTurns++;
+    }
+    refill=scavTurns*Math.max(1,c.inf.batch)*winFrac;
+  }else if(!blocked)refill=duration/(Math.max(2,c.scav.refill)/60)*winFrac;
   const scavBase=hasScavs?initial+Math.round(refill):0;
   return{pmin,pmax,smin:Math.round(scavBase*.8),smax:Math.round(scavBase*1.15),bosses:bossesOn(m),p,c,cap};
 }
@@ -832,7 +859,7 @@ function timeline(m,big=false){
   const step=p.raid>90?15:p.raid>30?10:5;for(let t=0;t<=p.raid;t+=step)s+=`<text x="${x(t)}" y="${H-10}" fill="#8f9bb0" font-size="13" text-anchor="middle">${t}${t===0?'':''}</text><line x1="${x(t)}" x2="${x(t)}" y1="${H-36}" y2="${H-30}" stroke="#46526a"/>`;
   s+=`<text x="${W-R}" y="${H-10}" fill="#647089" font-size="12" text-anchor="end">${tr(T('분','min'))}</text>`;
   const notes=[];bs.forEach(b=>{const bb=state.bosses[b.id];notes.push(ed?`<span class="pill gold tlc" data-pop="boss|${b.id}">★ ${tr(b.name)} ${bossChance(b)}% · ${bb.zones[m.id].map(z=>zname(m.id,z)).join(', ')}</span>`:pill('★ '+tr(b.name)+' '+bossChance(b)+'% · '+bb.zones[m.id].map(z=>zname(m.id,z)).join(', '),'gold'));});
-  SPECIALS.forEach(([id,n])=>{const sp=state.specials[id];if(sp.on&&sp.chance[m.id]>0)notes.push(ed?`<span class="pill blue tlc" data-pop="spec|${id}">✦ ${tr(n)} ${sp.chance[m.id]}%</span>`:pill('✦ '+tr(n)+' '+sp.chance[m.id]+'%','blue'));});
+  SPECIALS.forEach(([id,n])=>{const sp=state.specials[id],ch=specChance(id,m.id);if(sp.on&&ch>0)notes.push(ed?`<span class="pill blue tlc" data-pop="spec|${id}">✦ ${tr(n)}${SPEC_EXTRA.includes(id)?' +':' '}${ch}%</span>`:pill('✦ '+tr(n)+(SPEC_EXTRA.includes(id)?' +':' ')+ch+'%','blue'));});
   if(m.id==='laboratory'&&state.lab.blackoutLink!=='always')notes.push(pill(tr(T('블랙아웃 연동','Blackout link'))+': '+tr(state.lab.blackoutLink==='only'?T('정전 판에만 블디','BlackDiv on blackout only'):T('정전 판 확률 ×','Blackout ×'))+(state.lab.blackoutLink==='boost'?state.lab.blackoutMult:''),'warn'));
   return `<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
 }
@@ -877,7 +904,7 @@ function popSpecs(kind,arg,m){const c=cfgFor(m),mid=m.id,raid=Math.round(raidOf(
   if(kind==='inf')return {title:tr(T('무한 보충','Endless refill')),rows:[[T('보충 간격','Refill interval'),`maps.${mid}.inf.delay`,c.inf.delay,10,300,5,UI.sec,''],[T('한 번에 채우는 수','Batch size'),`maps.${mid}.inf.batch`,c.inf.batch,1,6,1,UI.ppl,'']]};
   if(kind==='scav')return {title:tr(T('스캐브','Scavs')),rows:[[T('시작 스캐브 비율','Starting scav share'),F('scav.startPct')[0],c.scav.startPct,0,100,1,UI.pct,F('scav.startPct')[1]],[T('스캐브 시작 지연','Scav start delay'),F('scav.delay')[0],c.scav.delay,0,60,1,UI.min_,F('scav.delay')[1]],[T('보충 확인 간격','Refill check interval'),F('scav.refill')[0],c.scav.refill,30,600,10,UI.sec,F('scav.refill')[1]],[T('남은 레이드가 이 비율 이하면 스캐브 중단','Stop scavs below this % left'),F('hardStop.scavPct')[0],c.hardStop.scavPct,0,60,1,UI.pct,F('hardStop.scavPct')[1]]]};
   if(kind==='boss'){const b=BOSSES.find(x=>x.id===arg),bb=state.bosses[arg],common=state.bossCommon.on&&arg!=='zryachiy';return {title:tr(b.name),note:common?tr(T('지금은 "보스 공통 확률"이 켜져 있어 확률을 바꾸면 모든 보스에 적용됩니다.','Shared boss chance is on — the chance applies to every boss.')):'',rows:[[common?T('보스 공통 확률','Shared boss chance'):T('나올 확률','Spawn chance'),common?'bossCommon.chance':`bosses.${arg}.chance`,bossChance(b),0,100,1,UI.pct,''],[T('나오는 시각 (처음)','Spawn time (from)'),`bosses.${arg}.tFrom`,bb.tFrom,0,raid,1,UI.min_,''],[T('나오는 시각 (끝)','Spawn time (to)'),`bosses.${arg}.tTo`,bb.tTo,0,raid,1,UI.min_,'']]};}
-  if(kind==='spec'){const sp=SPECIALS.find(x=>x[0]===arg);return {title:tr(sp[1]),rows:[[fmt(tr(T('{m}에서 나올 확률','Chance on {m}')),{m:mname(mid)}),`specials.${arg}.chance.${mid}`,state.specials[arg].chance[mid],0,100,1,UI.pct,'']]};}
+  if(kind==='spec'){const sp=SPECIALS.find(x=>x[0]===arg),ex=SPEC_EXTRA.includes(arg);return {title:tr(sp[1]),rows:[[fmt(tr(ex?T('{m} 추가 스폰 확률','Extra spawn chance on {m}'):T('{m}에서 나올 확률','Chance on {m}')),{m:mname(mid)}),`specials.${arg}.${ex?'extra':'chance'}.${mid}`,specChance(arg,mid),0,100,1,UI.pct,'']]};}
   if(kind==='fac'){const f=FACTIONS.find(x=>x.id===arg),F=state.factions[arg],o=F.managed?'':'fac:'+arg,pre='factions.'+arg+'.',note=F.managed?'':tr(T('지금은 "모드 설정 그대로"입니다. 값을 바꾸면 "Gravity가 관리"로 바뀌고 이 값이 적용됩니다.','Currently "use the mod’s own config". Changing a value switches to Gravity-managed.'));
     if(arg==='blackdiv')return {title:tr(f.name),note,rows:[[T('맵마다 등장 확률','Chance per map'),pre+'bd.chance',F.bd.chance,0,100,1,UI.pct,o],[T('등장 시작 (레이드 %)','Appears from (% of raid)'),pre+'bd.tMin',F.bd.tMin,0,100,1,UI.pct,o],[T('등장 끝 (레이드 %)','Appears until (% of raid)'),pre+'bd.tMax',F.bd.tMax,0,100,1,UI.pct,o]]};
     return {title:tr(f.name),note,rows:[[T('순찰 확률','Patrol chance'),pre+'patrol.chance',F.patrol.chance,0,100,1,UI.pct,o],[T('맵당 순찰조 수','Patrols per map'),pre+'patrol.count',F.patrol.count,1,5,1,'',o],[T('등장 시작','Appears from'),pre+'patrol.tMin',F.patrol.tMin,0,raid,1,UI.min_,o],[T('등장 끝','Appears until'),pre+'patrol.tMax',F.patrol.tMax,0,raid,1,UI.min_,o]]};}
@@ -1176,11 +1203,14 @@ const SPEC_DESC={raiders:T('연구소·리저브의 정예 무장 집단. 레버
 P.specials={desc:T('특수 봇마다 탭을 골라 맵별 등장 확률과 무리 인원을 정합니다.','Pick a special bot tab to set per-map chance and group size.'),render(){
   const id=specSel,sp=state.specials[id],def=SPECIALS.find(x=>x[0]===id),p='specials.'+id+'.';
   const tabs=`<div class="tabs">${SPECIALS.map(([k,n])=>`<button data-spec="${k}" class="${k===specSel?'on':''}">${tr(n)}${state.specials[k].on?'':` <small class="muted">(${u('off')})</small>`}</button>`).join('')}</div>`;
-  const on=MAPS.filter(m=>sp.chance[m.id]>0).length;
-  const maps=MAPS.map(m=>slider(p+'chance.'+m.id,T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en),'',{dis:!sp.on}).replace(`<span>${tr(T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en))}</span>`,`<span>${tr(m.name)}</span>`)).join('');
+  const ex=SPEC_EXTRA.includes(id),key=ex?'extra.':'chance.';
+  const on=MAPS.filter(m=>specChance(id,m.id)>0).length;
+  const maps=MAPS.map(m=>slider(p+key+m.id,T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en),'',{dis:!sp.on}).replace(`<span>${tr(T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en))}</span>`,`<span>${tr(m.name)}</span>`)).join('');
   return `<div class="stack">${spawnOff()}${tabs}
-   ${card(def[1],sw(p+'on',T('켜기','Enable'),'')+range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id]})}
-   ${card(T('맵별 등장 확률','Chance per map'),`<div class="grid g2" style="gap:0 26px">${maps}</div>`,{desc:T('0% = 그 맵에 안 나옴.','0% = never on that map.')})}
+   ${card(def[1],sw(p+'on',T('켜기','Enable'),'')+(ex?sw(p+'vanilla',T('원래 스폰 유지','Keep original spawns'),T('맵에 원래 있는 무리(레버·탈출구 같은 이벤트 포함)를 확률·인원 그대로 둡니다. 끄면 원래 무리는 나오지 않습니다.','Keeps the map’s own groups (incl. lever/exfil events) at their original chance and size. Off = original groups never spawn.'),{dis:!sp.on})
+       +range(p+'extraMin',p+'extraMax',T('추가 스폰 인원','Extra group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})
+       :range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on}))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id]})}
+   ${card(ex?T('맵별 추가 스폰 확률','Extra spawn chance per map'):T('맵별 등장 확률','Chance per map'),`<div class="grid g2" style="gap:0 26px">${maps}</div>`,{desc:ex?T('원래 스폰과 별도로 판 시작 때 한 무리를 이 확률로 더 넣습니다(맵 상한을 지킴). 원래 무리가 있는 맵에서만 넣습니다. 0% = 추가 없음.','Adds one more group at raid start with this chance, on top of the original spawns (respects the map cap). Only on maps that already have this group. 0% = no extra.'):T('0% = 그 맵에 안 나옴.','0% = never on that map.')})}
    ${id==='infected'?notice(T('감염자는 이벤트가 켜졌을 때만 나옵니다. 이벤트 켜기는 이벤트 페이지의 담당 모드를 따릅니다.','Infected only appear while the event is active; see Events for who controls it.'),'flat'):''}
    ${notice(T('ORBIT이 특수 봇을 장악하면 행동은 ORBIT, 스폰은 Gravity가 맡습니다.','If ORBIT takes over a special type, ORBIT drives behaviour and Gravity still spawns it.'),'flat')}</div>`;}};
 P.factions={desc:T('RUAF·UNTAR·블랙 디비전처럼 봇을 추가하는 모드의 스폰을 Gravity에서 정합니다.','Control spawns of faction mods like RUAF, UNTAR and Black Division.'),render(){
@@ -1817,14 +1847,14 @@ document.addEventListener('click',e=>{
   else if(a==='tierImport'){pickJson('tier');}
   else if(a==='tierOverwrite'){const c=customTierPresets.find(x=>x.id===state.tierPreset);if(c){c.tiers=clone(state.gear.tiers);c.data=clone(state.tierData);c.gearSnap=pickKeys(state,GEAR_KEYS);toast(fmt(tr(T('"{p}"에 덮어썼습니다','Overwrote "{p}"')),{p:c.name}));libSync();}}
   else if(a==='tierDel'){customTierPresets=customTierPresets.filter(x=>x.id!==state.tierPreset);tierPresetApply('default');rerender();}
-  else if(a==='specZero'){MAPS.forEach(m=>state.specials[specSel].chance[m.id]=0);rerender();}
+  else if(a==='specZero'){const sp=state.specials[specSel],o=SPEC_EXTRA.includes(specSel)?(sp.extra||(sp.extra={})):sp.chance;MAPS.forEach(m=>o[m.id]=0);rerender();}
   else if(a==='specReset'){state.specials[specSel]=clone(DEFAULTS.specials[specSel]);rerender();}
   else if(a==='batchAll'){batch=MAPS.map(m=>m.id).filter(id=>id!==mapSel);rerender();}
   else if(a==='batchNone'){batch=[];rerender();}
   else if(a==='copyMap'){const src=clone(state.maps[mapSel]);batch.forEach(id=>{const z=state.maps[id].zones,alt=state.maps[id].zonesAlt;state.maps[id]={...clone(src),zones:z,zonesAlt:alt||{}};});toast(fmt(tr(T('{n}개 맵에 복사했습니다 (스폰 구역은 맵마다 유지)','Copied to {n} maps (zones kept)')),{n:batch.length}));rerender();}
   else if(a==='devSim'&&serverMeta){const bn=id=>{const b=BOSSES.find(x=>x.id===id);return b?tr(b.name):id;},spn=id=>{const x=SPECIALS.find(y=>y[0]===id);if(x)return tr(x[1]);const f=FACTIONS.find(y=>y.id===id);return f?tr(f.name):id;};
     fetch('api/dev/sim?map='+encodeURIComponent(devMap)+'&n=10').then(r=>r.json()).then(j=>{if(!j.rows){toast(j.error||'');return;}simRows=j.rows.map(r=>({p:r.pmc,s:r.scav,b:r.bosses.map(bn),sp:r.specials.map(spn)}));if(j.skip)toast(tr(T('실제 레이드에서는 건너뜁니다(계산만): ','A real raid would skip this map (calculation only): '))+j.skip);else if(!j.client)toast(tr(T('클라 플러그인이 연결되지 않은 상태로 계산했습니다(스캐브 보충·공장 PMC 빠짐).','Calculated without a linked client plugin (no scav refill, no Factory PMCs).')));rerender();}).catch(e=>toast(e.message));}
-  else if(a==='devSim'){const m=mapById(devMap),e=estimate(m);simRows=[];for(let i=0;i<10;i++){const r=rng(seed*977+i*31);const rr=(a,b)=>Math.round(a+(b-a)*r());simRows.push({p:e?rr(e.pmin,e.pmax):0,s:e?rr(e.smin,e.smax):0,b:(e?e.bosses:[]).filter(b=>r()*100<bossChance(b)).map(b=>tr(b.name)),sp:SPECIALS.filter(([id])=>state.specials[id].on&&r()*100<state.specials[id].chance[m.id]).map(([,n])=>tr(n))});}rerender();}
+  else if(a==='devSim'){const m=mapById(devMap),e=estimate(m);simRows=[];for(let i=0;i<10;i++){const r=rng(seed*977+i*31);const rr=(a,b)=>Math.round(a+(b-a)*r());simRows.push({p:e?rr(e.pmin,e.pmax):0,s:e?rr(e.smin,e.smax):0,b:(e?e.bosses:[]).filter(b=>r()*100<bossChance(b)).map(b=>tr(b.name)),sp:SPECIALS.filter(([id])=>state.specials[id].on&&r()*100<specChance(id,m.id)).map(([,n])=>tr(n))});}rerender();}
   else if(a==='devSpawn'){toast(tr(T('레이드 중 넣어 보기는 1.0에서 동작합니다','In-raid spawning comes in 1.0')));}
   else if(a==='devJson'&&serverMeta){fetch('api/dev/plan?map='+encodeURIComponent(devMap)).then(r=>r.json()).then(j=>{devJson=JSON.stringify(j,null,1);rerender();}).catch(e=>toast(e.message));}
   else if(a==='devJson'){const m=mapById(devMap),p=plan(m);devJson=JSON.stringify({map:m.id,raidMinutes:p.raid,style:state.maps[m.id].style,start:p.start,waves:p.waves.map(w=>({time:Math.round(w.t*60),min:w.min,max:w.max}))},null,1);rerender();}
@@ -1916,7 +1946,7 @@ function liveBanner(pg){
   let h='';
   h+=questingWarning();if(pg!=='orbit')h+=orbitManagementWarning();
   if(serverWarn)h+=notice(T(serverWarn,serverWarn),'warn');
-  if(pg==='specials')h+=notice(T('레이더·로그·컬티스트·블러드하운드는 지금 적용됩니다(맵에 원래 있는 무리만). 저격 스캐브도 지금 적용됩니다(웨이브마다 맵 확률로 남김). 감염자는 할로윈 이벤트가 켜졌을 때 판마다 "감염 판" 확률로 적용됩니다(켜면 이 맵 확률, 끄면 이벤트 페이지의 좀비 확률). 감염자 인원 칸은 적용되지 않습니다(SPT가 감염 정도로 정함).','Raiders, rogues, cultists and bloodhounds apply now (groups the map already has). Sniper scavs apply too (each wave kept by the map chance). Infected apply during Halloween as a per-raid "infected raid" chance (the map chance when on, otherwise the Events zombie chance). Infected size is not applied.'),'flat');
+  if(pg==='specials')h+=notice(T('레이더·로그는 맵에 원래 있는 무리(레버·탈출구 이벤트 포함)를 그대로 두고, 맵 확률은 판 시작 때 더 넣는 "추가 스폰"에만 씁니다(상한을 지킴). 컬티스트·블러드하운드는 원래 무리의 확률·인원을 바꿉니다. 저격 스캐브도 지금 적용됩니다(웨이브마다 맵 확률로 남김). 감염자는 할로윈 이벤트가 켜졌을 때 판마다 "감염 판" 확률로 적용됩니다(켜면 이 맵 확률, 끄면 이벤트 페이지의 좀비 확률). 감염자 인원 칸은 적용되지 않습니다(SPT가 감염 정도로 정함).','Raiders and rogues keep the map’s own groups (incl. lever/exfil events) as they are; the map chance is used only for an "extra spawn" added at raid start (respects the cap). Cultists and bloodhounds change the original groups’ chance and size. Sniper scavs apply too (each wave kept by the map chance). Infected apply during Halloween as a per-raid "infected raid" chance (the map chance when on, otherwise the Events zombie chance). Infected size is not applied.'),'flat');
   const GM=serverMeta&&serverMeta.gear;
   if(GEAR_NOTE[pg]){if(GM&&GM.locked)h+=notice(T('APBS가 설치되어 있어 Gravity 장비는 적용되지 않습니다. 값은 저장됩니다.','APBS is installed, so Gravity loadouts are not applied. Values are saved.'),'warn');else h+=applyInfo(pg,[{label:T('적용','Applied'),items:[GEAR_NOTE[pg].applied]},{label:T('미적용','Not applied'),pending:true,items:[GEAR_NOTE[pg].pending]}]);}
   if(GM&&!GM.locked&&pg==='items')h+=notice(T(`서버 자료: 모드 아이템 무기 ${GM.mods.weapons} · 장비 ${GM.mods.equipment} · 부품 ${GM.mods.attachments}개. 지난 판에 쓴 묶음: 무기 ${GM.raid.weapons} · 장비 ${GM.raid.equipment} · 부품 ${GM.raid.attachments}.`,`Server: mod weapons ${GM.mods.weapons} · gear ${GM.mods.equipment} · parts ${GM.mods.attachments}. Last raid subset: ${GM.raid.weapons} · ${GM.raid.equipment} · ${GM.raid.attachments}.`),'flat');
