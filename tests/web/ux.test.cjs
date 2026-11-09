@@ -692,3 +692,12 @@ test('커스텀 프리셋 삭제: 사용 중이면 기본 프리셋으로 돌아
   a.run(`customPresets=[{id:'c3',name:'커스텀 프리셋 3',snap:{}}]`);
   assert.equal(a.run('customName(customPresets)'),'커스텀 프리셋 4');
 });
+
+test('웹 견적: 시작 분대가 그룹 제한에 막히면 서버처럼 나눈 조각으로 장부를 채운다(5차 검토 9번)', () => {
+  const a = app();
+  const r = a.run(`(()=>{const c={squad:{s1:0,s2:0,s3:0,s4:0,s5:100},groupCap:{on:true,scope:'raid',over:'split',rules:[{size:2,cmp:'ge',count:0},{size:1,cmp:'eq',count:16}]}};
+    const gc=raidGroupCap(c);startLedger(c,16,gc,7);const full=!gc.can(1);
+    const d={...c,groupCap:{...c.groupCap,over:'drop'}},gd=raidGroupCap(d);startLedger(d,16,gd,7);return JSON.stringify([full,gd.can(1)]);})()`);
+  assert.equal(r, '[true,true]'); // split: 1인 16개를 다 씀 / drop: 버려서 1인 자리가 남음
+});
+

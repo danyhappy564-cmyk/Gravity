@@ -237,7 +237,7 @@ body.easy .adv{display:none!important}
   main,.savebar{margin-left:0}main{padding:20px 16px 50px}.g2,.g3{grid-template-columns:1fr}.tool span{display:none}
   .zone{grid-template-columns:auto 1fr 110px 48px}.zone .pill{display:none}
 }
-@media(max-width:560px){.appbar{gap:8px;padding:0 12px}.tools{gap:6px}.seg button{padding:5px 7px}.stat{grid-template-columns:1fr}.savebar ul{columns:1}}
+@media(max-width:560px){:root{--appbar:96px}.appbar{gap:8px;padding:0 12px}.brand-text,.mock{display:none}.tools{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px;justify-items:end}.tool,.tool select{width:100%;min-width:0}.seg button{padding:5px 7px}.stat{grid-template-columns:1fr}.savebar ul{columns:1}}
 </style>
 <style>
 /* v003 additions */
@@ -399,7 +399,7 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
 .bls-g .grp{font-weight:600;min-width:110px}
 .iname .pill.warn{font-size:10.5px;margin-left:6px;vertical-align:middle}
 .tedit{display:grid;grid-template-columns:260px minmax(0,1fr);gap:22px}
-.tedit-main{min-width:0}
+.tedit-main{min-width:0;container-type:inline-size}
 .bpanel{display:flex;flex-direction:column;gap:12px;border-right:1px solid var(--line);padding-right:16px;max-height:calc(100vh - 150px);overflow:auto;position:sticky;top:76px;align-self:start}
 .card.tfull .bpanel{max-height:calc(100vh - 120px);top:0}
 .bg-h{display:flex;align-items:center;gap:6px;margin-bottom:2px}
@@ -423,6 +423,8 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
 @media(max-width:1000px){.tedit{grid-template-columns:1fr}.bpanel{border-right:0;padding-right:0;max-height:none;position:static}}
 
 .iname{min-width:0;overflow:hidden}.iname small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 티어 편집기 본문이 좁으면(창 폭과 무관, 1.0 점검: 1024px 창에서 줄이 넘쳐 페이지가 가로로 밀림) 아이템 줄을 접는다 */
+@container (max-width:720px){.irow{display:flex;flex-wrap:wrap}.irow .iname{flex:1 1 100%}.slot-h .sw-row{flex-wrap:wrap}}
 @media(max-width:900px){.tlay{grid-template-columns:1fr}.tnav{flex-direction:row;flex-wrap:wrap;border-right:0;padding-right:0}.irow{display:flex;flex-wrap:wrap}.irow .iname{flex:1 1 100%}}
 
 </style>
@@ -874,6 +876,8 @@ function raidGroupCap(c){const g=c.groupCap||{},rules=g.on&&g.scope==='raid'?(g.
   const split=want=>{if(!rules.length||g.over!=='split')return[];const save={...used},res=[];let left=want;while(left>0){let k=Math.min(left,5);while(k>=1&&!can(k))k--;if(!k)break;use(k);res.push(k);left-=k;}
     Object.keys(used).forEach(k=>delete used[k]);Object.assign(used,save);return res;};
   return{can,use,split};}
+/** 시작 PMC 분대를 레이드 전체 그룹 장부에 먼저 넣는다(서버 시작 계획과 같은 규칙: 막히면 split은 나눈 조각을, drop은 버림. 5차 검토 9번). */
+function startLedger(c,start,gc,sd){let left=start;for(const k of squadList(c,400,sd)){if(left<=0)break;const w=Math.min(k,left);if(gc.can(w))gc.use(w);else gc.split(w).forEach(q=>gc.use(q));left-=w;}}
 function estimate(m){
   if(!state.modules.spawn)return null;const c=cfgFor(m),p=plan(m,c),raid=p.raid,cap=capOf(m.id);
   let pmin=p.start+p.waves.reduce((a,w)=>a+w.min,0),pmax=p.start+p.waves.reduce((a,w)=>a+w.max,0);
@@ -892,7 +896,7 @@ function estimate(m){
   if(!blocked&&c.style==='infinite'&&c.scavStyle==='waves'){
     const step=Math.max(10,c.inf.delay)/60,pmcOk=!(m.id==='labyrinth'&&!c.allowPmcLabyrinth),pmcFrom=Math.min(p.end,c.firstDelay/60);
     const list=squadList(c,Math.min(200,Math.max(1,Math.ceil(raid*60/Math.max(1,c.inf.delay)))),seed*53+MAPS.indexOf(m)),gc=raidGroupCap(c);
-    let left=p.start;for(const k of squadList(c,400,seed*59+MAPS.indexOf(m))){if(left<=0)break;const w=Math.min(k,left);if(gc.can(w))gc.use(w);left-=w;}
+    startLedger(c,p.start,gc,seed*59+MAPS.indexOf(m));
     let acc=0,i=0,scavTurns=0;
     for(let t=Math.min(sd,pmcFrom),n=0;t<stop&&n<5000;t+=step,n++){
       let pmc=false;
