@@ -17,7 +17,8 @@ namespace Gravity.Core;
 [Injectable(TypePriority = OnLoadOrder.PostLoad + 1)]
 public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
-    PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json) : IOnLoad
+    PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json,
+    TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -53,6 +54,29 @@ public class GravityLoader(
         if (sptData == null) logger.Warning($"{GravityInfo.Tag} SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다");
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();
+
+        // 0.5 장비: 아이템 정보·자동 티어(읽기만)와 봇 생성 패치. APBS가 있으면 패치는 켜 두되 매번 손대지 않는다(GearRuntime.Active).
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var vanilla = Gravity.Gear.GearItemsBuilder.VanillaIds(sptData);
+            Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla);
+            Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
+            Gravity.Gear.GearRuntime.Activity = activity;
+            Gravity.Gear.GearRuntime.Locale = lang => locales.GetLocaleDb(lang);
+            new Gravity.Gear.GearLevelPatch().Enable();
+            new Gravity.Gear.GearFilterPatch().Enable();
+            new Gravity.Gear.GearPlatePatch().Enable();
+            new Gravity.Gear.GearBotPatch().Enable();
+            new Gravity.Gear.GearDynamicModPatch().Enable();
+            new Gravity.Gear.GearDynamicGearPatch().Enable();
+            new Gravity.Gear.GearLootPatch().Enable();
+            new Gravity.Gear.GearUnheardPatch().Enable();
+            var gi = Gravity.Gear.GearRuntime.Items;
+            logger.Info($"{GravityInfo.Tag} 장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}"
+                + (vanilla == null ? " (SPT 원본 목록 없음: 모드 구분 끔)" : "") + $", {sw.ElapsedMilliseconds}ms" + (detect.GearLocked ? " / APBS 감지로 장비 모듈 잠금" : ""));
+        }
+        catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} 장비 모듈 준비 실패, 장비는 SPT 기본: {ex.Message}"); }
 
         logger.Info($"{GravityInfo.Tag} {GravityInfo.Version} 로드: 맵 {catalog.All.Count}개, 설정 {(store.RawState == null ? "기본값" : "저장본")}, 웹 /gravity/");
         var found = new List<string>();

@@ -82,8 +82,12 @@ public class GravityWeb : IHttpListener
                                 blackdiv = new { installed = rt.Detect.BlackDiv, maps = rt.Factions.BlackDivMaps },
                                 blackout = new { installed = rt.Factions.BlackoutChance != null, chance = rt.Factions.BlackoutChance, now = rt.Factions.BlackoutNow() },
                                 otherPmc = rt.LastOtherPmc, pmcSigMaps = rt.Factions.SptPmc.Count
-                            }
+                            },
+                            gear = GearBody(rt)
                         });
+                        return;
+                    case ("items", "GET"):
+                        await Send(res, 200, new { items = Gravity.Gear.GearRuntime.Search(req.Query["q"].ToString(), req.Query["cat"].ToString()) });
                         return;
                     case ("lastraid", "GET"):
                         await Send(res, 200, LastRaidBody(rt));
@@ -103,6 +107,23 @@ public class GravityWeb : IHttpListener
         {
             await Send(res, 500, new { error = ex.Message });
         }
+    }
+
+    /// <summary>`api/meta`의 gear 칸: 장비 모듈 상태·아이템 자료·이번 판 티어 분포.</summary>
+    internal static object GearBody(GravityRuntime rt)
+    {
+        var gi = Gravity.Gear.GearRuntime.Items;
+        var raid = Gravity.Gear.GearRuntime.Raid;
+        return new
+        {
+            active = Gravity.Gear.GearRuntime.Active() != null, locked = rt.Detect.GearLocked,
+            items = gi.Info.Count, slots = gi.SlotTier.Count,
+            mods = new { weapons = gi.ModWeapons.Count, equipment = gi.ModEquipment.Count, attachments = gi.ModAttachments.Count },
+            raid = new { subset = raid.Allowed != null, weapons = raid.Weapons, equipment = raid.Equipment, attachments = raid.Attachments },
+            dressed = Gravity.Gear.GearRuntime.Dressed,
+            tiers = Gravity.Gear.GearRuntime.Stats.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray()),
+            error = Gravity.Gear.GearRuntime.LastError
+        };
     }
 
     /// <summary>`api/meta`의 client 칸: 마지막 Hello 기준. 클라가 한 번도 안 왔으면 version은 null.</summary>

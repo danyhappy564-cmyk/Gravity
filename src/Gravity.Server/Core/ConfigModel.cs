@@ -69,12 +69,12 @@ public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
     IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
-    FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep")
+    FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null)
 {
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
 }
 
-public static class ConfigModel
+public static partial class ConfigModel
 {
     public static readonly string[] KnownMaps =
     [
@@ -277,11 +277,11 @@ public static class ConfigModel
 
         return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
             r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events,
-            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"));
+            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"), ParseGear(r));
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>
-    private sealed class Reader(JsonNode? root, List<string> clamped)
+    internal sealed class Reader(JsonNode? root, List<string> clamped)
     {
         public JsonNode? Node(string path)
         {

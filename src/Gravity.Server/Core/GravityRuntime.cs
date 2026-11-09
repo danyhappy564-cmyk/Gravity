@@ -76,12 +76,14 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         {
             var cfg = Store.Current;
             LastClientSettings.TryRemove(id, out _);
+            // 장비는 스폰 모듈과 따로: 스폰이 잠기거나 꺼진 판에도 이번 판 모드 아이템 묶음을 새로 고른다.
+            var gearNote = PrepareGear(seed ?? Random.Shared.Next(1, int.MaxValue));
             var abpsClient = Sessions.AbpsClient(sessionId);
             if (!cfg.SpawnModule || Detect.SpawnLocked || abpsClient)
-                return Skip(id, Detect.SpawnLocked || abpsClient ? "ABPS 감지로 잠김" : "스폰 모듈 꺼짐");
+                return Skip(id, Detect.SpawnLocked || abpsClient ? "ABPS 감지로 잠김" : "스폰 모듈 꺼짐", gearNote);
             var hasClient = Sessions.HasClient(sessionId);
-            if (!Catalog.TryGet(id, out var info)) return Skip(id, "모르는 맵(커스텀 맵은 건드리지 않음)");
-            if (!cfg.MapFor(id).Original) return Skip(id, "이 맵은 Gravity 적용 꺼짐");
+            if (!Catalog.TryGet(id, out var info)) return Skip(id, "모르는 맵(커스텀 맵은 건드리지 않음)", gearNote);
+            if (!cfg.MapFor(id).Original) return Skip(id, "이 맵은 Gravity 적용 꺼짐", gearNote);
             if (BotCfg != null) BotCfg.ChanceAssaultScavHasPlayerScavName = (int)Math.Round(cfg.Spawn.Scav.PscavChance);
 
             // 복제본의 EscapeTimeLimit(분)는 SVM·스캐브 단축까지 반영된 "남은" 길이다.
@@ -118,7 +120,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv);
             var summary = plan.Summary + (pmcWhy != null ? $" / PMC 항목 안 넣음({pmcWhy})" : "") + scavNote
                 + (otherPmc > 0 ? $" / 다른 모드 PMC 항목 {otherPmc}개 유지" : "")
-                + (facNote != null ? " / " + facNote : "") + (evNote != null ? " / " + evNote : "");
+                + (facNote != null ? " / " + facNote : "") + (evNote != null ? " / " + evNote : "") + (gearNote != null ? " / " + gearNote : "");
             Last = new LastRaid(DateTime.Now, summary, plan, null);
             info_($"{GravityInfo.Tag} {summary}");
             return true;
@@ -142,9 +144,19 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
 
     private void info_(string m) => info(m);
 
-    private bool Skip(string id, string why)
+    /// <summary>장비 모듈이 켜져 있으면 이번 판 상태(모드 아이템 묶음·통계)를 새로 만든다. 요약 한 줄 또는 null.</summary>
+    private static string? PrepareGear(int seed)
     {
-        Last = new LastRaid(DateTime.Now, $"{id}: 적용 안 함({why})", null, why);
+        if (Gravity.Gear.GearRuntime.Active() is not { } gear) return null;
+        Gravity.Gear.GearRuntime.NewRaid(gear, seed);
+        var gr = Gravity.Gear.GearRuntime.Raid;
+        return gr.Allowed != null ? $"장비: 모드 아이템 무기 {gr.Weapons}·장비 {gr.Equipment}·부품 {gr.Attachments}" : "장비: Gravity";
+    }
+
+    private bool Skip(string id, string why, string? gearNote = null)
+    {
+        if (gearNote != null) info($"{GravityInfo.Tag} {id}: 스폰 적용 안 함({why}) / {gearNote}");
+        Last = new LastRaid(DateTime.Now, $"{id}: 적용 안 함({why})" + (gearNote != null ? " / " + gearNote : ""), null, why);
         return false;
     }
 }
