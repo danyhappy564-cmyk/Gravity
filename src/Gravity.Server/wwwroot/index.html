@@ -48,8 +48,10 @@ select:focus{border-color:var(--primary)}
 .preset-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}@media(max-width:900px){.preset-pair{grid-template-columns:1fr}}.pp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px;margin:0 0 10px}.pp-head h3{margin:0;font-size:14px}.pp-head select{width:auto;min-width:140px}.ps-h{font-size:14px;margin:10px 0 2px;color:#cfdcf5}
 .plate-list{display:grid;gap:8px;margin:6px 0 12px}.plate-box>summary{cursor:pointer;font-size:12.5px;color:#cfdcf5;padding:6px 0}.plate-box .modlist{max-height:220px}
 .modrow>span:first-child{flex:1;min-width:0}.modsrc{width:100%;background:none;border:0;border-top:1px solid #1b2330;color:inherit;text-align:left;cursor:pointer}.modsrc .ck{color:var(--primary);width:16px}.modsrc.off{opacity:.55}.modsrc>span:nth-child(2){flex:1}input[type=search]{background:#0c1119;border:1px solid var(--line-2);border-radius:7px;padding:6px 9px;outline:none;width:100%;color:inherit}
-.card.preset.credited{border-color:#e7c46a;box-shadow:0 0 0 1px rgba(231,196,106,.55) inset}
-.credit{color:#e7b7c8;margin-top:6px}
+.card.preset.credited{border-color:#e7c46a;box-shadow:0 0 0 1px rgba(231,196,106,.55) inset;animation:goldGlow 2.6s ease-in-out infinite}
+@keyframes goldGlow{0%,100%{border-color:#c9a24a;box-shadow:0 0 0 1px rgba(231,196,106,.45) inset,0 0 6px rgba(231,196,106,.18)}50%{border-color:#ffe08a;box-shadow:0 0 0 1px rgba(255,224,138,.9) inset,0 0 18px rgba(255,214,110,.55)}}
+@media (prefers-reduced-motion:reduce){.card.preset.credited{animation:none}}
+.credit{color:#e7b7c8;margin-top:6px;white-space:pre-line}
 /* 아이템 티어 · 티어 요약 */
 .how summary h2{font-size:14px;margin:0}.howgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.howgrid>div{background:#0c1119;border:1px solid var(--line-2);border-radius:9px;padding:10px 12px}.howgrid p{margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--muted,#9aa6b8)}
 .chipbtn{background:#0c1119;border:1px solid var(--line-2);border-radius:999px;padding:4px 10px;color:inherit;cursor:pointer;font-size:12.5px}.chipbtn.on{border-color:var(--primary);background:rgba(90,140,255,.16)}.chipbtn small{opacity:.65;margin-left:3px}
@@ -1563,7 +1565,7 @@ P.presets={desc:T('레이드·장비·시스템 설정 전체를 파일 하나�
 const TIER_PRESETS=[
  {id:'auto',name:T('Gravity 자동','Gravity auto'),desc:T('설치된 바닐라·모드 아이템으로 Gravity가 직접 깎은 기본 구성.','Built by Gravity from your installed vanilla + mod items.'),f:t=>t},
  {id:'apbs-realistic',name:T('Realistic and Extended PMC Loadouts','Realistic and Extended PMC Loadouts'),desc:T('APBS 에드온 "Realistic and Extended PMC Loadouts Preset"의 티어별 무기·방어구·탄·확률을 고치지 않고 그대로 옮긴 프리셋입니다. 모드 아이템은 넣지 않고, 원작 목록에 없는 무기·방어구는 쓰지 않습니다.','The APBS add-on "Realistic and Extended PMC Loadouts Preset" carried over unchanged: weapons, armor, ammo and chances per tier. No mod items; anything not in the original lists is left out.'),f:t=>t,file:'presets/apbs-realistic-mip01.json',
-  credit:T('제작: mip01. mip01님이 원작 프리셋 제작자의 허락을 받아 만든 에드온입니다. 좋은 프리셋을 만들어 주셔서 감사합니다.','By mip01. Made by mip01 with permission from the original preset author. Thank you for the great preset.'),
+  credit:T('제작: mip01. \n\nmip01 by. jsjsj님이 원작 프리셋 제작자의 허락을 받아 만든 에드온입니다. 좋은 프리셋을 만들어 주셔서 감사합니다. ^^7','By mip01. \n\nmip01 by. jsjsj — made with permission from the original preset author. Thank you for the great preset. ^^7'),
   chips:[T('레벨 T1 1–10 … T7 61–100','Levels T1 1–10 … T7 61–100'),T('판 T1 3–4 · T7 4–6','Plates T1 3–4 · T7 4–6'),T('탄: 원작 탄 목록','Ammo: original lists'),T('모드 아이템 0','Mod items 0')]}
 ];
 let customTierPresets=[];
