@@ -592,3 +592,18 @@ test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
   a.run("state.specials.raiders.extra.rezervbase=30");
   assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[1]).join()"),'원본,+30%');
 });
+test('1.0 기본 프리셋은 잠기고 값을 바꾸면 커스텀 프리셋 N이 생깁니다', () => {
+  const a = app();
+  a.run("state.preset='default';customPresets=[];writeSetting('spawn.interval',5)");
+  assert.equal(a.run('customPresets.length'), 1);
+  assert.equal(a.run('customPresets[0].name'), '커스텀 프리셋 1');
+  assert.equal(a.run('state.preset'), a.run('customPresets[0].id'));
+  a.run("writeSetting('spawn.interval',6)");
+  assert.equal(a.run('customPresets.length'), 1);
+  assert.equal(a.run("JSON.stringify(PRESETS.find(p=>p.id==='default').patch)"), '{}');
+  a.run("applyPreset('live');writeSetting('spawn.interval',7)");
+  assert.equal(a.run('customPresets[1].name'), '커스텀 프리셋 2');
+  a.run("customTierPresets=[];state.tierPreset='auto';writeSetting('gear.itemTier.abc',3)");
+  assert.equal(a.run('customTierPresets.length'), 1);
+  assert.equal(a.run('state.tierPreset'), a.run('customTierPresets[0].id'));
+});

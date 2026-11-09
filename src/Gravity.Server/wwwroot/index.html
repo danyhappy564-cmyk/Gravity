@@ -1536,7 +1536,7 @@ function importFullJson(text){let j;try{j=JSON.parse(text);}catch{toast(tr(T('JS
   if(!PRESETS.some(p=>p.id===state.preset)&&!customPresets.some(p=>p.id===state.preset))state.preset='default';
   if(!TIER_PRESETS.some(p=>p.id===state.tierPreset)&&!customTierPresets.some(p=>p.id===state.tierPreset))state.tierPreset='edited';
   toast(fmt(tr(T('"{p}" 백업을 불러왔습니다','Loaded backup "{p}"')),{p:String(j.name||'')}));rerender();}
-function markEdited(){if(!customTierPresets.some(x=>x.id===state.tierPreset))state.tierPreset='edited';}
+function markEdited(){if(customTierPresets.some(x=>x.id===state.tierPreset))return;const id='t'+Date.now().toString(36),name=customName(customTierPresets);customTierPresets.push({id,name,tiers:clone(state.gear.tiers),data:clone(state.tierData),gearSnap:pickKeys(state,GEAR_KEYS)});state.tierPreset=id;toast(fmt(tr(T('기본 장비 프리셋은 그대로 두고 "{n}"을(를) 만들어 저장합니다','Built-in kept; saving to new "{n}"')),{n:name}));}
 function copyTierTo(dst,dstT){const srcT=dragTier!=null?dragTier:tierSel,srcKey=tBot,src=clone(state.tierData[srcKey][srcT]);let made=false;
   if(!isGroup(dst)&&!state.tierOwn[dst]){state.tierData[dst]=clone(state.tierData[grpOf(dst)]);state.tierOwn[dst]=true;made=true;}
   if(dst===srcKey&&dstT===srcT){toast(tr(T('같은 자리라 복사하지 않았습니다','Same place — nothing copied')));return;}
@@ -1727,9 +1727,9 @@ function renderShell(){
   document.documentElement.lang=lang;document.querySelectorAll('[data-k]').forEach(el=>el.textContent=u(el.dataset.k));
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
   document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.lang===lang));
-  $('#presetSel').innerHTML=PRESETS.map(p=>`<option value="${p.id}">${tr(p.name)}</option>`).join('')+customPresets.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  $('#presetSel').innerHTML=`<optgroup label="${tr(T('기본 제공 (잠금)','Built-in (locked)'))}">`+PRESETS.map(p=>`<option value="${p.id}">${tr(p.name)} · ${tr(T('잠금','locked'))}</option>`).join('')+'</optgroup>'+(customPresets.length?`<optgroup label="${tr(T('내 프리셋','My presets'))}">`+customPresets.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')+'</optgroup>':'');
   $('#presetSel').value=state.preset;
-  $('#gearPresetSel').innerHTML=TIER_PRESETS.map(p=>`<option value="${p.id}">${tr(p.name)}</option>`).join('')+customTierPresets.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')+(state.tierPreset==='edited'?`<option value="edited">${tr(T('수정됨 (저장 안 함)','Edited (unsaved)'))}</option>`:'');
+  $('#gearPresetSel').innerHTML=`<optgroup label="${tr(T('기본 제공 (잠금)','Built-in (locked)'))}">`+TIER_PRESETS.map(p=>`<option value="${p.id}">${tr(p.name)}</option>`).join('')+'</optgroup>'+(customTierPresets.length?`<optgroup label="${tr(T('내 프리셋','My presets'))}">`+customTierPresets.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')+'</optgroup>':'')+(state.tierPreset==='edited'?`<option value="edited">${tr(T('수정됨 (저장 안 함)','Edited (unsaved)'))}</option>`:'');
   $('#gearPresetSel').value=state.tierPreset;document.body.classList.toggle('easy',mode==='easy');renderNav();
 }
 function render(){
@@ -1750,7 +1750,18 @@ let toastT;function toast(msg){clearTimeout(toastT);const t=$('#toast');t.textCo
 
 /* ================= events ================= */
 const readVal=el=>el.dataset.t==='b'?el.checked:el.dataset.t==='n'?Number(el.value):el.value;
-function writeSetting(p,v,auto=false){
+function writeSetting(p,v,auto=false){const ok=writeSettingRaw(p,v,auto);if(ok)presetTouched(p);return ok;}
+let presetTimer=0;
+const customName=list=>{const used=new Set(list.map(x=>x.name));for(let n=1;;n++){const nm=tr(T('커스텀 프리셋 ','Custom preset '))+n;if(!used.has(nm))return nm;}};
+/* 기본 제공 프리셋은 원본을 바꾸지 않는다: 값을 바꾸면 '커스텀 프리셋 N'을 만들어 고르고, 내 프리셋이면 그 프리셋에 반영한다. */
+function presetTouched(p){
+  const k=p.split('.')[0];
+  if(RAID_KEYS.includes(k)){
+    if(!customPresets.some(x=>x.id===state.preset)){const id='c'+Date.now().toString(36),name=customName(customPresets);customPresets.push({id,name,snap:pickKeys(state,RAID_KEYS)});state.preset=id;toast(fmt(tr(T('기본 프리셋은 그대로 두고 "{n}"을(를) 만들어 저장합니다','Built-in kept; saving to new "{n}"')),{n:name}));}
+  }else if(GEAR_KEYS.includes(k)||k==='tierData'||k==='tierOwn')markEdited();else return;
+  clearTimeout(presetTimer);presetTimer=setTimeout(()=>{const c=customPresets.find(x=>x.id===state.preset);if(c)c.snap=pickKeys(state,RAID_KEYS);const t=customTierPresets.find(x=>x.id===state.tierPreset);if(t){t.tiers=clone(state.gear.tiers);t.data=clone(state.tierData);t.gearSnap=pickKeys(state,GEAR_KEYS);}if(typeof libSync==='function')libSync();renderShell();},300);
+}
+function writeSettingRaw(p,v,auto=false){
   const k=p.split('.');
   if(k[0]!=='maps'){putPath(state,p,v);return true;}
   const mid=k[1],suffix=k.slice(2).join('.'),targets=[mid,...(isSpawnMap()&&mid===mapSel&&!['zones','zonesAlt'].includes(k[2])?batch:[])];
@@ -1833,7 +1844,7 @@ document.addEventListener('click',e=>{
   if(d.pick!=null){pickOpen=d.pick;pq='';rerender();if(pickOpen){const n=$('#pq');if(n)n.focus({preventScroll:true});}return;}
   if(d.psrc){pickSrc=d.psrc;rerender();return;}
   if(d.ptier){if(d.ptier==='all')pickTiers=[0,1,2,3,4,5,6];else{const i=+d.ptier,a=pickTiers?[...pickTiers]:[tierSel],j=a.indexOf(i);if(j>=0){if(a.length>1)a.splice(j,1);}else a.push(i);pickTiers=a.sort((x,y)=>x-y);}rerender();return;}
-  if(d.padd){const[sec,slot,id]=d.padd.split('|');let done=[];if(sec==='attach'){const o=attFor(tBot,tierSel,atWeapon).slots[slot].items;if(!(id in o)){o[id]=wDefault(findAtt(slot,id),tierSel);done=[tierSel];}}else{const it=findItem(sec,slot,id);(pickTiers||[tierSel]).forEach(ti=>{const o=state.tierData[tBot][ti][sec][slot];if(!(id in o)){o[id]=wDefault(it,ti);done.push(ti);}});}const it=sec==='attach'?findAtt(slot,id):findItem(sec,slot,id);toast(fmt(tr(T('{a}을(를) {t}에 넣었습니다','Added {a} to {t}')),{a:tr(it.name),t:done.map(i=>'T'+(i+1)).join(', ')}));if(state.tierPreset==='auto')state.tierPreset='edited';rerender();return;}
+  if(d.padd){const[sec,slot,id]=d.padd.split('|');let done=[];if(sec==='attach'){const o=attFor(tBot,tierSel,atWeapon).slots[slot].items;if(!(id in o)){o[id]=wDefault(findAtt(slot,id),tierSel);done=[tierSel];}}else{const it=findItem(sec,slot,id);(pickTiers||[tierSel]).forEach(ti=>{const o=state.tierData[tBot][ti][sec][slot];if(!(id in o)){o[id]=wDefault(it,ti);done.push(ti);}});}const it=sec==='attach'?findAtt(slot,id):findItem(sec,slot,id);toast(fmt(tr(T('{a}을(를) {t}에 넣었습니다','Added {a} to {t}')),{a:tr(it.name),t:done.map(i=>'T'+(i+1)).join(', ')}));markEdited();rerender();return;}
   if(d.sp){const[op,id]=d.sp.split('|');spAct(op,id);return;}
   if(d.cscope){tCopyScope=d.cscope;rerender();return;}
   if(d.blopen!=null){blOpen=blOpen===+d.blopen?-1:+d.blopen;rerender();return;}
