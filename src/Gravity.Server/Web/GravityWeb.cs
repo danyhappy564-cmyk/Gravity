@@ -15,9 +15,9 @@ namespace Gravity.Web;
 public class GravityWeb : IHttpListener
 {
     private const string Prefix = "/gravity";
-    private const int MaxBody = 2 * 1024 * 1024;
+    private const int MaxBody = 16 * 1024 * 1024; // 원작 에드온 프리셋 적용 상태가 약 2.8MB(봇 27종 × 7티어 표)
     /// <summary>내 프리셋 목록(장비 프리셋은 티어 표를 통째로 담아 커서 따로, Codex 0.6 지적 7).</summary>
-    private const int MaxLibrary = 16 * 1024 * 1024;
+    private const int MaxLibrary = 64 * 1024 * 1024; // 원작 프리셋을 바탕으로 만든 내 장비 프리셋 하나가 약 3MB
 
     /// <summary>본문을 최대 max바이트까지만 읽어 JSON으로. 넘으면 InvalidDataException(Content-Length 없는 요청도 막음).</summary>
     internal static async Task<JsonNode?> ReadJson(HttpRequest req, int max, CancellationToken ct)
