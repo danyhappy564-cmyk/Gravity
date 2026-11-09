@@ -933,8 +933,8 @@ P.flow={desc:T('모든 맵에 적용되는 기본 흐름입니다. 맵별 설정
       ['hotspot','✸',T('핫스팟 위주','Hotspots'),T('맵별 구역 가중치를 따라 교전 지역에 몰립니다.','Weighted toward hot zones.')],
       ['mixed','◐',T('섞기','Mixed'),T('바닐라와 핫스팟을 비율로 섞습니다.','Blend both.')]])
     +slider(s+'hotspotShare',T('핫스팟 비중','Hotspot share'),'',{dis:state.spawn.placement!=='mixed'})
-    +sw(s+'hotspotBoost',T('핫스팟 부스트','Hotspot boost'),T('핫스팟에서 나올 때 인원을 한 단계 늘립니다.','Hotspot spawns get +1 group size step.'),{adv:true,dis:!mixed})
-    +sw(s+'hotspotIgnoreCap',T('핫스팟은 동시 상한 무시','Hotspots ignore cap'),T('켜면 프레임이 떨어질 수 있습니다.','May cost frames.'),{adv:true,dis:!mixed})
+    +sw(s+'hotspotBoost',T('핫스팟 부스트','Hotspot boost'),T('핫스팟에서 나올 때 인원을 한 단계 늘립니다. 아직 효과가 없습니다(1.0 이후).','Hotspot spawns get +1 group size step. No effect yet (after 1.0).'),{adv:true,dis:!mixed})
+    +sw(s+'hotspotIgnoreCap',T('핫스팟은 동시 상한 무시','Hotspots ignore cap'),T('켜면 프레임이 떨어질 수 있습니다. 아직 효과가 없습니다(1.0 이후).','May cost frames. No effect yet (after 1.0).'),{adv:true,dis:!mixed})
     +sw(s+'protect.on',T('시작 직후 보호','Start protection'),T('레이드 시작 직후 플레이어 근처에 봇이 나오지 않게 합니다.','No bots near you right after start.'))
     +slider(s+'protect.sec',T('보호 시간','Protection time'),'',{min:0,max:300,step:10,unit:UI.sec,dis:!state.spawn.protect.on})
     +slider(s+'protect.radius',T('금지 반경','No-spawn radius'),'',{min:30,max:300,step:10,unit:UI.m,adv:true,dis:!state.spawn.protect.on})
@@ -975,8 +975,8 @@ P.flow={desc:T('모든 맵에 적용되는 기본 흐름입니다. 맵별 설정
     +slider(s+'scav.refill',T('보충 확인 주기','Refill check'),'',{min:15,max:300,step:5,unit:UI.sec,adv:true})
     +slider(s+'scav.pending',T('대기 봇이 이만큼 쌓이면 스폰','Spawn when this many pending'),'',{min:1,max:8,unit:UI.ppl,adv:true})
     +slider(s+'scav.perPlayer',T('플레이어당 스캐브 한도','Scavs per player'),T('플레이어 한 명당 살아 있을 수 있는 스캐브 수. 스캐브에만 적용됩니다.','Max alive scavs per player. Scavs only.'),{min:0,max:100,unit:UI.ppl,adv:true})
-    +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),T('다음 판에서 쓰입니다. 지금은 효과가 없습니다.','Used next version. No effect yet.'),{adv:true})
-    +slider(s+'scav.playerScavRemain',T('스캐브 레이드 때 남는 봇','Bots left for scav raids'),T('다음 판(0.5)에서 쓰입니다.','Used in 0.5.'),{adv:true})
+    +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),T('SPT 스캐브 봇이 플레이어 스캐브 이름을 받을 확률입니다.','Chance an SPT scav bot gets a player-scav name.'),{adv:true})
+    +slider(s+'scav.playerScavRemain',T('스캐브 레이드 때 남는 봇','Bots left for scav raids'),T('스캐브로 들어갈 때 Gravity PMC 무리 중 남길 비율입니다.','Share of Gravity PMC groups kept when you enter as a scav.'),{adv:true})
     +slider(s+'maxRespawn.scav',T('스캐브 최대 리스폰 (0 = 제한 없음)','Max scav respawns (0 = none)'),'',{min:0,max:200,step:5,unit:'',adv:true})
     +sw(s+'scav.startMarksman',T('시작 저격 스캐브','Starting marksmen'),'',{adv:true})
     +sw(s+'allowScavLab',T('연구소에도 스캐브','Scavs on the Lab'),T('켜야 클라가 연구소 스캐브를 맡습니다. 끄면 연구소에서는 무한 보충 PMC도 돌지 않습니다.','The client manages Lab scavs only when on. When off, endless PMC refill does not run on the Lab either.'),{adv:true}),{icon:'☗'})}
@@ -1087,9 +1087,9 @@ P.factions={desc:T('RUAF·UNTAR·블랙 디비전처럼 봇을 추가하는 모�
 
 P.events={desc:T('SPT 시즌 이벤트(할로윈·크리스마스 등)를 켜고 끄고, 이벤트 봇 스폰을 정합니다.','Turn SPT seasonal events on/off and set event bot spawns.'),render(){
   const ev=state.events,m3=[['auto',T('날짜 따라 자동','By date')],['on',T('항상 켜기','Always on')],['off',T('끄기','Off')]];
-  const extOwn=['auto','ppes','svm'].includes(state.eventsOwner);const cardE=(id,title,ic,body)=>card(title,seg('events.'+id+'.mode',T('켜는 방식','Mode'),extOwn?T('담당 모드가 정합니다.','Set by the owner mod.'):'',m3,{dis:extOwn})+body,{icon:ic,right:pill(ev[id].mode==='off'?u('off'):ev[id].mode==='on'?tr(T('강제','Forced')):tr(T('자동','Auto')),ev[id].mode==='off'?'':'gold')});
-  const own=state.eventsOwner,ext=own==='auto'||own==='ppes'||own==='svm',ownName={auto:'PastPresentEventSelector',ppes:'PastPresentEventSelector',svm:'SVM',gravity:'Gravity',spt:'SPT'}[own];
-  return `<div class="stack">${card(T('이벤트 담당','Who runs events'),`<div class="kv" style="margin-bottom:12px"><div><b>✓</b><small>PastPresentEventSelector ${tr(T('감지','detected'))}</small></div><div><b>${SVM.on?'✓':'—'}</b><small>SVM · ${SVM.on?(SVM.disableEvents?tr(T('이벤트 감지 끔','detection off')):SVM.forceXmas||SVM.forceHallo?tr(T('이벤트 강제','forcing events')):tr(T('이벤트 안 건드림','events untouched'))):tr(T('없음','not found'))}</small></div><div><b>${ownName}</b><small>${tr(T('지금 이벤트를 켜고 끄는 모드','Currently controls events'))}</small></div><div><b>${ext?tr(T('스폰 수만','Spawn counts')):tr(T('전부','Everything'))}</b><small>${tr(T('Gravity가 정하는 범위','What Gravity controls'))}</small></div></div>`
+  const extOwn=['ppes','svm','spt'].includes(evOwn());const cardE=(id,title,ic,body)=>card(title,seg('events.'+id+'.mode',T('켜는 방식','Mode'),extOwn?T('담당 모드가 정합니다.','Set by the owner mod.'):'',m3,{dis:extOwn})+body,{icon:ic,right:pill(ev[id].mode==='off'?u('off'):ev[id].mode==='on'?tr(T('강제','Forced')):tr(T('자동','Auto')),ev[id].mode==='off'?'':'gold')});
+  const own=evOwn(),ext=own==='ppes'||own==='svm'||own==='spt',ownName={ppes:'PastPresentEventSelector',svm:'SVM',gravity:'Gravity',spt:'SPT'}[own];
+  return `<div class="stack">${card(T('이벤트 담당','Who runs events'),`<div class="kv" style="margin-bottom:12px"><div><b>${serverMeta&&serverMeta.detect&&serverMeta.detect.ppes?'✓':'—'}</b><small>PastPresentEventSelector ${tr(serverMeta&&serverMeta.detect&&serverMeta.detect.ppes?T('감지','detected'):T('없음','not found'))}</small></div><div><b>${SVM.on?'✓':'—'}</b><small>SVM · ${SVM.on?(SVM.disableEvents?tr(T('이벤트 감지 끔','detection off')):SVM.forceXmas||SVM.forceHallo?tr(T('이벤트 강제','forcing events')):tr(T('이벤트 안 건드림','events untouched'))):tr(T('없음','not found'))}</small></div><div><b>${ownName}</b><small>${tr(T('지금 이벤트를 켜고 끄는 모드','Currently controls events'))}</small></div><div><b>${ext?tr(T('스폰 수만','Spawn counts')):tr(T('전부','Everything'))}</b><small>${tr(T('Gravity가 정하는 범위','What Gravity controls'))}</small></div></div>`
      +seg('eventsOwner',T('이벤트 켜고 끄기 담당','Event on/off owner'),T('두 모드가 동시에 이벤트를 켜고 끄면 서로 덮어씁니다. 하나만 담당하게 하세요.','If two mods toggle events they overwrite each other. Pick one.'),[['auto',T('자동 (감지된 모드)','Auto (detected mod)')],['ppes',T('PastPresent','PastPresent')],['svm',T('SVM','SVM')],['gravity',T('Gravity','Gravity')],['spt',T('SPT 기본','SPT default')]])
      +(ext?notice(T('이벤트 켜기·끄기와 이벤트 종류는 담당 모드가 정합니다. 아래 칸은 이벤트가 켜졌을 때 Gravity가 넣는 봇 수와 확률만 정합니다. PastPresent의 좀비 웨이브를 쓰면 Gravity 감염자 확률은 꺼집니다.','The owner decides which events run. Below, Gravity only sets bot counts/chances while an event is active. If PastPresent zombie waves are on, Gravity infected chance is disabled.'),'flat'):notice(T('Gravity가 이벤트를 켜고 끕니다. SVM·PastPresent의 이벤트 설정은 무시됩니다.','Gravity toggles events; SVM/PastPresent event options are ignored.'),'warn'))+(SVM.on&&SVM.disableEvents?notice(T('SVM이 시즌 이벤트 감지를 꺼 두었습니다(SVM 설정 DisableEvents). 지금은 날짜가 되어도 할로윈·크리스마스가 자동으로 켜지지 않습니다. PastPresentEventSelector도 이벤트를 정하므로, 이벤트는 한 모드만 맡기는 것이 안전합니다.','SVM has seasonal event detection off (DisableEvents), so Halloween/Christmas will not start by date. PastPresentEventSelector also sets events — let only one mod own them.'),'warn'):''),{icon:'✷'})}
    ${sw('events.detect',T('SPT 시즌 이벤트 감지 사용','Use SPT seasonal event detection'),T('끄면 날짜와 상관없이 아래 "항상 켜기"만 적용됩니다.','Off = only "Always on" events apply.'),{dis:ext})}<div class="grid g2">
@@ -1671,7 +1671,7 @@ window.addEventListener('beforeunload',e=>{if(changes().length){e.preventDefault
 Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){console.error(k,err);}page=keep;});
 
 /* ================= 실제 서버 연결 (Gravity 0.1.0) ================= */
-const NOT_LIVE=new Set(['factions','events','tiers','tieredit','roles','weapons','items','blacklist','gearpresets','client','orbit','dev']);
+const NOT_LIVE=new Set(['factions','tiers','tieredit','roles','weapons','items','blacklist','gearpresets','client','orbit','dev']);
 const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap')};
 function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
 function clientCard(){
@@ -1707,19 +1707,22 @@ function liveBanner(pg){
   if(serverErr)return notice(T('서버에 연결하지 못했습니다: ','Cannot reach the server: ')[lang]+serverErr,'warn');
   let h='';
   if(serverWarn)h+=notice(T(serverWarn,serverWarn),'warn');
-  if(pg==='specials')h+=notice(T('레이더·로그·컬티스트·블러드하운드는 지금 적용됩니다(맵에 원래 있는 무리만). 저격 스캐브도 지금 적용됩니다(웨이브마다 맵 확률로 남김). 감염자는 다음 판(0.5)입니다.','Raiders, rogues, cultists and bloodhounds apply now (groups the map already has). Sniper scavs apply too (each wave kept by the map chance). Infected come in 0.5.'),'flat');
+  if(pg==='specials')h+=notice(T('레이더·로그·컬티스트·블러드하운드는 지금 적용됩니다(맵에 원래 있는 무리만). 저격 스캐브도 지금 적용됩니다(웨이브마다 맵 확률로 남김). 감염자는 할로윈 이벤트가 켜졌을 때 판마다 "감염 판" 확률로 적용됩니다(켜면 이 맵 확률, 끄면 이벤트 페이지의 좀비 확률). 감염자 인원 칸은 적용되지 않습니다(SPT가 감염 정도로 정함).','Raiders, rogues, cultists and bloodhounds apply now (groups the map already has). Sniper scavs apply too (each wave kept by the map chance). Infected apply during Halloween as a per-raid "infected raid" chance (the map chance when on, otherwise the Events zombie chance). Infected size is not applied.'),'flat');
   if(NOT_LIVE.has(pg))h+=notice(T('이 페이지는 아직 게임에 적용되지 않습니다(다음 판). 값은 저장되므로 미리 맞춰 둘 수 있습니다.','This page is not applied in game yet (next version). Values are saved for later.'),'flat');
-  if(pg==='bosses')h+=notice(T('이번 판에서는 보스 켜기·확률·나오는 맵 끄기만 적용됩니다. 태어날 구역·호위 수·새 맵 추가는 다음 판입니다.','This version applies boss on/off, chance and map off only.'),'flat');
+  if(pg==='events')h+=notice(T('이벤트 켜고 끄기·이벤트 장비·산타 사용·선물·겨울 옷은 서버를 다시 켜야 적용됩니다(SPT가 서버 시작 때 한 번 적용). 감염자·밤 컬티스트·산타 확률은 판마다 바로 적용됩니다.','Event on/off, event gear, Santa, gifts and winter outfits apply after a server restart (SPT applies events once at start). Infected, night cult and Santa chances apply every raid.'),'flat');
   if(pg==='flow'||pg==='maps'||pg==='dashboard'||pg==='near'){
     const c=serverMeta&&serverMeta.client,ok=!!(c&&c.version&&c.compatible);
     if(!ok)h+=notice(T('클라 플러그인 없음(또는 판 다름): 공장·미궁 PMC·스캐브·상한·근처 보충이 꺼져 있습니다.','Client plugin missing (or version differs): Factory/Labyrinth PMCs, scavs, bot cap and near-player refill are off.'),'warn');
-    if(pg==='near')h+=notice(T('"기본: PMC / 스캐브" 칸은 다음 판(0.5)에서 쓰입니다.','The "Default: PMC / Scav" option is used in 0.5.'),'flat');
-    else h+=notice(T('지금 게임에 적용: PMC 시작 인원·웨이브(시각·인원·분대 크기·진영·난이도), 그룹 개수 제한(레이드 전체 기준, 클라가 있으면 "동시에 살아 있는" 기준도), 맵별 방식(웨이브·무한 보충·시작만)·맵 끄기·PMC 구역, 스캐브(시작·활동 창·보충·소프트 캡·플레이어당 한도), 맵 동시 봇 상한, 근처 보충, 시작 보호·스폰 거리, 핫스팟 비중, 보스(확률·호위 수·등장 시간·난이도·구역·추가 스폰), 특수 봇 무리(레이더·로그·컬티스트·블러드하운드: 켜기·맵별 확률·인원), 무한 방식 맵의 보충 PMC(스캐브 관리를 끈 연구소 포함), 보스를 원래 없던 맵에 놓기, 저격 스캐브(켜기·맵 확률·인원). 다음 판(0.5): 감염자 무리, 이벤트, 팩션, 장비, 핫스팟 부스트·상한 무시, 스캐브 레이드 때 남는 봇, 늦게 오는 레이더. 플레이어 스캐브 섞일 확률은 이번 판에서 효과가 없습니다.','Applied now: PMC start/waves, group limits (also "alive at once" with the client), map styles, scavs (start, active windows, refill, soft cap, per-player limit), map bot cap, near-player refill, start protection and distances, hotspot share, bosses (chance, escorts, time, difficulty, zones, extra spawn), special groups (raiders, rogues, cultists, bloodhounds: on, per-map chance, size), refill PMCs on infinite maps (incl. Labs with scav management off), bosses on maps they normally skip, sniper scavs (on, per-map chance, size). Next (0.5): infected groups, events, factions, gear, hotspot boost and cap bypass, bots left for scav raids, late raiders. Player-scav chance has no effect yet.'),'flat');
+    if(pg==='near')h+=notice(T('"기본: PMC / 스캐브"를 끄고 직접 고르기를 켜면 모든 자리가 직접 고른 종류로 나옵니다. 둘 다 끄면 기본을 씁니다.','With "Default" off and custom types on, every slot uses the custom types. If both are off, default is used.'),'flat');
+    else h+=notice(T('지금 게임에 적용: PMC 시작 인원·웨이브(시각·인원·분대 크기·진영·난이도), 그룹 개수 제한(레이드 전체 기준, 클라가 있으면 "동시에 살아 있는" 기준도), 맵별 방식(웨이브·무한 보충·시작만)·맵 끄기·PMC 구역, 스캐브(시작·활동 창·보충·소프트 캡·플레이어당 한도), 맵 동시 봇 상한, 근처 보충, 시작 보호·스폰 거리, 핫스팟 비중, 보스(확률·호위 수·등장 시간·난이도·구역·추가 스폰), 특수 봇 무리(레이더·로그·컬티스트·블러드하운드: 켜기·맵별 확률·인원), 무한 방식 맵의 보충 PMC(스캐브 관리를 끈 연구소 포함), 보스를 원래 없던 맵에 놓기, 저격 스캐브(켜기·맵 확률·인원). 시즌 이벤트(켜고 끄기는 서버 재시작 후)·감염자·밤 컬티스트·산타 확률, 스캐브 레이드 때 남는 PMC, 플레이어 스캐브 이름 확률. 다음 판: 팩션(0.4), 장비(0.5). 1.0 이후: 핫스팟 부스트·상한 무시.','Applied now: PMC start/waves, group limits (also "alive at once" with the client), map styles, scavs (start, active windows, refill, soft cap, per-player limit), map bot cap, near-player refill, start protection and distances, hotspot share, bosses (chance, escorts, time, difficulty, zones, extra spawn), special groups (raiders, rogues, cultists, bloodhounds: on, per-map chance, size), refill PMCs on infinite maps (incl. Labs with scav management off), bosses on maps they normally skip, sniper scavs (on, per-map chance, size). seasonal events (on/off after a server restart), infected, night cult and Santa chances, PMCs left for scav raids, player-scav name chance. Next: factions (0.4), gear (0.5). After 1.0: hotspot boost and cap bypass.'),'flat');
   }
   return h;
 }
+var EVMETA=null;
+function evOwn(){return state.eventsOwner!=='auto'?state.eventsOwner:(EVMETA&&EVMETA.owner)||(serverMeta&&serverMeta.detect&&serverMeta.detect.ppes?'ppes':SVM.on&&(SVM.disableEvents||SVM.forceXmas||SVM.forceHallo)?'svm':'gravity');}
 function applyMeta(meta){
-  serverMeta=meta;
+  serverMeta=meta;EVMETA=meta.events||null;
+  if(EVMETA){const sv=EVMETA.svm;SVM.disableEvents=!!(sv&&sv.disableEvents);SVM.forceXmas=!!(sv&&sv.christmas);SVM.forceHallo=!!(sv&&sv.halloween);}
   abpsDemo=!!(meta.locked&&meta.locked.spawn);apbsDemo=!!(meta.locked&&meta.locked.gear);
   SVM.on=!!(meta.detect&&meta.detect.svm);SVM.raidAdd=0;
   (meta.maps||[]).forEach(mm=>{const m=mapById(mm.id);if(!m)return;

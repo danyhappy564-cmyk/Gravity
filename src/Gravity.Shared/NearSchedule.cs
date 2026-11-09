@@ -38,6 +38,12 @@ namespace Gravity.Shared
             for (int i = 0; i < slots; i++)
             {
                 if (_rng.NextDouble() >= _n.SlotChance) continue;
+                if (OnlyCustom)
+                {
+                    var cs = CustomSlot(1, onlyCustom: true);
+                    if (cs != null) result.Add(cs);
+                    continue;
+                }
                 if (_rng.NextDouble() < _n.PmcChance)
                 {
                     result.Add(new NearSlot(_rng.Next(2) == 0 ? "pmcUSEC" : "pmcBEAR", 1));
@@ -56,16 +62,27 @@ namespace Gravity.Shared
             if (count < 1) count = 1;
 
             if (!_n.CustomOn) return new NearSlot("assault", count);
+            return CustomSlot(count, onlyCustom: false) ?? new NearSlot("assault", count);
+        }
 
+        /// <summary>기본 PMC/스캐브를 끄고(UseDefault=false) 직접 고르기만 쓰는가. 직접 고르기가 꺼져 있으면 기본을 쓴다.</summary>
+        private bool OnlyCustom => !_n.UseDefault && _n.CustomOn;
+
+        /// <summary>직접 고른 종류로 한 자리. 고른 쪽 한도가 차면 onlyCustom일 때 다른 쪽을 보고, 둘 다 차면 null.</summary>
+        private NearSlot? CustomSlot(int count, bool onlyCustom)
+        {
             bool second = _rng.NextDouble() < _n.CustomRatio2;
-            string role = second ? _n.CustomT2 : _n.CustomT1;
-            int room = second ? _n.CustomCap2 - _used2 : _n.CustomCap1 - _used1;
-            if (string.IsNullOrWhiteSpace(role) || room <= 0) return new NearSlot("assault", count);
-            if (count > room) count = room;
-
-            if (second) _used2 += count; else _used1 += count;
-            if (IsBossRole(role)) role = "assault";
-            return new NearSlot(role, count);
+            for (int tries = 0; tries < (onlyCustom ? 2 : 1); tries++, second = !second)
+            {
+                string role = second ? _n.CustomT2 : _n.CustomT1;
+                int room = second ? _n.CustomCap2 - _used2 : _n.CustomCap1 - _used1;
+                if (string.IsNullOrWhiteSpace(role) || room <= 0) continue;
+                if (count > room) count = room;
+                if (second) _used2 += count; else _used1 += count;
+                if (IsBossRole(role)) role = "assault";
+                return new NearSlot(role, count);
+            }
+            return null;
         }
 
         private static bool IsBossRole(string role) =>

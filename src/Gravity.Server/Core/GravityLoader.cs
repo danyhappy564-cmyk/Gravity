@@ -7,6 +7,8 @@ using SPTarkov.Server.Core.Helpers.Server;
 using SPTarkov.Server.Core.Models.Spt.Config;
 using SPTarkov.Server.Core.Models.Spt.Tables;
 using SPTarkov.Server.Core.Services.Profile;
+using SPTarkov.Server.Core.Services.Server;
+using SPTarkov.Server.Core.Models.Enums;
 
 namespace Gravity.Core;
 
@@ -14,27 +16,32 @@ namespace Gravity.Core;
 [Injectable(TypePriority = OnLoadOrder.PostLoad + 1)]
 public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
-    PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity) : IOnLoad
+    PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
-        var paths = new GravityPaths(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()));
+        GravityBoot.Ensure(modHelper);
+        var paths = GravityBoot.Paths!;
         GravityWebPaths.Paths = paths;
-        var store = new GravityConfigStore(paths.ConfigFile, paths.BackupDir);
-        var load = store.Load();
+        var store = GravityBoot.Store!;
+        var load = GravityBoot.Load!;
         if (!load.Ok) logger.Warning($"{GravityInfo.Tag} {load.Error}");
-
-        var modsDir = Path.GetDirectoryName(paths.ModDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))!;
-        var folders = Directory.Exists(modsDir) ? Directory.GetDirectories(modsDir).Select(Path.GetFileName).OfType<string>() : [];
-        var asms = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name).OfType<string>();
-        var detect = ModDetector.Detect(asms, folders);
+        var detect = GravityBoot.Detect!;
 
         var catalog = new MapCatalog();
         catalog.Build(locations, pmcConfig, botConfig);
 
         GravityRuntime.Instance = new GravityRuntime(store, catalog, detect, m => logger.Warning(m), m => logger.Info(m))
         {
-            MaxBotCap = botConfig.MaxBotCap
+            MaxBotCap = botConfig.MaxBotCap,
+            BotCfg = botConfig,
+            ActiveEvents = () =>
+            {
+                var types = seasonal.GetActiveEvents().Select(e => e.Type).ToHashSet();
+                bool af = types.Contains(SeasonalEventType.AprilFools);
+                return (af || types.Contains(SeasonalEventType.Halloween),
+                    af || types.Contains(SeasonalEventType.Christmas) || types.Contains(SeasonalEventType.NewYears));
+            }
         };
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();

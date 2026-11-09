@@ -63,7 +63,7 @@ public static class ClientSettingsBuilder
     private static NearDto BuildNear(NearSettings n) => new(
         n.On, n.FirstDelay, n.Interval, n.MinDist, n.MaxDist, n.Spacing, n.WaveMin, n.WaveMax,
         n.SlotChance / 100, n.PmcChance / 100, n.Attempts, n.Sight, n.StopAtCap, n.GroupScavOff,
-        n.GroupChance / 100, n.GroupMin, n.GroupMax, n.CustomOn, NearRole(n.CustomT1), n.CustomCap1, NearRole(n.CustomT2), n.CustomCap2, n.CustomRatio2 / 100);
+        n.GroupChance / 100, n.GroupMin, n.GroupMax, n.CustomOn, NearRole(n.CustomT1), n.CustomCap1, NearRole(n.CustomT2), n.CustomCap2, n.CustomRatio2 / 100, n.UseDefault);
 
     /// <summary>
     /// 웹 화면 이름(near.custom.t1/t2) → 클라 WildSpawnType 이름. pmc는 클라가 자리마다 USEC/BEAR를 고른다.

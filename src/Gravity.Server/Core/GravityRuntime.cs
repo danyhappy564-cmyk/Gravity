@@ -57,7 +57,13 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     }
 
     /// <summary>레이드 맵 복제본에 스폰 계획을 적용한다. 적용했으면 true. 예외는 잡아서 원본 유지.</summary>
-    public bool TryApplyToRaid(string name, LocationBase loc, RaidChanges? changes, string? sessionId, int? seed = null)
+    /// <summary>SPT 봇 설정(플레이어 스캐브 이름 확률을 판마다 웹 값으로). 시험에서는 null.</summary>
+    public SPTarkov.Server.Core.Models.Spt.Config.BotConfig? BotCfg { get; set; }
+
+    /// <summary>지금 켜진 SPT 시즌 이벤트(할로윈 계열, 크리스마스 계열). 시험에서는 둘 다 꺼짐.</summary>
+    public Func<(bool Halloween, bool Christmas)> ActiveEvents { get; set; } = () => (false, false);
+
+    public bool TryApplyToRaid(string name, LocationBase loc, RaidChanges? changes, string? sessionId, int? seed = null, bool scavRaid = false)
     {
         var id = name.ToLowerInvariant();
         try
@@ -70,6 +76,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             var hasClient = Sessions.HasClient(sessionId);
             if (!Catalog.TryGet(id, out var info)) return Skip(id, "모르는 맵(커스텀 맵은 건드리지 않음)");
             if (!cfg.MapFor(id).Original) return Skip(id, "이 맵은 Gravity 적용 꺼짐");
+            if (BotCfg != null) BotCfg.ChanceAssaultScavHasPlayerScavName = (int)Math.Round(cfg.Spawn.Scav.PscavChance);
 
             // 복제본의 EscapeTimeLimit(분)는 SVM·스캐브 단축까지 반영된 "남은" 길이다.
             // 스캐브 레이드는 원래 길이(남은 시간 + 시작 지연)로 계획한 뒤 지연보다 이른 항목을 빼고 당긴다(Codex 검토 반영).
@@ -88,10 +95,19 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             if (pmcWhy != null) plan = plan with { Groups = [] };
             // 무한 방식: 클라가 있으면 0.1의 촘촘한 PMC 웨이브 대신 시작 분대만 넣고, 이후 PMC는 클라가 RefillGroups로 보충한다(spec 4.6).
             else if (hasClient && cfg.MapFor(id).Style == "infinite") plan = plan with { Groups = plan.Groups.Where(g => g.IsStart).ToList() };
+            string? scavNote = null;
+            if (scavRaid && plan.Groups.Count > 0)
+            {
+                var keep = KeepForScavRaid(plan.Groups, cfg.Spawn.Scav.PlayerScavRemain, s);
+                scavNote = $" / 스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.Spawn.Scav.PlayerScavRemain:0}%)";
+                plan = plan with { Groups = keep };
+            }
             RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient);
             RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
+            var (hw, xm) = ActiveEvents();
+            var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true);
-            var summary = plan.Summary + (pmcWhy != null ? $" / PMC 항목 안 넣음({pmcWhy})" : "");
+            var summary = plan.Summary + (pmcWhy != null ? $" / PMC 항목 안 넣음({pmcWhy})" : "") + scavNote + (evNote != null ? " / " + evNote : "");
             Last = new LastRaid(DateTime.Now, summary, plan, null);
             info_($"{GravityInfo.Tag} {summary}");
             return true;
@@ -102,6 +118,15 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             Last = new LastRaid(DateTime.Now, "실패: " + ex.Message, null, ex.ToString());
             return false;
         }
+    }
+
+    /// <summary>스캐브 레이드: 계획 PMC 무리 중 pct%만 무작위로 남긴다(시드 고정, 반올림, 원래 순서 유지).</summary>
+    public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, double pct, int seed)
+    {
+        int keep = (int)Math.Round(groups.Count * Math.Clamp(pct, 0, 100) / 100.0, MidpointRounding.AwayFromZero);
+        var rnd = new Random(seed ^ 0x5CA7);
+        var pick = Enumerable.Range(0, groups.Count).OrderBy(_ => rnd.Next()).Take(keep).ToHashSet();
+        return groups.Where((_, i) => pick.Contains(i)).ToList();
     }
 
     private void info_(string m) => info(m);

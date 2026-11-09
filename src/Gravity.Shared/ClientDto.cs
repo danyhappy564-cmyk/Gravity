@@ -23,7 +23,8 @@ namespace Gravity.Shared
         bool On, double FirstDelay, double Interval, double MinDist, double MaxDist, double Spacing,
         int WaveMin, int WaveMax, double SlotChance, double PmcChance, int Attempts,
         bool Sight, bool StopAtCap, bool GroupScavOff, double GroupChance, int GroupMin, int GroupMax,
-        bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2);
+        bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2,
+        bool UseDefault = true);
 
     public sealed record ClientRaidSettings(
         string MapId, bool Managed, int Seed, int RaidSec, int HardStopPmcSec, int HardStopScavSec, int Cap,

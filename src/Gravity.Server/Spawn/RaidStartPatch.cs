@@ -4,6 +4,7 @@ using HarmonyLib;
 using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
+using SPTarkov.Server.Core.Models.Enums;
 using SPTarkov.Server.Core.Models.Spt.Location;
 using SPTarkov.Server.Core.Services.Profile;
 using SPTarkov.Server.Core.Services.InRaid;
@@ -18,6 +19,7 @@ public class RaidStartPatch : AbstractPatch
 {
     [ThreadStatic] private static RaidChanges? _pending;
     [ThreadStatic] private static string? _session;
+    [ThreadStatic] private static bool _scavRaid;
     internal static ProfileActivityService? Activity;
 
     protected override MethodBase GetTargetMethod() =>
@@ -27,8 +29,13 @@ public class RaidStartPatch : AbstractPatch
     public static void Prefix(MongoId sessionId)
     {
         _session = sessionId.ToString();
-        try { _pending = Activity?.GetProfileActivityRaidData(sessionId)?.RaidAdjustments; }
-        catch { _pending = null; }
+        try
+        {
+            var data = Activity?.GetProfileActivityRaidData(sessionId);
+            _pending = data?.RaidAdjustments;
+            _scavRaid = data?.RaidConfiguration?.Side == SideType.Savage;
+        }
+        catch { _pending = null; _scavRaid = false; }
     }
 
     [PatchPostfix]
@@ -44,6 +51,8 @@ public class RaidStartPatch : AbstractPatch
             if (name is not null) GravityRuntime.Instance?.LastClientSettings.TryRemove(name.ToLowerInvariant(), out _);
             return;
         }
-        GravityRuntime.Instance?.TryApplyToRaid(name, __result, changes, session);
+        var scavRaid = _scavRaid;
+        _scavRaid = false;
+        GravityRuntime.Instance?.TryApplyToRaid(name, __result, changes, session, scavRaid: scavRaid);
     }
 }

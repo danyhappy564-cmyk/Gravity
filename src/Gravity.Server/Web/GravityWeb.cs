@@ -67,7 +67,13 @@ public class GravityWeb : IHttpListener
                             version = GravityInfo.Version, detect = rt.Detect,
                             locked = new { spawn = rt.Detect.SpawnLocked, gear = rt.Detect.GearLocked },
                             maps = rt.Catalog.All,
-                            client = ClientBody(rt)
+                            client = ClientBody(rt),
+                            events = new
+                            {
+                                owner = Gravity.Events.GravityEventLoader.ResolvedOwner,
+                                svm = Gravity.Events.GravityEventLoader.Svm,
+                                applied = Gravity.Events.GravityEventLoader.Applied
+                            }
                         });
                         return;
                     case ("lastraid", "GET"):

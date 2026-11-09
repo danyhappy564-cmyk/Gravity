@@ -12,7 +12,7 @@ public sealed record GroupCapRule(int Size, string Cmp, int Count);
 public sealed record GroupCap(bool On, string Scope, string Over, IReadOnlyList<GroupCapRule> Rules);
 public sealed record ScavSettings(
     bool SeparateStart, double DelayMin, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
-    double Refill, int Pending, int SoftCap, int PerPlayer, double PscavChance, bool StartMarksman);
+    double Refill, int Pending, int SoftCap, int PerPlayer, double PscavChance, bool StartMarksman, double PlayerScavRemain = 60);
 
 public sealed record ProtectSettings(bool On, double Sec, double Radius);
 public sealed record SpacingSettings(double Player, double Bots);
@@ -29,7 +29,14 @@ public sealed record NearSettings(
     bool On, double FirstDelay, double Interval, double MinDist, double MaxDist, double Spacing,
     int WaveMin, int WaveMax, double SlotChance, double PmcChance, int Attempts, bool Sight, bool StopAtCap,
     bool GroupScavOff, double GroupChance, int GroupMin, int GroupMax,
-    bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2);
+    bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2, bool UseDefault = true);
+
+/// <summary>시즌 이벤트(0.3). Mode: auto(날짜)·on(항상)·off. 확률은 %.</summary>
+public sealed record EventSettings(
+    string Owner, bool Detect,
+    string Halloween, double Zombies, double NightCult, bool Summon, bool HalloweenGear,
+    string Christmas, double Santa, bool Gifts, bool Snow, bool ChristmasGear,
+    string NewYears, string AprilFools);
 
 public sealed record InfSettings(double DelaySec, int Batch, double PmcShare, double Jitter);
 
@@ -49,7 +56,7 @@ public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double
 public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
-    IReadOnlyDictionary<string, SpecialSettings>? Specials = null)
+    IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null)
 {
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
 }
@@ -137,7 +144,8 @@ public static class ConfigModel
                 r.Num(sp + "scav.quietMin", 1, 0, 60), r.Num(sp + "scav.quietMax", 3, 0, 60),
                 r.Num(sp + "scav.refill", 45, 0, 3600), (int)r.Num(sp + "scav.pending", 3, 0, 20),
                 (int)r.Num(sp + "scav.softCap", 18, 0, 60), (int)r.Num(sp + "scav.perPlayer", 20, 0, 100),
-                r.Num(sp + "scav.pscavChance", 10, 0, 100), r.Bool(sp + "scav.startMarksman", true)),
+                r.Num(sp + "scav.pscavChance", 10, 0, 100), r.Bool(sp + "scav.startMarksman", true),
+                r.Num(sp + "scav.playerScavRemain", 60, 0, 100)),
             new ProtectSettings(r.Bool(sp + "protect.on", true), r.Num(sp + "protect.sec", 90, 0, 3600), r.Num(sp + "protect.radius", 120, 5, 1000)),
             new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
             r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),
@@ -193,7 +201,7 @@ public static class ConfigModel
         }
 
         var specials = new Dictionary<string, SpecialSettings>();
-        foreach (var id in SpecialRoles.Keys.Append("snipers"))
+        foreach (var id in SpecialRoles.Keys.Append("snipers").Append("infected"))
         {
             var p = $"specials.{id}.";
             var chance = new Dictionary<string, double>();
@@ -201,7 +209,7 @@ public static class ConfigModel
                 foreach (var (k, _) in co)
                     chance[k] = r.Num(p + "chance." + k, 0, 0, 100);
             var sMin = (int)r.Num(p + "min", 0, 0, 10);
-            specials[id] = new SpecialSettings(r.Bool(p + "on", true), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)));
+            specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)));
         }
 
         var nMin = r.Num("near.minDist", 200, 5, 1000);
@@ -215,10 +223,20 @@ public static class ConfigModel
             r.Bool("near.sight", false), r.Bool("near.stopAtCap", true),
             r.Bool("near.group.scavOff", false), r.Num("near.group.chance", 25, 0, 100), gMin, (int)Math.Max(gMin, r.Num("near.group.max", 5, 1, 10)),
             r.Bool("near.custom.on", false), r.Role("near.custom.t1", "raider"), (int)r.Num("near.custom.cap1", 5, 0, 60),
-            r.Role("near.custom.t2", "rogue"), (int)r.Num("near.custom.cap2", 5, 0, 60), r.Num("near.custom.ratio2", 50, 0, 100));
+            r.Role("near.custom.t2", "rogue"), (int)r.Num("near.custom.cap2", 5, 0, 60), r.Num("near.custom.ratio2", 50, 0, 100),
+            r.Bool("near.useDefault", true));
+
+        string[] modes = ["auto", "on", "off"];
+        var events = new EventSettings(
+            r.Str("eventsOwner", "auto", "auto", "ppes", "svm", "gravity", "spt"), r.Bool("events.detect", true),
+            r.Str("events.halloween.mode", "auto", modes), r.Num("events.halloween.zombies", 30, 0, 100),
+            r.Num("events.halloween.nightCult", 40, 0, 100), r.Bool("events.halloween.summon", true), r.Bool("events.halloween.gear", true),
+            r.Str("events.christmas.mode", "auto", modes), r.Num("events.christmas.santa", 25, 0, 100),
+            r.Bool("events.christmas.gifts", true), r.Bool("events.christmas.snow", true), r.Bool("events.christmas.gear", true),
+            r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes));
 
         return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
-            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials);
+            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events);
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>

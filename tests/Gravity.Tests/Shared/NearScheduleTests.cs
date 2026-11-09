@@ -118,3 +118,30 @@ public class NearScheduleTests
             }
     }
 }
+
+// 0.3: near.useDefault
+public class NearUseDefaultTests
+{
+    private static NearDto Dto(bool useDefault, bool customOn, int cap1 = 2, int cap2 = 1) =>
+        new(true, 0, 60, 40, 120, 20, 4, 4, 1.0, 1.0, 5, false, false, true, 0, 2, 3,
+            customOn, "pmcBot", cap1, "exUsec", cap2, 0.5, useDefault);
+
+    [Fact]
+    public void UseDefaultOff_AllSlotsCustom_UntilCapsFull()
+    {
+        var sch = new NearSchedule(Dto(false, true), new Random(3));
+        var slots = sch.Tick(0f, 99, 0);
+        Assert.Equal(3, slots.Count); // 자리 4개, 한도 2+1 -> 마지막 자리는 비움
+        Assert.All(slots, s => Assert.Contains(s.Role, new[] { "pmcBot", "exUsec" }));
+        Assert.Equal(2, slots.Count(s => s.Role == "pmcBot"));
+    }
+
+    [Fact]
+    public void UseDefaultOff_CustomOff_FallsBackToDefault()
+    {
+        var sch = new NearSchedule(Dto(false, false), new Random(3));
+        var slots = sch.Tick(0f, 99, 0);
+        Assert.Equal(4, slots.Count);
+        Assert.All(slots, s => Assert.StartsWith("pmc", s.Role)); // PmcChance 1.0
+    }
+}
