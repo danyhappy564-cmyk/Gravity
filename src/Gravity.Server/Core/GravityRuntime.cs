@@ -89,7 +89,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             // 무한 방식: 클라가 있으면 0.1의 촘촘한 PMC 웨이브 대신 시작 분대만 넣고, 이후 PMC는 클라가 RefillGroups로 보충한다(spec 4.6).
             else if (hasClient && cfg.MapFor(id).Style == "infinite") plan = plan with { Groups = plan.Groups.Where(g => g.IsStart).ToList() };
             RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient);
-            RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart);
+            RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true);
             var summary = plan.Summary + (pmcWhy != null ? $" / PMC 항목 안 넣음({pmcWhy})" : "");
             Last = new LastRaid(DateTime.Now, summary, plan, null);

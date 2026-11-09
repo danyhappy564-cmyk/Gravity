@@ -68,7 +68,9 @@ public static class RaidSpawnApplier
     /// 보스: 확률(0.1), 호위 데려오기·호위 수·등장 시간·난이도·구역·추가 스폰. 특수 봇: 켜기·맵별 확률·무리 크기.
     /// 구역은 이 맵 보스 항목에 실제로 있는 이름만 남기고(웹 목업 id 등 모르는 이름은 버림), 다 버려지면 바닐라 구역.
     /// </summary>
-    public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId, int seed = 1, int raidSec = 0)
+    /// <param name="templates">보스 역할 → 다른 맵 DB 항목(MapCatalog.BossTemplates). 웹에서 원래 없던 맵을 켠 보스는 이걸 복제해 넣는다(0.4).</param>
+    public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId, int seed = 1, int raidSec = 0,
+        IReadOnlyDictionary<string, BossLocationSpawn>? templates = null)
     {
         var rnd = new Random(seed ^ 0x5B055);
         var valid = new HashSet<string>(StringComparer.Ordinal);
@@ -87,25 +89,7 @@ public static class RaidSpawnApplier
             {
                 var mapOn = !b.Maps.TryGetValue(mapId, out var on) || on;
                 var chance = !b.On || !mapOn ? 0 : cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance;
-                var n = e with { BossChance = chance };
-                if (!b.Followers) n = n with { BossEscortAmount = "0" };
-                else if (b.EscMax > 0) n = n with { BossEscortAmount = Range(b.EscMin, b.EscMax) };
-                if (b.TTo > 0)
-                {
-                    var t = (b.TFrom + rnd.NextDouble() * (b.TTo - b.TFrom)) * 60;
-                    if (raidSec > 0) t = Math.Min(t, raidSec * 0.9);
-                    n = n with { Time = Math.Max(1, Math.Round(t)) };
-                }
-                if (b.Diff is { Length: > 0 })
-                {
-                    var d = b.Diff == "random" ? Diffs[rnd.Next(Diffs.Length)] : b.Diff;
-                    n = n with { BossDifficulty = d, BossEscortDifficulty = d };
-                }
-                if (b.Zones != null && b.Zones.TryGetValue(mapId, out var zs))
-                {
-                    var keep = zs.Where(valid.Contains).Distinct().ToArray();
-                    if (keep.Length > 0) n = n with { BossZone = string.Join(",", keep) };
-                }
+                var n = Detail(e with { BossChance = chance }, b);
                 result.Add(n);
                 if (b.Extra && chance > 0) extra.Add(n with { SptId = "gravity" });
                 continue;
@@ -124,8 +108,61 @@ public static class RaidSpawnApplier
             }
             result.Add(e);
         }
+        // 0.4: 웹에서 이 맵을 켰는데 바닐라 항목이 없는 보스는 다른 맵 항목을 본보기로 새로 넣는다(즈랴치는 등대 섬 전용이라 제외).
+        if (templates != null)
+            foreach (var (role, id) in BossRoleToId)
+            {
+                if (id == "zryachiy" || !cfg.Bosses.TryGetValue(id, out var b) || !b.On) continue;
+                if (!b.Maps.TryGetValue(mapId, out var on) || !on) continue;
+                if (result.Any(x => string.Equals(x.BossName, role, StringComparison.OrdinalIgnoreCase))) continue;
+                if (!templates.TryGetValue(role, out var tpl)) continue;
+                var chance = cfg.BossCommonOn ? cfg.BossCommonChance : b.Chance;
+                if (chance <= 0) continue;
+                var zones = valid.Where(z => !z.StartsWith("ZoneSniper", StringComparison.OrdinalIgnoreCase)).ToArray();
+                var n = Detail(tpl with { BossChance = chance, BossZone = string.Join(",", zones.Length > 0 ? zones : valid), TriggerId = "", TriggerName = "", SptId = "gravity" }, b);
+                result.Add(n);
+                if (b.Extra) result.Add(n with { });
+            }
         result.AddRange(extra);
         loc.BossLocationSpawn = result;
+
+        // 0.4: 저격 스캐브(바닐라 marksman 웨이브). 끄면 지우고, 맵 확률이 있으면 웨이브마다 그 확률로 남기며, 인원 칸이 있으면 바꾼다.
+        if (cfg.Specials != null && cfg.Specials.TryGetValue("snipers", out var sn) && loc.Waves != null)
+        {
+            var waves = new List<Wave>(loc.Waves.Count);
+            foreach (var w in loc.Waves)
+            {
+                if (w.WildSpawnType != WildSpawnType.marksman) { waves.Add(w); continue; }
+                if (!sn.On) continue;
+                if (sn.Chance.TryGetValue(mapId, out var sc) && rnd.NextDouble() * 100 >= sc) continue;
+                waves.Add(sn.Max > 0 ? w with { SlotsMin = Math.Max(0, sn.Min), SlotsMax = sn.Max } : w);
+            }
+            loc.Waves = waves;
+        }
+
+        BossLocationSpawn Detail(BossLocationSpawn e, BossSettings b)
+        {
+            var n = e;
+            if (!b.Followers) n = n with { BossEscortAmount = "0" };
+            else if (b.EscMax > 0) n = n with { BossEscortAmount = Range(b.EscMin, b.EscMax) };
+            if (b.TTo > 0)
+            {
+                var t = (b.TFrom + rnd.NextDouble() * (b.TTo - b.TFrom)) * 60;
+                if (raidSec > 0) t = Math.Min(t, raidSec * 0.9);
+                n = n with { Time = Math.Max(1, Math.Round(t)) };
+            }
+            if (b.Diff is { Length: > 0 })
+            {
+                var d = b.Diff == "random" ? Diffs[rnd.Next(Diffs.Length)] : b.Diff;
+                n = n with { BossDifficulty = d, BossEscortDifficulty = d };
+            }
+            if (b.Zones != null && b.Zones.TryGetValue(mapId, out var zs))
+            {
+                var keep = zs.Where(valid.Contains).Distinct().ToArray();
+                if (keep.Length > 0) n = n with { BossZone = string.Join(",", keep) };
+            }
+            return n;
+        }
     }
 
     /// <summary>바닐라 호위 수 형식: 가능한 수를 쉼표로(클라가 하나를 고름). 예: 2~4 → "2,3,4".</summary>

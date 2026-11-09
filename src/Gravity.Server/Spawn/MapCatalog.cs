@@ -21,6 +21,11 @@ public sealed class MapCatalog
 
     internal void AddForTest(MapInfo info) => _info[info.Id] = info;
 
+    private readonly Dictionary<string, BossLocationSpawn> _bossTemplates = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>보스 역할 → DB에서 확률이 가장 높은 항목(원래 없던 맵에 보스를 넣을 때 본보기, 0.4). 읽기 전용으로만 쓴다(복제해서 씀).</summary>
+    public IReadOnlyDictionary<string, BossLocationSpawn> BossTemplates => _bossTemplates;
+    internal void AddTemplateForTest(BossLocationSpawn e) => _bossTemplates[e.BossName!] = e;
+
     public void Build(LocationTable locations, PmcConfig pmcConfig, BotConfig botConfig)
     {
         _info.Clear();
@@ -49,6 +54,10 @@ public sealed class MapCatalog
             basePmc = Math.Max(basePmc, refPmc);
             baseScav = Math.Max(baseScav, (int)Math.Round(refScav40 * raidSec / 60.0 / 40.0));
             _info[id] = new MapInfo(id, Math.Max(1, basePmc), Math.Max(0, baseScav), raidSec, pmcZones, scavZones);
+            foreach (var e in b.BossLocationSpawn)
+                if (e.BossName is { } bn && RaidSpawnApplier.BossRoleToId.ContainsKey(bn)
+                    && (!_bossTemplates.TryGetValue(bn, out var cur) || (e.BossChance ?? 0) > (cur.BossChance ?? 0)))
+                    _bossTemplates[bn] = e;
             var bosses = b.BossLocationSpawn
                 .Where(e => e.BossName is { } n && n.StartsWith("boss", StringComparison.OrdinalIgnoreCase))
                 .GroupBy(e => e.BossName!)

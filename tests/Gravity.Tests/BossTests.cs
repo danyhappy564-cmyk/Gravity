@@ -122,4 +122,55 @@ public class BossTests
 
     [Fact]
     public void Range_Format() => Assert.Equal("0", RaidSpawnApplier.Range(0, 0));
+
+    // ----- 0.4 -----
+
+    private static readonly Dictionary<string, BossLocationSpawn> Tpl = new()
+    {
+        ["bossKilla"] = new BossLocationSpawn { BossName = "bossKilla", BossChance = 38, BossZone = "ZoneCenter", BossEscortAmount = "0", TriggerId = "x", TriggerName = "y", Time = -1 }
+    };
+
+    [Fact]
+    public void NewMap_BossFromTemplate_WhenMapTurnedOn()
+    {
+        var l = Loc();
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"bosses":{"killa":{"chance":50,"maps":{"bigmap":true},"zones":{"bigmap":["ZoneDormitory"]}}}}"""), "bigmap", 1, 2400, Tpl);
+        var k = Boss(l, "bossKilla");
+        Assert.Equal(50, k.BossChance);
+        Assert.Equal("ZoneDormitory", k.BossZone);
+        Assert.Equal("gravity", k.SptId);
+        Assert.Equal("", k.TriggerId);
+    }
+
+    [Fact]
+    public void NewMap_NoZoneChosen_UsesMapZones_AndOffMapNotAdded()
+    {
+        var l = Loc();
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"bosses":{"killa":{"maps":{"bigmap":true}}}}"""), "bigmap", 1, 2400, Tpl);
+        Assert.Contains("ZoneDormitory", Boss(l, "bossKilla").BossZone);
+
+        var l2 = Loc();
+        RaidSpawnApplier.ApplyBosses(l2, Cfg("{}"), "bigmap", 1, 2400, Tpl);
+        Assert.DoesNotContain(l2.BossLocationSpawn, e => e.BossName == "bossKilla");
+    }
+
+    [Fact]
+    public void Snipers_OffChanceSize()
+    {
+        LocationBase L() { var l = Loc(); l.Waves = [new Wave { WildSpawnType = WildSpawnType.marksman, SlotsMin = 1, SlotsMax = 1 }, new Wave { WildSpawnType = WildSpawnType.assault, SlotsMin = 1, SlotsMax = 2 }]; return l; }
+        var a = L();
+        RaidSpawnApplier.ApplyBosses(a, Cfg("""{"specials":{"snipers":{"on":false}}}"""), "bigmap", 1, 2400);
+        Assert.DoesNotContain(a.Waves, w => w.WildSpawnType == WildSpawnType.marksman);
+        Assert.Contains(a.Waves, w => w.WildSpawnType == WildSpawnType.assault);
+
+        var b = L();
+        RaidSpawnApplier.ApplyBosses(b, Cfg("""{"specials":{"snipers":{"chance":{"bigmap":100},"min":2,"max":3}}}"""), "bigmap", 1, 2400);
+        var m = b.Waves.Single(w => w.WildSpawnType == WildSpawnType.marksman);
+        Assert.Equal(2, m.SlotsMin);
+        Assert.Equal(3, m.SlotsMax);
+
+        var c = L();
+        RaidSpawnApplier.ApplyBosses(c, Cfg("""{"specials":{"snipers":{"chance":{"bigmap":0}}}}"""), "bigmap", 1, 2400);
+        Assert.DoesNotContain(c.Waves, w => w.WildSpawnType == WildSpawnType.marksman);
+    }
 }

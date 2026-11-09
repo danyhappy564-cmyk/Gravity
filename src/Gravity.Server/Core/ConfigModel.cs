@@ -193,7 +193,7 @@ public static class ConfigModel
         }
 
         var specials = new Dictionary<string, SpecialSettings>();
-        foreach (var id in SpecialRoles.Keys)
+        foreach (var id in SpecialRoles.Keys.Append("snipers"))
         {
             var p = $"specials.{id}.";
             var chance = new Dictionary<string, double>();
