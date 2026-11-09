@@ -237,4 +237,27 @@ public class BossTests
         RaidSpawnApplier.ApplyBosses(c, Cfg("""{"specials":{"snipers":{"chance":{"bigmap":0}}}}"""), "bigmap", 1, 2400);
         Assert.DoesNotContain(c.Waves, w => w.WildSpawnType == WildSpawnType.marksman);
     }
+
+    [Fact]
+    public void Specials_TimeWindow_OnlyUntriggered_ExtraZeroSkips_SniperWaveTime()
+    {
+        // 1.0 수정점 23: 특수 봇 시각 창(분), 레버 항목은 시각 그대로, 추가 스폰 0명이면 안 넣음, 저격 웨이브 time_min/max
+        var l = Loc();
+        l.BossLocationSpawn.RemoveAll(e => e.BossName is "pmcBot" or "sectantPriest");
+        l.BossLocationSpawn.Add(new BossLocationSpawn { BossName = "pmcBot", BossChance = 30, BossZone = "ZoneSubCommand", BossEscortAmount = "2",
+            TriggerId = "lever", TriggerName = "interactObject", Time = -1 });
+        l.BossLocationSpawn.Add(new BossLocationSpawn { BossName = "pmcBot", BossChance = 30, BossZone = "ZoneRaiders", BossEscortAmount = "2", Time = -1 });
+        l.BossLocationSpawn.Add(new BossLocationSpawn { BossName = "sectantPriest", BossChance = 10, BossZone = "ZoneScavBase", BossEscortAmount = "3", Time = -1 });
+        l.Waves = [new Wave { WildSpawnType = WildSpawnType.marksman, SlotsMin = 1, SlotsMax = 1, TimeMin = 60, TimeMax = 120 }];
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"specials":{"raiders":{"tFrom":5,"tTo":10,"extra":{"bigmap":100},"extraMin":0,"extraMax":0},"cultists":{"tFrom":20,"tTo":20},"snipers":{"tFrom":2,"tTo":4}}}"""), "bigmap", 1, 2400);
+        var raiders = l.BossLocationSpawn.Where(e => e.BossName == "pmcBot").ToList();
+        Assert.Equal(2, raiders.Count); // 추가 스폰 0명 → 안 넣음
+        Assert.Equal(-1, raiders.Single(e => e.TriggerName == "interactObject").Time);
+        var plain = raiders.Single(e => string.IsNullOrEmpty(e.TriggerName));
+        Assert.InRange(plain.Time ?? -1, 300, 600);
+        Assert.Equal(1200, l.BossLocationSpawn.Single(e => e.BossName == "sectantPriest").Time);
+        var w = l.Waves.Single();
+        Assert.Equal(120, w.TimeMin);
+        Assert.Equal(240, w.TimeMax);
+    }
 }

@@ -88,7 +88,7 @@ public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<st
 /// Extra(맵별 확률)·ExtraMin~ExtraMax(인원)는 따로 넣는 "추가 스폰"에만 쓴다. 컬티스트·블러드하운드는 예전처럼 Chance·Min·Max가 원래 항목을 바꾼다.</summary>
 public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max,
     bool Vanilla = true, IReadOnlyDictionary<string, double>? Extra = null, int ExtraMin = 0, int ExtraMax = 0,
-    IReadOnlyDictionary<string, bool>? Keep = null)
+    IReadOnlyDictionary<string, bool>? Keep = null, double TFrom = 0, double TTo = 0, double XFrom = 0, double XTo = 0)
 {
     /// <summary>레이더·로그 원래 항목을 이 맵에서 남기는지(맵별 등장 목록, 1.0). 없으면 남긴다.</summary>
     public bool KeepOn(string mapId) => Vanilla && (Keep == null || !Keep.TryGetValue(mapId, out var k) || k);
@@ -285,13 +285,15 @@ public static partial class ConfigModel
             if (r.Node(p + "extra") is JsonObject eo)
                 foreach (var (k, _) in eo)
                     extra[k] = r.Num(p + "extra." + k, 0, 0, 100);
-            var eMin = (int)r.Num(p + "extraMin", 1, 1, 10);
+            var eMin = (int)r.Num(p + "extraMin", 1, 0, 10);
+            double tFrom = r.Num(p + "tFrom", 0, 0, 240), tTo = r.Num(p + "tTo", 0, 0, 240), xFrom = r.Num(p + "xFrom", 0, 0, 240), xTo = r.Num(p + "xTo", 0, 0, 240);
             var keep = new Dictionary<string, bool>();
             if (r.Node(p + "keep") is JsonObject ko)
                 foreach (var (k, _) in ko)
                     keep[k] = r.Bool(p + "keep." + k, true);
             specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)),
-                r.Bool(p + "vanilla", true), extra, eMin, (int)Math.Max(eMin, r.Num(p + "extraMax", eMin, 1, 10)), keep);
+                r.Bool(p + "vanilla", true), extra, eMin, (int)Math.Max(eMin, r.Num(p + "extraMax", eMin, 0, 10)), keep,
+                tFrom, Math.Max(tFrom, tTo), xFrom, Math.Max(xFrom, xTo));
         }
 
         var near = ReadNear(r);

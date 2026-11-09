@@ -587,10 +587,17 @@ test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
   const a=app();
   const svg=a.run("timeline(mapById('bigmap'),true)");
   assert.match(svg,/특수 봇/);
-  assert.match(svg,/컬티스트 10%/);
-  assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[1]).join()"),'원본');
+  assert.match(svg,/컬티스트 · 나올 확률 10%/);
+  assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[3]+':'+x[4]).join()"),'orig:null,extra:0');
   a.run("state.specials.raiders.extra.rezervbase=30");
-  assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[1]).join()"),'원본,+30%');
+  assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[3]+':'+x[4]).join()"),'orig:null,extra:30');
+  // 1.0: 끄면 줄이 사라지고, 시각을 끌면 tFrom/tTo가 함께 움직인다
+  a.run("state.specials.snipers.on=false");
+  assert.ok(!a.run("specLane(mapById('bigmap')).some(x=>x[2]==='snipers')"));
+  a.run("state.specials.cultists.tFrom=10;state.specials.cultists.tTo=15");
+  assert.equal(a.run("JSON.stringify(dragVals('spec','cultists',20,100,mapById('bigmap')))"),JSON.stringify([['specials.cultists.tFrom',20],['specials.cultists.tTo',25]]));
+  a.run("state.bosses.reshala.on=false");
+  assert.ok(!/레샬라/.test(a.run("timeline(mapById('bigmap'),true)")));
 });
 test('1.0 기본 프리셋은 잠기고 값을 바꾸면 커스텀 프리셋 N이 생깁니다', () => {
   const a = app();

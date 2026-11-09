@@ -118,7 +118,10 @@ public static class RaidSpawnApplier
                 if (extraRoles.Contains(sr))
                 {
                     // 레이더·로그: 원래 항목(이벤트 포함)은 확률·인원·트리거 그대로. 끄거나 "원래 스폰 유지"를 끄면 그 항목만 0%.
-                    result.Add(!sp.On || !sp.KeepOn(mapId) ? e with { BossChance = 0 } : e);
+                    // 시각 창은 트리거 없는(판 시작·시각) 항목에만. 레버·탈출구 같은 이벤트 항목은 그대로.
+                    var o = !sp.On || !sp.KeepOn(mapId) ? e with { BossChance = 0 } : e;
+                    if (sp.On && sp.TTo > 0 && string.IsNullOrEmpty(o.TriggerName)) o = o with { Time = SpecialTime(sp.TFrom, sp.TTo, rnd, raidSec, o.Time ?? -1) };
+                    result.Add(o);
                     continue;
                 }
                 var n = e;
@@ -127,6 +130,7 @@ public static class RaidSpawnApplier
                 {
                     if (sp.Chance.TryGetValue(mapId, out var c)) n = n with { BossChance = c };
                     if (sp.Max > 0) n = n with { BossEscortAmount = Range(Math.Max(0, sp.Min - 1), Math.Max(0, sp.Max - 1)) };
+                    if (sp.TTo > 0 && string.IsNullOrEmpty(n.TriggerName)) n = n with { Time = SpecialTime(sp.TFrom, sp.TTo, rnd, raidSec, n.Time ?? -1) };
                 }
                 result.Add(n);
                 continue;
@@ -149,7 +153,7 @@ public static class RaidSpawnApplier
                 if (b.Extra) result.Add(n with { });
             }
         result.AddRange(extra);
-        AddExtraSpecials(loc.BossLocationSpawn, result, cfg, mapId);
+        AddExtraSpecials(loc.BossLocationSpawn, result, cfg, mapId, rnd, raidSec);
         loc.BossLocationSpawn = result;
 
         // 0.4: 저격 스캐브(바닐라 marksman 웨이브). 끄면 지우고, 맵 확률이 있으면 웨이브마다 그 확률로 남기며, 인원 칸이 있으면 바꾼다.
@@ -161,7 +165,14 @@ public static class RaidSpawnApplier
                 if (w.WildSpawnType != WildSpawnType.marksman) { waves.Add(w); continue; }
                 if (!sn.On) continue;
                 if (sn.Chance.TryGetValue(mapId, out var sc) && rnd.NextDouble() * 100 >= sc) continue;
-                waves.Add(sn.Max > 0 ? w with { SlotsMin = Math.Max(0, sn.Min), SlotsMax = sn.Max } : w);
+                var nw = sn.Max > 0 ? w with { SlotsMin = Math.Max(0, sn.Min), SlotsMax = sn.Max } : w;
+                if (sn.TTo > 0)
+                {
+                    int lo = (int)Math.Round(sn.TFrom * 60), hi = (int)Math.Round(sn.TTo * 60);
+                    if (raidSec > 0) { lo = (int)Math.Min(lo, raidSec * 0.9); hi = (int)Math.Min(hi, raidSec * 0.9); }
+                    nw = nw with { TimeMin = lo, TimeMax = Math.Max(lo, hi) };
+                }
+                waves.Add(nw);
             }
             loc.Waves = waves;
         }
@@ -197,12 +208,23 @@ public static class RaidSpawnApplier
     /// 본보기·구역은 이 맵의 원래 항목(이벤트 항목 포함)에서 가져오고, 원래 항목이 없는 맵에는 넣지 않는다(구역을 모름).
     /// 추가분은 맵 상한을 지킨다(IgnoreMaxBots=false). 트리거는 비운다(타이머 웨이브).
     /// </summary>
-    internal static void AddExtraSpecials(IReadOnlyList<BossLocationSpawn> original, List<BossLocationSpawn> result, GravityConfig cfg, string mapId)
+    /// <summary>특수 봇 시각 창(분) → 게임 Time(초). 끝이 0이면 원래대로(-1 = 판 시작).</summary>
+    internal static double SpecialTime(double from, double to, Random rnd, double raidSec, double original = -1)
     {
+        if (to <= 0) return original;
+        var t = (from + rnd.NextDouble() * Math.Max(0, to - from)) * 60;
+        if (raidSec > 0) t = Math.Min(t, raidSec * 0.9);
+        return Math.Max(1, Math.Round(t));
+    }
+
+    internal static void AddExtraSpecials(IReadOnlyList<BossLocationSpawn> original, List<BossLocationSpawn> result, GravityConfig cfg, string mapId,
+        Random? random = null, double raidSec = 0)
+    {
+        var rnd = random ?? new Random(1);
         if (cfg.Specials == null) return;
         foreach (var (id, sp) in cfg.Specials)
         {
-            if (!SpecialSettings.ExtraModel(id) || !sp.On || sp.Extra == null) continue;
+            if (!SpecialSettings.ExtraModel(id) || !sp.On || sp.Extra == null || sp.ExtraMax <= 0) continue;
             if (!sp.Extra.TryGetValue(mapId, out var chance) || chance <= 0) continue;
             var role = ConfigModel.SpecialRoles[id];
             var own = original.Where(e => string.Equals(e.BossName, role, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -214,7 +236,7 @@ public static class RaidSpawnApplier
             {
                 BossChance = chance, BossZone = string.Join(",", zones),
                 BossEscortAmount = Range(Math.Max(0, sp.ExtraMin - 1), Math.Max(0, Math.Max(sp.ExtraMin, sp.ExtraMax) - 1)),
-                TriggerId = "", TriggerName = "", Time = -1, Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
+                TriggerId = "", TriggerName = "", Time = SpecialTime(sp.XFrom, sp.XTo, rnd, raidSec), Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
             });
         }
     }
