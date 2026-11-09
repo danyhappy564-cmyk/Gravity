@@ -114,6 +114,10 @@ namespace Gravity.Client
         /// <summary>맵 동시 상한 예약 장부(1.0, Codex 검토 1번): Gravity가 요청했지만 아직 게임 집계에 안 잡힌 인원.</summary>
         internal readonly CapLedger Ledger = new CapLedger();
 
+        /// <summary>ScavDirector가 넣은 스캐브 웨이브(값 없음) → 그 웨이브로 만들어진 생성 자료(재검토 3번: 게임 상한 검사에 팩션 제외).</summary>
+        internal readonly ConditionalWeakTable<EFT.SpawnWave, object> ScavWaves = new ConditionalWeakTable<EFT.SpawnWave, object>();
+        internal readonly ConditionalWeakTable<global::BotCreationData, EFT.SpawnWave> ScavData = new ConditionalWeakTable<global::BotCreationData, EFT.SpawnWave>();
+
         /// <summary>"레이드 전체" 그룹 제한 장부(1.0, Codex 검토 2번): 서버 계획 분대(S.PlannedGroups)로 시작해 클라 보충 분대를 더한다.</summary>
         internal readonly RaidGroupLedger Groups;
 

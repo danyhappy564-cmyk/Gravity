@@ -443,8 +443,10 @@ test('스캐브를 보충할 수 없는 설정이면 예상 스캐브가 0입니
   assert.equal(smax(),0);
   a.run("state.maps.bigmap.scav.perPlayer=20");
   assert.ok(smax()>0);
-  // PMC 무한·스캐브 웨이브에서 PMC 보충 비율 100%면 스캐브 차례가 없다
+  // PMC 무한·스캐브 웨이브에서 PMC 보충 비율 100%: PMC 차례가 열리는 구간(첫 보충~PMC 중단)에는 스캐브 차례가 없다
   a.run("state.maps.bigmap.style='infinite';state.maps.bigmap.scavStyle='waves';state.maps.bigmap.inf.pmcShare=100");
+  a.run("ensureOverride('bigmap','flow');state.maps.bigmap.firstDelay=0;state.maps.bigmap.hardStop={...(state.maps.bigmap.hardStop||{}),pmcPct:5,scavPct:5}");
+  assert.equal(a.run("cfgFor(mapById('bigmap')).firstDelay"),0);
   assert.equal(smax(),0);
   a.run("state.maps.bigmap.inf.pmcShare=50");
   const half=smax();
@@ -459,4 +461,21 @@ test('맵 카드의 소프트 캡·플레이어당 한도는 그 맵 견적만 �
   assert.equal(a.run("estimate(mapById('bigmap')).smax"),Math.round(a.run("mapById('bigmap').scav")*a.run("state.spawn.scav.startPct")/100*1.15));
   assert.equal(a.run("estimate(mapById('woods')).smax"),other);
   assert.equal(a.run('state.spawn.scav.softCap'),18);
+});
+
+test('PMC 첫 보충 전과 PMC 중단 뒤에는 PMC 비율 100%여도 스캐브가 나옵니다', () => {
+  const a=app();
+  const smax=()=>a.run("estimate(mapById('bigmap')).smax");
+  a.run("ensureOverride('bigmap','scav');state.maps.bigmap.scav.startOn=false;state.maps.bigmap.scav.separateStart=false");
+  a.run("state.maps.bigmap.style='infinite';state.maps.bigmap.scavStyle='waves';state.maps.bigmap.inf.pmcShare=100");
+  a.run("ensureOverride('bigmap','flow');state.maps.bigmap.firstDelay=600");
+  assert.equal(a.run("cfgFor(mapById('bigmap')).firstDelay"),600);
+  const early=smax();
+  assert.ok(early>0);
+  // PMC 중단이 스캐브 중단보다 빠르면 그 뒤 구간도 스캐브 차례
+  a.run("state.maps.bigmap.hardStop={...(state.maps.bigmap.hardStop||{}),pmcPct:60,scavPct:5}");
+  assert.ok(smax()>early);
+  // 미궁 PMC가 꺼져 있으면 모든 차례가 스캐브
+  a.run("ensureOverride('labyrinth','scav');state.maps.labyrinth.scav.startOn=false;state.maps.labyrinth.style='infinite';state.maps.labyrinth.scavStyle='waves';state.maps.labyrinth.inf.pmcShare=100");
+  assert.ok(a.run("estimate(mapById('labyrinth')).smax")>0);
 });

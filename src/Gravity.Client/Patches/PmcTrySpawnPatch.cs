@@ -70,7 +70,9 @@ namespace Gravity.Client.Patches
             try
             {
                 var c = RaidContext.Current;
-                if (c == null || wave == null || creationData == null || !wave.BossType.IsPmcBot()) return true;
+                // PMC 분대와 근처 보충 웨이브(역할 무관)만: 근처 스캐브 무리도 구역 판정·상한 예약 정리를 같이 받는다(재검토 1번).
+                if (c == null || wave == null || creationData == null) return true;
+                if (!wave.BossType.IsPmcBot() && !c.NearWaves.TryGetValue(wave, out _)) return true;
                 PmcZones.EnsureZones(c, __instance);
 
                 var ctx = new Ctx { Raid = c, Wave = wave, Data = creationData, Size = 1 + Math.Max(0, wave.EscortCount) };
@@ -103,11 +105,48 @@ namespace Gravity.Client.Patches
         [PatchPostfix]
         private static void Postfix(BossLocationSpawn wave, BotCreationData creationData, ref bool __result)
         {
+            var ctx = ActiveFor(creationData);
+            bool original = __result;
             try
             {
-                // TrySpawn이 끝나면 이 웨이브는 게임 집계(생성 중 또는 대기열)에 잡혔거나 버려졌다: 상한 예약을 푼다(Codex 검토 1번).
-                if (wave != null) RaidContext.Current?.Ledger.Release(wave);
-                var ctx = ActiveFor(creationData);
+                Tally(ctx, wave, ref __result);
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("PmcTrySpawn.Postfix", ex);
+            }
+            finally
+            {
+                Settle(ctx, wave, original, __result);
+            }
+        }
+
+        /// <summary>
+        /// 상한 예약 정리(재검토 1번). false면 Spawn이 DelayBossSpawn을 부르므로 PmcCapDelayPatch가 대기/버림을 정한다.
+        /// 실제로 분대장이 생성 처리에 들어갔으면(생성 중 집계에 바로 잡힘, BotSpawner.method_7) 대원 몫만 남기고 BossSupportsPatch가 마저 푼다.
+        /// 구역이 없어 버려졌거나 만료로 버렸으면 다 푼다.
+        /// </summary>
+        private static void Settle(Ctx? ctx, BossLocationSpawn? wave, bool original, bool final)
+        {
+            try
+            {
+                if (wave == null || !final) return;
+                var c = RaidContext.Current;
+                if (c == null) return;
+                bool spawned = original && ctx != null && ReferenceEquals(ctx.Wave, wave)
+                    && PmcTally.Classify(true, ctx.ZonesSeen, ctx.ZonesOk) == PmcOutcome.Spawned;
+                if (spawned) c.Ledger.Shrink(wave, Math.Max(0, wave.EscortCount), false, Time.time);
+                else c.Ledger.Release(wave);
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("PmcTrySpawn.Settle", ex);
+            }
+        }
+
+        private static void Tally(Ctx? ctx, BossLocationSpawn wave, ref bool __result)
+        {
+            {
                 if (ctx == null || !ReferenceEquals(ctx.Wave, wave)) return;
                 var c = ctx.Raid;
                 if (!ReferenceEquals(c, RaidContext.Current)) return;
@@ -147,10 +186,6 @@ namespace Gravity.Client.Patches
                 c.FirstFail.Remove(wave);
                 c.Dropped[ctx.Waited ? "groupCap" : "expired"]++;
                 __result = true; // 처리 끝으로 돌려 Spawn이 DelayBossSpawn을 부르지 않게 한다(대기열에서 빠짐)
-            }
-            catch (Exception ex)
-            {
-                Log.ErrorOnce("PmcTrySpawn.Postfix", ex);
             }
         }
 
@@ -206,11 +241,16 @@ namespace Gravity.Client.Patches
             {
                 var c = RaidContext.Current;
                 if (c == null || wave == null) return true;
-                // 대기열에 들어가거나 버려진다: 어느 쪽이든 상한 예약은 푼다(대기열은 게임이 WaitCount로 센다).
-                c.Ledger.Release(wave);
-                if (c.NearWaves.TryGetValue(wave, out var near)) return DropNear(c, __instance, wave, near);
+                // 대기열에 들어가면 게임은 분대를 1로 센다(WaitCount): 대원 몫은 "대기 중" 예약으로 계속 잡는다. 버리면 다 푼다(재검토 1번).
+                if (c.NearWaves.TryGetValue(wave, out var near))
+                {
+                    bool keep = DropNear(c, __instance, wave, near);
+                    if (keep) Wait(c, wave); else c.Ledger.Release(wave);
+                    return keep;
+                }
                 if (!wave.BossType.IsPmcBot()) return true;
-                if (!SpawnExpiry.PastHardStop(c.Elapsed, c.S.HardStopPmcSec)) return true;
+                if (!SpawnExpiry.PastHardStop(c.Elapsed, c.S.HardStopPmcSec)) { Wait(c, wave); return true; }
+                c.Ledger.Release(wave);
                 c.FirstFail.Remove(wave);
                 c.Dropped["cap"]++;
                 return false; // 대기열에 넣지 않음 = 버림
@@ -221,6 +261,9 @@ namespace Gravity.Client.Patches
                 return true;
             }
         }
+
+        private static void Wait(RaidContext c, BossLocationSpawn wave) =>
+            c.Ledger.Shrink(wave, Math.Max(0, wave.EscortCount), true, Time.time);
 
         private static bool DropNear(RaidContext c, BotBossSpawn? boss, BossLocationSpawn wave, Directors.NearDirector.Tag near)
         {

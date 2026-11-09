@@ -172,14 +172,23 @@ namespace Gravity.Client.Directors
 
             var g = extra ? c.ExtractQueue.Peek() : groups[st.RefillIndex];
             int size = Math.Max(1, g.Size);
-            // "레이드 전체" 그룹 제한: 계획 밖 분대(무한·탈출 보충)도 같은 장부로 센다. 막히면 그 분대는 버리고 차례는 스캐브로(Codex 검토 2번).
+            // "레이드 전체" 그룹 제한: 계획 밖 분대(무한·탈출 보충)도 같은 장부로 센다(Codex 검토 2번).
+            // 초과 처리가 split이면 서버 계획과 같은 규칙으로 작은 분대로 나눠 이번 차례에 첫 조각, 나머지는 목록 바로 뒤에(재검토 2번).
             if (!c.Groups.CanAdd(size))
             {
-                if (extra) c.ExtractQueue.Dequeue();
-                else st.RefillIndex++;
-                c.Dropped["groupCap"]++;
-                Log.InfoOnce("ScavDirector.RaidGroupCap:" + c.S.Seed, $"{c.S.MapId} 레이드 전체 그룹 제한에 걸린 보충 분대({size}명)는 넣지 않음");
-                return PmcResult.Unavailable;
+                var parts = extra ? new List<int>() : c.Groups.Split(size);
+                if (parts.Count == 0)
+                {
+                    if (extra) c.ExtractQueue.Dequeue();
+                    else st.RefillIndex++;
+                    c.Dropped["groupCap"]++;
+                    Log.InfoOnce("ScavDirector.RaidGroupCap:" + c.S.Seed, $"{c.S.MapId} 레이드 전체 그룹 제한에 걸린 보충 분대({size}명)는 넣지 않음");
+                    return PmcResult.Unavailable;
+                }
+                groups[st.RefillIndex] = g = g with { Size = parts[0] };
+                for (int i = parts.Count - 1; i >= 1; i--) groups.Insert(st.RefillIndex + 1, g with { Size = parts[i] });
+                Log.Verbose($"{c.S.MapId} 레이드 전체 그룹 제한: 보충 분대 {size}명 → {string.Join("+", parts)}명으로 나눔");
+                size = parts[0];
             }
             // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
             var wave = WaveFactory.Pmc(g, "");
@@ -232,12 +241,14 @@ namespace Gravity.Client.Directors
             for (int i = 0; i < n; i++)
             {
                 // 스캐브 요청도 게임이 프로필을 받는 동안 다 세지 않으므로 1명씩 예약하고, 생성 Task가 끝나면 푼다(Codex 검토 1번).
-                var key = new object();
-                if (!c.TryReserve(bc, key, 1)) break;
+                // 예약 키 = 웨이브. 웨이브를 기억해 두면 그 생성 자료의 게임 상한 검사에도 팩션 제외가 걸린다(재검토 3번, NativeCapPatch).
                 var zone = order[i % order.Count];
                 var d = difficulties != null && difficulties.Count > 0 ? difficulties.Random() : BotDifficulty.normal;
                 // 플레이어 스캐브(pscavChance)는 0.2에서 적용하지 않는다(IsPlayers를 바닐라가 읽지 않음, 결정 14).
-                Watch(c, key, bc.ActivateBotsByWave(WaveFactory.Scav(zone.NameZone, d, false)));
+                var wave = WaveFactory.Scav(zone.NameZone, d, false);
+                if (!c.TryReserve(bc, wave, 1)) break;
+                c.ScavWaves.Add(wave, wave);
+                Watch(c, wave, bc.ActivateBotsByWave(wave));
                 done++;
             }
             st.ScavSpawned += done;

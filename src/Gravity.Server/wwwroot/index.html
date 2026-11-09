@@ -775,8 +775,11 @@ function estimate(m){
   // 웨이브 방식+PMC 무한은 무한 차례 간격(inf.delay)·묶음(inf.batch)·스캐브 차례 비율(1-pmcShare)을 쓰고, 그 밖은 스캐브 시계(scav.refill)에 1명씩.
   const blocked=c.scavStyle==='start'||!(c.scav.softCap>0)||!(c.scav.perPlayer>0);
   const winFrac=c.scavStyle==='infinite'?1:active/Math.max(1,active+quiet);
+  // PMC 차례는 PMC 첫 보충 시각~PMC 중단 사이에만 열린다(재검토 4번): 그 앞뒤 구간과 미궁 PMC 꺼짐은 모든 차례가 스캐브 차례다.
+  const pmcFrom=Math.min(p.end,c.firstDelay/60),pmcTo=m.id==='labyrinth'&&!c.allowPmcLabyrinth?pmcFrom:p.end;
+  const pmcOverlap=Math.max(0,Math.min(stop,pmcTo)-Math.max(sd,pmcFrom));
   const refill=blocked?0:c.style==='infinite'&&c.scavStyle==='waves'
-    ?duration/(Math.max(10,c.inf.delay)/60)*(1-c.inf.pmcShare/100)*Math.max(1,c.inf.batch)*winFrac
+    ?(duration-pmcOverlap*c.inf.pmcShare/100)/(Math.max(10,c.inf.delay)/60)*Math.max(1,c.inf.batch)*winFrac
     :duration/(Math.max(2,c.scav.refill)/60)*winFrac;
   const scavBase=hasScavs?initial+Math.round(refill):0;
   return{pmin,pmax,smin:Math.round(scavBase*.8),smax:Math.round(scavBase*1.15),bosses:bossesOn(m),p,c,cap};

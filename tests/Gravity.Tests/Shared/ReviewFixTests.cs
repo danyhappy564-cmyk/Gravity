@@ -57,6 +57,52 @@ public class ReviewFixTests
         Assert.Equal(int.MaxValue, CapLedger.Room(0, 500, 0, 500));
     }
 
+    [Fact]
+    public void CapLedger_SquadKeepsFollowerShare_UntilSupportsDone()
+    {
+        // 재검토 1번: 상한 24, 기존 19. A 분대 5명 예약 → 분대장만 생성 처리(게임 점유 20) → 대원 4명 몫은 계속 잡혀 B 4명은 거부
+        var l = new CapLedger();
+        object a = new(), b = new();
+        Assert.True(l.TryReserve(a, 5, 24, 19, 0, 0));
+        l.Shrink(a, 4, waiting: false, now: 1);
+        Assert.Equal(4, l.Held(1));
+        Assert.False(l.TryReserve(b, 4, 24, 20, 0, 1));
+        Assert.Equal(0, CapLedger.Room(24, 20, 0, l.Held(1)));
+        // 대원 생성이 끝나면(점유 24) 예약을 풀어도 자리는 0 그대로 = 총원 24 유지
+        Assert.True(l.Release(a));
+        Assert.Equal(0, CapLedger.Room(24, 24, 0, l.Held(2)));
+    }
+
+    [Fact]
+    public void CapLedger_WaitingSquad_KeepsFollowersOutOfNativeCheck()
+    {
+        var l = new CapLedger();
+        object a = new(), b = new();
+        Assert.True(l.TryReserve(a, 5, 24, 10, 0, 0));
+        // 게임 대기열은 5인 분대를 1로 센다 → 대원 4명은 대기 중 예약으로 남는다(앞단 검사는 센다)
+        l.Shrink(a, 4, waiting: true, now: 1);
+        Assert.Equal(4, l.Held(1));
+        Assert.Equal(0, l.HeldInFlight(1, null));
+        // 진행 중인 다른 요청은 게임 자체 검사에도 더하되 자기 요청은 뺀다
+        Assert.True(l.TryReserve(b, 3, 24, 11, 0, 1));
+        Assert.Equal(3, l.HeldInFlight(1, a));
+        Assert.Equal(0, l.HeldInFlight(1, b));
+        // 없는 요청(서버 계획 웨이브)은 줄여도 생기지 않는다, 0이면 풀린다
+        l.Shrink(new object(), 3, false, 1);
+        l.Shrink(b, 0, false, 1);
+        Assert.False(l.IsHeld(b));
+        Assert.Equal(4, l.Held(1));
+    }
+
+    [Fact]
+    public void CapLedger_LongProfileLoad_NotReleasedAt60s()
+    {
+        var l = new CapLedger();
+        Assert.True(l.TryReserve(new object(), 5, 24, 19, 0, 0));
+        Assert.Equal(5, l.Held(90));   // 프로필 받기가 90초 걸려도 예약 유지(기본 5분)
+        Assert.Equal(0, l.Held(CapLedger.DefaultTtl + 1));
+    }
+
     // ── 2번: 레이드 전체 그룹 제한 장부 ──
 
     private static GroupCapDto Cap(string scope, int size, string cmp, int count) =>
@@ -92,6 +138,39 @@ public class ReviewFixTests
         var cap = Cap("alive", 1, "eq", 1);
         Assert.Equal(CapVerdict.Wait, AliveGroupRule.Check([1], 1, cap));
         Assert.Equal(CapVerdict.Allow, AliveGroupRule.Check([], 1, cap));
+    }
+
+    [Theory]
+    [InlineData("split", new[] { 3, 2 })]
+    [InlineData("drop", new int[0])]
+    public void RaidGroupLedger_Split_MatchesServerPlanner(string over, int[] expected)
+    {
+        // 재검토 2번: 5인 분대 100%, "4인 이상 0개" → split이면 3+2, drop이면 없음. 서버 계획과 같은 결과여야 한다.
+        var cap = new GroupCapDto(true, "raid", over, [new GroupCapRuleDto(4, "gte", 0)]);
+        var l = new RaidGroupLedger(cap, []);
+        Assert.False(l.CanAdd(5));
+        Assert.Equal(expected, l.Split(5));
+        Assert.Equal(0, l.Used(3)); // 나누기는 장부에 적지 않는다(각 조각이 자기 차례에 다시 확인)
+
+        var map = new MapInfo("bigmap", 16, 20, 2400, ["A"], ["A"]);
+        var cfg = Read($$$$"""{"spawn":{"squad":{"s1":0,"s2":0,"s3":0,"s4":0,"s5":100},"startPmcPct":40,"groupCap":{"on":true,"scope":"raid","over":"{{{{over}}}}","rules":[{"size":4,"cmp":"ge","count":0}]}}}""");
+        var plan = SpawnPlanner.Plan(cfg, map, 2400, 0, 3);
+        Assert.All(plan.Groups, g => Assert.True(g.Size <= 3));
+        // split은 5인을 3+2로 나눠 넣고, drop은 5인 분대를 버린다(남은 자투리 인원만 작은 분대로 남을 수 있음)
+        if (over == "split") Assert.Contains(plan.Groups, g => g.Size == 3);
+        else Assert.DoesNotContain(plan.Groups, g => g.Size == 3);
+    }
+
+    [Fact]
+    public void RaidGroupLedger_SplitPieces_RespectCumulativeLimit()
+    {
+        // "3인 1개" 규칙: 5인을 나누면 3+2, 3인을 하나 쓴 뒤에는 2+2+1
+        var cap = new GroupCapDto(true, "raid", "split", [new GroupCapRuleDto(3, "eq", 1), new GroupCapRuleDto(4, "gte", 0)]);
+        var l = new RaidGroupLedger(cap, []);
+        Assert.Equal(new[] { 3, 2 }, l.Split(5));
+        Assert.True(l.TryUse(3));
+        Assert.Equal(new[] { 2, 2, 1 }, l.Split(5));
+        Assert.False(l.TryUse(3));
     }
 
     [Fact]
