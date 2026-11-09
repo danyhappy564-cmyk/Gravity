@@ -135,7 +135,7 @@ public static class ConfigModel
             new ScavSettings(r.Bool(sp + "scav.separateStart", true), r.Num(sp + "scav.delay", 4, 0, 60),
                 r.Num(sp + "scav.activeMin", 3, 1, 60), r.Num(sp + "scav.activeMax", 7, 1, 60),
                 r.Num(sp + "scav.quietMin", 1, 0, 60), r.Num(sp + "scav.quietMax", 3, 0, 60),
-                r.Num(sp + "scav.refill", 120, 0, 3600), (int)r.Num(sp + "scav.pending", 3, 0, 20),
+                r.Num(sp + "scav.refill", 45, 0, 3600), (int)r.Num(sp + "scav.pending", 3, 0, 20),
                 (int)r.Num(sp + "scav.softCap", 18, 0, 60), (int)r.Num(sp + "scav.perPlayer", 20, 0, 100),
                 r.Num(sp + "scav.pscavChance", 10, 0, 100), r.Bool(sp + "scav.startMarksman", true)),
             new ProtectSettings(r.Bool(sp + "protect.on", true), r.Num(sp + "protect.sec", 90, 0, 3600), r.Num(sp + "protect.radius", 120, 5, 1000)),
