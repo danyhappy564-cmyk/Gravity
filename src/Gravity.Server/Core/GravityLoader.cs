@@ -111,7 +111,8 @@ public class GravityLoader(
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var vanilla = Gravity.Gear.GearItemsBuilder.VanillaIds(sptData);
-            Gravity.Gear.GearRuntime.Builder = () => Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla);
+            Gravity.Gear.GearRuntime.Builder = () => Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla, GravityBoot.ModsDir,
+                globals.ItemPresets.Values.Where(x => x.Encyclopedia.HasValue && x.Items != null).Select(x => (x.Encyclopedia!.Value.ToString(), x.Items!.Select(i => i.Template.ToString()))));
             Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
