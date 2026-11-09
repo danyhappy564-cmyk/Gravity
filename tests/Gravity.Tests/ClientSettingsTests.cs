@@ -394,14 +394,14 @@ public class ClientSettingsTests
         var (rt, _) = Runtime(state);
         Hello(rt, "s1");
         rt.TryApplyToRaid("bigmap", Loc("bigmap", 40), null, "s1", 5);
-        Assert.NotNull(rt.Last.Plan);
-        Assert.NotEmpty(rt.Last.Plan!.Groups);
-        Assert.All(rt.Last.Plan.Groups, g => Assert.True(g.IsStart));
+        Assert.NotNull(rt.Last?.Plan);
+        Assert.NotEmpty(rt.Last!.Plan!.Groups);
+        Assert.All(rt.Last!.Plan!.Groups, g => Assert.True(g.IsStart));
         Assert.NotEmpty(rt.ClientRaidFor("bigmap").RefillGroups);
 
         var (rt2, _) = Runtime(state);
         rt2.TryApplyToRaid("bigmap", Loc("bigmap", 40), null, "s1", 5);
-        Assert.Contains(rt2.Last.Plan!.Groups, g => !g.IsStart);
+        Assert.Contains(rt2.Last!.Plan!.Groups, g => !g.IsStart);
     }
 
     [Fact]
@@ -449,4 +449,13 @@ public class ClientSettingsTests
     [InlineData("ruaf", "assault")]
     public void NearRole_WebNameToSpawnType(string web, string role) =>
         Assert.Equal(role, ClientSettingsBuilder.NearRole(web));
+
+    [Fact]
+    public void Build_Labyrinth_SmallMapDistances()
+    {
+        var cfg = LabPmcOn();
+        var s = ClientSettingsBuilder.Build(cfg, Lab, SpawnPlanner.Plan(cfg, Lab, 2400, 0, 1), true);
+        Assert.Equal(30, s.ScavDist);
+        Assert.Equal(40, s.PmcDist);
+    }
 }

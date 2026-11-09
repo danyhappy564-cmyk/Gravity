@@ -135,6 +135,17 @@ namespace Gravity.Client.Directors
             }
             if (st.Eligible.Count == 0)
             {
+                // 완화: 좁은 맵에서 모든 지점이 거리 안이면 거리를 절반으로 한 번 더 본다(구역 자리·시작 보호는 그대로).
+                for (int i = 0; i < st.Zones.Count; i++)
+                {
+                    var kv = st.Zones[i];
+                    if (kv.Key == null || !kv.Key.HaveFreeSpace(1)) continue;
+                    if (PointPicker.HasClearPoint(kv.Value, st.Humans, s.ScavDist * 0.5, protect, s.ProtectRadius)) st.Eligible.Add(kv.Key);
+                }
+                if (st.Eligible.Count > 0) Log.InfoOnce("ScavDirector.Relax:" + s.Seed, $"{s.MapId} 스캐브 거리 {s.ScavDist:0}m 안에 구역뿐: 절반 거리로 넣음");
+            }
+            if (st.Eligible.Count == 0)
+            {
                 Log.InfoOnce("ScavDirector.NoZone:" + s.Seed, $"{s.MapId} 스캐브를 넣을 구역이 없음(거리·보호·구역 자리): 이번 차례 건너뜀");
                 return 0;
             }
@@ -200,7 +211,8 @@ namespace Gravity.Client.Directors
                 if (p.IsAI)
                 {
                     var role = p.Profile?.Info?.Settings?.Role;
-                    if (role != null && role.Value == WildSpawnType.assault) scavs++;
+                    // 무리로 나온 스캐브는 역할이 assaultGroup이다(11-09 세관 판에서 확인): 둘 다 센다.
+                    if (role != null && (role.Value == WildSpawnType.assault || role.Value == WildSpawnType.assaultGroup)) scavs++;
                     continue;
                 }
                 Vector3 v = p.Position;

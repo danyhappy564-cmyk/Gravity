@@ -65,8 +65,10 @@ public static class ConfigModel
     public static int DefaultCap(string map) =>
         map == "labyrinth" ? 10 : map.StartsWith("factory") ? 14 : map == "tarkovstreets" ? 30 : 24;
 
-    public static double DefaultPmcDist(string map) => map.StartsWith("factory") ? 40 : 120;
-    public static double DefaultScavDist(string map) => map.StartsWith("factory") ? 30 : 80;
+    // 공장·미궁은 좁아서 큰 맵 거리(120·80m)로는 지점이 남지 않는다(11-09 미궁 판: 스캐브 지점 9개 전부 80m 안).
+    private static bool Small(string map) => map.StartsWith("factory") || map == "labyrinth";
+    public static double DefaultPmcDist(string map) => Small(map) ? 40 : 120;
+    public static double DefaultScavDist(string map) => Small(map) ? 30 : 80;
 
     public static MapSettings DefaultMap(string id) => new(
         false, id == "labyrinth" ? "infinite" : "waves", new InfSettings(45, 2, 50, 30), 35, 6, 2, 4,
