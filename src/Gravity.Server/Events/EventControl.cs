@@ -96,7 +96,8 @@ public static class EventControl
 
 /// <summary>SPT가 시즌 이벤트를 적용하기(GameCallbacks) 직전에 한 번.</summary>
 [Injectable(TypePriority = OnLoadOrder.GameCallbacks - 1)]
-public class GravityEventLoader(ISptLogger<GravityEventLoader> logger, ModHelper modHelper, SeasonalEventConfig seasonal) : IOnLoad
+public class GravityEventLoader(ISptLogger<GravityEventLoader> logger, ModHelper modHelper, SeasonalEventConfig seasonal,
+    SPTarkov.Server.Core.Services.Locales.LocaleService locales) : IOnLoad
 {
     /// <summary>웹 진단용: 실제 담당과 SVM 이벤트 칸.</summary>
     public static string? ResolvedOwner { get; private set; }
@@ -105,6 +106,8 @@ public class GravityEventLoader(ISptLogger<GravityEventLoader> logger, ModHelper
 
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
+        // 이 로더가 GravityLoader보다 먼저 돈다: 콘솔 언어를 여기서도 정한다(사용자 11-10, 영어 서버에서 이 줄만 한글이던 것)
+        try { L.Use(locales.GetDesiredServerLocale()); } catch { /* 윈도우 언어 그대로 */ }
         try
         {
             GravityBoot.Ensure(modHelper);
