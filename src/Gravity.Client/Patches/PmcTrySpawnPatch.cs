@@ -49,13 +49,15 @@ namespace Gravity.Client.Patches
             return a != null && data != null && ReferenceEquals(a.Data, data) ? a : null;
         }
 
-        /// <summary>GetPossibleZones 뒤에서 부른다: 지금 TrySpawn이 받은 구역 목록이 쓸 만한지 남긴다.</summary>
+        /// <summary>GetPossibleZones 뒤에서, 끈 구역을 지우고 다시 섞은 "최종" 목록으로 부른다(Codex 검토 6번):
+        /// 지금 TrySpawn이 받은 구역 목록이 쓸 만한지 남긴다.</summary>
         internal static void SawZones(BossLocationSpawn wave, List<BotZone> zones)
         {
             var a = _active;
             if (a == null || !ReferenceEquals(a.Wave, wave)) return;
             a.ZonesSeen = true;
-            a.ZonesOk = zones.Count > 0 && zones[0] != null; // TrySpawn의 "can't find zones" 두 조건(BotBossSpawn.cs:312·317)의 반대
+            // TrySpawn의 "can't find zones" 두 조건(BotBossSpawn.cs:312·317)의 반대
+            a.ZonesOk = PmcTally.ZonesUsable(zones.Count, zones.Count > 0 && zones[0] == null);
         }
 
         protected override MethodBase GetTargetMethod() =>
@@ -103,6 +105,8 @@ namespace Gravity.Client.Patches
         {
             try
             {
+                // TrySpawn이 끝나면 이 웨이브는 게임 집계(생성 중 또는 대기열)에 잡혔거나 버려졌다: 상한 예약을 푼다(Codex 검토 1번).
+                if (wave != null) RaidContext.Current?.Ledger.Release(wave);
                 var ctx = ActiveFor(creationData);
                 if (ctx == null || !ReferenceEquals(ctx.Wave, wave)) return;
                 var c = ctx.Raid;
@@ -110,7 +114,7 @@ namespace Gravity.Client.Patches
                 if (ctx.Near != null)
                 {
                     // 바닐라가 구역을 못 찾아 true로 버린 경우만 여기서 센다. false는 DelayBossSpawn → PmcCapDelayPatch가 버린다.
-                    if (__result && !(ctx.ZonesSeen && ctx.ZonesOk) && c.NearWaves.TryGetValue(wave, out _))
+                    if (PmcTally.Classify(__result, ctx.ZonesSeen, ctx.ZonesOk) == PmcOutcome.NoPoint && c.NearWaves.TryGetValue(wave, out _))
                     {
                         c.NearWaves.Remove(wave);
                         c.Spawned["near"] -= ctx.Near.Size;
@@ -123,7 +127,7 @@ namespace Gravity.Client.Patches
                 if (__result)
                 {
                     c.FirstFail.Remove(wave);
-                    if (ctx.ZonesSeen && ctx.ZonesOk)
+                    if (PmcTally.Classify(__result, ctx.ZonesSeen, ctx.ZonesOk) == PmcOutcome.Spawned)
                     {
                         var key = wave.BossType == WildSpawnType.pmcBEAR ? "pmcBEAR" : "pmcUSEC";
                         c.Spawned[key] += ctx.Size;
@@ -202,6 +206,8 @@ namespace Gravity.Client.Patches
             {
                 var c = RaidContext.Current;
                 if (c == null || wave == null) return true;
+                // 대기열에 들어가거나 버려진다: 어느 쪽이든 상한 예약은 푼다(대기열은 게임이 WaitCount로 센다).
+                c.Ledger.Release(wave);
                 if (c.NearWaves.TryGetValue(wave, out var near)) return DropNear(c, __instance, wave, near);
                 if (!wave.BossType.IsPmcBot()) return true;
                 if (!SpawnExpiry.PastHardStop(c.Elapsed, c.S.HardStopPmcSec)) return true;

@@ -433,3 +433,30 @@ test('시작 스캐브 비율은 해당 맵 견적에만 반영됩니다', () =>
   assert.equal(a.run('estimate(mapById(\'bigmap\')).smax'),0);
   assert.equal(a.run('state.spawn.scav.startPct'),20);
 });
+
+test('스캐브를 보충할 수 없는 설정이면 예상 스캐브가 0입니다', () => {
+  const a=app();
+  const smax=()=>a.run("estimate(mapById('bigmap')).smax");
+  a.run("ensureOverride('bigmap','scav');state.maps.bigmap.scav.startOn=false;state.maps.bigmap.scav.softCap=0");
+  assert.equal(smax(),0);
+  a.run("state.maps.bigmap.scav.softCap=18;state.maps.bigmap.scav.perPlayer=0");
+  assert.equal(smax(),0);
+  a.run("state.maps.bigmap.scav.perPlayer=20");
+  assert.ok(smax()>0);
+  // PMC 무한·스캐브 웨이브에서 PMC 보충 비율 100%면 스캐브 차례가 없다
+  a.run("state.maps.bigmap.style='infinite';state.maps.bigmap.scavStyle='waves';state.maps.bigmap.inf.pmcShare=100");
+  assert.equal(smax(),0);
+  a.run("state.maps.bigmap.inf.pmcShare=50");
+  const half=smax();
+  a.run("state.maps.bigmap.inf.batch=state.maps.bigmap.inf.batch*2");
+  assert.ok(smax()>half);
+});
+
+test('맵 카드의 소프트 캡·플레이어당 한도는 그 맵 견적만 바꿉니다', () => {
+  const a=app();
+  const other=a.run("estimate(mapById('woods')).smax");
+  a.run("ensureOverride('bigmap','scav');state.maps.bigmap.scav.softCap=0");
+  assert.equal(a.run("estimate(mapById('bigmap')).smax"),Math.round(a.run("mapById('bigmap').scav")*a.run("state.spawn.scav.startPct")/100*1.15));
+  assert.equal(a.run("estimate(mapById('woods')).smax"),other);
+  assert.equal(a.run('state.spawn.scav.softCap'),18);
+});

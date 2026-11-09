@@ -72,7 +72,8 @@ namespace Gravity.Client.Patches
             if (zones.Count < 2 || s.Placement == "vanilla") return;
             double share = s.Placement == "hotspot" ? 1.0 : s.Placement == "mixed" ? s.HotspotShare : 0;
             var w = s.ZoneWeights;
-            var ordered = WeightedOrder.Shuffle(zones, z => z == null || w == null ? 1 : w.GetValueOrDefault(z.NameZone, 1), share, c.Rng);
+            // 설정에 없는 구역은 기본 비중 100(Codex 검토 4번).
+            var ordered = WeightedOrder.Shuffle(zones, z => z == null ? ZoneWeight.Default : ZoneWeight.Of(w, z.NameZone), share, c.Rng);
             for (int i = 0; i < ordered.Count; i++) zones[i] = ordered[i];
         }
 
@@ -158,10 +159,13 @@ namespace Gravity.Client.Patches
             try
             {
                 if (wave == null || result == null) return;
+                // 끈 구역을 지우고 섞은 뒤에 판정한다: 다 지워져 빈 목록이면 생성 없이 끝나므로 '생성됨'으로 세면 안 된다(Codex 검토 6번).
+                if (wave.BossType.IsPmcBot())
+                {
+                    var c = RaidContext.Current;
+                    if (c != null) PmcZones.Reorder(c, result);
+                }
                 PmcTrySpawnPatch.SawZones(wave, result);
-                if (!wave.BossType.IsPmcBot()) return;
-                var c = RaidContext.Current;
-                if (c != null) PmcZones.Reorder(c, result);
             }
             catch (Exception ex)
             {

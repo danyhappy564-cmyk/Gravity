@@ -771,7 +771,13 @@ function estimate(m){
   const sd=c.scav.separateStart?c.scav.delay:0,hasScavs=m.scav||(m.id==='laboratory'&&c.allowScavLab),stop=raid*(1-c.hardStop.scavPct/100);
   const initial=c.scav.startOn&&sd<stop?Math.max(0,Math.round(m.scav*c.scav.startPct/100)):0;
   const duration=Math.max(0,stop-sd),active=(c.scav.activeMin+c.scav.activeMax)/2,quiet=(c.scav.quietMin+c.scav.quietMax)/2;
-  const refill=c.scavStyle==='start'?0:duration/(Math.max(2,c.scav.refill)/60)*(c.scavStyle==='infinite'?1:active/Math.max(1,active+quiet));
+  // 클라 ScavSchedule과 같은 차단·시계(Codex 검토 5번): softCap·플레이어당 한도가 0이면 보충은 늘 막힌다.
+  // 웨이브 방식+PMC 무한은 무한 차례 간격(inf.delay)·묶음(inf.batch)·스캐브 차례 비율(1-pmcShare)을 쓰고, 그 밖은 스캐브 시계(scav.refill)에 1명씩.
+  const blocked=c.scavStyle==='start'||!(c.scav.softCap>0)||!(c.scav.perPlayer>0);
+  const winFrac=c.scavStyle==='infinite'?1:active/Math.max(1,active+quiet);
+  const refill=blocked?0:c.style==='infinite'&&c.scavStyle==='waves'
+    ?duration/(Math.max(10,c.inf.delay)/60)*(1-c.inf.pmcShare/100)*Math.max(1,c.inf.batch)*winFrac
+    :duration/(Math.max(2,c.scav.refill)/60)*winFrac;
   const scavBase=hasScavs?initial+Math.round(refill):0;
   return{pmin,pmax,smin:Math.round(scavBase*.8),smax:Math.round(scavBase*1.15),bosses:bossesOn(m),p,c,cap};
 }

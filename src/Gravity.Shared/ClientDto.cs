@@ -15,7 +15,8 @@ namespace Gravity.Shared
         bool Managed, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
         double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0, string Style = "waves");
 
-    public sealed record InfDto(double DelaySec, int Batch, double PmcShare, double Jitter);
+    /// <summary>FirstDelaySec(1.0): PMC 첫 보충 시각(클라 경과 초, 스캐브 레이드 지연을 뺀 값). 옛 서버는 null — 이때는 예전 동작.</summary>
+    public sealed record InfDto(double DelaySec, int Batch, double PmcShare, double Jitter, double? FirstDelaySec = null);
 
     public sealed record RefillGroup(bool Usec, int Size, string Difficulty);
 
@@ -34,7 +35,8 @@ namespace Gravity.Shared
         bool AllowPmcLabyrinth, GroupCapDto GroupCap, ScavDto Scav, InfDto? Inf,
         IReadOnlyList<RefillGroup> RefillGroups, NearDto Near, IReadOnlyList<string>? CapExclude = null,
         bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
-        string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null);
+        string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
+        IReadOnlyList<int>? PlannedGroups = null);
 
     /// <summary>Spawned 키: pmcUSEC·pmcBEAR·assault·near·other. Dropped 키: noPoint·expired·groupCap·cap(하드 스톱으로 버린 PMC 분대)·scavCap(상한에 막힌 스캐브 차례 구간)·nearCap(상한에 막힌 근처 자리).
     /// AlivePerMinute 원소: [분, PMC, 스캐브, 전체]. Extracted(0.6): 살아서 맵을 떠난 봇(탈출) 수, 키는 Killed와 같다.</summary>

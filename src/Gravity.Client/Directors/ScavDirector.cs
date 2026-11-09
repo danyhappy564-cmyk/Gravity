@@ -19,8 +19,9 @@ namespace Gravity.Client.Directors
     ///   모든 사람과 ScavDist 이상(시작 보호 중이면 ProtectRadius 이상)이고 자리가 남은(BotZone.HaveFreeSpace) 구역을 웹 구역 가중치로 섞어
     ///   1마리씩 BotsController.ActivateBotsByWave(SpawnWave)(BotsController.cs:499). 구역 안의 실제 지점은 바닐라가 고른다.
     /// - PMC 차례(무한 방식, pmcTurn): RefillGroups의 다음 분대를 BotsController.ActivateBotsByWave(BossLocationSpawn)(BotsController.cs:507)로.
-    ///   지점·동시 그룹 제한·대기열 만료·Spawned 기록은 Task 5 패치가 한다. 분대가 맵 상한에 안 들어가면(BotSpawner.CheckOnMax, 바닐라
-    ///   BotBossSpawn.Spawn과 같은 판정) 그 차례는 건너뛰고 분대는 다음 PMC 차례로 남긴다(대기열에 쌓지 않음, 설계 4.6).
+    ///   지점·동시 그룹 제한·대기열 만료·Spawned 기록은 Task 5 패치가 한다. 분대가 맵 상한에 안 들어가면(1.0: RaidContext.TryReserve —
+    ///   생존·로딩·대기·Gravity 예약, 상한 제외 팩션 뺌) 그 차례는 건너뛰고 분대는 다음 PMC 차례로 남긴다(대기열에 쌓지 않음, 설계 4.6).
+    ///   "레이드 전체" 그룹 제한(RaidContext.Groups)에 걸린 분대는 버리고 Dropped["groupCap"](1.0).
     ///   목록을 다 썼거나 PMC 하드 스톱이 지났거나 미궁 PMC가 꺼져 있으면(allowPmcLabyrinth=false, 결정 12) 그 차례는 스캐브 차례로 쓴다
     ///   (스캐브 판정을 거친 수만큼).
     /// - 플레이어 스캐브 확률(scav.pscavChance)은 0.2에서 적용하지 않는다: SpawnWave.IsPlayers를 바닐라가 읽지 않는다(결정 14, WaveFactory.Scav).
@@ -77,7 +78,8 @@ namespace Gravity.Client.Directors
 
             int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
-            int alive = Math.Max(0, bc.AliveLoadingDelayedBotsCount - excluded);
+            // 맵 상한 판정용 점유: 게임 집계(생존·로딩·대기) − 상한 제외 팩션 + 아직 집계에 안 잡힌 Gravity 예약(Codex 검토 1번).
+            int alive = Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(Time.time);
             int pending = spawner.SpawnDelaysService?.WaitCount ?? 0;
 
             int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, aliveScavs / players, players, out bool pmcTurn);
@@ -113,6 +115,8 @@ namespace Gravity.Client.Directors
             if (st == null)
             {
                 st = c.ScavState = new State(new ScavSchedule(c.S.Scav, c.S.Inf, c.S.HardStopScavSec, c.Rng));
+                // PMC 첫 보충은 서버가 보낸 첫 웨이브 지연부터(옛 서버는 0, Codex 검토 3번).
+                st.PmcOnlyNext = (float)(c.S.Inf?.FirstDelaySec ?? 0);
                 Log.Info($"{c.S.MapId} 스캐브는 바닐라, 무한 보충 PMC만(분대 {c.Refill.Count}개)");
             }
             if (now < st.NextTick) return;
@@ -167,12 +171,24 @@ namespace Gravity.Client.Directors
             if (SpawnExpiry.PastHardStop(now, c.S.HardStopPmcSec)) return PmcResult.Unavailable;
 
             var g = extra ? c.ExtractQueue.Peek() : groups[st.RefillIndex];
-            spawner.CheckOnMax(Math.Max(1, g.Size), out int toDelay, out _);
-            if (toDelay > 0) return PmcResult.NoRoom;
+            int size = Math.Max(1, g.Size);
+            // "레이드 전체" 그룹 제한: 계획 밖 분대(무한·탈출 보충)도 같은 장부로 센다. 막히면 그 분대는 버리고 차례는 스캐브로(Codex 검토 2번).
+            if (!c.Groups.CanAdd(size))
+            {
+                if (extra) c.ExtractQueue.Dequeue();
+                else st.RefillIndex++;
+                c.Dropped["groupCap"]++;
+                Log.InfoOnce("ScavDirector.RaidGroupCap:" + c.S.Seed, $"{c.S.MapId} 레이드 전체 그룹 제한에 걸린 보충 분대({size}명)는 넣지 않음");
+                return PmcResult.Unavailable;
+            }
+            // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
+            var wave = WaveFactory.Pmc(g, "");
+            if (!c.TryReserve(bc, wave, size)) return PmcResult.NoRoom;
 
+            c.Groups.TryUse(size);
             if (extra) c.ExtractQueue.Dequeue();
             else st.RefillIndex++;
-            bc.ActivateBotsByWave(WaveFactory.Pmc(g, ""));
+            bc.ActivateBotsByWave(wave);
             return PmcResult.Spawned;
         }
 
@@ -209,18 +225,24 @@ namespace Gravity.Client.Directors
             double share = s.Placement == "hotspot" ? 1.0 : s.Placement == "mixed" ? s.HotspotShare : 0;
             // 옛 서버가 새 필드를 보내지 않으면 기존 공용 비중을 그대로 사용합니다.
             var w = s.ScavZoneWeights ?? s.ZoneWeights;
-            var order = WeightedOrder.Shuffle(st.Eligible, z => w == null ? 1 : w.GetValueOrDefault(z.NameZone, 1), share, c.Rng);
+            // 설정에 없는 구역은 기본 비중 100(Codex 검토 4번, 서버도 같은 값으로 채워 보낸다).
+            var order = WeightedOrder.Shuffle(st.Eligible, z => ZoneWeight.Of(w, z.NameZone), share, c.Rng);
 
+            int done = 0;
             for (int i = 0; i < n; i++)
             {
+                // 스캐브 요청도 게임이 프로필을 받는 동안 다 세지 않으므로 1명씩 예약하고, 생성 Task가 끝나면 푼다(Codex 검토 1번).
+                var key = new object();
+                if (!c.TryReserve(bc, key, 1)) break;
                 var zone = order[i % order.Count];
                 var d = difficulties != null && difficulties.Count > 0 ? difficulties.Random() : BotDifficulty.normal;
                 // 플레이어 스캐브(pscavChance)는 0.2에서 적용하지 않는다(IsPlayers를 바닐라가 읽지 않음, 결정 14).
-                Watch(bc.ActivateBotsByWave(WaveFactory.Scav(zone.NameZone, d, false)));
+                Watch(c, key, bc.ActivateBotsByWave(WaveFactory.Scav(zone.NameZone, d, false)));
+                done++;
             }
-            st.ScavSpawned += n;
-            c.Spawned["assault"] += n;
-            return n;
+            st.ScavSpawned += done;
+            c.Spawned["assault"] += done;
+            return done;
         }
 
         private static void MarkCap(RaidContext c, State st)
@@ -282,12 +304,20 @@ namespace Gravity.Client.Directors
             return scavs;
         }
 
-        /// <summary>비동기 생성(프로필 받기)에서 난 예외를 한 번만 남긴다.</summary>
-        private static void Watch(Task t)
+        /// <summary>비동기 생성(프로필 받기)이 끝나면 예약을 풀고, 예외는 한 번만 남긴다.</summary>
+        private static void Watch(RaidContext c, object key, Task t)
         {
-            if (t == null) return;
-            t.ContinueWith(x => Log.ErrorOnce("ScavDirector.Spawn", x.Exception!.GetBaseException()),
-                TaskContinuationOptions.OnlyOnFaulted);
+            if (t == null || t.IsCompleted)
+            {
+                c.Ledger.Release(key);
+                if (t != null && t.IsFaulted) Log.ErrorOnce("ScavDirector.Spawn", t.Exception!.GetBaseException());
+                return;
+            }
+            t.ContinueWith(x =>
+            {
+                c.Ledger.Release(key); // 끝났으면 게임 집계(생존·로딩·대기)에 잡혔다
+                if (x.IsFaulted) Log.ErrorOnce("ScavDirector.Spawn", x.Exception!.GetBaseException());
+            }, TaskContinuationOptions.ExecuteSynchronously);
         }
     }
 }

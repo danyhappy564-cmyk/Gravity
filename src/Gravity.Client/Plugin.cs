@@ -61,6 +61,9 @@ namespace Gravity.Client
                 Enable(new PmcPointsPatch());
                 Enable(new PmcTrySpawnPatch());
                 Enable(new PmcCapDelayPatch());
+                // 게임 자체 상한 검사(BotBossSpawn.Spawn 안 CheckOnMax)도 Gravity 분대는 상한 제외 팩션을 빼고 본다(1.0, Codex 검토 1번)
+                Enable(new BossSpawnScopePatch());
+                Enable(new CheckOnMaxPatch());
                 // 1분마다 살아 있는 봇 수 기록(보고용), 서버가 스캐브를 관리하면 바닐라 자동 스폰 대신 ScavDirector(F6·F7)
                 Enable(new NonWavesPatch());
             }

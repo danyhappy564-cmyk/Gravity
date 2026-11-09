@@ -111,6 +111,24 @@ namespace Gravity.Client
             return n;
         }
 
+        /// <summary>맵 동시 상한 예약 장부(1.0, Codex 검토 1번): Gravity가 요청했지만 아직 게임 집계에 안 잡힌 인원.</summary>
+        internal readonly CapLedger Ledger = new CapLedger();
+
+        /// <summary>"레이드 전체" 그룹 제한 장부(1.0, Codex 검토 2번): 서버 계획 분대(S.PlannedGroups)로 시작해 클라 보충 분대를 더한다.</summary>
+        internal readonly RaidGroupLedger Groups;
+
+        /// <summary>게임이 세는 점유: 생존·생성 중·로딩·대기열·프로필 받는 중. 두 집계가 겹칠 수 있어 큰 쪽을 쓴다.</summary>
+        internal static int Occupied(EFT.BotSpawner sp) =>
+            Math.Max(sp.AllBotsWithDelayed, sp.AllBotsWithLoaded + (sp.SpawnDelaysService?.WaitCount ?? 0));
+
+        /// <summary>맵 상한 빈자리 = 상한 − (점유 − 상한 제외 팩션) − 예약. 상한이 없으면 int.MaxValue.</summary>
+        internal int Room(EFT.BotsController bc) =>
+            CapLedger.Room(bc._maxCount, Occupied(bc.BotSpawner), CountCapExcluded(), Ledger.Held(Time.time));
+
+        /// <summary>자리가 있으면 size명을 예약한다(key = 생성 요청: 분대 웨이브 또는 스캐브 요청 표식).</summary>
+        internal bool TryReserve(EFT.BotsController bc, object key, int size) =>
+            Ledger.TryReserve(key, size, bc._maxCount, Occupied(bc.BotSpawner), CountCapExcluded(), Time.time);
+
         /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
         public readonly List<int[]> AlivePerMinute = new List<int[]>();
 
@@ -163,6 +181,7 @@ namespace Gravity.Client
             StartTime = startTime;
             Rng = new System.Random(s.Seed);
             Refill = new List<RefillGroup>(s.RefillGroups ?? (IReadOnlyList<RefillGroup>)Array.Empty<RefillGroup>());
+            Groups = new RaidGroupLedger(s.GroupCap, s.PlannedGroups);
             Log.Level = s.LogLevel ?? "summary";
         }
 

@@ -34,6 +34,9 @@ public static class ClientSettingsBuilder
         var scavWeights = new Dictionary<string, double>();
         foreach (var (z, w) in ms.ScavZoneWeights ?? ms.ZoneWeights)
             if (!ms.Zones.TryGetValue(z, out var on) || on) scavWeights[z] = w;
+        // 설정에 없는 켜진 구역은 기본 비중 100(Codex 검토 4번): 원본 배치에서 한 구역만 편집해도 나머지가 1로 떨어지지 않게.
+        FillDefaults(weights, map.PmcZones, ms.Zones);
+        FillDefaults(scavWeights, map.ScavZones, ms.Zones);
 
         var rules = s.GroupCap.Rules.Select(r => new GroupCapRuleDto(r.Size, r.Cmp == "ge" ? "gte" : "eq", r.Count)).ToList();
         var sc = s.Scav;
@@ -42,7 +45,8 @@ public static class ClientSettingsBuilder
         IReadOnlyList<RefillGroup> refill = [];
         if (ms.Style == "infinite")
         {
-            inf = new InfDto(ms.Inf.DelaySec, ms.Inf.Batch, ms.Inf.PmcShare / 100, ms.Inf.Jitter / 100);
+            // PMC 첫 보충 시각 = 계획의 첫 웨이브 지연(spawn.firstDelaySec)에서 스캐브 레이드 지연을 뺀 값(Codex 검토 3번).
+            inf = new InfDto(ms.Inf.DelaySec, ms.Inf.Batch, ms.Inf.PmcShare / 100, ms.Inf.Jitter / 100, Math.Max(0, s.FirstDelaySec - sim));
             // 미궁 PMC가 꺼져 있으면(allowPmcLabyrinth=false, 기본) 보충 PMC 분대도 보내지 않는다(스캐브 보충만).
             if (map.Id != "labyrinth" || s.AllowPmcLabyrinth)
             {
@@ -65,7 +69,15 @@ public static class ClientSettingsBuilder
             inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
             cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.DiagOrDefault.Log, scavWeights,
             cfg.OrbitOrDefault.RefillMode, cfg.OrbitOrDefault.ExtractRefillCap,
-            ms.Zones.Where(kv => !kv.Value).Select(kv => kv.Key).ToArray());
+            ms.Zones.Where(kv => !kv.Value).Select(kv => kv.Key).ToArray(),
+            // 서버 계획이 이미 넣은 PMC 분대 크기: 클라가 "레이드 전체" 그룹 제한을 이어서 센다(Codex 검토 2번).
+            plan.Groups.Select(g => g.Size).ToArray());
+    }
+
+    private static void FillDefaults(Dictionary<string, double> weights, string[]? zones, IReadOnlyDictionary<string, bool> on)
+    {
+        foreach (var z in zones ?? [])
+            if (!string.IsNullOrEmpty(z) && !weights.ContainsKey(z) && (!on.TryGetValue(z, out var o) || o)) weights[z] = ZoneWeight.Default;
     }
 
     /// <summary>근처 보충 설정. ORBIT 봇 재우기와 맞추기(orbit.nearAsGhost)가 켜져 있으면 깨우는 거리 밖에서 시작(0.6).</summary>

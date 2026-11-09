@@ -14,6 +14,8 @@
     <PackageReference Include="SPTarkov.DI" Version="4.1.0" />
     <PackageReference Include="SPTarkov.Reflection" Version="4.1.0" />
     <PackageReference Include="SPTarkov.Server.Core" Version="4.1.0" />
+    <!-- 클라가 서버 응답을 읽는 파서(게임 Managed의 Newtonsoft)와 같은 계열로 옛 DTO 호환을 검사 -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Gravity.Server\Gravity.Server.csproj" />

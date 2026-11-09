@@ -27,6 +27,12 @@ namespace Gravity.Shared
         private double _nextAttempt;    // 다음 시도 가능 경과 초
         private double _nextScavAttempt;
 
+        // PMC 첫 보충 시각(1.0, Codex 검토 3번): 서버가 InfDto.FirstDelaySec를 보내면 스캐브 방식과 상관없이 PMC 차례는 이 시각부터.
+        private readonly bool _pmcGate;
+        private readonly double _pmcStart;
+        private readonly double _scavStart;
+        private bool _pmcOpened;
+
         /// <summary>마지막 Tick에서 스캐브가 0마리였던 이유. 맵 상한(Cap) 때문에 막힌 차례를 셀 때 쓴다.</summary>
         public ScavBlock LastBlock { get; private set; }
 
@@ -40,8 +46,15 @@ namespace Gravity.Shared
             _nextAttempt = Math.Max(0, s.StartDelaySec);
             _nextScavAttempt = _nextAttempt;
             _windowEnd = _nextAttempt + Draw(s.ActiveMin, s.ActiveMax) * 60.0;
-            if (s.Style == "start" || s.Style == "infinite") _nextAttempt = 0;
+            _scavStart = _nextAttempt;
+            _pmcGate = inf?.FirstDelaySec != null;
+            _pmcStart = Math.Max(0, inf?.FirstDelaySec ?? 0);
+            if (s.Style == "start" || s.Style == "infinite") _nextAttempt = _pmcGate ? _pmcStart : 0;
+            else if (_pmcGate) _nextAttempt = Math.Min(_nextAttempt, _pmcStart);
         }
+
+        /// <summary>PMC 차례를 열어도 되는 시각이 지났는지(옛 서버면 늘 true).</summary>
+        private bool PmcOpen(double elapsed) => !_pmcGate || elapsed >= _pmcStart;
 
         private double Draw(double min, double max)
         {
@@ -72,13 +85,20 @@ namespace Gravity.Shared
                 _windowEnd += Math.Max(1.0, len * 60.0);
             }
 
+            // PMC 첫 보충 시각에 닿은 첫 틱에는 차례를 바로 연다: 웨이브 방식에서도 첫 PMC 차례가 다른 스캐브 방식과 같은 시각이 되게.
+            if (_inf != null && _pmcGate && !_pmcOpened && raidElapsed >= _pmcStart)
+            {
+                _pmcOpened = true;
+                if (_nextAttempt > raidElapsed) _nextAttempt = raidElapsed;
+            }
+
             // 공통 판정: 시도 간격, 맵 상한. 막히면 차례를 쓰지 않고 다음 틱에 다시 본다.
             if (raidElapsed < _nextAttempt) return Block(ScavBlock.Interval);
             int room = cap - aliveLoadingDelayed;
             if (room <= 0) return Block(ScavBlock.Cap);
 
             // PMC 차례는 스캐브 전용 판정보다 먼저 정한다(무한 방식만).
-            if (_inf != null) pmcTurn = _rng.NextDouble() < _inf.PmcShare;
+            if (_inf != null && PmcOpen(raidElapsed)) pmcTurn = _rng.NextDouble() < _inf.PmcShare;
 
             int want = _inf != null ? _inf.Batch : 1;
             ScavBlock why = ScavGate(raidElapsed, pending, spawnedPerPlayer, aliveScavs);
@@ -109,7 +129,7 @@ namespace Gravity.Shared
         {
             pmcTurn = false;
             if (cap <= alive) return Block(ScavBlock.Cap);
-            if (_inf != null && elapsed >= _nextAttempt)
+            if (_inf != null && elapsed >= _nextAttempt && PmcOpen(elapsed))
             {
                 pmcTurn = _rng.NextDouble() < _inf.PmcShare;
                 Consume(elapsed);
@@ -127,6 +147,7 @@ namespace Gravity.Shared
         /// <summary>스캐브에만 걸리는 판정. 순서: 휴식 창, 스캐브 하드 스톱, 대기 수, 플레이어당 한도, softCap.</summary>
         private ScavBlock ScavGate(float raidElapsed, int pending, int spawnedPerPlayer, int aliveScavs)
         {
+            if (_pmcGate && raidElapsed < _scavStart) return ScavBlock.Interval; // PMC 시계가 먼저 열려도 스캐브는 자기 시작 지연까지
             if (_s.Style != "infinite" && !_active) return ScavBlock.Quiet;
             if (raidElapsed >= _hardStop) return ScavBlock.HardStop;
             if (pending > _s.Pending) return ScavBlock.Pending;

@@ -24,7 +24,7 @@ namespace Gravity.Client.Directors
     ///   PmcPointsPatch가 근처 보충 웨이브면 고른 지점을 그대로 넣는다(RaidContext.NearWaves).
     /// - 시야(Near.Sight): 시도마다 고른 후보 1개만 Physics.Linecast(눈 위치 → 지점 + 1.5m, 지형·하이폴리 벽 레이어)로 본다.
     ///   막힘이 없으면(보이면) 그 시도는 실패하고 다시 섞어 고른다(Near.Attempts번까지). 후보 전체를 훑지 않는다.
-    /// - 맵 상한: 차례 처음에 BotSpawner.CheckOnMax로 빈자리를 읽고 넣을 때마다 줄인다. 무리가 안 들어가면 그 자리는 Dropped["nearCap"]. 바닐라가 대기열(DelayBossSpawn)에
+    /// - 맵 상한(1.0): 자리마다 공용 장부(RaidContext.Room·TryReserve: 생존·로딩·대기·Gravity 예약, 상한 제외 팩션 뺌)로 보고 예약한다. 무리가 안 들어가면 그 자리는 Dropped["nearCap"]. 바닐라가 대기열(DelayBossSpawn)에
     ///   넣었다가 나중에 낡은 위치에 내는 일은 PmcCapDelayPatch가 막는다(근처 보충 웨이브는 대기열에 넣지 않고 버림).
     /// - 지점을 못 찾으면 그 자리는 건너뛰고 Dropped["noPoint"]. 넣으면 Spawned["near"] += 무리 크기(요청 기준, 스캐브 assault와 같음).
     /// </summary>
@@ -32,7 +32,6 @@ namespace Gravity.Client.Directors
     {
         private const float TickSec = 2f;
         private const float TargetLift = 1.5f;
-        private const int RoomProbe = 1000;
 
         /// <summary>근처 보충 웨이브 표시. PointId = PMC 후보 지점 Id(RaidContext.PointById), 스캐브·사용자 지정 역할이면 -1.</summary>
         internal sealed class Tag
@@ -94,7 +93,8 @@ namespace Gravity.Client.Directors
             var player = gw.MainPlayer;
             if (player == null || player.HealthController == null || !player.HealthController.IsAlive) return;
 
-            var slots = st.Schedule.Tick(now, bc._maxCount, Math.Max(0, bc.AliveLoadingDelayedBotsCount - c.CountCapExcluded()));
+            int excluded = c.CountCapExcluded();
+            var slots = st.Schedule.Tick(now, bc._maxCount, Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(UnityEngine.Time.time));
             if (slots.Count == 0) return;
 
             Vector3 pp = player.Position;
@@ -102,9 +102,7 @@ namespace Gravity.Client.Directors
             Vector3 eye = EyePosition(player);
             st.Taken.Clear();
             st.Seen.Clear();
-            // 맵 상한 빈자리는 차례 처음에 한 번 읽고 넣을 때마다 줄인다. 생성은 비동기라 같은 차례 안에서는 BotSpawner 수가 아직 안 늘어서
-            // 자리마다 CheckOnMax를 다시 부르면 상한을 넘겨 넣을 수 있다. MaxBots가 0(상한 없음)이면 RoomProbe 그대로.
-            spawner.CheckOnMax(RoomProbe, out _, out int room);
+            // 생성은 비동기라 같은 차례 안에서는 게임 집계가 아직 안 는다. 1.0: 빈자리는 공용 장부로(생존·로딩·대기·예약, 제외 팩션 뺌). 자리마다 예약하므로 탈출·무한 보충과 겹쳐도 상한을 넘지 않는다.
 
             for (int i = 0; i < slots.Count; i++)
             {
@@ -113,7 +111,7 @@ namespace Gravity.Client.Directors
                 int size = Math.Max(1, slot.Count);
                 bool pmc = role.IsPmcBot();
 
-                if (size > room)
+                if (size > c.Room(bc))
                 {
                     c.Dropped["nearCap"]++;
                     continue;
@@ -144,9 +142,9 @@ namespace Gravity.Client.Directors
                 Vec3 pos = Find(pool, id);
                 st.Taken.Add(pos);
                 var wave = WaveFactory.AtPoint(role, size, pos, zone.NameZone);
+                if (!c.TryReserve(bc, wave, size)) { c.Dropped["nearCap"]++; continue; }
                 c.NearWaves.Add(wave, new Tag(pmc ? id : -1, size));
                 bc.ActivateBotsByWave(wave);
-                room -= size;
                 c.Spawned["near"] += size;
             }
         }
