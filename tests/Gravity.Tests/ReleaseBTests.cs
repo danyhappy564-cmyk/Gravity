@@ -159,26 +159,38 @@ public class ReleaseBTests
     }
 
     [Fact]
-    public void BundledRealisticPresetAppliesOwnTableWeightsAndActualChances()
+    public void BundledApbsRealisticPresetKeepsOriginalWeightsAndKeepsModWeaponsOut()
     {
         var dir=new DirectoryInfo(AppContext.BaseDirectory);
         for(int i=0;i<10&&dir!=null&&!File.Exists(Path.Combine(dir.FullName,"Gravity.sln"));i++)dir=dir.Parent;
         Assert.NotNull(dir);
-        var preset=JsonNode.Parse(File.ReadAllText(Path.Combine(dir!.FullName,"src/Gravity.Server/wwwroot/presets/realistic.json")))!;
+        var preset=JsonNode.Parse(File.ReadAllText(Path.Combine(dir!.FullName,"src/Gravity.Server/wwwroot/presets/apbs-realistic-mip01.json")))!;
+        Assert.Equal("mip01",(string?)preset["credits"]!["presetAuthor"]);
         var state=preset["settings"]!.DeepClone();state["tierData"]=preset["tables"]!.DeepClone();state["tierOwn"]=preset["ownTables"]!.DeepClone();
         var g=ConfigModel.FromState(V2(state!),[]).Gear!;
         const string m4="5447a9cd4bdc2dbd208b4567";
-        var items=new GearItems(new Dictionary<string,ItemInfo>{[m4]=new(100,0,0,false,false,Weapon:true){Section="weapons",Slot="ar",EquipmentSlots=["FirstPrimaryWeapon","SecondPrimaryWeapon"]}},[]);
+        var mod=Id(77);
+        var items=new GearItems(new Dictionary<string,ItemInfo>{
+            [m4]=new(100,0,0,false,false,Weapon:true){Section="weapons",Slot="ar",EquipmentSlots=["FirstPrimaryWeapon","SecondPrimaryWeapon"]},
+            [mod]=new(100,0,0,false,true,Weapon:true){Section="weapons",Slot="special",EquipmentSlots=["FirstPrimaryWeapon"],Source="SomeWeaponMod"}},[]);
+        int[] apbsLevels=[1,11,21,31,41,51,61];
         for(int tier=0;tier<7;tier++)
         {
-            var bot=new BotType{BotInventory=new(){Equipment=new(){[EquipmentSlots.FirstPrimaryWeapon]=new(){[m4]=999}}},BotChances=new(){EquipmentChances=new(),EquipmentModsChances=new(),WeaponModsChances=new()}};
+            Assert.True(g.TableFor("usec",tier).Only);
+            Assert.Equal(apbsLevels[tier],g.Tiers[tier].Min);
+            var bot=new BotType{BotInventory=new(){Equipment=new(){[EquipmentSlots.FirstPrimaryWeapon]=new(){[m4]=999,[mod]=50}}},BotChances=new(){EquipmentChances=new(),EquipmentModsChances=new(),WeaponModsChances=new()}};
             GearApply.Apply(bot,g,new("usec","pmc",tier,true),items,new(null,0,0,0),false,new(1));
-            var expected=g.TableFor("usec",tier).Pools["weapons/ar"][m4];
-            Assert.Equal(expected,bot.BotInventory.Equipment[EquipmentSlots.FirstPrimaryWeapon][m4]);
-            Assert.True(bot.BotChances.EquipmentChances["FirstPrimaryWeapon"]>0);
-            Assert.InRange(g.Tiers[tier].FMin,1,6);
-            if(tier==0){Assert.Equal(7,expected);Assert.Equal(80,bot.BotChances.EquipmentChances["Headwear"]);Assert.Equal(2,bot.BotChances.EquipmentChances["SecondPrimaryWeapon"]);Assert.Equal(75,bot.BotChances.EquipmentModsChances["front_plate"]);}
+            var pool=bot.BotInventory.Equipment[EquipmentSlots.FirstPrimaryWeapon];
+            Assert.False(pool.ContainsKey(mod)); // 원작 목록에 없는 모드 무기는 빠진다
+            var expected=(double?)preset["tables"]!["usec"]![tier]!["weapons"]!["ar"]![m4];
+            if(expected is >0)Assert.Equal(expected.Value,pool[m4]); else Assert.False(pool.ContainsKey(m4));
+            var mainPlate=new[]{65,80,90,95,100,100,100}[tier];
+            Assert.Equal(mainPlate,bot.BotChances.EquipmentModsChances["front_plate"]);
+            Assert.Equal((double)preset["tables"]!["usec"]![tier]!["slotChances"]!["Headwear"]!,bot.BotChances.EquipmentChances["Headwear"]);
         }
+        // 원작에 없는 감염자·팩션 봇은 목록 전용 표를 쓰지 않는다
+        Assert.False(g.TableFor("infected",0).Only);
+        Assert.False(g.TableFor("ruaf",0).Only);
     }
 
     [Fact]

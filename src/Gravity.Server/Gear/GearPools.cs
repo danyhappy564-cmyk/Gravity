@@ -52,6 +52,8 @@ public static class GearPools
             var legacy = new[]{"weapons/primaryShort","weapons/primaryLong"}.Where(table.Pools.ContainsKey).ToArray();
             if (legacy.Length > 0) return legacy.Max(k=>table.Pools[k].GetValueOrDefault(id));
         }
+        // 목록 전용 표: 장비 칸(무기·방어구)에서 표에 없는 아이템은 무게 0. 부품·방탄판·탄약은 기존 규칙 그대로.
+        if (table.Only && equipmentSlot != null && info.Section is "weapons" or "armor") return 0;
         return null;
     }
 

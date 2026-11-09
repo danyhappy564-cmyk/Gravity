@@ -28,6 +28,8 @@ public sealed record GearTable(IReadOnlyDictionary<string, (int Min, int Max)> G
     public IReadOnlyDictionary<string,double> SlotChances { get; init; } = new Dictionary<string,double>();
     public IReadOnlyDictionary<string,double> PartChances { get; init; } = new Dictionary<string,double>();
     public IReadOnlyDictionary<string,IReadOnlyDictionary<int,double>> GenWeights { get; init; } = new Dictionary<string,IReadOnlyDictionary<int,double>>();
+    /// <summary>목록 전용 표(가져온 프리셋): 무기·방어구 장비 칸에서 표에 없는 아이템은 쓰지 않는다(모드 아이템이 끼어들지 않게).</summary>
+    public bool Only { get; init; }
 }
 
 public sealed record BlacklistEntry(string Id, IReadOnlyList<string> Bots);
@@ -211,7 +213,7 @@ public static partial class ConfigModel
                     d.Chance.ToDictionary(kv => kv.Key, kv => r.Num($"{p}chance.{kv.Key}", kv.Value, 0, 100)),
                     d.Mods.ToDictionary(kv => kv.Key, kv => r.Num($"{p}mods.{kv.Key}", kv.Value, 0, 100)))
                     { Pools = r.Num("gear.poolVer", 0, 0, 99) >= 2 ? Gravity.Gear.GearPools.Read(r, p) : new Dictionary<string, IReadOnlyDictionary<string, double>>(), SlotChances = Gravity.Gear.GearPools.Chances(r,p+"slotChances"),
-                      PartChances = Gravity.Gear.GearPools.Chances(r,p+"partChances"), GenWeights = Gravity.Gear.GearPools.Generation(r,p+"genWeights") };
+                      PartChances = Gravity.Gear.GearPools.Chances(r,p+"partChances"), GenWeights = Gravity.Gear.GearPools.Generation(r,p+"genWeights"), Only = r.Num("gear.poolVer", 0, 0, 99) >= 2 && r.Bool(p + "only", false) };
             }).ToArray();
         }
 
