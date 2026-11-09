@@ -172,14 +172,19 @@ public static class GearApply
                     var weight = info == null ? null : GearPools.Weight(table, info, id);
                     explicitAmmo |= weight.HasValue;
                     var pen = info?.Pen ?? 0;
-                    if (c.Blocked(id) || weight is <= 0 || pen > penCap || (g.ItemTier.TryGetValue(id,out var manualTier)&&manualTier>pick.Tier+1)) { pool.Remove(mid); removed++; continue; }
-                    pool[mid] = weight ?? w * Factor(Math.Max(0, pick.Tier - AmmoTier(g.Tiers, pen))) * (info?.Mod == true ? g.ModMult / 100.0 : 1);
+                    // 탄약 티어 = 같은 구경 안 가격 순위 7등분(직접 지정 우선). 관통 상한은 따로 막는다.
+                    // 표에 직접 넣은 탄(무게 있음)은 직접 티어를 정한 경우에만 티어로 막는다(장비 칸과 같은 규칙).
+                    int at = c.TierOf("ammo/" + (info?.Slot ?? caliber), id);
+                    bool overTier = g.ItemTier.ContainsKey(id) ? at > pick.Tier : !weight.HasValue && at > pick.Tier;
+                    if (c.Blocked(id) || weight is <= 0 || pen > penCap || overTier) { pool.Remove(mid); removed++; continue; }
+                    pool[mid] = weight ?? w * Factor(Math.Max(0, pick.Tier - at)) * (info?.Mod == true ? g.ModMult / 100.0 : 1);
                 }
                 if (pool.Count == 0 && !explicitAmmo && orig.Count>0)
                 {
                     var keep = orig.Where(kv => !c.Blocked(kv.Key.ToString())).ToList();
                     if (keep.Count == 0) keep = orig;
-                    var low = keep.OrderBy(kv => c.Info(kv.Key.ToString())?.Pen ?? 0).First();
+                    // 티어 위만 남았으면 가장 낮은 티어(같으면 관통 낮은 것) 하나를 되살린다.
+                    var low = keep.OrderBy(kv => c.TierOf("ammo/" + caliber, kv.Key.ToString())).ThenBy(kv => c.Info(kv.Key.ToString())?.Pen ?? 0).First();
                     pool[low.Key] = Math.Max(1, low.Value);
                     restored++;
                 }
@@ -355,6 +360,20 @@ public static class GearApply
             if (gd.Whitelist != null)
                 foreach (var mid in gd.Whitelist.Keys.ToList())
                     if (c.Blocked(mid.ToString())) gd.Whitelist.Remove(mid);
+            // 소모품 티어(같은 종류 안 가격 순위, 직접 지정 우선): 표에 직접 넣은 목록은 직접 티어를 정한 것만, SPT 기본 목록은 티어 위 아이템을 뺀다.
+            // 전부 빠지면 가장 낮은 티어만 남긴다(봇 소모품이 통째로 사라지지 않게).
+            if (gd.Whitelist is { Count: > 0 } wl && key is "meds" or "stims" or "grenades" or "food" or "drink")
+            {
+                bool ownList = table.Pools.ContainsKey("meds/" + key);
+                int TierOfMed(MongoId m) => c.TierOf("meds/" + key, m.ToString());
+                var over = wl.Keys.Where(m => (!ownList || c.Settings.ItemTier.ContainsKey(m.ToString())) && TierOfMed(m) > c.Pick.Tier).ToList();
+                if (over.Count < wl.Count) foreach (var m in over) wl.Remove(m);
+                else if (!ownList)
+                {
+                    int lo = wl.Keys.Min(TierOfMed);
+                    foreach (var m in wl.Keys.Where(m => TierOfMed(m) > lo).ToList()) wl.Remove(m);
+                }
+            }
             if (!table.Gen.TryGetValue(key, out var mm)) return;
             int mx = cap.HasValue ? Math.Min(mm.Max, cap.Value) : mm.Max;
             gd.Weights = zero ? Uniform(0, 0) : Uniform(Math.Min(mm.Min, mx), mx);

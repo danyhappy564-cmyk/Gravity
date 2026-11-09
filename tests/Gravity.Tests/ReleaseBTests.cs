@@ -68,6 +68,31 @@ public class ReleaseBTests
     }
 
     [Fact]
+    public void SourceScanPrefersTheModThatDefinesTheItemOverModsThatOnlyReferenceIt()
+    {
+        string root=Path.Combine(Path.GetTempPath(),"gravity-source-"+Guid.NewGuid());
+        foreach(var d in new[]{"Maker/db/CustomItems","LootMap/db","Compat/db/CustomItems","LocaleOnly/db/CustomLocales","Ref1","Ref2"})Directory.CreateDirectory(Path.Combine(root,d));
+        try
+        {
+            // 만든 모드: CustomItems의 아이템 키(WTT 형식). 맵 모드·호환 모드는 전리품·호환 부품으로 참조만 한다.
+            File.WriteAllText(Path.Combine(root,"Maker/db/CustomItems/gun.json"),$$"""{ "{{Id(21)}}": { "itemTplToClone": "5447a9cd4bdc2dbd208b4567" } }""");
+            File.WriteAllText(Path.Combine(root,"LootMap/db/looseLoot.json"),$$"""{"items":[{"_tpl":"{{Id(21)}}"}]}""");
+            File.WriteAllText(Path.Combine(root,"Compat/db/CustomItems/rail.json"),$$"""{"filters":["{{Id(21)}}"]}""");
+            // 이름 번역만 가진 모드(CAG처럼 정의가 다른 형식): 번역 키가 참조보다 강하다.
+            File.WriteAllText(Path.Combine(root,"LocaleOnly/db/CustomLocales/en.json"),$$"""{"{{Id(22)}} Name":"Cover"}""");
+            File.WriteAllText(Path.Combine(root,"Ref1/a.json"),$$"""{"x":"{{Id(22)}}"}""");
+            // 근거가 같은 두 모드: 출처 미상
+            File.WriteAllText(Path.Combine(root,"Ref1/b.json"),$$"""{"x":"{{Id(23)}}"}""");
+            File.WriteAllText(Path.Combine(root,"Ref2/b.json"),$$"""{"x":"{{Id(23)}}"}""");
+            var src=GearItemSource.Scan(root,new HashSet<string>{Id(21),Id(22),Id(23)});
+            Assert.Equal("Maker",src[Id(21)]);
+            Assert.Equal("LocaleOnly",src[Id(22)]);
+            Assert.False(src.ContainsKey(Id(23)));
+        }
+        finally { Directory.Delete(root,true); }
+    }
+
+    [Fact]
     public void SourceScanUsesRealInstalledIdsAndLeavesAmbiguousOwnerUnknown()
     {
         string root=Path.Combine(Path.GetTempPath(),"gravity-source-"+Guid.NewGuid());
@@ -191,6 +216,25 @@ public class ReleaseBTests
         // 원작에 없는 감염자·팩션 봇은 목록 전용 표를 쓰지 않는다
         Assert.False(g.TableFor("infected",0).Only);
         Assert.False(g.TableFor("ruaf",0).Only);
+    }
+
+    [Fact]
+    public void AmmoAndMedsUsePriceTiersInsideTheirOwnGroup()
+    {
+        // 같은 구경 탄 7개(가격 1~7)와 의약품 7개: 가격순 7등분이라 i번째가 T(i). 관통은 모두 상한 아래.
+        var info=new Dictionary<string,ItemInfo>();
+        for(int i=1;i<=7;i++){info[Id(30+i)]=new(i,0,5,false,false){Section="ammo",Slot="fixture"};info[Id(40+i)]=new(i,0,0,false,false){Section="meds",Slot="meds"};}
+        var items=new GearItems(info,info.Keys.Select(id=>(info[id].Section+"/"+info[id].Slot,id)));
+        var g=Config("""{"gear":{"tiers":[{"pen":60},{"pen":60},{"pen":60}]}}""");
+        BotType Bot()=>new(){BotInventory=new(){Equipment=new(),Ammo=new(){["fixture"]=Enumerable.Range(31,7).ToDictionary(i=>(MongoId)Id(i),_=>10.0)}},
+            BotGeneration=new(){Items=new(){Healing=new(){Weights=new(){[1]=1},Whitelist=Enumerable.Range(41,7).ToDictionary(i=>(MongoId)Id(i),_=>1.0)}}}};
+        var t1=Bot();GearApply.Apply(t1,g,new("usec","pmc",0,true),items,new(null,0,0,0),false,new(1));
+        Assert.Equal(new[]{Id(31)},t1.BotInventory!.Ammo!["fixture"].Keys.Select(x=>x.ToString()));      // T1: 가장 싼 탄만
+        Assert.Equal(new[]{Id(41)},t1.BotGeneration!.Items!.Healing!.Whitelist!.Keys.Select(x=>x.ToString()));
+        var t3=Bot();GearApply.Apply(t3,g,new("usec","pmc",2,true),items,new(null,0,0,0),false,new(1));
+        Assert.Equal(3,t3.BotInventory!.Ammo!["fixture"].Count);                                         // T3: T1~T3
+        Assert.True(t3.BotInventory.Ammo["fixture"][Id(33)]>t3.BotInventory.Ammo["fixture"][Id(31)]);    // 낮은 티어일수록 적게
+        Assert.Equal(3,t3.BotGeneration!.Items!.Healing!.Whitelist!.Count);
     }
 
     [Fact]

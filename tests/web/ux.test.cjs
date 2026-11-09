@@ -627,5 +627,20 @@ test('아이템 티어: 자동 티어 근거를 보여 주고 선택한 아이�
   a.click({itset:`${gun}|0`});
   assert.equal(a.run(`state.gear.itemTier['${gun}']`),undefined);
   assert.match(a.run(`tierSummary('pmc',0)`),/주무기/);
-  assert.match(a.run(`tierSummary('pmc',0)`),/방탄판/);
+  assert.match(a.run(`tierSummary('pmc',0)`),/앞·뒤판 등급/);
+  assert.match(a.run(`tierSummary('pmc',0)`),/data-sum="w:prim"/);
+});
+
+test('아이템 티어: 꺼진 모드 아이템을 표시하고 의약품 탭과 탄약 가격 근거를 보여 줍니다', () => {
+  const a=app(),mod='000000000000000000000021',med='000000000000000000000022',ammo='000000000000000000000023';
+  a.run(`serverMeta={};GEAR_CATALOG=[{id:'${mod}',ko:'모드 소총',en:'Mod rifle',section:'weapons',slot:'ar',equipmentSlots:['FirstPrimaryWeapon'],source:'SomeGuns',mod:true,autoTier:4,armorClass:0,pen:0,price:90000,tierGroup:'weapons/ar',tierRank:30,tierSize:50},
+    {id:'${med}',ko:'시험 약',en:'Test med',section:'meds',slot:'meds',equipmentSlots:[],source:'vanilla',mod:false,autoTier:2,armorClass:0,pen:0,price:5000,tierGroup:'meds/meds',tierRank:3,tierSize:10},
+    {id:'${ammo}',ko:'시험 탄',en:'Test round',section:'ammo',slot:'Caliber556x45NATO',equipmentSlots:[],source:'vanilla',mod:false,autoTier:6,armorClass:0,pen:44,price:900,tierGroup:'ammo/Caliber556x45NATO',tierRank:40,tierSize:45}];
+    rebuildSlots();page='itemtiers';state.mods.disabledSources=['SomeGuns'];`);
+  assert.match(a.run('P.itemtiers.render()'),/꺼진 모드/);
+  assert.match(a.run(`itWhy(GEAR_CATALOG[0])`),/봇 기본 목록 밖의 돌격소총/);
+  assert.match(a.run(`itWhy(GEAR_CATALOG[2])`),/구경 556x45NATO 탄 45개/);
+  a.click({it:'sec|meds'});
+  assert.match(a.run('P.itemtiers.render()'),/시험 약/);
+  assert.match(a.run(`itWhy(GEAR_CATALOG[1])`),/의약품 10개/);
 });
