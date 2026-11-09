@@ -61,19 +61,76 @@ public static class RaidSpawnApplier
     }
 
     /// <summary>보스 켜기·확률·맵 끄기. 설정에 없는 역할(팩션·이벤트·모드 보스)은 건드리지 않는다.</summary>
-    public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId)
+    private static readonly string[] Diffs = ["easy", "normal", "hard", "impossible"];
+
+    /// <summary>
+    /// 보스·특수 봇 항목을 웹 설정대로 고친다(0.3). 새 항목을 먼저 다 만든 뒤 한 번에 바꿔 넣는다(중간 예외 시 원본 유지).
+    /// 보스: 확률(0.1), 호위 데려오기·호위 수·등장 시간·난이도·구역·추가 스폰. 특수 봇: 켜기·맵별 확률·무리 크기.
+    /// 구역은 이 맵 보스 항목에 실제로 있는 이름만 남기고(웹 목업 id 등 모르는 이름은 버림), 다 버려지면 바닐라 구역.
+    /// </summary>
+    public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId, int seed = 1, int raidSec = 0)
     {
-        // 새 확률을 먼저 다 계산한 뒤 한 번에 쓴다(중간 예외 시 일부만 바뀌지 않게).
-        var updates = new List<(BossLocationSpawn e, double chance)>();
+        var rnd = new Random(seed ^ 0x5B055);
+        var valid = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var e in loc.BossLocationSpawn)
+            foreach (var z in (e.BossZone ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                valid.Add(z);
+        var specialByRole = (cfg.Specials ?? new Dictionary<string, SpecialSettings>())
+            .Where(kv => ConfigModel.SpecialRoles.ContainsKey(kv.Key))
+            .ToDictionary(kv => ConfigModel.SpecialRoles[kv.Key], kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+
+        var result = new List<BossLocationSpawn>(loc.BossLocationSpawn.Count);
+        var extra = new List<BossLocationSpawn>();
         foreach (var e in loc.BossLocationSpawn)
         {
-            if (e.BossName is not { } role || !BossRoleToId.TryGetValue(role, out var id)) continue;
-            if (!cfg.Bosses.TryGetValue(id, out var b)) continue;
-            var mapOn = !b.Maps.TryGetValue(mapId, out var on) || on;
-            updates.Add((e, !b.On || !mapOn ? 0 : cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance));
+            if (e.BossName is { } role && BossRoleToId.TryGetValue(role, out var id) && cfg.Bosses.TryGetValue(id, out var b))
+            {
+                var mapOn = !b.Maps.TryGetValue(mapId, out var on) || on;
+                var chance = !b.On || !mapOn ? 0 : cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance;
+                var n = e with { BossChance = chance };
+                if (!b.Followers) n = n with { BossEscortAmount = "0" };
+                else if (b.EscMax > 0) n = n with { BossEscortAmount = Range(b.EscMin, b.EscMax) };
+                if (b.TTo > 0)
+                {
+                    var t = (b.TFrom + rnd.NextDouble() * (b.TTo - b.TFrom)) * 60;
+                    if (raidSec > 0) t = Math.Min(t, raidSec * 0.9);
+                    n = n with { Time = Math.Max(1, Math.Round(t)) };
+                }
+                if (b.Diff is { Length: > 0 })
+                {
+                    var d = b.Diff == "random" ? Diffs[rnd.Next(Diffs.Length)] : b.Diff;
+                    n = n with { BossDifficulty = d, BossEscortDifficulty = d };
+                }
+                if (b.Zones != null && b.Zones.TryGetValue(mapId, out var zs))
+                {
+                    var keep = zs.Where(valid.Contains).Distinct().ToArray();
+                    if (keep.Length > 0) n = n with { BossZone = string.Join(",", keep) };
+                }
+                result.Add(n);
+                if (b.Extra && chance > 0) extra.Add(n with { SptId = "gravity" });
+                continue;
+            }
+            if (e.BossName is { } sr && specialByRole.TryGetValue(sr, out var sp))
+            {
+                var n = e;
+                if (!sp.On) n = n with { BossChance = 0 };
+                else
+                {
+                    if (sp.Chance.TryGetValue(mapId, out var c)) n = n with { BossChance = c };
+                    if (sp.Max > 0) n = n with { BossEscortAmount = Range(Math.Max(0, sp.Min - 1), Math.Max(0, sp.Max - 1)) };
+                }
+                result.Add(n);
+                continue;
+            }
+            result.Add(e);
         }
-        foreach (var (e, c) in updates) e.BossChance = c;
+        result.AddRange(extra);
+        loc.BossLocationSpawn = result;
     }
+
+    /// <summary>바닐라 호위 수 형식: 가능한 수를 쉼표로(클라가 하나를 고름). 예: 2~4 → "2,3,4".</summary>
+    internal static string Range(int min, int max) =>
+        string.Join(",", Enumerable.Range(min, Math.Max(0, max - min) + 1));
 
     /// <summary>
     /// PMC 분대 하나의 BossZone. 쉼표 목록은 쓰지 않는다: 클라는 목록에서 구역 하나를 무작위로 골라 레이드 끝까지

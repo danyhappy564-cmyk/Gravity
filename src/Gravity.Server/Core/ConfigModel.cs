@@ -38,11 +38,18 @@ public sealed record MapSettings(
     Intensity Intensity, bool Original, int Cap, IReadOnlyDictionary<string, bool> Zones,
     double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights);
 
-public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<string, bool> Maps);
+/// <summary>보스 하나. EscMin·EscMax 둘 다 0, TFrom·TTo 둘 다 0, Diff 빈 값, 구역 없음 = 바닐라 유지(0.3).</summary>
+public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<string, bool> Maps,
+    bool Followers = true, int EscMin = 0, int EscMax = 0, double TFrom = 0, double TTo = 0, string Diff = "",
+    bool Extra = false, IReadOnlyDictionary<string, string[]>? Zones = null);
+
+/// <summary>특수 봇 무리(레이더·로그·컬티스트·블러드하운드). Chance는 맵별(없는 맵은 바닐라 확률 유지), Min·Max는 무리 전체 인원.</summary>
+public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max);
 
 public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
-    IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near)
+    IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
+    IReadOnlyDictionary<string, SpecialSettings>? Specials = null)
 {
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
 }
@@ -56,6 +63,12 @@ public static class ConfigModel
     ];
 
     // 웹 보스 id → 기본 확률(목업 BOSSES와 같은 값)
+    /// <summary>특수 봇 무리 id → 우두머리 역할(BossLocationSpawn.BossName). 저격 스캐브·감염자는 0.4.</summary>
+    public static readonly IReadOnlyDictionary<string, string> SpecialRoles = new Dictionary<string, string>
+    {
+        ["raiders"] = "pmcBot", ["rogues"] = "exUsec", ["cultists"] = "sectantPriest", ["bloodhounds"] = "arenaFighterEvent"
+    };
+
     public static readonly IReadOnlyDictionary<string, double> BossDefaultChance = new Dictionary<string, double>
     {
         ["reshala"] = 38, ["shturman"] = 35, ["tagilla"] = 35, ["glukhar"] = 35, ["sanitar"] = 35, ["killa"] = 38,
@@ -164,7 +177,30 @@ public static class ConfigModel
             if (r.Node(p + "maps") is JsonObject mo)
                 foreach (var (k, v) in mo)
                     bm[k] = v is JsonValue jv && jv.TryGetValue<bool>(out var b) && b;
-            bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm);
+            var zones = new Dictionary<string, string[]>();
+            if (r.Node(p + "zones") is JsonObject zo)
+                foreach (var (k, v) in zo)
+                    if (v is JsonArray za)
+                        zones[k] = za.OfType<JsonValue>().Select(x => x.TryGetValue<string>(out var sv) ? sv : null)
+                            .Where(sv => sv is { Length: > 0 and <= 60 }).Select(sv => sv!).ToArray();
+            var eMin = (int)r.Num(p + "escMin", 0, 0, 10);
+            var tFrom = r.Num(p + "tFrom", 0, 0, 600);
+            bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm,
+                r.Bool(p + "followers", true), eMin, (int)Math.Max(eMin, r.Num(p + "escMax", 0, 0, 10)),
+                tFrom, Math.Max(tFrom, r.Num(p + "tTo", 0, 0, 600)),
+                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random"), r.Bool(p + "extra", false), zones);
+        }
+
+        var specials = new Dictionary<string, SpecialSettings>();
+        foreach (var id in SpecialRoles.Keys)
+        {
+            var p = $"specials.{id}.";
+            var chance = new Dictionary<string, double>();
+            if (r.Node(p + "chance") is JsonObject co)
+                foreach (var (k, _) in co)
+                    chance[k] = r.Num(p + "chance." + k, 0, 0, 100);
+            var sMin = (int)r.Num(p + "min", 0, 0, 10);
+            specials[id] = new SpecialSettings(r.Bool(p + "on", true), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)));
         }
 
         var nMin = r.Num("near.minDist", 200, 5, 1000);
@@ -181,7 +217,7 @@ public static class ConfigModel
             r.Role("near.custom.t2", "rogue"), (int)r.Num("near.custom.cap2", 5, 0, 60), r.Num("near.custom.ratio2", 50, 0, 100));
 
         return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
-            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near);
+            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials);
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>
