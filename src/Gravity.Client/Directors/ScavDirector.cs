@@ -39,6 +39,8 @@ namespace Gravity.Client.Directors
             public int ScavSpawned;
             public bool CapEpisode;
             public bool ZonesBuilt;
+            /// <summary>PMC만 보충할 때(스캐브 관리 꺼짐) 다음 차례 시각.</summary>
+            public float PmcOnlyNext;
 
             /// <summary>저격 아닌 구역과 그 구역 지점 위치(레이드에서 한 번 만든다).</summary>
             public readonly List<KeyValuePair<BotZone, Vec3[]>> Zones = new List<KeyValuePair<BotZone, Vec3[]>>();
@@ -94,6 +96,39 @@ namespace Gravity.Client.Directors
 
             int done = SpawnScavs(c, st, bc, spawner, n, now, difficulties);
             if (done > 0) st.CapEpisode = false;
+        }
+
+        /// <summary>
+        /// 스캐브 관리를 끈 맵(연구소 allowScavLab 꺼짐 등)이 무한 방식이면 PMC 차례만 돌린다(0.3). 스캐브는 바닐라 자동 스폰 그대로.
+        /// 차례 간격 = inf.delay ± jitter, 차례마다 inf.pmcShare 확률로 보충 PMC 분대 하나. 맵 상한에 막히면 차례를 쓰지 않고 다음 틱에 다시.
+        /// </summary>
+        internal static void TickPmcOnly(RaidContext c, BotsController? bc)
+        {
+            if (!c.Started || c.S.Inf == null || c.S.RefillGroups == null || c.S.RefillGroups.Count == 0) return;
+            float now = c.Elapsed;
+            var st = c.ScavState;
+            if (st == null)
+            {
+                st = c.ScavState = new State(new ScavSchedule(c.S.Scav, c.S.Inf, c.S.HardStopScavSec, c.Rng));
+                Log.Info($"{c.S.MapId} 스캐브는 바닐라, 무한 보충 PMC만(분대 {c.S.RefillGroups.Count}개)");
+            }
+            if (now < st.NextTick) return;
+            st.NextTick = now + TickSec;
+            if (now < st.PmcOnlyNext) return;
+
+            if (bc == null && Singleton<IBotGame>.Instantiated) bc = Singleton<IBotGame>.Instance.BotsController;
+            var spawner = bc?.BotSpawner;
+            if (bc == null || spawner == null || !bc._canSpawn) return;
+
+            var inf = c.S.Inf;
+            if (c.Rng.NextDouble() < inf.PmcShare)
+            {
+                var r = TryPmc(c, st, bc, spawner, now);
+                if (r == PmcResult.NoRoom) { MarkCap(c, st); return; }
+                if (r == PmcResult.Spawned) st.CapEpisode = false;
+            }
+            double j = inf.Jitter;
+            st.PmcOnlyNext = now + (float)(inf.DelaySec * (1.0 + (j > 0 ? (c.Rng.NextDouble() * 2.0 - 1.0) * j : 0.0)));
         }
 
         private static PmcResult TryPmc(RaidContext c, State st, BotsController bc, BotSpawner spawner, float now)

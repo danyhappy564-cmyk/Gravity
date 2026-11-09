@@ -461,4 +461,14 @@ public class ClientSettingsTests
         Assert.Equal(30, s.ScavDist);
         Assert.Equal(40, s.PmcDist);
     }
+
+    [Fact]
+    public void Build_LaboratoryInfinite_ScavUnmanaged_PmcRefillKept()
+    {
+        var cfg = ConfigModel.FromState(JsonNode.Parse("""{"maps":{"laboratory":{"style":"infinite"}}}"""), []);
+        var s = ClientSettingsBuilder.Build(cfg, Laboratory, SpawnPlanner.Plan(cfg, Laboratory, 2400, 0, 1), true);
+        Assert.False(s.Scav.Managed);
+        Assert.NotNull(s.Inf);
+        Assert.NotEmpty(s.RefillGroups);
+    }
 }

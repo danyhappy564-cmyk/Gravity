@@ -59,6 +59,16 @@ namespace Gravity.Client.Patches
                 }
             }
 
+            if (c != null && !c.ScavFailed && c.S.Scav != null && !c.S.Scav.Managed && c.S.Inf != null)
+            {
+                try { ScavDirector.TickPmcOnly(c, ____botsController); }
+                catch (Exception ex)
+                {
+                    c.ScavFailed = true;
+                    Log.ErrorOnce("ScavDirector.PmcOnly", ex);
+                }
+                return true; // 스캐브는 바닐라 자동 스폰
+            }
             if (c == null || c.ScavFailed || c.S.Scav == null || !c.S.Scav.Managed) return true;
             try
             {
