@@ -63,6 +63,12 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     /// <summary>지금 켜진 SPT 시즌 이벤트(할로윈 계열, 크리스마스 계열). 시험에서는 둘 다 꺼짐.</summary>
     public Func<(bool Halloween, bool Christmas)> ActiveEvents { get; set; } = () => (false, false);
 
+    /// <summary>팩션 모드 설정·SPT 원본 PMC 지문(0.4). 시험에서는 비어 있음.</summary>
+    public Gravity.Factions.FactionData Factions { get; set; } = Gravity.Factions.FactionData.Empty;
+
+    /// <summary>마지막 판에 남긴 다른 모드 PMC 항목 수(웹 진단용).</summary>
+    public int LastOtherPmc { get; private set; }
+
     public bool TryApplyToRaid(string name, LocationBase loc, RaidChanges? changes, string? sessionId, int? seed = null, bool scavRaid = false)
     {
         var id = name.ToLowerInvariant();
@@ -102,12 +108,17 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
                 scavNote = $" / 스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.Spawn.Scav.PlayerScavRemain:0}%)";
                 plan = plan with { Groups = keep };
             }
-            RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient);
+            var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
+            LastOtherPmc = otherPmc;
+            // 팩션을 보스보다 먼저: 되살린 연구소 게이트 레이더도 특수 봇 설정을 받게 한다.
+            var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
             RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
             var (hw, xm) = ActiveEvents();
             var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
-            if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true);
-            var summary = plan.Summary + (pmcWhy != null ? $" / PMC 항목 안 넣음({pmcWhy})" : "") + scavNote + (evNote != null ? " / " + evNote : "");
+            if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv);
+            var summary = plan.Summary + (pmcWhy != null ? $" / PMC 항목 안 넣음({pmcWhy})" : "") + scavNote
+                + (otherPmc > 0 ? $" / 다른 모드 PMC 항목 {otherPmc}개 유지" : "")
+                + (facNote != null ? " / " + facNote : "") + (evNote != null ? " / " + evNote : "");
             Last = new LastRaid(DateTime.Now, summary, plan, null);
             info_($"{GravityInfo.Tag} {summary}");
             return true;

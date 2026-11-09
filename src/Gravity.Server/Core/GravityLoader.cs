@@ -9,6 +9,7 @@ using SPTarkov.Server.Core.Models.Spt.Tables;
 using SPTarkov.Server.Core.Services.Profile;
 using SPTarkov.Server.Core.Services.Server;
 using SPTarkov.Server.Core.Models.Enums;
+using SPTarkov.Server.Core.Utils;
 
 namespace Gravity.Core;
 
@@ -16,7 +17,7 @@ namespace Gravity.Core;
 [Injectable(TypePriority = OnLoadOrder.PostLoad + 1)]
 public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
-    PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal) : IOnLoad
+    PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -43,6 +44,13 @@ public class GravityLoader(
                     af || types.Contains(SeasonalEventType.Christmas) || types.Contains(SeasonalEventType.NewYears));
             }
         };
+        // 0.4: 팩션 모드 설정·SPT 원본 PMC 지문(읽기 전용). SPT_Data는 user/mods에서 두 단계 위.
+        var sptData = new[] { Path.Combine(GravityBoot.ModsDir!, "..", "..", "SPT_Data"), Path.Combine(AppContext.BaseDirectory, "SPT_Data") }
+            .Select(Path.GetFullPath).FirstOrDefault(Directory.Exists);
+        GravityRuntime.Instance.Factions = Gravity.Factions.FactionData.Load(GravityBoot.ModsDir!, sptData, ConfigModel.KnownMaps,
+            t => json.Deserialize<List<SPTarkov.Server.Core.Models.Eft.Common.BossLocationSpawn>>(t), m => logger.Warning($"{GravityInfo.Tag} {m}"));
+        var fd = GravityRuntime.Instance.Factions;
+        if (sptData == null) logger.Warning($"{GravityInfo.Tag} SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다");
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();
 
@@ -58,6 +66,8 @@ public class GravityLoader(
         if (detect.BlackDiv) found.Add("BlackDiv");
         if (detect.QuestingBots) found.Add("QuestingBots(지원 안 함)");
         if (found.Count > 0) logger.Info($"{GravityInfo.Tag} 감지: {string.Join(", ", found)}");
+        if (detect.Ruaf || detect.BlackDiv)
+            logger.Info($"{GravityInfo.Tag} 팩션 자료: RUAF 맵 {fd.Ruaf.Count}개, BlackDiv 맵 {fd.BlackDivMaps.Count}개, 연구소 게이트 원본 {fd.LabGateVanilla.Values.Sum(v => v.Count)}개, PMC 지문 맵 {fd.SptPmc.Count}개");
         return Task.CompletedTask;
     }
 }

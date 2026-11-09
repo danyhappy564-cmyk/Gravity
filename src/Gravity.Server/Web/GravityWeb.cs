@@ -73,6 +73,15 @@ public class GravityWeb : IHttpListener
                                 owner = Gravity.Events.GravityEventLoader.ResolvedOwner,
                                 svm = Gravity.Events.GravityEventLoader.Svm,
                                 applied = Gravity.Events.GravityEventLoader.Applied
+                            },
+                            factions = new
+                            {
+                                ruaf = new { installed = rt.Detect.Ruaf, maps = rt.Factions.Ruaf.Keys.ToArray(),
+                                    checkpointMaps = rt.Factions.Ruaf.Where(kv => kv.Value.CheckpointZones.Length > 0).Select(kv => kv.Key).ToArray() },
+                                untar = new { installed = rt.Detect.Untar },
+                                blackdiv = new { installed = rt.Detect.BlackDiv, maps = rt.Factions.BlackDivMaps },
+                                blackout = new { installed = rt.Factions.BlackoutChance != null, chance = rt.Factions.BlackoutChance, now = rt.Factions.BlackoutNow() },
+                                otherPmc = rt.LastOtherPmc, pmcSigMaps = rt.Factions.SptPmc.Count
                             }
                         });
                         return;

@@ -72,9 +72,9 @@ namespace Gravity.Client.Directors
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null || !bc._canSpawn) return;
 
-            int aliveScavs = CollectPlayers(st.Humans);
+            int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
-            int alive = bc.AliveLoadingDelayedBotsCount;
+            int alive = Math.Max(0, bc.AliveLoadingDelayedBotsCount - excluded);
             int pending = spawner.SpawnDelaysService?.WaitCount ?? 0;
 
             int n = st.Schedule.Tick(now, bc._maxCount, alive, aliveScavs, pending, aliveScavs / players, players, out bool pmcTurn);
@@ -231,10 +231,12 @@ namespace Gravity.Client.Directors
             Log.Info($"{c.S.MapId} 스캐브 구역 {st.Zones.Count}개(저격 제외), 지점 {points}개");
         }
 
-        /// <summary>살아 있는 사람 플레이어 위치를 버퍼에 담고(재사용), 살아 있는 스캐브(assault 역할 봇) 수를 돌려준다.</summary>
-        private static int CollectPlayers(List<Vec3> humans)
+        /// <summary>살아 있는 사람 플레이어 위치를 버퍼에 담고(재사용), 살아 있는 스캐브(assault 역할 봇) 수를 돌려준다.
+        /// excluded = 맵 상한에서 뺄 팩션 봇 수(서버 CapExclude, 0.4).</summary>
+        private static int CollectPlayers(List<Vec3> humans, RaidContext c, out int excluded)
         {
             humans.Clear();
+            excluded = 0;
             var gw = Singleton<GameWorld>.Instance;
             if (gw == null) return 0;
             int scavs = 0;
@@ -248,6 +250,7 @@ namespace Gravity.Client.Directors
                     var role = p.Profile?.Info?.Settings?.Role;
                     // 무리로 나온 스캐브는 역할이 assaultGroup이다(11-09 세관 판에서 확인): 둘 다 센다.
                     if (role != null && (role.Value == WildSpawnType.assault || role.Value == WildSpawnType.assaultGroup)) scavs++;
+                    else if (role != null && c.IsCapExcluded(role.Value)) excluded++;
                     continue;
                 }
                 Vector3 v = p.Position;

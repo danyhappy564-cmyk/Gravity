@@ -94,7 +94,7 @@ namespace Gravity.Client.Directors
             var player = gw.MainPlayer;
             if (player == null || player.HealthController == null || !player.HealthController.IsAlive) return;
 
-            var slots = st.Schedule.Tick(now, bc._maxCount, bc.AliveLoadingDelayedBotsCount);
+            var slots = st.Schedule.Tick(now, bc._maxCount, Math.Max(0, bc.AliveLoadingDelayedBotsCount - c.CountCapExcluded()));
             if (slots.Count == 0) return;
 
             Vector3 pp = player.Position;

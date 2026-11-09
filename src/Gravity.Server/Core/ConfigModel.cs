@@ -53,10 +53,23 @@ public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<st
 /// <summary>특수 봇 무리(레이더·로그·컬티스트·블러드하운드). Chance는 맵별(없는 맵은 바닐라 확률 유지), Min·Max는 무리 전체 인원.</summary>
 public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max);
 
+/// <summary>팩션 무리 종류 하나(순찰·검문소·사냥조, 0.4). TMin·TMax는 분(검문소·사냥조는 안 씀).</summary>
+public sealed record FactionKind(bool On, double Chance, int Count, int Min, int Max, double TMin, double TMax);
+
+/// <summary>RUAF·UNTAR 같은 순찰형 팩션(0.4). Maps에는 웹에서 정한 맵만 있다(없는 맵 = 모드 설정 기본).</summary>
+public sealed record FactionSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
+    FactionKind Patrol, FactionKind Checkpoint, FactionKind Hunt);
+
+/// <summary>블랙 디비전(0.4). TMin·TMax는 레이드 %, 연구소 웨지·게이트, 블랙아웃 연동.</summary>
+public sealed record BlackDivSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
+    double Chance, double TMin, double TMax, int HuntMin, int HuntMax, double LabsGate, bool Wedge, double WedgeChance,
+    string BlackoutLink, double BlackoutMult);
+
 public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
-    IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null)
+    IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
+    FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep")
 {
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
 }
@@ -235,8 +248,36 @@ public static class ConfigModel
             r.Bool("events.christmas.gifts", true), r.Bool("events.christmas.snow", true), r.Bool("events.christmas.gear", true),
             r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes));
 
+        FactionKind Kind(string p, double chance, int count, int min, int max, double tMin, double tMax)
+        {
+            var kMin = (int)r.Num(p + "min", min, 1, 10);
+            var t0 = r.Num(p + "tMin", tMin, 0, 180);
+            return new FactionKind(r.Bool(p + "on", true), r.Num(p + "chance", chance, 0, 100), (int)r.Num(p + "count", count, 0, 10),
+                kMin, (int)Math.Max(kMin, r.Num(p + "max", max, 1, 10)), t0, Math.Max(t0, r.Num(p + "tMax", tMax, 0, 180)));
+        }
+        Dictionary<string, bool> FacMaps(string p)
+        {
+            var d = new Dictionary<string, bool>();
+            if (r.Node(p) is JsonObject mo)
+                foreach (var (k, _) in mo)
+                    if (r.Node(p + "." + k) is JsonValue jv && jv.GetValueKind() is JsonValueKind.True or JsonValueKind.False) d[k] = jv.GetValue<bool>();
+            return d;
+        }
+        const string fr = "factions.ruaf.";
+        var ruaf = new FactionSettings(r.Bool(fr + "managed", false), r.Bool(fr + "shareCap", false), FacMaps(fr + "maps"),
+            Kind(fr + "patrol.", 45, 2, 3, 6, 5, 28), Kind(fr + "checkpoint.", 45, 2, 3, 4, 0, 0), Kind(fr + "hunt.", 20, 1, 3, 4, 0, 0));
+        const string fb = "factions.blackdiv.";
+        var bdT0 = r.Num(fb + "bd.tMin", 10, 0, 100);
+        var bdMin = (int)r.Num(fb + "bd.huntMin", 3, 1, 10);
+        var blackDiv = new BlackDivSettings(r.Bool(fb + "managed", false), r.Bool(fb + "shareCap", false), FacMaps(fb + "maps"),
+            r.Num(fb + "bd.chance", 25, 0, 100), bdT0, Math.Max(bdT0, r.Num(fb + "bd.tMax", 80, 0, 100)),
+            bdMin, (int)Math.Max(bdMin, r.Num(fb + "bd.huntMax", 5, 1, 10)), r.Num(fb + "bd.labsGate", 20, 0, 100),
+            r.Bool(fb + "bd.wedge", true), r.Num(fb + "bd.wedgeChance", 15, 0, 100),
+            r.Str("lab.blackoutLink", "boost", "always", "only", "boost"), r.Num("lab.blackoutMult", 3, 1, 5));
+
         return new GravityConfig(r.Bool("modules.spawn", true), spawn, maps, bosses,
-            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events);
+            r.Bool("bossCommon.on", false), r.Num("bossCommon.chance", 35, 0, 100), near, specials, events,
+            ruaf, blackDiv, r.Str("compat.otherPmc", "keep", "keep", "remove"));
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>

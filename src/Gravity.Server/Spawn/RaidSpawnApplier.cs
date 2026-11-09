@@ -19,13 +19,28 @@ public static class RaidSpawnApplier
 
     /// <param name="hasClient">클라 플러그인이 있는 세션이면 true: 스캐브 웨이브(assault)를 계획의 시작 스캐브로 바꾸고,
     /// 저격(marksman)은 scav.startMarksman이 꺼졌을 때만 지운다. 없으면 스캐브·저격 웨이브는 바닐라 그대로.</param>
-    public static void Apply(LocationBase loc, SpawnPlan plan, GravityConfig cfg, MapInfo info, bool hasClient = false)
+    /// <param name="sptPmc">SPT 원본 PMC 항목 지문(맵 단위, 0.4). 있으면 지문이 안 맞는 PMC 항목을 다른 모드 것으로 보고
+    /// <c>compat.otherPmc=keep</c>일 때 남긴다. null이면 0.3처럼 PMC 항목을 다 지운다.</param>
+    /// <returns>남긴 다른 모드 PMC 항목 수.</returns>
+    public static int Apply(LocationBase loc, SpawnPlan plan, GravityConfig cfg, MapInfo info, bool hasClient = false,
+        IReadOnlyDictionary<string, int>? sptPmc = null)
     {
         var ms = cfg.MapFor(info.Id);
         var scavZones = Zones(info.ScavZones, ms);
         var s = cfg.Spawn;
 
-        var bosses = loc.BossLocationSpawn.Where(e => !MapCatalog.IsPmc(e)).ToList();
+        var keepOther = sptPmc != null && cfg.OtherPmc == "keep";
+        var left = keepOther ? new Dictionary<string, int>(sptPmc!) : null;
+        var otherKept = 0;
+        bool KeepPmc(BossLocationSpawn e)
+        {
+            if (left == null) return false;
+            var sig = Gravity.Factions.FactionData.PmcSig(e);
+            if (left.TryGetValue(sig, out var n) && n > 0) { left[sig] = n - 1; return false; }
+            otherKept++;
+            return true;
+        }
+        var bosses = loc.BossLocationSpawn.Where(e => !MapCatalog.IsPmc(e) || KeepPmc(e)).ToList();
         for (var i = 0; i < plan.Groups.Count; i++)
         {
             var g = plan.Groups[i];
@@ -58,6 +73,7 @@ public static class RaidSpawnApplier
         // BotMax는 웨이브 밖 자동 스폰의 목표치라 건드리지 않는다(4.1 클라 전체 상한은 클라 설정 — 2-2에서 클라 플러그인으로).
         loc.BossLocationSpawn = bosses;
         if (manageScavs) loc.Waves = waves;
+        return otherKept;
     }
 
     /// <summary>보스 켜기·확률·맵 끄기. 설정에 없는 역할(팩션·이벤트·모드 보스)은 건드리지 않는다.</summary>

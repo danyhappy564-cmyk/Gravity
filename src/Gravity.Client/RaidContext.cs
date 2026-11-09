@@ -62,6 +62,34 @@ namespace Gravity.Client
         /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
         public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0 };
 
+        private HashSet<string>? _capExclude;
+
+        /// <summary>맵 상한에서 뺄 봇 역할인지(서버 CapExclude: 관리 중이고 상한을 같이 쓰지 않는 팩션, 0.4). 이름이나 번호로 맞춘다.</summary>
+        internal bool IsCapExcluded(EFT.WildSpawnType role)
+        {
+            var l = S.CapExclude;
+            if (l == null || l.Count == 0) return false;
+            if (_capExclude == null) _capExclude = new HashSet<string>(l, StringComparer.OrdinalIgnoreCase);
+            return _capExclude.Contains(role.ToString()) || _capExclude.Contains(((int)role).ToString());
+        }
+
+        /// <summary>살아 있는 봇 중 맵 상한에서 뺄 팩션 봇 수.</summary>
+        internal int CountCapExcluded()
+        {
+            if (S.CapExclude == null || S.CapExclude.Count == 0) return 0;
+            var gw = Comfort.Common.Singleton<EFT.GameWorld>.Instance;
+            if (gw == null) return 0;
+            int n = 0;
+            var alive = gw.AllAlivePlayersList;
+            for (int i = 0; i < alive.Count; i++)
+            {
+                var p = alive[i];
+                var role = p != null && p.IsAI ? p.Profile?.Info?.Settings?.Role : null;
+                if (role != null && IsCapExcluded(role.Value)) n++;
+            }
+            return n;
+        }
+
         /// <summary>1분마다 기록한 [분, PMC, 스캐브, 전체] (살아 있는 봇 수). 보고용.</summary>
         public readonly List<int[]> AlivePerMinute = new List<int[]>();
 

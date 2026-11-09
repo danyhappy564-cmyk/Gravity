@@ -14,7 +14,8 @@ public static class ClientSettingsBuilder
         new GroupCapDto(false, "raid", "split", []), new ScavDto(false, 0, 0, 0, 0, 0, 0, 0, 0, 0), null, [],
         BuildNear(ConfigModel.Default().Near));
 
-    public static ClientRaidSettings Build(GravityConfig cfg, MapInfo map, SpawnPlan plan, bool managed)
+    public static ClientRaidSettings Build(GravityConfig cfg, MapInfo map, SpawnPlan plan, bool managed,
+        bool ruafInstalled = false, bool blackDivInstalled = false)
     {
         var s = cfg.Spawn;
         var ms = cfg.MapFor(map.Id);
@@ -57,7 +58,7 @@ public static class ClientSettingsBuilder
             s.Placement, s.HotspotShare / 100, weights, s.AllowPmcLabyrinth,
             new GroupCapDto(s.GroupCap.On, s.GroupCap.Scope, s.GroupCap.Over, rules),
             new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart),
-            inf, refill, BuildNear(cfg.Near));
+            inf, refill, BuildNear(cfg.Near), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled));
     }
 
     private static NearDto BuildNear(NearSettings n) => new(
