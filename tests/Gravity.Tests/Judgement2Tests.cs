@@ -98,7 +98,7 @@ public class Judgement2Tests
         Assert.Equal(160, original.ScavZoneWeights!["P"]);
         Assert.False(cfg.ForLayout("bigmap", true, true).MapFor("bigmap").Zones["P"]);
         Assert.False(cfg.ForLayout("bigmap", false, false).MapFor("bigmap").Zones["P"]);
-        var info = new MapInfo("bigmap", 16, 20, 2400, ["P"], ["P"]);
+        var info = new MapInfo("bigmap", 16, 20, 2400, ["P", "Q"], ["P", "Q"]); // 1.0: 한 종류 구역을 전부 끄면 전부 켬으로 보므로 두 구역 중 하나만 끔
         var variant = ClientSettingsBuilder.Build(cfg, info, SpawnPlanner.Plan(cfg, info, 2400, 0, 1), true);
         Assert.Contains("P", variant.DisabledZones!);
         var origCfg = cfg.ForLayout("bigmap", false, true);

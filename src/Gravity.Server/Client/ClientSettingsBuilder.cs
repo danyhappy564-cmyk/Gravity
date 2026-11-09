@@ -69,7 +69,7 @@ public static class ClientSettingsBuilder
             inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
             cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.DiagOrDefault.Log, scavWeights,
             cfg.OrbitOrDefault.RefillMode, cfg.OrbitOrDefault.ExtractRefillCap,
-            ms.Zones.Where(kv => !kv.Value).Select(kv => kv.Key).ToArray(),
+            ExcludedZones(ms.Zones, map.PmcZones, map.ScavZones),
             // 서버 계획이 이미 넣은 PMC 분대 크기: 클라가 "레이드 전체" 그룹 제한을 이어서 센다(Codex 검토 2번).
             plan.Groups.Select(g => g.Size).ToArray(),
             // 계획 분대 웨이브는 TriggerId에 이 표식을 단다(RaidSpawnApplier): 클라가 Gravity 분대만 보정·예약하게(4차 재검토 2번)
@@ -82,6 +82,19 @@ public static class ClientSettingsBuilder
         new(t.PmcReserve, t.PmcGroups,
             Gravity.Shared.CapKinds.Table.ToDictionary(k => k, k => new Gravity.Shared.CapKindDto(t.For(k).Mode, t.For(k).Max)),
             Gravity.Factions.FactionRaid.FactionRoleSet(ruafInstalled, blackDivInstalled).ToArray());
+
+    /// <summary>
+    /// 클라에 보낼 끈 구역. 서버 웨이브(RaidSpawnApplier.Zones·PmcZoneFor)와 같은 규칙: 한 종류(PMC·스캐브)의 구역을
+    /// 전부 껐으면 그 종류는 전부 켠 것으로 본다 — 안 그러면 클라가 그 종류를 넣을 구역이 하나도 없어 전부 버린다.
+    /// </summary>
+    internal static string[] ExcludedZones(IReadOnlyDictionary<string, bool> zones, string[]? pmc, string[]? scav)
+    {
+        var off = zones.Where(kv => !kv.Value).Select(kv => kv.Key).ToHashSet(StringComparer.Ordinal);
+        bool pmcAll = pmc is { Length: > 0 } && pmc.All(off.Contains), scavAll = scav is { Length: > 0 } && scav.All(off.Contains);
+        if (pmcAll) off.ExceptWith(pmc!);
+        if (scavAll) off.ExceptWith(scav!);
+        return off.Order(StringComparer.Ordinal).ToArray();
+    }
 
     private static void FillDefaults(Dictionary<string, double> weights, string[]? zones, IReadOnlyDictionary<string, bool> on)
     {

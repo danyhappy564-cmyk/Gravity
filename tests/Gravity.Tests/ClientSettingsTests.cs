@@ -475,4 +475,15 @@ public class ClientSettingsTests
     [Fact]
     public void Build_Laboratory_PmcDist80() =>
         Assert.Equal(80, ClientSettingsBuilder.Build(ConfigModel.Default(), Laboratory, SpawnPlanner.Plan(ConfigModel.Default(), Laboratory, 2400, 0, 1), true).PmcDist);
+
+    [Fact]
+    public void ExcludedZones_AllOffOfOneKind_MeansAllOn()
+    {
+        string[] pmc = ["A", "B"], scav = ["B", "C"];
+        Assert.Equal(new[] { "A" }, ClientSettingsBuilder.ExcludedZones(new Dictionary<string, bool> { ["A"] = false }, pmc, scav));
+        // PMC 구역 A·B 전부 끔 → PMC는 전부 켠 것(제외 없음). B는 스캐브 구역이기도 하지만 스캐브 C가 켜져 있어 스캐브는 일부 끔이 아님 → B도 풀림
+        Assert.Empty(ClientSettingsBuilder.ExcludedZones(new Dictionary<string, bool> { ["A"] = false, ["B"] = false }, pmc, scav));
+        // 전부 끔 → 아무것도 제외하지 않음
+        Assert.Empty(ClientSettingsBuilder.ExcludedZones(new Dictionary<string, bool> { ["A"] = false, ["B"] = false, ["C"] = false }, pmc, scav));
+    }
 }
