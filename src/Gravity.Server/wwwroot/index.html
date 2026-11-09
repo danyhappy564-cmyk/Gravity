@@ -460,6 +460,7 @@ const MAPS=[
 const mapById=id=>MAPS.find(m=>m.id===id);
 const mname=id=>tr(mapById(id).name);
 const Z=(id,ko,en,kind,w=100)=>({id,name:T(ko,en),kind,w});
+const BOSSZ={}; // 서버가 준 맵별 실제 보스 구역 이름(0.3). 없으면 보스 구역 고르기는 ZONES를 쓴다.
 const ZONES={
  bigmap:[Z('dorms','기숙사','Dorms','both',140),Z('newgas','새 주유소','New Gas','both'),Z('oldgas','구 주유소','Old Gas','scav'),Z('crack','크랙하우스','Crackhouse','pmc'),Z('bigred','빅 레드','Big Red','both'),Z('trailer','트레일러 주차장','Trailer Park','pmc',80)],
  woods:[Z('sawmill','제재소','Sawmill','both',130),Z('usec','USEC 캠프','USEC Camp','pmc'),Z('scavhouse','스캐브 하우스','Scav House','scav'),Z('plane','추락 비행기','Plane Crash','pmc'),Z('rock','저격 바위','Sniper Rock','pmc',70),Z('station','옛 역','Old Station','both')],
@@ -1039,7 +1040,7 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
   const b=BOSSES.find(x=>x.id===bossSel),bb=state.bosses[b.id],p='bosses.'+b.id+'.',c=state.bossCommon,lock=c.on&&b.id!=='zryachiy';
   const list=`<div class="list">${BOSSES.map(x=>`<button data-boss="${x.id}" class="${x.id===bossSel?'on':''}">★ ${tr(x.name)}<span class="st ${state.bosses[x.id].on?'on':''}"></span></button>`).join('')}</div>`;
   const selMaps=MAPS.filter(m=>bb.maps[m.id]);
-  const zoneBoxes=selMaps.map(m=>`<div class="zbox"><h4>${tr(m.name)}${pill(bb.zones[m.id].length+' '+tr(T('구역','zones')))}</h4><div class="tog">${['default',...ZONES[m.id].map(z=>z.id)].map(z=>`<button class="gold ${bb.zones[m.id].includes(z)?'on':''}" data-zone="${b.id}|${m.id}|${z}">${zname(m.id,z)}</button>`).join('')}</div></div>`).join('')||notice(T('나오는 맵을 하나 이상 고르세요.','Pick at least one map.'),'warn');
+  const zoneBoxes=selMaps.map(m=>`<div class="zbox"><h4>${tr(m.name)}${pill(bb.zones[m.id].length+' '+tr(T('구역','zones')))}</h4><div class="tog">${['default',...(BOSSZ[m.id]||ZONES[m.id].map(z=>z.id))].map(z=>`<button class="gold ${bb.zones[m.id].includes(z)?'on':''}" data-zone="${b.id}|${m.id}|${z}">${BOSSZ[m.id]&&z!=='default'?zoneLabel(z):zname(m.id,z)}</button>`).join('')}</div></div>`).join('')||notice(T('나오는 맵을 하나 이상 고르세요.','Pick at least one map.'),'warn');
   const detail=card(T(b.name.ko,b.name.en),sw(p+'on',BOSSF.on,'')
      +slider(p+'chance',T('등장 확률','Spawn chance'),lock?T('공통 확률이 켜져 있어 잠겨 있습니다.','Locked by shared chance.'):'',{dis:lock||!bb.on,val:lock?c.chance:bb.chance})
      +seg(p+'diff',BOSSF.diff,'',[['easy',T('쉬움','Easy')],['normal',T('보통','Normal')],['hard',T('어려움','Hard')],['impossible',T('불가능','Imposs.')]],{adv:true})
@@ -1693,10 +1694,12 @@ function raidReportCard(){
     ${row('BEAR',p?p.bear:'-',bear)}</tbody></table></div>`;
   const dropKeys=Object.keys(DROP_LABEL),dropTotal=dropKeys.reduce((a,k)=>a+(dr[k]||0),0);
   const dropTbl=`<div class="tw" style="margin-top:10px"><table><thead><tr><th>${tr(T('버린 분대(이유별)','Dropped squads by reason'))}</th><th class="num">${tr(T('수','Count'))}</th></tr></thead><tbody>${dropKeys.map(k=>row(DROP_LABEL[k],dr[k]||0,'').replace('<td class="num"></td>','')).join('')}${row(T('프로필 정리(외형·장비)','Profile cleanup (looks/gear)'),r.sanitized||0,'').replace('<td class="num"></td>','')}</tbody></table></div>`;
+  const kl=r.killed||{},KILL_LABEL={pmcUSEC:'USEC',pmcBEAR:'BEAR',assault:T('스캐브','Scav'),marksman:T('저격 스캐브','Marksman'),boss:T('보스·호위','Bosses/followers'),other:T('그 밖','Other')};
+  const killTbl=Object.keys(kl).length?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>${tr(T('죽은 봇(역할별)','Killed bots by role'))}</th><th class="num">${tr(T('수','Count'))}</th></tr></thead><tbody>${Object.keys(KILL_LABEL).map(k=>`<tr><td>${tr(KILL_LABEL[k])}</td><td class="num">${kl[k]||0}</td></tr>`).join('')}</tbody></table></div>`:'';
   const ap=r.alivePerMinute||[],peak=ap.reduce((m,x)=>x[3]>m[3]?x:m,[0,0,0,0]);
   const alive=ap.length?`<p class="muted small" style="margin-top:10px">${fmt(tr(T('1분마다 센 살아 있는 봇: {n}번 기록, 가장 많았을 때 {t}마리(PMC {p} · 스캐브 {s}, {m}분째).','Alive bots sampled each minute: {n} samples, peak {t} (PMC {p} · scav {s}, minute {m}).')),{n:ap.length,t:peak[3],p:peak[1],s:peak[2],m:peak[0]})}</p>`:'';
   const note=p?'':`<p class="muted small" style="margin-top:6px">${none}: ${tr(T('이 보고와 같은 맵의 계획이 서버에 없어 계획 칸은 비웁니다.','The server has no plan for this report’s map, so the plan column is empty.'))}</p>`;
-  return card(T('계획 vs 실제','Plan vs actual'),`<p class="muted small" style="margin-bottom:8px">${esc(r.mapId)} · ${tr(T('시드','seed'))} ${r.seed} · ${esc(fmtAt(r.at))}${dropTotal?' · '+tr(T('버린 분대 합계','dropped'))+' '+dropTotal:''}</p>${planTbl}${dropTbl}${alive}${note}`,{icon:'≈',right:refresh});
+  return card(T('계획 vs 실제','Plan vs actual'),`<p class="muted small" style="margin-bottom:8px">${esc(r.mapId)} · ${tr(T('시드','seed'))} ${r.seed} · ${esc(fmtAt(r.at))}${dropTotal?' · '+tr(T('버린 분대 합계','dropped'))+' '+dropTotal:''}</p>${planTbl}${dropTbl}${killTbl}${alive}${note}`,{icon:'≈',right:refresh});
 }
 const BOSS_ROLE={reshala:'bossBully',shturman:'bossKojaniy',tagilla:'bossTagilla',glukhar:'bossGluhar',sanitar:'bossSanitar',killa:'bossKilla',kaban:'bossBoar',kollontay:'bossKolontay',zryachiy:'bossZryachiy',goons:'bossKnight',partisan:'bossPartisan'};
 const zoneLabel=z=>z.replace(/^Zone/,'').replace(/([a-z])([A-Z])/g,'$1 $2');
@@ -1722,6 +1725,7 @@ function applyMeta(meta){
     m.base=mm.raidMin;m.pmc=mm.basePmc;m.scav=mm.baseScav;
     const kind={};(mm.pmcZones||[]).forEach(z=>kind[z]='pmc');(mm.scavZones||[]).forEach(z=>kind[z]=kind[z]==='pmc'?'both':'scav');
     const zs=Object.keys(kind);if(zs.length)ZONES[mm.id]=zs.map(z=>Z(z,zoneLabel(z),zoneLabel(z),kind[z]));
+    if(mm.bossZones&&mm.bossZones.length)BOSSZ[mm.id]=mm.bossZones;
   });
   BOSSES.forEach(b=>{const role=BOSS_ROLE[b.id];if(!role)return;
     b.maps=(meta.maps||[]).filter(mm=>mm.bosses&&mm.bosses[role]!==undefined).map(mm=>mm.id);b.zones={};});

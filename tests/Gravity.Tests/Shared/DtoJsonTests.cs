@@ -60,5 +60,9 @@ public class DtoJsonTests
         var back = JsonSerializer.Deserialize<RaidReport>(JsonSerializer.Serialize(r, Opt), Opt)!;
         Assert.Equal(3, back.Spawned["assault"]);
         Assert.Equal(5, back.AlivePerMinute[0][3]);
+        Assert.Null(back.Killed);
+        var rk = r with { Killed = new Dictionary<string, int> { ["pmcBEAR"] = 2 } };
+        Assert.Contains("\"killed\"", JsonSerializer.Serialize(rk, Opt));
+        Assert.Equal(2, JsonSerializer.Deserialize<RaidReport>(JsonSerializer.Serialize(rk, Opt), Opt)!.Killed!["pmcBEAR"]);
     }
 }

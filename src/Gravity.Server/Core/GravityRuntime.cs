@@ -52,6 +52,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         LastReportPlan = plan is not null && string.Equals(plan.MapId, r.MapId, StringComparison.OrdinalIgnoreCase) ? plan : null;
         info($"{GravityInfo.Tag} 클라 보고 {r.MapId}: 생성 {string.Join(" ", r.Spawned.Select(kv => $"{kv.Key} {kv.Value}"))}"
             + (r.Dropped.Count > 0 ? $" / 버림 {string.Join(" ", r.Dropped.Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
+            + (r.Killed is { Count: > 0 } k ? $" / 사망 {string.Join(" ", k.Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
             + $" / 정리 {r.Sanitized}");
     }
 

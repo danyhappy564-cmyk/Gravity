@@ -383,6 +383,9 @@ public class ClientSettingsTests
         Assert.True(o.AbpsClient);
         var r = JsonSerializer.Deserialize<ReportRequestData>("""{"mapId":"bigmap","seed":4,"spawned":{"near":2},"dropped":{},"sanitized":1,"alivePerMinute":[[0,1,2,3]]}""")!;
         Assert.Equal(2, r.ToReport().Spawned["near"]);
+        Assert.Empty(r.ToReport().Killed!); // 0.2 클라 보고(killed 없음)도 받는다
+        var k = JsonSerializer.Deserialize<ReportRequestData>("""{"mapId":"bigmap","killed":{"assault":4,"boss":1}}""")!;
+        Assert.Equal(4, k.ToReport().Killed!["assault"]);
     }
 
     // ----- 0.2 전체 검토 수정 묶음 -----

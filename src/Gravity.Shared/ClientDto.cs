@@ -38,5 +38,5 @@ namespace Gravity.Shared
     public sealed record RaidReport(
         string MapId, int Seed,
         IReadOnlyDictionary<string, int> Spawned, IReadOnlyDictionary<string, int> Dropped,
-        int Sanitized, IReadOnlyList<int[]> AlivePerMinute);
+        int Sanitized, IReadOnlyList<int[]> AlivePerMinute, IReadOnlyDictionary<string, int>? Killed = null);
 }

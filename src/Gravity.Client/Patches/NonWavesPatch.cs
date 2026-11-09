@@ -43,6 +43,8 @@ namespace Gravity.Client.Patches
                 Log.ErrorOnce("NonWaves", ex);
             }
 
+            if (c != null) DeathCounter.Hook(c, ____botsController);
+
             if (c != null && !c.NearFailed)
             {
                 try

@@ -51,6 +51,12 @@ namespace Gravity.Client
         /// near = NearDirector가 요청한 근처 보충 인원에서 대기열로 가다 버린 수를 뺀 것). 보고용.</summary>
         public readonly Dictionary<string, int> Spawned = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0, ["near"] = 0 };
 
+        /// <summary>죽은 봇 수(0.3): pmcUSEC·pmcBEAR·assault(assaultGroup 포함)·marksman·boss(보스·호위)·other. BotSpawner.OnBotRemoved(=BotDied)로 센다.</summary>
+        public readonly Dictionary<string, int> Killed = new Dictionary<string, int> { ["pmcUSEC"] = 0, ["pmcBEAR"] = 0, ["assault"] = 0, ["marksman"] = 0, ["boss"] = 0, ["other"] = 0 };
+
+        /// <summary>이 레이드의 BotSpawner.OnBotRemoved에 붙었는지(게임 스레드).</summary>
+        internal EFT.BotSpawner? DeathHookedTo;
+
         /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
         /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번) + 상한에 막힌 근처 보충 자리 수.
         /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
@@ -193,7 +199,7 @@ namespace Gravity.Client
             ClientLink.SendReport(new RaidReport(
                 c.S.MapId, c.S.Seed,
                 new Dictionary<string, int>(c.Spawned), new Dictionary<string, int>(c.Dropped),
-                c.Sanitized, new List<int[]>(c.AlivePerMinute)));
+                c.Sanitized, new List<int[]>(c.AlivePerMinute), new Dictionary<string, int>(c.Killed)));
         }
     }
 }

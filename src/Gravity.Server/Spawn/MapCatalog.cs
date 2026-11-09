@@ -8,7 +8,7 @@ namespace Gravity.Spawn;
 
 /// <summary>웹에 보낼 맵 정보.</summary>
 public sealed record MapMeta(string Id, int RaidMin, int BotMax, int BasePmc, int BaseScav,
-    string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses);
+    string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses, string[]? BossZones = null);
 
 /// <summary>서버 로드 뒤 DB에서 맵별 기본 정보를 한 번 모은다(원본은 읽기만).</summary>
 public sealed class MapCatalog
@@ -54,7 +54,10 @@ public sealed class MapCatalog
                 .GroupBy(e => e.BossName!)
                 .ToDictionary(g => g.Key, g => g.Max(e => e.BossChance ?? 0));
             var cap = botConfig.MaxBotCap.TryGetValue(id, out var c) ? c : b.BotMax;
-            _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses));
+            // 보스·특수 봇 항목의 실제 구역 이름(웹 보스 페이지가 고를 목록, 0.3).
+            var bossZones = Split(b.BossLocationSpawn.Where(e => e.BossName is { } n2 && !IsPmc(e)
+                && (n2.StartsWith("boss", StringComparison.OrdinalIgnoreCase) || ConfigModel.SpecialRoles.Values.Contains(n2))).Select(e => e.BossZone));
+            _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses, bossZones));
         }
     }
 
