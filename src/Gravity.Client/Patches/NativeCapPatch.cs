@@ -419,8 +419,8 @@ namespace Gravity.Client.Patches
     }
 
     /// <summary>
-    /// BotSpawner.TryToSpawnInZoneInner(BotSpawner.cs:476) 앞뒤: Gravity 스캐브 요청의 생성 자료면 그 안의 상한 검사(CheckOnMax)에
-    /// 팩션 제외를 적용한다(재검토 3번). 대기열 재시도(CheckSpawnOnFreeAfterDelay)도 같은 생성 자료로 이 함수를 다시 부른다. 동기 함수다.
+    /// BotSpawner.TryToSpawnInZoneInner(BotSpawner.cs:476) 앞뒤: Gravity 스캐브 요청 또는 저격 스캐브(marksman)의 생성 자료면
+    /// 그 안의 상한 검사(CheckOnMax)에 팩션 제외를 적용한다(재검토 3번, 저격은 11-10). 대기열 재시도(CheckSpawnOnFreeAfterDelay)도 같은 생성 자료로 이 함수를 다시 부른다. 동기 함수다.
     /// </summary>
     internal sealed class SpawnInZoneScopePatch : ModulePatch
     {
@@ -434,8 +434,12 @@ namespace Gravity.Client.Patches
             try
             {
                 var c = RaidContext.Current;
-                if (c == null || data == null || !c.ScavData.TryGetValue(data, out var wave)) return;
-                NativeScope.Set(c, wave);
+                if (c == null || data == null) return;
+                if (c.ScavData.TryGetValue(data, out var wave)) NativeScope.Set(c, wave);
+                // 저격 스캐브(서버 계획 marksman 웨이브)도 같은 점유 계산을 쓴다(11-10 세관 판): 바닐라 검사는 상한 제외 팩션까지 세서,
+                // 시각 창을 준 저격이 Gravity가 채운 상한(팩션 제외 기준)에 막혀 대기열에서 못 나왔다.
+                else if (data.IsValidSpawnType(WildSpawnType.marksman)) NativeScope.Set(c, data);
+                else return;
                 __state = true;
             }
             catch (Exception ex)

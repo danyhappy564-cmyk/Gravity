@@ -701,3 +701,41 @@ test('웹 견적: 시작 분대가 그룹 제한에 막히면 서버처럼 나�
   assert.equal(r, '[true,true]'); // split: 1인 16개를 다 씀 / drop: 버려서 1인 자리가 남음
 });
 
+
+test('티어 편집기는 서버처럼 표 번호 티어를 그대로 쓰고, 표보다 높은 직접 티어·티어 관통 상한을 막힘으로 보입니다(Codex 6차 5·6번)', () => {
+  const a=app(),ids=[1,2,3,4].map(i=>'0000000000000000000000a'+i);
+  a.run(`serverMeta={};GEAR_CATALOG=${JSON.stringify(ids.map((id,i)=>({id,ko:'총'+i,en:'Gun'+i,section:'weapons',slot:'ar',equipmentSlots:['FirstPrimaryWeapon'],source:'vanilla',mod:false,autoTier:i+1,armorClass:0,pen:0,price:100})))};rebuildSlots();`);
+  // 스캐브 T3 표·보스 T1 표의 자동 목록 = 그 표 티어 이하(역할 보정 없음)
+  assert.equal(a.run(`Object.keys(poolView('scavs',2,'weapons','ar')).length`),3);
+  assert.equal(a.run(`Object.keys(poolView('boss',0,'weapons','ar')).length`),1);
+  const it=`findItem('weapons','ar','${ids[0]}')`;
+  assert.equal(a.run(`blockOf(${it},'weapons','pmc',0)`),null);
+  a.run(`state.gear.itemTier['${ids[0]}']=7`);
+  assert.equal(a.run(`blockOf(${it},'weapons','pmc',0).k`),'tier');   // T1 표에 넣어도 직접 T7이면 서버는 뺀다
+  assert.equal(a.run(`blockOf(${it},'weapons','pmc',6)`),null);
+  // 탄: 이 티어 관통 상한을 넘으면 막힘
+  assert.equal(a.run(`(state.gear.tiers[0].pen=20,blockOf({id:'x',src:'vanilla',x:50},'ammo','pmc',0).k)`),'pen');
+  assert.equal(a.run(`blockOf({id:'x',src:'vanilla',x:10},'ammo','pmc',0)`),null);
+});
+
+test('전용 표 만들기처럼 markEdited 뒤에 표를 고치는 버튼도 커스텀 장비 프리셋 사본에 남습니다(Codex 6차 7번)', () => {
+  const a=app();
+  a.run(`serverMeta={};var __q=[];setTimeout=(f)=>{__q.push(f);return 1;};customTierPresets=[];state.tierPreset='auto';tRole='usec';tBot='pmc';`);
+  a.click({act:'tOwn'});
+  a.run('__q.splice(0).forEach(f=>f())');
+  assert.equal(a.run('customTierPresets.length'),1);
+  assert.equal(a.run(`state.tierPreset===customTierPresets[0].id`),true);
+  assert.equal(a.run(`!!customTierPresets[0].data.usec`),true);
+});
+
+test('파일 장비 프리셋을 읽는 동안 다른 프리셋을 고르면 늦은 응답이 선택을 덮어쓰지 않습니다(Codex 6차 8번)', async () => {
+  let resolve;
+  const fetch=()=>new Promise(r=>{resolve=r;});
+  const a=app({fetch});
+  a.run(`serverMeta={};`);
+  a.run(`tierPresetApply('apbs-realistic')`);
+  a.run(`tierPresetApply('auto')`);
+  resolve({ok:true,json:async()=>({settings:{},tables:{},tiers:null})});
+  await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
+  assert.equal(a.run('state.tierPreset'),'auto');
+});

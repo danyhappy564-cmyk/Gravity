@@ -258,6 +258,18 @@ public static class GearApply
     }
 
     /// <summary>
+    /// 소모품 캐시 결과를 이 봇 것으로 바꾼다(Codex 6차 2~4번). SPT 역할 캐시는 그 역할의 첫 봇 생성 목록(화이트리스트)으로 한 번만 만들어져,
+    /// 첫 봇이 T1이면 뒤의 T7도 T1 목록만 받는다. 이 봇의 생성 목록(ApplyGeneration이 티어·직접 목록으로 거른 것)이 있으면 SPT처럼 그 목록을
+    /// 그대로 쓰고(캐시가 비어 있어도), 없으면(SPT가 가방 목록에서 종류로 채우는 경우) 캐시를 티어로 거른다.
+    /// </summary>
+    public static Dictionary<MongoId, double> ConsumablesFor(Dictionary<MongoId, double> cache, GenerationData? gen, string? kind, GearContext c)
+    {
+        if (gen?.Whitelist is { Count: > 0 } wl)
+            return wl.Where(kv => kv.Value > 0 && !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value);
+        return FilterConsumables(cache.Where(kv => !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value), kind, c);
+    }
+
+    /// <summary>
     /// SPT 소모품 캐시(역할별 공용, 그 역할의 첫 봇 목록으로 한 번만 만들어짐)를 이 봇 티어에 맞춘다(1.0 점검: T1 봇에 AFAK가 쏟아짐).
     /// kind 종류에 표 직접 목록이 있으면 그 종류는 그 목록(무게&gt;0, 막힌 것·직접 티어 위 제외)으로 바꾸고,
     /// 없으면 의약품류마다 같은 종류 안 가격 티어가 봇 티어 위인 것을 뺀다(그 종류가 다 빠지면 가장 낮은 티어만 남김). 의약품류가 아닌 것은 그대로.
@@ -270,7 +282,8 @@ public static class GearApply
         var res = new Dictionary<MongoId, double>(pool);
         if (kind != null && table.Pools.TryGetValue("meds/" + kind, out var own))
         {
-            foreach (var m in res.Keys.Where(m => KindOf(m) == kind).ToList()) res.Remove(m);
+            // 직접 목록이면 캐시 전체를 그 목록으로 바꾼다(SPT 음료 캐시는 음식 목록으로 만들어져 다른 종류가 섞인다, Codex 6차 3번).
+            res.Clear();
             foreach (var (id, w) in own)
                 if (w > 0 && !c.Blocked(id) && c.Info(id) is { Section: "meds" } i && i.Slot == kind
                     && !(c.Settings.ItemTier.ContainsKey(id) && c.TierOf("meds/" + kind, id) > c.Pick.Tier))

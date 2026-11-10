@@ -8,6 +8,7 @@ using EFT.Game.Spawning;
 using Gravity.Shared;
 using SPT.Reflection.Patching;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Gravity.Client.Patches
 {
@@ -37,6 +38,7 @@ namespace Gravity.Client.Patches
             var cores = holder?.CorePoints;
 
             int id = 0, players = 0, bots = 0, noCore = 0, linked = 0;
+            PathChecked = 0;
             foreach (var p in all)
             {
                 if (p == null) continue;
@@ -59,26 +61,53 @@ namespace Gravity.Client.Patches
                 list.Add(new Candidate(id, V(p.Position), player));
                 if (player) players++; else bots++;
             }
-            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : ""));
+            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개(경로 확인 {PathChecked})" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : ""));
             return true;
         }
 
         private const float MaxCoreDist = 40f;
+        private const int PathTries = 4;
+        private static readonly NavMeshPath CorePath = new NavMeshPath();
+        private static readonly List<KeyValuePair<float, AICorePoint>> Near = new List<KeyValuePair<float, AICorePoint>>();
 
-        /// <summary>위치에서 가장 가까운 AI 이동망 시작점(MaxCoreDist m 안, 위아래 차이는 3배로 셈 — 다른 층에 붙지 않게). 없으면 null.</summary>
+        /// <summary>
+        /// 위치에서 가까운 AI 이동망 시작점(MaxCoreDist m 안, 위아래 차이는 3배로 셈). 가까운 순서로 PathTries개까지 NavMesh 경로가 끝까지
+        /// 이어지는지 보고(다른 층·막힌 건물 안팎에 붙지 않게, Codex 6차 9번) 이어지는 첫 시작점을 고른다. 하나도 확인 못 하면 가장 가까운 것
+        /// (예전 동작: NRE로 분대원이 빠지는 것보다 낫다). 범위 안에 없으면 null. 레이드마다 한 번, 지점 수만큼만 돈다.
+        /// </summary>
         private static AICorePoint? NearestCore(List<AICorePoint> cores, Vector3 pos)
         {
-            AICorePoint? best = null;
-            float bestD = MaxCoreDist * MaxCoreDist;
+            Near.Clear();
+            float max = MaxCoreDist * MaxCoreDist;
             foreach (var cp in cores)
             {
                 if (cp == null) continue;
                 var d = cp.Position - pos;
                 float dist = d.x * d.x + d.z * d.z + 9f * d.y * d.y;
-                if (dist < bestD) { bestD = dist; best = cp; }
+                if (dist < max) Near.Add(new KeyValuePair<float, AICorePoint>(dist, cp));
             }
-            return best;
+            if (Near.Count == 0) return null;
+            Near.Sort((a, b) => a.Key.CompareTo(b.Key));
+            try
+            {
+                if (NavMesh.SamplePosition(pos, out var from, 2f, NavMesh.AllAreas))
+                    for (int i = 0; i < Near.Count && i < PathTries; i++)
+                    {
+                        var cp = Near[i].Value;
+                        var to = NavMesh.SamplePosition(cp.Position, out var hit, 2f, NavMesh.AllAreas) ? hit.position : cp.Position;
+                        if (NavMesh.CalculatePath(from.position, to, NavMesh.AllAreas, CorePath) && CorePath.status == NavMeshPathStatus.PathComplete)
+                        {
+                            PathChecked++;
+                            return cp;
+                        }
+                    }
+            }
+            catch (Exception ex) { Log.ErrorOnce("NearestCorePath", ex); }
+            return Near[0].Value;
         }
+
+        /// <summary>이번 레이드에서 경로까지 확인하고 이어 준 지점 수(로그용).</summary>
+        private static int PathChecked;
 
         /// <summary>PMC 구역이 0개인 맵(공장·미궁)이면 후보가 있는 구역을 AvailableZonesPmc에 더한다(한 번).</summary>
         internal static void EnsureZones(RaidContext c, BotBossSpawn? boss)

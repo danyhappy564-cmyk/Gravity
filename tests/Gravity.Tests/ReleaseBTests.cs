@@ -253,7 +253,35 @@ public class ReleaseBTests
         Assert.Equal(new[]{Id(61),Id(62),Id(63),Id(70),Id(71)},Run("{}",2,"meds"));         // T3: T1~T3
         // 표에 직접 넣은 목록이 있으면 그 목록(무게>0)만: 다른 티어 봇이 만든 캐시라도 이 티어 목록으로 바뀐다
         var own="""{"tierData":{"pmc":[{"meds":{"meds":{"A":5,"B":0}}}]}}""".Replace("A",Id(67)).Replace("B",Id(61));
-        Assert.Equal(new[]{Id(67),Id(70),Id(71)},Run(own,0,"meds"));
+        Assert.Equal(new[]{Id(67)},Run(own,0,"meds"));                                       // 직접 목록이면 캐시 전체를 그 목록으로(다른 종류가 섞인 캐시도, Codex 6차 3번)
+
+        // Codex 6차 2·4번: 이 봇의 생성 목록이 있으면 캐시(첫 봇 기준)가 아니라 그 목록 — 캐시가 비었거나 다른 티어 봇이 만들었어도
+        var ctx=GearApply.Context(Config("{}"),new("usec","pmc",6,true),items,new(null,0,0,0),false,new(1));
+        var t7=new GenerationData{Weights=new(){[1]=1},Whitelist=new(){[(MongoId)Id(66)]=2,[(MongoId)Id(67)]=1}};
+        Assert.Equal(new[]{Id(66),Id(67)},GearApply.ConsumablesFor(new(){[(MongoId)Id(61)]=1},t7,"meds",ctx).Keys.Select(x=>x.ToString()).Order().ToArray());
+        Assert.Equal(2,GearApply.ConsumablesFor([],t7,"meds",ctx).Count);
+        // 생성 목록이 비면(SPT가 가방 목록에서 채움) 캐시를 티어로 거른다
+        Assert.Equal(7,GearApply.ConsumablesFor(Enumerable.Range(61,7).ToDictionary(i=>(MongoId)Id(i),_=>1.0),new GenerationData{Weights=new(){[1]=1},Whitelist=[]},"meds",ctx).Count);
+    }
+
+    [Fact]
+    public void OnlyTablesKeepSecondaryWeaponsToTheirOwnList()
+    {
+        // Codex 6차 1번: 원작 프리셋 표에 보조 주무기 목록이 있으면 그 목록에 없는 종류(SMG)가 주무기 목록에서 넘어오지 않는다
+        var ar=Id(91);var smg=Id(92);
+        var info=new Dictionary<string,ItemInfo>{
+            [ar]=new(1,0,0,false,false,Weapon:true){Section="weapons",Slot="ar",EquipmentSlots=["FirstPrimaryWeapon","SecondPrimaryWeapon"]},
+            [smg]=new(1,0,0,false,false,Weapon:true){Section="weapons",Slot="smg",EquipmentSlots=["FirstPrimaryWeapon","SecondPrimaryWeapon"]}};
+        var items=new GearItems(info,info.Keys.Select(id=>("weapons/"+info[id].Slot,id)));
+        var json="""{"tierData":{"pmc":[{"only":true,"weapons":{"ar":{"AR":5},"smg":{"SMG":5}},"secondaryWeapons":{"ar":{"AR":3}}}]}}""".Replace("SMG",smg).Replace("AR",ar);
+        var table=Config(json).TableFor("usec",0);
+        Assert.Equal(3,GearPools.Weight(table,info[ar],ar,"SecondPrimaryWeapon"));
+        Assert.Equal(0,GearPools.Weight(table,info[smg],smg,"SecondPrimaryWeapon"));
+        Assert.Equal(5,GearPools.Weight(table,info[smg],smg,"FirstPrimaryWeapon"));
+        Assert.DoesNotContain(smg,GearPools.Seeds(table,items,"SecondPrimaryWeapon"));
+        // 자동 표(only 아님)는 예전처럼 주무기 목록으로 넘어간다
+        var auto=Config(json.Replace("\"only\":true,","")).TableFor("usec",0);
+        Assert.Equal(5,GearPools.Weight(auto,info[smg],smg,"SecondPrimaryWeapon"));
     }
 
     [Fact]

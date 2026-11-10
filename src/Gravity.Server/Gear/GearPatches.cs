@@ -315,14 +315,24 @@ public class GearLootPatch : AbstractPatch
     protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotLootCacheService), nameof(BotLootCacheService.GetLootFromCache));
 
     [PatchPostfix]
-    public static void Postfix(string lootType, ref Dictionary<MongoId, double> __result)
+    public static void Postfix(string lootType, BotType botJsonTemplate, ref Dictionary<MongoId, double> __result)
     {
         var c = GearRuntime.Current;
-        if (c == null || __result == null || __result.Count == 0 || lootType == "SecuredContainer") return;
+        if (c == null || __result == null || lootType == "SecuredContainer") return;
         try
         {
-            __result = __result.Where(kv => !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value);
-            if (MedKinds.TryGetValue(lootType, out var kind)) __result = GearApply.FilterConsumables(__result, kind, c);
+            if (MedKinds.TryGetValue(lootType, out var kind))
+            {
+                var it = botJsonTemplate?.BotGeneration?.Items;
+                var gen = lootType switch
+                {
+                    "HealingItems" => it?.Healing, "StimItems" => it?.Stims, "GrenadeItems" => it?.Grenades,
+                    "FoodItems" => it?.Food, "DrinkItems" => it?.Drink, _ => it?.Drugs
+                };
+                __result = GearApply.ConsumablesFor(__result, gen, kind, c);
+                return;
+            }
+            if (__result.Count > 0) __result = __result.Where(kv => !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value);
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }
