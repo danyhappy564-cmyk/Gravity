@@ -80,7 +80,7 @@ namespace Gravity.Client.Patches
                 var sp = c.PointById[all[i].Id];
                 if (sp.IsValid(now) && sp.IsValid(side)) cands.Add(all[i]);
             }
-            if (cands.Count == 0) return false;
+            if (cands.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, null, now); return false; }
 
             c.Reserved.RemoveAll(r => r.until <= now);
             var reserved = new List<Vec3>(c.Reserved.Count);
@@ -90,8 +90,9 @@ namespace Gravity.Client.Patches
             var rules = new PickRules(
                 PmcDist: s.PmcDist, BotDist: s.SpacingBots, ReserveDist: s.PmcDist,
                 ProtectActive: s.ProtectOn && (!c.Started || c.Elapsed < s.ProtectSec), ProtectRadius: s.ProtectRadius);
-            var r = PointPicker.PickSquad(cands, PmcZones.Actors(), reserved, size, rules, c.Rng);
-            if (r.Ids.Count == 0) return false;
+            var actors = PmcZones.Actors();
+            var r = PointPicker.PickSquad(cands, actors, reserved, size, rules, c.Rng);
+            if (r.Ids.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, (actors, reserved, rules), now); return false; }
 
             var pts = new List<ISpawnPoint>(r.Ids.Count);
             var seen = new HashSet<int>();
@@ -103,6 +104,50 @@ namespace Gravity.Client.Patches
             }
             filteredPoints.InsertRange(pts);
             return true;
+        }
+    }
+
+    /// <summary>
+    /// 진단(diag.log = verbose일 때만): PMC 분대가 지점을 못 고른 이유를 구역별로 20초에 한 줄. 후보마다 처음 걸린 규칙을 센다
+    /// (PointPicker.FirstOk와 같은 순서·같은 엄격한 거리). 1.0 점검: 감염 판 세관에서 시작 PMC가 시작 보호 90초 뒤에야 나온 원인 확인용.
+    /// </summary>
+    internal static class PickDiag
+    {
+        private static readonly Dictionary<string, float> Last = new Dictionary<string, float>();
+
+        internal static void Fail(RaidContext c, BotZone z, int total, List<Candidate> cands,
+            (List<Actor> actors, List<Vec3> reserved, PickRules r)? why, float now)
+        {
+            if (Log.Level != "verbose") return;
+            string key = c.S.Seed + ":" + z.NameZone;
+            if (Last.TryGetValue(key, out var t) && now - t < 20f) return;
+            Last[key] = now;
+            int occ = 0, near = 0, bot = 0, prot = 0, res = 0, ok = 0;
+            double humanMin = double.MaxValue;
+            if (why is { } w)
+            {
+                foreach (var cd in cands)
+                {
+                    string? hit = null;
+                    foreach (var a in w.actors)
+                    {
+                        double d = Vec3.Dist(cd.Pos, a.Pos);
+                        bool hp = a.Kind == ActorKind.Human || a.Kind == ActorKind.Pmc;
+                        if (a.Kind == ActorKind.Human && d < humanMin) humanMin = d;
+                        if (hit != null) continue;
+                        if (d < w.r.OccupiedRadius) hit = "occ";
+                        else if (d < (hp ? w.r.PmcDist : w.r.BotDist)) hit = hp ? "near" : "bot";
+                        else if (w.r.ProtectActive && a.Kind == ActorKind.Human && d < w.r.ProtectRadius) hit = "prot";
+                    }
+                    if (hit == null)
+                        foreach (var rv in w.reserved)
+                            if (Vec3.Dist(cd.Pos, rv) < w.r.ReserveDist) { hit = "res"; break; }
+                    switch (hit) { case "occ": occ++; break; case "near": near++; break; case "bot": bot++; break; case "prot": prot++; break; case "res": res++; break; default: ok++; break; }
+                }
+            }
+            Log.Verbose($"{c.S.MapId} PMC 지점 못 고름: 구역 {z.NameZone} 지점 {total}개 중 사용 가능 {cands.Count}개"
+                + (why is { } w2 ? $" — 자리 겹침 {occ}·사람/PMC 거리 {near}·봇 거리 {bot}·시작 보호 {prot}·예약 {res}·통과 {ok}(완화 전), 가장 가까운 사람 {(humanMin == double.MaxValue ? "-" : humanMin.ToString("0"))}m, 보호 {(w2.r.ProtectActive ? "켬" : "끔")}" : " — 재사용 대기·진영 필터에 다 걸림")
+                + $", 경과 {(c.Started ? c.Elapsed.ToString("0") + "초" : "시작 전")}");
         }
     }
 }

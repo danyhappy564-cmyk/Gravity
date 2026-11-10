@@ -48,7 +48,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 
 ## 감사
 
-장비 프리셋 **Realistic and Extended PMC Loadouts**는 **mip01**님의 *APBS Realistic and Extended PMC Loadouts Preset*을 값 그대로 옮긴 것입니다(모드 아이템 제외). mip01님이 원작 APBS 프리셋 제작자의 허락을 받아 만든 에드온이며, 바탕은 **acidphantasm**님의 APBS입니다. 자세한 내용은 [CREDITS.md](CREDITS.md)에 있습니다.
+장비 프리셋 **Realistic and Extended PMC Loadouts**는 **mip01**님의 *APBS Realistic and Extended PMC Loadouts Preset*을 값 그대로 옮긴 것입니다(모드 아이템 제외, Gravity에 없는 기능 몇 가지는 가장 가까운 값). mip01님이 원작 APBS 프리셋 제작자의 허락을 받아 만든 에드온이며, 바탕은 **acidphantasm**님의 APBS입니다. 자세한 내용은 [CREDITS.md](CREDITS.md)에 있습니다.
 
 ## 라이선스
 

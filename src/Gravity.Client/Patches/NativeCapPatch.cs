@@ -89,6 +89,9 @@ namespace Gravity.Client.Patches
                 if (blocked) wave.IgnoreMaxBots = false;
                 NativeScope.Set(c, wave, reserveOnPass: !__state);
                 NativeScope.Blocked = blocked;
+                // 진단(verbose): 게임이 Gravity PMC 분대를 처음 부른 시각(대기열 재시도는 data가 있어 빠짐)
+                if (data == null && wave.BossType.IsPmcBot())
+                    Log.Verbose($"{c.S.MapId} PMC 분대 호출({wave.Time:0}초 웨이브, {1 + escorts}명): 그룹 제한 막힘 {(blocked ? "예" : "아니오")}, {(c.Started ? "경과 " + c.Elapsed.ToString("0") + "초" : "시작 전")}");
             }
             catch (Exception ex)
             {

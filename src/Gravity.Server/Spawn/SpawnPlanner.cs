@@ -38,7 +38,9 @@ public static class SpawnPlanner
 
         // 1) 시작 PMC
         var startCount = (int)R(basePmc * (ms.Style == "start" ? Math.Max(startPct, 60) : startPct) / 100);
-        dropped += AddPmcs(startCount, () => 5 + rnd.Next(16), true);
+        // 1~5초: 게임의 보스 웨이브 시계는 로딩 끝 무렵(BossSpawnScenario.Run, 시작 약 12초 전)부터 돈다. 로딩 중에 불린 분대는 장비 모델을
+        // 로딩 화면에서 읽고 시작과 함께 나오지만, 시작 뒤에 불린 분대는 레이드 중 모델 읽기를 기다려 2~4분 늦게 나왔다(1.0 3차 점검 세관).
+        dropped += AddPmcs(startCount, () => 1 + rnd.Next(5), true);
 
         // 2) 웨이브
         var pmcWaves = new List<(double t, int n)>();

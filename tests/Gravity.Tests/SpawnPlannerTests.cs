@@ -22,6 +22,18 @@ public class SpawnPlannerTests
     }
 
     [Fact]
+    public void StartSquads_ComeInFirstFiveSeconds()
+    {
+        // 게임 보스 웨이브 시계는 로딩 끝 무렵부터 돈다: 시작 분대가 로딩 화면 안에 불려야 모델을 미리 읽고 바로 나온다(1.0 3차 점검).
+        foreach (var seed in new[] { 1, 7, 42, 99 })
+        {
+            var p = SpawnPlanner.Plan(Cfg(), Customs, 2400, 0, seed);
+            Assert.Contains(p.Groups, g => g.IsStart);
+            Assert.All(p.Groups.Where(g => g.IsStart), g => Assert.InRange(g.TimeSec, 1, 5));
+        }
+    }
+
+    [Fact]
     public void NoGroupAfterHardStop()
     {
         var p = SpawnPlanner.Plan(Cfg("""{"spawn":{"hardStop":{"mode":"percent","pmcPct":25}}}"""), Customs, 2400, 0, 1);

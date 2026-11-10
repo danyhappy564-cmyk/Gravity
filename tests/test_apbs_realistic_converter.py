@@ -12,13 +12,14 @@ converter = importlib.util.module_from_spec(spec); spec.loader.exec_module(conve
 
 class ApbsRealisticConverterTests(unittest.TestCase):
     def test_keeps_original_values_drops_mod_items_and_credits_author(self):
-        short, long, pistol, mod, helmet = "1" * 24, "2" * 24, "3" * 24, "4" * 24, "5" * 24
+        short, long, pistol, mod, helmet, sawn = "1" * 24, "2" * 24, "3" * 24, "4" * 24, "5" * 24, "6" * 24
         catalog = [
             {"id": short, "section": "weapons", "slot": "smg", "mod": False},
             {"id": long, "section": "weapons", "slot": "sniper", "mod": False},
             {"id": pistol, "section": "weapons", "slot": "holster", "mod": False},
             {"id": helmet, "section": "armor", "slot": "headwear", "mod": False},
             {"id": mod, "section": "weapons", "slot": "ar", "mod": True},
+            {"id": sawn, "section": "weapons", "slot": "shotgun", "mod": False},
         ]
         config = {"generalConfig": {"mapRangeWeighting": {"a": {"LongRange": 20, "ShortRange": 80}},
                                     "plateClasses": {"pmc": {f"tier{t}": {"front_plate": {"3": 90, "4": 10, "5": 0}, "left_side_plate": {"3": 100}} for t in range(1, 8)}},
@@ -32,7 +33,7 @@ class ApbsRealisticConverterTests(unittest.TestCase):
             for folder in ("Equipment", "Ammo", "Chances"): (path / folder).mkdir()
             for t in range(1, 8):
                 eq = {"pmcUSEC": {"equipment": {"FirstPrimaryWeapon_ShortRange": {short: 3, mod: 50}, "FirstPrimaryWeapon_LongRange": {long: 1},
-                                                "Holster": {pistol: 7}, "Headwear": {helmet: 4}}}}
+                                                "Holster": {pistol: 7, sawn: 3}, "Headwear": {helmet: 4}}}}
                 ch = {"pmcUSEC": {"chances": {"equipment": {"Headwear": 37}, "equipmentMods": {"front_plate": 20},
                                               "generation": {"items": {"magazines": {"weights": {"1": 80, "2": 20}}}}}}}
                 (path / "Equipment" / f"Tier{t}_equipment.json").write_text(json.dumps(eq), encoding="utf-8")
@@ -43,7 +44,9 @@ class ApbsRealisticConverterTests(unittest.TestCase):
         self.assertTrue(usec["only"])
         self.assertEqual(usec["weapons"]["smg"], {short: 800.0})    # 근거리 80% 전부
         self.assertEqual(usec["weapons"]["sniper"], {long: 200.0})  # 원거리 20% 전부
-        self.assertEqual(usec["weapons"]["holster"], {pistol: 7.0})
+        # 권총 칸에 든 산탄총은 권총 칸 목록에 남고 주무기(shotgun) 후보가 되지 않는다
+        self.assertEqual(usec["weapons"]["holster"], {pistol: 7.0, sawn: 3.0})
+        self.assertNotIn("shotgun", usec["weapons"])
         self.assertEqual(usec["armor"]["headwear"], {helmet: 4.0})
         self.assertNotIn(mod, json.dumps(out))
         self.assertEqual(out["conversion"]["skippedModItems"], 1)

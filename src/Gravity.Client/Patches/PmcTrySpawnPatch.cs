@@ -165,6 +165,7 @@ namespace Gravity.Client.Patches
                 }
                 if (!wave.BossType.IsPmcBot()) return;
                 var now = Time.time;
+                TryDiag(c, ctx, wave, __result, now);
 
                 if (__result)
                 {
@@ -190,6 +191,22 @@ namespace Gravity.Client.Patches
                 c.Dropped[ctx.Waited ? "groupCap" : "expired"]++;
                 __result = true; // 처리 끝으로 돌려 Spawn이 DelayBossSpawn을 부르지 않게 한다(대기열에서 빠짐)
             }
+        }
+
+        private static readonly Dictionary<BossLocationSpawn, float> TryLast = new Dictionary<BossLocationSpawn, float>();
+
+        /// <summary>진단(verbose): Gravity PMC 분대 TrySpawn 결과. 성공은 매번, 실패는 분대마다 15초에 한 줄.</summary>
+        private static void TryDiag(RaidContext c, Ctx ctx, BossLocationSpawn wave, bool result, float now)
+        {
+            if (Log.Level != "verbose") return;
+            if (!result && TryLast.TryGetValue(wave, out var t) && now - t < 15f) return;
+            if (TryLast.Count > 200) TryLast.Clear();
+            TryLast[wave] = now;
+            string why = result ? (ctx.ZonesSeen && ctx.ZonesOk ? "생성" : "구역 없어 버림")
+                : ctx.Waited ? "동시 그룹 제한"
+                : !ctx.ZonesSeen ? "프로필 미준비 또는 구역 막힘"
+                : !ctx.PickedAny ? "지점 못 고름" : "지점 부족";
+            Log.Verbose($"{c.S.MapId} PMC 분대 시도({wave.Time:0}초 웨이브, {ctx.Size}명): {why}, {(c.Started ? "경과 " + c.Elapsed.ToString("0") + "초" : "시작 전")}");
         }
 
         [PatchFinalizer]
@@ -252,6 +269,7 @@ namespace Gravity.Client.Patches
                     return keep;
                 }
                 if (!c.Tracks(wave)) return true; // 다른 모드 PMC·보스는 바닐라 대기열 그대로
+                if (wave.BossType.IsPmcBot()) QueueDiag(c, __instance, wave);
                 int stop = wave.BossType.IsPmcBot() ? c.S.HardStopPmcSec : c.S.RaidSec;
                 if (!SpawnExpiry.PastHardStop(c.Elapsed, stop)) { Wait(c, wave); return true; }
                 c.CancelWave(wave);
@@ -272,6 +290,24 @@ namespace Gravity.Client.Patches
         {
             if (wave.IgnoreMaxBots) c.Ledger.Release(wave);
             else c.Ledger.Hold(wave, Math.Max(0, wave.EscortCount), true, Time.time);
+        }
+
+        private static readonly Dictionary<BossLocationSpawn, float> DiagLast = new Dictionary<BossLocationSpawn, float>();
+
+        /// <summary>진단(diag.log = verbose일 때만): PMC 분대가 대기열로 갈 때 게임 상한 상태를 분대마다 20초에 한 줄.</summary>
+        private static void QueueDiag(RaidContext c, BotBossSpawn? boss, BossLocationSpawn wave)
+        {
+            if (Log.Level != "verbose") return;
+            float now = Time.time;
+            if (DiagLast.TryGetValue(wave, out var t) && now - t < 20f) return;
+            if (DiagLast.Count > 200) DiagLast.Clear();
+            DiagLast[wave] = now;
+            var sp = boss?._spawner;
+            if (sp == null) return;
+            sp.CheckOnMax(1 + Math.Max(0, wave.EscortCount), out var toDelay, out _);
+            Log.Verbose($"{c.S.MapId} PMC 분대 대기열({1 + Math.Max(0, wave.EscortCount)}명): 프로필 준비 {(sp.IsProfilesLoaded ? "됨" : "안 됨")}, "
+                + $"상한 {sp.MaxBots} 중 생성됨+생성 중 {sp.AllBotsWithLoaded}(생성 중 {sp._inSpawnProcess}), 대기 {sp.SpawnDelaysService?.WaitCount ?? -1}, 상한 때문에 미룰 인원 {toDelay}, "
+                + $"경과 {(c.Started ? c.Elapsed.ToString("0") + "초" : "시작 전")}");
         }
 
         private static bool DropNear(RaidContext c, BotBossSpawn? boss, BossLocationSpawn wave, Directors.NearDirector.Tag near)

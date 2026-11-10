@@ -48,7 +48,7 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 
 ## Credits
 
-The **Realistic and Extended PMC Loadouts** preset carries over the values of *APBS Realistic and Extended PMC Loadouts Preset* by **mip01** unchanged (mod items excluded). mip01 made it with permission from the original APBS preset author; it is based on APBS by **acidphantasm**. Details in [CREDITS.md](CREDITS.md).
+The **Realistic and Extended PMC Loadouts** preset carries over the values of *APBS Realistic and Extended PMC Loadouts Preset* by **mip01** unchanged (mod items excluded; a few features Gravity lacks use the closest match). mip01 made it with permission from the original APBS preset author; it is based on APBS by **acidphantasm**. Details in [CREDITS.md](CREDITS.md).
 
 ## License
 

@@ -101,8 +101,12 @@ def convert(source, config, tier_data, catalog):
             d = {"only": True, "weapons": {}, "secondaryWeapons": {}, "armor": {}, "ammo": {}, "meds": {}, "gen": {},
                  "genWeights": {}, "chance": {}, "mods": {}, "slotChances": {}, "partChances": {}}
 
-            def add(sec, id, w):
+            def add(sec, id, w, slot=None):
                 info = vanilla[id]
+                if slot:  # 원작이 권총·칼 칸에 넣은 총(예: MP-43 쌍열 단축형)은 그 칸 목록에 둔다. 총 종류(shotgun 등)로 보내면 주무기 후보가 된다.
+                    pool = d.setdefault(sec, {}).setdefault(slot, {})
+                    pool[id] = round(min(10000, pool.get(id, 0) + w), 2)
+                    return
                 if info["section"] == "weapons": out_sec = sec
                 elif info["section"] == "armor" and sec == "weapons": return  # 무기 칸에 방어구가 들어간 경우 없음(방어)
                 else: out_sec = info["section"]
@@ -119,7 +123,9 @@ def convert(source, config, tier_data, catalog):
             for slot, pool in eq.items():
                 if slot.startswith(("FirstPrimaryWeapon", "SecondPrimaryWeapon")) or slot in SKIP_SLOTS: continue
                 for id, w in pool.items():
-                    if float(w) > 0 and usable(id): add("weapons" if slot in ("Holster", "Scabbard") else "armor", id, float(w))
+                    if float(w) > 0 and usable(id):
+                        if slot in ("Holster", "Scabbard"): add("weapons", id, float(w), slot.lower())
+                        else: add("armor", id, float(w))
 
             ammo_key = "pmcAmmo" if role in ("usec", "bear") else "scavAmmo" if key == "scav" else "bossAmmo"
             for caliber, pool in ammo.get(ammo_key, {}).items():
@@ -180,6 +186,9 @@ def convert(source, config, tier_data, catalog):
                 "방탄판 등급: 원작 PMC 등급별 무게 중 0보다 큰 등급 범위(모든 봇 공통)",
                 "총 종류별 부품 확률: 공통 weaponMods 확률만 사용",
                 "외형(Appearance)·부품 조합 트리(Mods): 설치된 SPT DB 사용",
+                "권총 칸의 MP-43 쌍열 단축형(보스·추종자 무게 3): Gravity 권총 칸은 권총만 받아 나오지 않음",
+                "진통제(drugs)·현금·특수 아이템 개수: SPT 기본값",
+                "원작 config의 봇 묶음 켬/끔·자원 무작위·느슨한 탄·대용량 탄창 제한·내구도(PMC 값만 모든 봇): Gravity 설정을 따름",
             ],
         },
     }
