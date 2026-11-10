@@ -30,8 +30,13 @@ namespace Gravity.Client.Patches
             IEnumerable<ISpawnPoint> all = (spawner.BossSpawner?._spawnSystem as SpawnSystem)?._spawnPoints
                 ?? (IEnumerable<ISpawnPoint>)SpawnPointsCollection.CreateFromScene();
             c.PointsBuilt = true;
+            // 게임은 생성 지점의 CorePointId로 봇의 AI 이동망 시작점을 정한다(BotCreatorClient.CreateBot). 그 점이 없으면 시작점이 비어
+            // 분대장 순찰 시작(BotPathFinderCorePoints.GoToPosition)에서 예외가 나고 분대원이 안 붙는다(1.0 점검: 그라운드 제로 시작 PMC 12명 중 3명).
+            // 플레이어 전용 지점에 흔하다(공장·그라운드 제로는 전부). 그런 지점은 가장 가까운 시작점(MaxCoreDist m 안)을 이어 주고, 없으면 후보에서 뺀다.
+            var holder = bc.CoversData?.AICorePointsHolder;
+            var cores = holder?.CorePoints;
 
-            int id = 0, players = 0, bots = 0;
+            int id = 0, players = 0, bots = 0, noCore = 0, linked = 0;
             foreach (var p in all)
             {
                 if (p == null) continue;
@@ -39,6 +44,13 @@ namespace Gravity.Client.Patches
                 bool player = cat.ContainPlayerCategory() && p.Infiltration != null;
                 bool pmc = cat.ContainBotPmcCategory();
                 if (!player && !pmc) continue;
+                if (holder != null && cores is { Count: > 0 } && holder.GetCorePoint(p.CorePointId) == null)
+                {
+                    var near = NearestCore(cores, p.Position);
+                    if (near == null) { noCore++; continue; }
+                    p.CorePointId = near.Id;
+                    linked++;
+                }
                 var zone = bc.GetClosestZone(p.Position, out _);
                 if (zone == null) continue;
                 id++;
@@ -47,8 +59,25 @@ namespace Gravity.Client.Patches
                 list.Add(new Candidate(id, V(p.Position), player));
                 if (player) players++; else bots++;
             }
-            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개");
+            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : ""));
             return true;
+        }
+
+        private const float MaxCoreDist = 40f;
+
+        /// <summary>위치에서 가장 가까운 AI 이동망 시작점(MaxCoreDist m 안, 위아래 차이는 3배로 셈 — 다른 층에 붙지 않게). 없으면 null.</summary>
+        private static AICorePoint? NearestCore(List<AICorePoint> cores, Vector3 pos)
+        {
+            AICorePoint? best = null;
+            float bestD = MaxCoreDist * MaxCoreDist;
+            foreach (var cp in cores)
+            {
+                if (cp == null) continue;
+                var d = cp.Position - pos;
+                float dist = d.x * d.x + d.z * d.z + 9f * d.y * d.y;
+                if (dist < bestD) { bestD = dist; best = cp; }
+            }
+            return best;
         }
 
         /// <summary>PMC 구역이 0개인 맵(공장·미궁)이면 후보가 있는 구역을 AvailableZonesPmc에 더한다(한 번).</summary>
