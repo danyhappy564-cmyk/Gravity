@@ -13,6 +13,8 @@ The full changelog (1 entry) is in the [`changelog/`](changelog/) folder, 10 per
 
 If you like the mod, you can support it here: https://buymeacoffee.com/real_feels
 
+Project site: https://danyhappy564-cmyk.github.io/Gravity/
+
 A server + client mod for SPT **4.1**. It decides in one place **who spawns, when, where, and with what gear**. Everything is set from a web page you open in your browser while the game server is running.
 
 ## What it does
