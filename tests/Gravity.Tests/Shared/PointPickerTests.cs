@@ -57,6 +57,33 @@ public class PointPickerTests
     }
 
     [Fact]
+    public void Pick_StartProtection_Fallback_UsesFarthestPoint()
+    {
+        // 공장처럼 맵 전체가 보호 반경 안이면(호출하는 쪽이 ProtectFallback=true) 가장 먼 지점을 쓴다.
+        var cands = new[] { C(1, 60), C(2, 110, true), C(3, 90) };
+        var rules = new PickRules(40, 30, 40, true, 120, ProtectFallback: true);
+        for (int seed = 0; seed < 20; seed++)
+        {
+            var r = PointPicker.PickSquad(cands, new[] { Human0 }, NoRes, 2, rules, new Random(seed));
+            Assert.Equal("farthest", r.Reason);
+            Assert.Equal(2, r.Ids[0]);
+        }
+    }
+
+    [Fact]
+    public void Pick_StartProtection_Fallback_KeepsOtherRules()
+    {
+        // 가장 먼 지점이라도 사람·PMC 거리(완화 75%)와 예약은 지킨다.
+        var rules = new PickRules(40, 30, 40, true, 120, ProtectFallback: true);
+        var near = PointPicker.PickSquad(new[] { C(1, 20), C(2, 25) }, new[] { Human0 }, NoRes, 1, rules, new Random(1));
+        Assert.Empty(near.Ids);
+        Assert.Equal("noPoint", near.Reason);
+        var reserved = new[] { new Vec3(100, 0, 0) };
+        var r = PointPicker.PickSquad(new[] { C(1, 100), C(2, 50) }, new[] { Human0 }, reserved, 1, rules, new Random(1));
+        Assert.Equal(new[] { 2 }, r.Ids);
+    }
+
+    [Fact]
     public void Pick_Relaxed_WhenStrictFails()
     {
         var r = PointPicker.PickSquad(new[] { C(1, 100) }, new[] { Human0 }, NoRes, 1, Rules(), new Random(1));

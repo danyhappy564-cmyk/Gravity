@@ -58,6 +58,16 @@ namespace Gravity.Client.Patches
             }
         }
 
+        /// <summary>맵 전체 후보 중 사람에게서 시작 보호 반경 이상 떨어진 지점이 하나라도 있는지. 없으면(공장처럼 작은 맵) 가장 먼 지점을 허용한다.
+        /// 구역 하나가 아니라 맵 전체로 본다: 큰 맵에서 플레이어 가까운 구역이 보호에 다 걸려도 다른 구역으로 넘어가야 하므로.</summary>
+        private static bool AnyOutsideProtect(RaidContext c, List<Actor> actors, double radius)
+        {
+            foreach (var list in c.ZonePoints.Values)
+                foreach (var cd in list)
+                    if (PointPicker.HumanDist(cd.Pos, actors) >= radius) return true;
+            return false;
+        }
+
         private static bool PickNear(RaidContext c, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, int id,
             BotCreationData data, float now)
         {
@@ -87,12 +97,16 @@ namespace Gravity.Client.Patches
             for (int i = 0; i < c.Reserved.Count; i++) reserved.Add(c.Reserved[i].pos);
 
             var s = c.S;
+            var actors = PmcZones.Actors();
+            bool protect = s.ProtectOn && (!c.Started || c.Elapsed < s.ProtectSec);
             var rules = new PickRules(
                 PmcDist: s.PmcDist, BotDist: s.SpacingBots, ReserveDist: s.PmcDist,
-                ProtectActive: s.ProtectOn && (!c.Started || c.Elapsed < s.ProtectSec), ProtectRadius: s.ProtectRadius);
-            var actors = PmcZones.Actors();
+                ProtectActive: protect, ProtectRadius: s.ProtectRadius,
+                ProtectFallback: protect && !AnyOutsideProtect(c, actors, s.ProtectRadius));
             var r = PointPicker.PickSquad(cands, actors, reserved, size, rules, c.Rng);
             if (r.Ids.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, (actors, reserved, rules), now); return false; }
+            if (r.Reason == "farthest")
+                Log.InfoOnce("PmcPoints.Farthest:" + s.Seed, $"{s.MapId} 맵 전체가 시작 보호 반경({s.ProtectRadius:0}m) 안: 시작 PMC는 플레이어에게서 가장 먼 지점에 냄");
 
             var pts = new List<ISpawnPoint>(r.Ids.Count);
             var seen = new HashSet<int>();

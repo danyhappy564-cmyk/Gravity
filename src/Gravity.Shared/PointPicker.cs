@@ -7,9 +7,9 @@ namespace Gravity.Shared
 
     public sealed record PickRules(
         double PmcDist, double BotDist, double ReserveDist, bool ProtectActive, double ProtectRadius,
-        double SquadRadius = 20, double OccupiedRadius = 2, double RelaxFactor = 0.75);
+        double SquadRadius = 20, double OccupiedRadius = 2, double RelaxFactor = 0.75, bool ProtectFallback = false);
 
-    /// <summary>성공이면 Reason "ok" 또는 "relaxed", 실패면 "noPoint".</summary>
+    /// <summary>성공이면 Reason "ok"·"relaxed"·"farthest", 실패면 "noPoint".</summary>
     public sealed record PickResult(IReadOnlyList<int> Ids, string Reason);
 
     public static class PointPicker
@@ -29,6 +29,17 @@ namespace Gravity.Shared
             ids = TryPick(list, actors, reserved, size, rules, rules.PmcDist * f, rules.BotDist * f, rules.ReserveDist * f, rules.ProtectRadius);
             if (ids != null) return new PickResult(ids, "relaxed");
 
+            // 맵 전체에 시작 보호 반경 밖 지점이 하나도 없을 때만(공장처럼 작은 맵, ProtectFallback은 호출하는 쪽이 맵 전체로 판정):
+            // 보호 반경 대신 사람에게서 가장 먼 지점부터 본다. 다른 규칙(완화 거리·예약·자리 겹침)은 그대로 지킨다.
+            if (rules.ProtectActive && rules.ProtectFallback)
+            {
+                var far = new List<Candidate>(list);
+                far.Sort((a, b) => HumanDist(b.Pos, actors).CompareTo(HumanDist(a.Pos, actors)));
+                for (int i = 0; i < far.Count; i++)
+                    if (FirstOk(far[i].Pos, actors, reserved, rules, rules.PmcDist * f, rules.BotDist * f, rules.ReserveDist * f, 0))
+                        return new PickResult(Squad(far, far[i], actors, size, rules, false), "farthest");
+            }
+
             return new PickResult(None, "noPoint");
         }
 
@@ -45,23 +56,38 @@ namespace Gravity.Shared
                     if (playerOnly && !c.PlayerPoint) continue;
                     if (!FirstOk(c.Pos, actors, reserved, r, pmcDist, botDist, reserveDist, protectRadius)) continue;
 
-                    var res = new int[size];
-                    res[0] = c.Id;
-                    int n = 1;
-                    for (int j = 0; j < list.Count && n < size; j++)
-                    {
-                        var o = list[j];
-                        if (o.Id == c.Id) continue;
-                        if (playerOnly && !o.PlayerPoint) continue;
-                        if (Vec3.Dist(c.Pos, o.Pos) > r.SquadRadius) continue;
-                        if (Occupied(o.Pos, actors, r.OccupiedRadius)) continue;
-                        res[n++] = o.Id;
-                    }
-                    for (; n < size; n++) res[n] = c.Id; // 모자라면 첫 지점 반복
-                    return res;
+                    return Squad(list, c, actors, size, r, playerOnly);
                 }
             }
             return null;
+        }
+
+        /// <summary>첫 지점 c와 그 둘레(SquadRadius) 빈 지점으로 분대 자리를 채운다. 모자라면 첫 지점 반복.</summary>
+        private static int[] Squad(List<Candidate> list, Candidate c, IReadOnlyList<Actor> actors, int size, PickRules r, bool playerOnly)
+        {
+            var res = new int[size];
+            res[0] = c.Id;
+            int n = 1;
+            for (int j = 0; j < list.Count && n < size; j++)
+            {
+                var o = list[j];
+                if (o.Id == c.Id) continue;
+                if (playerOnly && !o.PlayerPoint) continue;
+                if (Vec3.Dist(c.Pos, o.Pos) > r.SquadRadius) continue;
+                if (Occupied(o.Pos, actors, r.OccupiedRadius)) continue;
+                res[n++] = o.Id;
+            }
+            for (; n < size; n++) res[n] = c.Id;
+            return res;
+        }
+
+        /// <summary>가장 가까운 사람까지 거리(사람이 없으면 무한대).</summary>
+        public static double HumanDist(Vec3 p, IReadOnlyList<Actor> actors)
+        {
+            double m = double.MaxValue;
+            for (int i = 0; i < actors.Count; i++)
+                if (actors[i].Kind == ActorKind.Human) m = Math.Min(m, Vec3.Dist(p, actors[i].Pos));
+            return m;
         }
 
         private static bool FirstOk(Vec3 p, IReadOnlyList<Actor> actors, IReadOnlyList<Vec3> reserved, PickRules r,
