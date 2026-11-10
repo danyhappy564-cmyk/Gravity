@@ -13,7 +13,11 @@ public sealed record GroupCap(bool On, string Scope, string Over, IReadOnlyList<
 public sealed record ScavSettings(
     bool SeparateStart, double DelayMin, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
     double Refill, int Pending, int SoftCap, int PerPlayer, double PscavChance, bool StartMarksman, double PlayerScavRemain = 60,
-    bool StartOn = true, double StartPct = 20);
+    bool StartOn = true, double StartPct = 20,
+    string StartMode = "pct", int StartMin = 3, int StartMax = 6,
+    string RemainMode = "pct", int RemainMin = 2, int RemainMax = 4);
+// 1.0.2: StartMode "count"면 시작 스캐브를 StartMin~Max 사이에서 판마다 굴린다("pct"는 바닐라 스캐브 수 × StartPct).
+// RemainMode "count"면 스캐브 레이드 때 PMC 무리를 RemainMin~Max개 남긴다("pct"는 PlayerScavRemain %).
 
 public sealed record ProtectSettings(bool On, double Sec, double Radius);
 public sealed record SpacingSettings(double Player, double Bots);
@@ -411,6 +415,8 @@ public static partial class ConfigModel
 
         var waveMin = (int)r.Num(sp + "waveMin", 2, 0, 20);
         var startMin = (int)r.Num(sp + "startPmcMin", 8, 0, 40);
+        var scavStartMin = (int)r.Num(sp + "scav.startMin", 3, 0, 40);
+        var remainMin = (int)r.Num(sp + "scav.remainMin", 2, 0, 30);
         var spawn = new SpawnSettings(
             r.Num(sp + "startPmcPct", 35, 0, 100), r.Num(sp + "firstDelay", 120, 0, 1800),
             r.Num(sp + "interval", 6, 0.5, 60), r.Num(sp + "randomPct", 30, 0, 100), r.Num(sp + "minGap", 60, 0, 1800),
@@ -430,7 +436,9 @@ public static partial class ConfigModel
                 r.Num(sp + "scav.refill", 45, 0, 3600), (int)r.Num(sp + "scav.pending", 3, 0, 20),
                 (int)r.Num(sp + "scav.softCap", 18, 0, 60), (int)r.Num(sp + "scav.perPlayer", 20, 0, 100),
                 r.Num(sp + "scav.pscavChance", 10, 0, 100), r.Bool(sp + "scav.startMarksman", true),
-                r.Num(sp + "scav.playerScavRemain", 60, 0, 100), r.Bool(sp + "scav.startOn", true), r.Num(sp + "scav.startPct", 20, 0, 100)),
+                r.Num(sp + "scav.playerScavRemain", 60, 0, 100), r.Bool(sp + "scav.startOn", true), r.Num(sp + "scav.startPct", 20, 0, 100),
+                r.Str(sp + "scav.startMode", "pct", "pct", "count"), scavStartMin, (int)Math.Max(scavStartMin, r.Num(sp + "scav.startMax", 6, 0, 40)),
+                r.Str(sp + "scav.remainMode", "pct", "pct", "count"), remainMin, (int)Math.Max(remainMin, r.Num(sp + "scav.remainMax", 4, 0, 30))),
             new ProtectSettings(r.Bool(sp + "protect.on", true), r.Num(sp + "protect.sec", 90, 0, 3600), r.Num(sp + "protect.radius", 120, 5, 1000)),
             new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
             r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),

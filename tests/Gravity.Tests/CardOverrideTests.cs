@@ -208,4 +208,27 @@ public class CardOverrideTests
         // 공통 탭은 그대로 비율(바닐라 16명 × 35% ≈ 6)
         Assert.Equal(6, SpawnPlanner.Plan(Read("{}"), Map, 2400, 0, 1).StartPmcs);
     }
+    [Fact]
+    public void 맵별_시작_스캐브_인원_범위와_스캐브_레이드_무리_개수()
+    {
+        var cfg = Read("""{"spawn":{"scav":{"startPct":20}},"maps":{"bigmap":{"ovr":{"scav":true},"scav":{"startMode":"count","startMin":4,"startMax":7,"remainMode":"count","remainMin":2,"remainMax":3}}}}""");
+        var sc = cfg.SpawnFor("bigmap").Scav;
+        Assert.Equal("count", sc.StartMode);
+        Assert.Equal("pct", cfg.SpawnFor("woods").Scav.StartMode);
+        var seen = new HashSet<int>();
+        for (int seed = 0; seed < 60; seed++)
+        {
+            var plan = SpawnPlanner.Plan(cfg, Map, 2400, 0, seed);
+            var start = plan.ScavWaves.Where(w => w.IsStart).Sum(w => w.SlotsMax);
+            Assert.InRange(start, 4, 7);
+            seen.Add(start);
+        }
+        Assert.True(seen.Count > 1);
+        // 공통 탭은 그대로 비율(바닐라 20명 × 20% = 4)
+        Assert.Equal(4, SpawnPlanner.Plan(Read("{}"), Map, 2400, 0, 1).ScavWaves.Where(w => w.IsStart).Sum(w => w.SlotsMax));
+        var groups = Enumerable.Range(0, 10).Select(i => new PmcGroup(i * 60, true, 1, "normal", i < 2)).ToList();
+        for (int seed = 0; seed < 30; seed++) Assert.InRange(GravityRuntime.KeepForScavRaid(groups, sc, seed).Count, 2, 3);
+        Assert.Single(GravityRuntime.KeepForScavRaid(groups.Take(1).ToList(), sc, 1)); // 있는 무리보다 많이 못 남김
+        Assert.Equal(6, GravityRuntime.KeepForScavRaid(groups, cfg.SpawnFor("woods").Scav, 1).Count); // 비율 60%
+    }
 }

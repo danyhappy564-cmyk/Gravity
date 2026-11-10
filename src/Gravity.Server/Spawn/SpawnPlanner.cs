@@ -149,8 +149,10 @@ public static class SpawnPlanner
             var startMin = s.Scav.SeparateStart ? s.Scav.DelayMin : 0;
             var total = map.BaseScav * Math.Max(0, raid - startMin) / Math.Max(1.0, map.DbRaidSec / 60.0);
             var per = total / times.Count;
-            // 시작 인원은 카드의 비율로 정한다. 최대 400개 구간·한정된 시작 인원만 분배한다.
-            var initial = ms.StartScav && s.Scav.StartOn ? (int)R(map.BaseScav * s.Scav.StartPct / 100) : 0;
+            // 시작 인원은 카드의 비율(또는 1.0.2 인원 범위)로 정한다. 최대 400개 구간·한정된 시작 인원만 분배한다.
+            var initial = !(ms.StartScav && s.Scav.StartOn) ? 0
+                : s.Scav.StartMode == "count" ? rnd.Next(Math.Min(s.Scav.StartMin, s.Scav.StartMax), Math.Max(s.Scav.StartMin, s.Scav.StartMax) + 1)
+                : (int)R(map.BaseScav * s.Scav.StartPct / 100);
             var slots = Math.Min(Math.Max(0, firstWindow), initial);
             for (var i = 0; i < slots; i++)
             {

@@ -769,3 +769,21 @@ test('시작 PMC 인원 방식·실제 인원 표시·플레이어 지점 스위
   assert.match(html,/data-p="spawn\.startPlayerOnly"/);
   assert.equal(a.run(`CARD_FIELDS.flow.includes('startPlayerOnly')`),true);
 });
+
+test('시작 스캐브 인원 방식·스캐브 레이드 PMC 무리 개수 방식(1.0.2)', () => {
+  const a=app();
+  assert.equal(a.run(`DEFAULTS.spawn.scav.startMode`),'pct');
+  assert.equal(a.run(`DEFAULTS.spawn.scav.remainMode`),'pct');
+  let html=a.run(`spawnCommon.render(null,true)`);
+  assert.match(html,/data-segp="spawn\.scav\.startMode"/);
+  assert.match(html,/data-p="spawn\.scav\.startPct"/);
+  assert.match(html,/data-p="spawn\.scav\.playerScavRemain"/);
+  a.run(`state.spawn.scav.startMode='count';state.spawn.scav.startMin=4;state.spawn.scav.startMax=7;state.spawn.scav.remainMode='count';`);
+  assert.equal(a.run(`startScavOf(mapById('bigmap'),cfgFor(mapById('bigmap')))`),6);
+  html=a.run(`spawnCommon.render(null,true)`);
+  assert.match(html,/data-p="spawn\.scav\.startMin"/);
+  assert.match(html,/data-p="spawn\.scav\.remainMax"/);
+  assert.doesNotMatch(html,/data-p="spawn\.scav\.startPct"/);
+  for(const f of ['scav.startMode','scav.startMin','scav.startMax','scav.remainMode','scav.remainMin','scav.remainMax'])
+    assert.equal(a.run(`CARD_FIELDS.scav.includes('${f}')`),true,f);
+});

@@ -154,9 +154,11 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         string? scavNote = null;
         if (scavRaid && plan.Groups.Count > 0)
         {
-            var keep = KeepForScavRaid(plan.Groups, cfg.SpawnFor(id).Scav.PlayerScavRemain, s);
-            scavNote = " / " + L.T($"스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({cfg.SpawnFor(id).Scav.PlayerScavRemain:0}%)",
-                $"scav raid: kept {keep.Count} of {plan.Groups.Count} PMC groups ({cfg.SpawnFor(id).Scav.PlayerScavRemain:0}%)");
+            var sc = cfg.SpawnFor(id).Scav;
+            var keep = KeepForScavRaid(plan.Groups, sc, s);
+            var how = sc.RemainMode == "count" ? $"{sc.RemainMin}–{sc.RemainMax}" : $"{sc.PlayerScavRemain:0}%";
+            scavNote = " / " + L.T($"스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({how})",
+                $"scav raid: kept {keep.Count} of {plan.Groups.Count} PMC groups ({how})");
             plan = plan with { Groups = keep };
         }
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
@@ -305,10 +307,20 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     }
 
     /// <summary>스캐브 레이드: 계획 PMC 무리 중 pct%만 무작위로 남긴다(시드 고정, 반올림, 원래 순서 유지).</summary>
-    public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, double pct, int seed)
+    public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, double pct, int seed) =>
+        Keep(groups, (int)Math.Round(groups.Count * Math.Clamp(pct, 0, 100) / 100.0, MidpointRounding.AwayFromZero), new Random(seed ^ 0x5CA7));
+
+    /// <summary>1.0.2: 남김 방식이 "count"면 무리 수를 RemainMin~Max에서 굴린다(있는 무리 수를 넘지 않음).</summary>
+    public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, ScavSettings sc, int seed)
     {
-        int keep = (int)Math.Round(groups.Count * Math.Clamp(pct, 0, 100) / 100.0, MidpointRounding.AwayFromZero);
+        if (sc.RemainMode != "count") return KeepForScavRaid(groups, sc.PlayerScavRemain, seed);
         var rnd = new Random(seed ^ 0x5CA7);
+        var n = rnd.Next(Math.Min(sc.RemainMin, sc.RemainMax), Math.Max(sc.RemainMin, sc.RemainMax) + 1);
+        return Keep(groups, Math.Min(n, groups.Count), rnd);
+    }
+
+    private static List<PmcGroup> Keep(List<PmcGroup> groups, int keep, Random rnd)
+    {
         var pick = Enumerable.Range(0, groups.Count).OrderBy(_ => rnd.Next()).Take(keep).ToHashSet();
         return groups.Where((_, i) => pick.Contains(i)).ToList();
     }
