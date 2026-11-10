@@ -188,4 +188,24 @@ public class CardOverrideTests
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }
+    [Fact]
+    public void 맵별_시작_PMC_인원_범위와_플레이어_지점_스위치()
+    {
+        var cfg = Read("""{"spawn":{"startPmcPct":35},"maps":{"bigmap":{"ovr":{"flow":true},"startMode":"count","startPmcMin":9,"startPmcMax":12,"startPlayerOnly":true}}}""");
+        Assert.Equal("count", cfg.SpawnFor("bigmap").StartMode);
+        Assert.False(cfg.SpawnFor("woods").StartPlayerOnly);
+        var seen = new HashSet<int>();
+        for (int seed = 0; seed < 60; seed++)
+        {
+            var plan = SpawnPlanner.Plan(cfg, Map, 2400, 0, seed);
+            Assert.InRange(plan.StartPmcs, 9, 12);
+            seen.Add(plan.StartPmcs);
+            var cs = ClientSettingsBuilder.Build(cfg, Map, plan, true);
+            Assert.True(cs.StartPlayerOnly);
+            Assert.Equal(plan.Groups.Select((g, k) => (g, k)).Where(x => x.g.IsStart).Select(x => x.k), cs.StartGroups!);
+        }
+        Assert.True(seen.Count > 1);
+        // 공통 탭은 그대로 비율(바닐라 16명 × 35% ≈ 6)
+        Assert.Equal(6, SpawnPlanner.Plan(Read("{}"), Map, 2400, 0, 1).StartPmcs);
+    }
 }

@@ -676,7 +676,7 @@ function makeDefaults(){
   const tiers=[[1,10,20,15,2,3,2,60,85,2,20,1,1,5,0],[11,20,28,22,3,3,2,65,90,3,30,2,1,8,1],[21,30,35,28,3,4,3,70,95,3,40,2,2,12,2],[31,40,42,35,4,5,3,75,100,4,50,3,2,16,4],[41,50,50,42,4,5,4,80,100,4,60,3,3,20,6],[51,65,58,50,5,6,4,85,100,5,70,4,3,25,8],[66,100,65,58,5,6,5,90,100,5,80,4,4,30,12]]
     .map(([min,max,pen,spare,fMin,fMax,side,dMin,dMax,mags,longScope,meds,nades,valuables,keycard])=>({min,max,pen,spare,fMin,fMax,sMin:Math.max(1,side-2),side,aMin:dMin,aMax:dMax,wMin:dMin-5,wMax:dMax,mags,longScope,helmetAcc:Math.min(90,longScope+10),meds,nades,valuables,keycard}));
   return {preset:'default',modules:{spawn:true,gear:true},
-    spawn:{botCap:0,placement:'mixed',hotspotShare:60,hotspotBoost:true,hotspotIgnoreCap:false,startPmcPct:35,startGroup:{chance:60,maxSize:4,maxCount:4},firstDelay:120,interval:6,randomPct:30,minGap:60,dist:{wave:0,bots:0,smooth:true},waveMin:2,waveMax:4,
+    spawn:{botCap:0,placement:'mixed',hotspotShare:60,hotspotBoost:true,hotspotIgnoreCap:false,startPmcPct:35,startMode:'pct',startPmcMin:8,startPmcMax:12,startPlayerOnly:false,startGroup:{chance:60,maxSize:4,maxCount:4},firstDelay:120,interval:6,randomPct:30,minGap:60,dist:{wave:0,bots:0,smooth:true},waveMin:2,waveMax:4,
       stopBeforeEnd:10,hardStop:{mode:'percent',pmcPct:15,scavPct:5},maxRespawn:{pmc:0,scav:0},ignoreCap:{start:false,waves:false},allowPmcLabyrinth:false,allowScavLab:false,
       raid:{mode:'detect'},intensity:{early:1.2,mid:1,late:.6},protect:{on:true,sec:90,radius:120},spacing:{player:80,bots:25},
       usecPct:50,squad:{s1:40,s2:30,s3:20,s4:10,s5:0},caps:{pmcReserve:0,pmcGroups:0,boss:{mode:'separate',max:0},special:{mode:'separate',max:0},faction:{mode:'separate',max:0},event:{mode:'separate',max:0}},groupCap:{on:false,scope:'raid',over:'split',rules:[{size:5,cmp:'eq',count:1},{size:3,cmp:'eq',count:1}]},diff:{easy:10,normal:50,hard:30,imp:10},levelMode:'relative',lvRelMin:-10,lvRelMax:15,lvFixMin:15,lvFixMax:45,
@@ -764,11 +764,12 @@ const pctOf=(v,min,max)=>((v-min)/(max-min)*100).toFixed(1)+'%';
 function showVal(v,unit,step){const n=step<1?Number(v).toFixed(step<.1?2:1):v;return unit?`${n}${tr(unit)}`:String(n);}
 const uattr=unit=>esc(JSON.stringify(unit||''));
 /** 슬라이더 기본값 되돌리기(↺, 1.0.1): 기본값(DEFAULTS 같은 경로)과 다를 때만 보인다. ps = 경로 목록. */
-function rstBtn(ps,vals,dis){if(dis)return '';const ds=ps.map(q=>get(q,DEFAULTS));if(ds.some(d=>typeof d!=='number')||ds.every((d,i)=>Number(vals[i])===d))return '';
+function defOf(q){let d=get(q,DEFAULTS);if(d===undefined&&q.startsWith('maps.')){const k=q.split('.');d=get(commonPath(k.slice(2).join('.')),DEFAULTS);}return d;}
+function rstBtn(ps,vals,dis){if(dis)return '';const ds=ps.map(defOf);if(ds.some(d=>typeof d!=='number')||ds.every((d,i)=>Number(vals[i])===d))return '';
   return `<button class="rst" data-rst="${ps.join('|')}" title="${esc(fmt(tr(T('기본값 {d}(으)로 되돌리기','Reset to default {d}')),{d:ds.join(' – ')}))}" aria-label="${esc(tr(T('기본값으로','Reset to default')))}">↺</button>`;}
 function slider(p,label,t,o={}){
   const {min=0,max=100,step=1,unit=UI.pct,adv,dis,val}=o;reg(p,label);const v=val??get(p);
-  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}${o.val===undefined?rstBtn([p],[v],dis):''}<span class="val" data-v="${p}">${showVal(v,unit,step)}</span></div>
+  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}${rstBtn([p],[v],dis)}<span class="val" data-v="${p}">${showVal(v,unit,step)}</span></div>
   <input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-p="${p}" data-t="n" data-unit="${uattr(unit)}" style="--p:${pctOf(v,min,max)}" ${dis?'disabled':''}>
   <div class="ends"><span>${showVal(min,unit,step)}</span><span>${showVal(max,unit,step)}</span></div></div>`;
 }
@@ -776,7 +777,7 @@ function range(pMin,pMax,label,t,o={}){
   const {min=0,max=100,step=1,unit=UI.pct,adv,dis}=o;reg(pMin,T(label.ko+' · 최소',label.en+' · min'));reg(pMax,T(label.ko+' · 최대',label.en+' · max'));
   const [a,b]=o.values||[get(pMin),get(pMax)];
   const one=(p,v,cap,side,pair)=>`<div><label>${cap}</label><input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-p="${p}" data-t="n" data-pair="${pair}" data-side="${side}" data-unit="${uattr(unit)}" style="--p:${pctOf(v,min,max)}" ${dis?'disabled':''}></div>`;
-  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}${o.values?'':rstBtn([pMin,pMax],[a,b],dis)}<span class="val" data-v="${pMin}|${pMax}">${showVal(a,unit,step)} – ${showVal(b,unit,step)}</span></div>
+  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}${rstBtn([pMin,pMax],[a,b],dis)}<span class="val" data-v="${pMin}|${pMax}">${showVal(a,unit,step)} – ${showVal(b,unit,step)}</span></div>
   <div class="range2">${one(pMin,a,u('min'),'min',pMax)}${one(pMax,b,u('max'),'max',pMin)}</div></div>`;
 }
 function sw(p,label,t,o={}){reg(p,label);return `<div class="ctl${o.adv?' adv':''}${o.dis?' dis':''}"><label class="sw"><input type="checkbox" data-p="${p}" data-t="b" ${(o.val??get(p))?'checked':''} ${o.dis?'disabled':''}><span class="tr"></span><span>${tr(label)}</span>${tip(t)}</label></div>`;}
@@ -808,7 +809,7 @@ const pill=(t,cls='')=>`<span class="pill ${cls}">${t}</span>`;
 const capOf=mid=>{const o=state.maps[mid];return o.capOn?o.cap:state.spawn.botCap>0?state.spawn.botCap:DEFAULTS.maps[mid].cap;};
 const raidOf=m=>state.spawn.raid.mode==='detect'?m.det:state.maps[m.id].raidSet;
 const CARD_FIELDS={
-  flow:['startPmcPct','firstDelay','interval','waveMin','waveMax','randomPct','minGap','dist.wave','dist.bots','dist.smooth','intensity.early','intensity.mid','intensity.late','hardStop.mode','hardStop.pmcPct','stopBeforeEnd','ignoreCap.start','ignoreCap.waves'],
+  flow:['startPmcPct','startMode','startPmcMin','startPmcMax','startPlayerOnly','firstDelay','interval','waveMin','waveMax','randomPct','minGap','dist.wave','dist.bots','dist.smooth','intensity.early','intensity.mid','intensity.late','hardStop.mode','hardStop.pmcPct','stopBeforeEnd','ignoreCap.start','ignoreCap.waves'],
   scav:['scav.startOn','scav.startPct','scav.separateStart','scav.delay','scav.activeMin','scav.activeMax','scav.quietMin','scav.quietMax','scav.refill','scav.pending','scav.softCap','scav.perPlayer','scav.pscavChance','scav.playerScavRemain','scav.startMarksman','hardStop.scavPct'],
   near:['near'],dist:['protect','spacing','pmcDist','scavDist'],hotspot:['placement','hotspotShare','hotspotBoost','hotspotIgnoreCap'],limits:['groupCap','caps']
 };
@@ -827,9 +828,16 @@ function cfgFor(m){const o=state.maps[m.id],c=clone(state.spawn);c.near=clone(st
   return {...c,early:c.intensity.early,mid:c.intensity.mid,late:c.intensity.late,style:o.style,scavStyle:o.scavStyle||'waves',inf:o.inf};}
 const intensityAt=(c,t,raid)=>{const f=t/raid;return f<1/3?c.early:f<2/3?c.mid:c.late;};
 function skewPos(f,s){return s>=0?Math.pow(f,1+2*s):1-Math.pow(1-f,1-2*s);}
+/** 시작 PMC 수(1.0.1): 인원 방식이면 범위 가운데(판마다 그 사이에서 굴림), 비율 방식이면 이 맵 바닐라 한 판 PMC 수 × 비율. */
+function startPmcOf(m,c){if(c.startMode==='count'){const a=Math.min(c.startPmcMin,c.startPmcMax),b=Math.max(c.startPmcMin,c.startPmcMax);return Math.round((a+b)/2);}return Math.round(m.pmc*(c.style==='start'?Math.max(c.startPmcPct,60):c.startPmcPct)/100);}
+/** 비율 슬라이더 옆 실제 인원(1.0.1, #4): 맵 탭은 "≈ N명 (이 맵 기본 M명의 X%)", 공통 탭은 맵마다 a~b명. */
+function shareHint(mid,key,pct){const base=m=>key==='pmc'?m.pmc:m.scav;
+  if(mid){const m=mapById(mid);if(!m)return '';return `<p class="small muted share-hint">${fmt(tr(T('≈ {n}명 (이 맵 바닐라 한 판 기본 {b}명의 {p}%)','≈ {n} bots ({p}% of this map’s vanilla {b} per raid)')),{n:Math.round(base(m)*pct/100),b:base(m),p:pct})}</p>`;}
+  const ns=MAPS.filter(m=>base(m)>0).map(m=>Math.round(base(m)*pct/100));if(!ns.length)return '';
+  return `<p class="small muted share-hint">${fmt(tr(T('≈ 맵마다 {a}~{b}명 (각 맵 바닐라 한 판 기본 인원의 {p}%)','≈ {a}–{b} bots per map ({p}% of each map’s vanilla count per raid)')),{a:Math.min(...ns),b:Math.max(...ns),p:pct})}</p>`;}
 function plan(m,c=cfgFor(m)){
   const r=rng(seed*131+MAPS.indexOf(m)*7),raid=raidOf(m),stop=c.hardStop.mode==='percent'?raid*(1-c.hardStop.pmcPct/100):raid-c.stopBeforeEnd,end=Math.max(1,stop),gap=c.minGap/60,first=Math.min(end,c.firstDelay/60);
-  const start=Math.round(m.pmc*(c.style==='start'?Math.max(c.startPmcPct,60):c.startPmcPct)/100);
+  const start=startPmcOf(m,c);
   if(c.style==='start')return{start,waves:[],raid,end,inf:false,startOnly:true};
   if(c.style==='infinite'){const step=c.inf.delay/60,j=(c.inf.jitter||0)/100,w=[];for(let t=first;t<end&&w.length<400;t+=step){const tt=Math.min(end,Math.max(first,t+(r()*2-1)*step*j)),k=intensityAt(c,tt,raid);w.push({t:tt,min:Math.max(1,Math.round(c.inf.batch*k*.5)),max:Math.max(1,Math.round(c.inf.batch*k))});}w.sort((a,b)=>a.t-b.t);return{start,waves:w,raid,end,inf:true};}
   const iv=Math.max(.5,c.interval),n=Math.max(1,Math.floor((end-first)/iv)+1),sk=-(c.dist.wave)/100,bl=c.dist.bots/100;
@@ -1008,7 +1016,8 @@ function popSpecs(kind,arg,m){const c=cfgFor(m),mid=m.id,raid=Math.round(raidOf(
   const F=f=>tlField(f,mid);
   if(kind==='phase'){const [p,o]=F(arg);return {title:fmt(tr(T('{k} 세기','{k} intensity')),{k:tr({early:T('초반','Early'),mid:T('중반','Mid'),late:T('후반','Late')}[arg])}),rows:[[T('웨이브 크기 배율','Wave size multiplier'),p,c[arg],0,3,0.05,UI.x,o]]};}
   if(kind==='wave'){return {title:tr(T('웨이브','Waves')),rows:[[T('웨이브 간격','Wave interval'),...F('interval').slice(0,1),c.interval,1,20,0.5,UI.min_,F('interval')[1]],[T('웨이브당 최소 인원','Min per wave'),F('waveMin')[0],c.waveMin,0,10,1,UI.ppl,F('waveMin')[1]],[T('웨이브당 최대 인원','Max per wave'),F('waveMax')[0],c.waveMax,1,12,1,UI.ppl,F('waveMax')[1]]]};}
-  if(kind==='start'){const [p,o]=F('startPmcPct');return {title:tr(T('시작 PMC','Starting PMCs')),rows:[[T('시작 때 나오는 PMC 비율','Starting PMC share'),p,c.startPmcPct,0,100,1,UI.pct,o]]};}
+  if(kind==='start'){if(c.startMode==='count'){const [a,oa]=F('startPmcMin'),[b,ob]=F('startPmcMax');return {title:tr(T('시작 PMC','Starting PMCs')),rows:[[T('시작 PMC 최소 인원','Starting PMCs · min'),a,c.startPmcMin,0,40,1,UI.ppl,oa],[T('시작 PMC 최대 인원','Starting PMCs · max'),b,c.startPmcMax,0,40,1,UI.ppl,ob]]};}
+    const [p,o]=F('startPmcPct');return {title:tr(T('시작 PMC','Starting PMCs')),rows:[[T('시작 때 나오는 PMC 비율','Starting PMC share'),p,c.startPmcPct,0,100,1,UI.pct,o]]};}
   if(kind==='inf')return {title:tr(T('무한 보충','Endless refill')),rows:[[T('보충 간격','Refill interval'),`maps.${mid}.inf.delay`,c.inf.delay,10,300,5,UI.sec,''],[T('한 번에 채우는 수','Batch size'),`maps.${mid}.inf.batch`,c.inf.batch,1,6,1,UI.ppl,'']]};
   if(kind==='scav')return {title:tr(T('스캐브','Scavs')),rows:[[T('시작 스캐브 비율','Starting scav share'),F('scav.startPct')[0],c.scav.startPct,0,100,1,UI.pct,F('scav.startPct')[1]],[T('스캐브 시작 지연','Scav start delay'),F('scav.delay')[0],c.scav.delay,0,60,1,UI.min_,F('scav.delay')[1]],[T('보충 확인 간격','Refill check interval'),F('scav.refill')[0],c.scav.refill,30,600,10,UI.sec,F('scav.refill')[1]],[T('남은 레이드가 이 비율 이하면 스캐브 중단','Stop scavs below this % left'),F('hardStop.scavPct')[0],c.hardStop.scavPct,0,60,1,UI.pct,F('hardStop.scavPct')[1]],[T('동시에 살아 있는 스캐브 최대 (몇 마리까지)','Most scavs alive at once'),F('scav.softCap')[0],c.scav.softCap,0,60,1,UI.ppl,F('scav.softCap')[1]],[T('플레이어 한 명당 스캐브 최대','Scavs per player'),F('scav.perPlayer')[0],c.scav.perPlayer,0,100,1,UI.ppl,F('scav.perPlayer')[1]],[T('한 번에 채우는 스캐브 수 (대기 봇이 이만큼 쌓이면 스폰)','Scavs added per refill (spawn when this many are pending)'),F('scav.pending')[0],c.scav.pending,0,20,1,UI.ppl,F('scav.pending')[1]]],note:fmt(tr(T('예상 스캐브: {n}명 (레이드 전체). 맵 동시 봇 상한도 같이 지킵니다.','Expected scavs: {n} for the raid. The map bot cap still applies.')),{n:(()=>{try{const e=estimate(m);return e?e.smin+'–'+e.smax:'?';}catch(_){return '?';}})()})};
   if(kind==='boss'){const b=BOSSES.find(x=>x.id===arg),bb=state.bosses[arg],common=state.bossCommon.on&&arg!=='zryachiy';return {title:tr(b.name),note:common?tr(T('지금은 "보스 공통 확률"이 켜져 있어 확률을 바꾸면 모든 보스에 적용됩니다.','Shared boss chance is on — the chance applies to every boss.')):'',rows:[[common?T('보스 공통 확률','Shared boss chance'):T('나올 확률','Spawn chance'),common?'bossCommon.chance':`bosses.${arg}.chance`,bossChance(b),0,100,1,UI.pct,''],[T('나오는 시각 (처음)','Spawn time (from)'),`bosses.${arg}.tFrom`,bb.tFrom,0,raid,1,UI.min_,''],[T('나오는 시각 (끝)','Spawn time (to)'),`bosses.${arg}.tTo`,bb.tTo,0,raid,1,UI.min_,'']]};}
@@ -1173,7 +1182,10 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
   ${card(T('레이드 타임라인','Raid timeline'),`<div class="wide-tl" data-live="timeline" data-arg="${flowMap}">${timeline(m,true)}</div>${legend()}<div style="margin-top:14px" data-live="stat" data-arg="${flowMap}">${statBox(m)}</div>`,
      {desc:T('값을 바꾸면 바로 다시 그립니다. 편집을 켜면 선·막대·별을 끌거나 이름·점을 눌러 바로 고칠 수 있습니다.','Redraws as you change values. With editing on, drag lines/bars/stars or click names and dots.'),right:`<div class="sw-row"><button class="mini-btn ${tlEdit?'on':''}" data-act="tlEdit">✎ ${tr(T('미리보기에서 고치기','Edit in preview'))}</button><select id="flowMapSel">${MAPS.map(x=>`<option value="${x.id}" ${x.id===flowMap?'selected':''}>${tr(x.name)}</option>`).join('')}</select><button class="mini-btn" data-act="reroll">↻ ${tr(T('다시 굴리기','Re-roll'))}</button></div>`})}
   ${spawnPresetCard('flow')}`;
-  const flow=slider(s+'startPmcPct',T('시작 PMC 비율','Starting PMC share'),'')
+  const flow=seg(s+'startMode',T('시작 PMC 정하는 방식','Starting PMCs by'),T('비율 = 이 맵 바닐라 한 판 PMC 수의 몇 %. 인원 = 맵마다 최소~최대 명을 정하고 판마다 그 사이에서 굴립니다.','Share = % of the map’s vanilla PMC count per raid. Count = set a min–max per map; each raid rolls a number in between.'),[['pct',T('비율','Share')],['count',T('인원','Count')]])
+    +(c.startMode==='count'?range(s+'startPmcMin',s+'startPmcMax',T('시작 PMC 인원','Starting PMCs'),T('맵마다 다르게 하려면 맵 탭에서 "이 맵만"을 켜고 정하세요(예: 세관 9~12).','Use "This map only" on a map tab for per-map values (e.g. Customs 9–12).'),{min:0,max:40,unit:UI.ppl})
+      :slider(s+'startPmcPct',T('시작 PMC 비율','Starting PMC share'),'')+shareHint(mid,'pmc',c.startPmcPct))
+    +sw(s+'startPlayerOnly',T('시작 PMC는 플레이어 시작 지점에서만','Starting PMCs only at player spawn points'),T('켜면 시작 분대는 플레이어가 시작하는 지점에서만 나옵니다(봇 PMC 지점으로 안 넘어감). 공장처럼 모든 지점이 시작 보호 안이면 그중 가장 먼 플레이어 지점을 씁니다. 자리가 없으면 조금 늦게 나옵니다. 게임 플러그인이 있어야 적용됩니다.','Starting squads use player spawn points only (never bot PMC points). On small maps where every point is inside start protection (Factory) the farthest player point is used. If none is free they spawn a little later. Needs the game plugin.'))
     +slider(s+'firstDelay',T('첫 웨이브까지','First wave after'),'',{min:0,max:900,step:15,unit:UI.sec})
     +slider(s+'interval',T('웨이브 간격','Wave interval'),'',{min:.5,max:20,step:.5,unit:UI.min_})
     +range(s+'waveMin',s+'waveMax',T('웨이브당 인원','Bots per wave'),'',{min:0,max:20,unit:UI.ppl})
@@ -1187,7 +1199,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +['early','mid','late'].map((k,i)=>slider(s+'intensity.'+k,[T('초반 강도','Early intensity'),T('중반 강도','Mid intensity'),T('후반 강도','Late intensity')][i],T('레이드를 셋으로 나눠 웨이브 인원에 곱합니다.','Multiplier for each third of the raid.'),{max:3,step:.05,unit:UI.x})).join('')
     +sw(s+'ignoreCap.start',T('시작 PMC는 동시 상한 무시','Starting PMCs ignore cap'),'')+sw(s+'ignoreCap.waves',T('웨이브는 동시 상한 무시','Waves ignore cap'),'');
   const scav=sw(s+'scav.startOn',T('시작 스캐브 넣기','Starting scavs'),'')
-    +slider(s+'scav.startPct',T('시작 스캐브 비율','Starting scav share'),T('맵 스캐브 정원을 기준으로 시작 인원을 계산합니다.','Share of the map scav budget spawned initially.'),{dis:!sc.startOn})
+    +slider(s+'scav.startPct',T('시작 스캐브 비율','Starting scav share'),T('이 맵 바닐라 한 판 스캐브 수를 기준으로 시작 인원을 계산합니다.','Share of the map’s vanilla scav count per raid spawned at the start.'),{dis:!sc.startOn})+(sc.startOn?shareHint(mid,'scav',sc.startPct):'')
     +sw(s+'scav.separateStart',T('PMC와 시작 분리','Separate from PMC start'),'')
     +slider(s+'scav.delay',T('스캐브 시작 지연','Scav start delay'),'',{max:60,unit:UI.min_,dis:!sc.separateStart})
     +range(s+'scav.activeMin',s+'scav.activeMax',T('활동 시간','Active time'),'',{min:1,max:60,unit:UI.min_})
@@ -2097,7 +2109,7 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
   const pe=e.target.closest('[data-pop]');if(pe&&!e.target.closest('button')){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
   const b=e.target.closest('button');if(!b){const g=e.target.closest('[data-gomap]');if(g){mapSel=g.dataset.gomap;page='spawn';spawnTab=mapSel;render();window.scrollTo(0,0);}return;}if(b.disabled)return;const d=b.dataset;
-  if(d.rst){d.rst.split('|').forEach(q=>{const dv=get(q,DEFAULTS);if(typeof dv==='number')writeSetting(q,dv);});updateSavebar();refreshLive();rerender();return;}
+  if(d.rst){d.rst.split('|').forEach(q=>{const dv=defOf(q);if(typeof dv==='number')writeSetting(q,dv);});updateSavebar();refreshLive();rerender();return;}
   if(d.spawnTab){spawnTab=d.spawnTab;if(spawnTab!=='all')mapSel=spawnTab;batch=batch.filter(x=>x!==mapSel);closePop();rerender();return;}
   if(d.spawnStyle){const p=d.spawnStyle,v=d.v;if(!['waves','infinite','start'].includes(v)||(p.startsWith('factions.')&&v==='infinite'))return;if(p.startsWith('factions.'))facManage(p.split('.')[1]);else if(isSpawnMap()){const mid=p.split('.')[1],card=p.endsWith('.scavStyle')?'scav':'flow';[mid,...batch].forEach(id=>ensureOverride(id,card));}set(p,v);const parts=p.split('.');if(parts[0]==='maps'&&parts[1]===mapSel&&isSpawnMap())batch.forEach(id=>setIn(state,['maps',id,...parts.slice(2)].join('.'),v));const key=tlPopKey;rerender();openPop(key,e);return;}
   if(d.cyclestyle){const o=state.maps[d.cyclestyle],order=['waves','infinite','start'];o.style=order[(order.indexOf(o.style)+1)%3];rerender();return;}

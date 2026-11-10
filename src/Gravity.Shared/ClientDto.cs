@@ -36,7 +36,8 @@ namespace Gravity.Shared
         IReadOnlyList<RefillGroup> RefillGroups, NearDto Near, IReadOnlyList<string>? CapExclude = null,
         bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
         string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
-        IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null, CapTableDto? Caps = null);
+        IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null, CapTableDto? Caps = null,
+        IReadOnlyList<int>? StartGroups = null, bool StartPlayerOnly = false);
 
     /// <summary>
     /// 종류별 상한 표(1.0, 사용자 11-10). Kinds 키: boss·special·faction·event(CapKinds). 방식(CapKinds.Separate 등):

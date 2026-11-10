@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using EFT;
 using EFT.Game.Spawning;
@@ -47,7 +48,7 @@ namespace Gravity.Client.Patches
                     return false;
                 }
 
-                var picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time);
+                var picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, StartPlayerOnly(c, ctx.Wave));
                 ctx.PickedAny |= picked;
                 return false;
             }
@@ -60,11 +61,26 @@ namespace Gravity.Client.Patches
 
         /// <summary>맵 전체 후보 중 사람에게서 시작 보호 반경 이상 떨어진 지점이 하나라도 있는지. 없으면(공장처럼 작은 맵) 가장 먼 지점을 허용한다.
         /// 구역 하나가 아니라 맵 전체로 본다: 큰 맵에서 플레이어 가까운 구역이 보호에 다 걸려도 다른 구역으로 넘어가야 하므로.</summary>
-        private static bool AnyOutsideProtect(RaidContext c, List<Actor> actors, double radius)
+        private static bool AnyOutsideProtect(RaidContext c, List<Actor> actors, double radius, bool playerOnly = false)
         {
             foreach (var list in c.ZonePoints.Values)
                 foreach (var cd in list)
-                    if (PointPicker.HumanDist(cd.Pos, actors) >= radius) return true;
+                    if ((!playerOnly || cd.PlayerPoint) && PointPicker.HumanDist(cd.Pos, actors) >= radius) return true;
+            return false;
+        }
+
+        /// <summary>1.0.1: "시작 PMC는 플레이어 시작 지점만"이 켜졌고 이 웨이브가 시작 분대면 true. 맵에 플레이어 지점이 하나도 없으면 false(안 나오는 것 방지).</summary>
+        private static bool StartPlayerOnly(RaidContext c, BossLocationSpawn wave)
+        {
+            var s = c.S;
+            if (!s.StartPlayerOnly || s.StartGroups == null || s.StartGroups.Count == 0 || wave == null) return false;
+            var id = wave.TriggerId;
+            if (!WaveMark.Is(id, wave.TriggerName)) return false;
+            int k = id.LastIndexOf(':');
+            if (k < 0 || !int.TryParse(id.Substring(k + 1), out var idx) || !s.StartGroups.Contains(idx)) return false;
+            foreach (var list in c.ZonePoints.Values)
+                foreach (var cd in list)
+                    if (cd.PlayerPoint) return true;
             return false;
         }
 
@@ -79,7 +95,7 @@ namespace Gravity.Client.Patches
         }
 
         private static bool Pick(RaidContext c, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, BotZone z,
-            BotCreationData data, int size, float now)
+            BotCreationData data, int size, float now, bool playerOnly = false)
         {
             if (!c.ZonePoints.TryGetValue(z, out var all) || all.Count == 0) return false;
 
@@ -88,7 +104,7 @@ namespace Gravity.Client.Patches
             for (int i = 0; i < all.Count; i++)
             {
                 var sp = c.PointById[all[i].Id];
-                if (sp.IsValid(now) && sp.IsValid(side)) cands.Add(all[i]);
+                if ((!playerOnly || all[i].PlayerPoint) && sp.IsValid(now) && sp.IsValid(side)) cands.Add(all[i]);
             }
             if (cands.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, null, now); return false; }
 
@@ -102,7 +118,7 @@ namespace Gravity.Client.Patches
             var rules = new PickRules(
                 PmcDist: s.PmcDist, BotDist: s.SpacingBots, ReserveDist: s.PmcDist,
                 ProtectActive: protect, ProtectRadius: s.ProtectRadius,
-                ProtectFallback: protect && !AnyOutsideProtect(c, actors, s.ProtectRadius));
+                ProtectFallback: protect && !AnyOutsideProtect(c, actors, s.ProtectRadius, playerOnly));
             var r = PointPicker.PickSquad(cands, actors, reserved, size, rules, c.Rng);
             if (r.Ids.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, (actors, reserved, rules), now); return false; }
             if (r.Reason == "farthest")

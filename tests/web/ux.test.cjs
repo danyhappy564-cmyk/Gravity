@@ -757,3 +757,15 @@ test('로그 원래 무리 한 판 최대 인원 슬라이더가 있고 기본 0
   const a=app();
   assert.equal(a.run(`DEFAULTS.specials.rogues.vanillaMax`),0);
 });
+
+test('시작 PMC 인원 방식·실제 인원 표시·플레이어 지점 스위치(1.0.1)', () => {
+  const a=app();
+  assert.match(a.run(`shareHint('bigmap','pmc',50)`),/≈ 8|≈ 8 /);
+  assert.match(a.run(`shareHint(null,'pmc',50)`),/~|–/);
+  a.run(`state.spawn.startMode='count';state.spawn.startPmcMin=9;state.spawn.startPmcMax=12;`);
+  assert.equal(a.run(`startPmcOf(mapById('bigmap'),cfgFor(mapById('bigmap')))`),11);
+  const html=a.run(`spawnCommon.render(null,true)`);
+  assert.match(html,/data-p="spawn\.startPmcMin"/);
+  assert.match(html,/data-p="spawn\.startPlayerOnly"/);
+  assert.equal(a.run(`CARD_FIELDS.flow.includes('startPlayerOnly')`),true);
+});

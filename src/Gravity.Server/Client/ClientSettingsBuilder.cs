@@ -74,7 +74,9 @@ public static class ClientSettingsBuilder
             plan.Groups.Select(g => g.Size).ToArray(),
             // 계획 분대 웨이브는 TriggerId에 이 표식을 단다(RaidSpawnApplier): 클라가 Gravity 분대만 보정·예약하게(4차 재검토 2번)
             Gravity.Shared.WaveMark.Prefix,
-            CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled));
+            CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled),
+            // 1.0.1: 시작 분대 번호(WaveMark 끝 번호)와 "플레이어 시작 지점만" 스위치
+            plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly);
     }
 
     /// <summary>상한 표 → 클라 자료(1.0).</summary>

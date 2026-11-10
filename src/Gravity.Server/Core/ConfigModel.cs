@@ -24,8 +24,10 @@ public sealed record SpawnSettings(
     bool IgnoreCapStart, bool IgnoreCapWaves, Intensity Intensity, double UsecPct,
     double[] Squad, GroupCap GroupCap, double[] Diff, ScavSettings Scav,
     ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth, bool AllowScavLab,
-    CapTable? Caps = null)
+    CapTable? Caps = null, string StartMode = "pct", int StartPmcMin = 8, int StartPmcMax = 12, bool StartPlayerOnly = false)
 {
+    // 1.0.1: StartMode "count"면 시작 PMC를 StartPmcMin~Max 사이에서 판마다 굴린다(맵별 덮어쓰기 가능, "pct"는 예전처럼 바닐라 PMC 수 × 비율).
+    // StartPlayerOnly: 시작 분대는 플레이어 시작 지점에서만(봇 PMC 지점으로 안 넘어감, 공장 같은 작은 맵은 그중 가장 먼 지점).
     public CapTable CapsOrDefault => Caps ?? CapTable.Default;
 }
 
@@ -138,6 +140,7 @@ public sealed record GravityConfig(
                 RandomPct = v.RandomPct, MinGapSec = v.MinGapSec, DistWave = v.DistWave, DistBots = v.DistBots,
                 Smooth = v.Smooth, WaveMin = m.WaveMin, WaveMax = m.WaveMax, Intensity = m.Intensity,
                 IgnoreCapStart = v.IgnoreCapStart, IgnoreCapWaves = v.IgnoreCapWaves,
+                StartMode = v.StartMode, StartPmcMin = v.StartPmcMin, StartPmcMax = v.StartPmcMax, StartPlayerOnly = v.StartPlayerOnly,
                 HardStop = s.HardStop with { Mode = v.HardStop.Mode, PmcPct = v.HardStop.PmcPct, BeforeEndMin = v.HardStop.BeforeEndMin }
             };
         if (v != null)
@@ -407,6 +410,7 @@ public static partial class ConfigModel
             rules.AddRange([new GroupCapRule(5, "eq", 1), new GroupCapRule(3, "eq", 1)]);
 
         var waveMin = (int)r.Num(sp + "waveMin", 2, 0, 20);
+        var startMin = (int)r.Num(sp + "startPmcMin", 8, 0, 40);
         var spawn = new SpawnSettings(
             r.Num(sp + "startPmcPct", 35, 0, 100), r.Num(sp + "firstDelay", 120, 0, 1800),
             r.Num(sp + "interval", 6, 0.5, 60), r.Num(sp + "randomPct", 30, 0, 100), r.Num(sp + "minGap", 60, 0, 1800),
@@ -431,7 +435,9 @@ public static partial class ConfigModel
             new SpacingSettings(r.Num(sp + "spacing.player", 80, 5, 1000), r.Num(sp + "spacing.bots", 25, 5, 1000)),
             r.Str(sp + "placement", "mixed", "mixed", "hotspot", "vanilla"), r.Num(sp + "hotspotShare", 60, 0, 100),
             r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false),
-            r.Bool(sp + "allowScavLab", false), ReadCaps(r, sp));
+            r.Bool(sp + "allowScavLab", false), ReadCaps(r, sp),
+            r.Str(sp + "startMode", "pct", "pct", "count"), startMin, (int)Math.Max(startMin, r.Num(sp + "startPmcMax", 12, 0, 40)),
+            r.Bool(sp + "startPlayerOnly", false));
         return spawn;
     }
 
