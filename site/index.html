@@ -35,12 +35,13 @@
       <span>Gravity<small>SPT 4.1 · MOD</small></span>
     </a>
     <nav class="main-nav" aria-label="주요 메뉴" data-label-ko="주요 메뉴" data-label-en="Main navigation">
+      <a href="#flow"><span class="ko">흐름</span><span class="en" lang="en">Flow</span></a>
       <a href="#spawn"><span class="ko">스폰</span><span class="en" lang="en">Spawns</span></a>
+      <a href="#bosses"><span class="ko">보스·특수 봇</span><span class="en" lang="en">Bosses</span></a>
       <a href="#gear"><span class="ko">장비</span><span class="en" lang="en">Loadouts</span></a>
-      <a href="#screens"><span class="ko">화면</span><span class="en" lang="en">Screens</span></a>
+      <a href="#presets"><span class="ko">프리셋</span><span class="en" lang="en">Presets</span></a>
       <a href="#install"><span class="ko">설치</span><span class="en" lang="en">Install</span></a>
-      <a href="#compat"><span class="ko">호환</span><span class="en" lang="en">Compatibility</span></a>
-      <a href="#notes"><span class="ko">알아 둘 점</span><span class="en" lang="en">Notes</span></a>
+      <a href="#faq"><span class="ko">질문</span><span class="en" lang="en">FAQ</span></a>
     </nav>
     <div class="language-switch" role="group" aria-label="페이지 언어" data-label-ko="페이지 언어" data-label-en="Page language">
       <button type="button" data-language="ko" lang="ko" aria-pressed="true">한국어</button>
@@ -50,13 +51,14 @@
 </header>
 
 <main id="main">
+  <!-- 대문 -->
   <section class="hero wrap" id="top" aria-labelledby="hero-title">
     <div class="hero-grid">
       <div>
         <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.0.0 · SPT 4.1</span></p>
         <h1 id="hero-title">Gravity<span>.</span></h1>
         <p class="hero-lead"><span class="ko">레이드에 <b>누가, 언제, 어디서, 무엇을 들고</b> 나오는지 한 곳에서 정합니다.</span><span class="en" lang="en">Decide <b>who</b> shows up in your raids, <b>when, where, and with what gear</b>, all in one place.</span></p>
-        <p class="hero-context"><span class="ko">서버·클라이언트 모드입니다. 설정은 게임 서버가 켜져 있을 때 브라우저로 여는 웹 화면에서 하고, 저장하면 다음 레이드부터 적용됩니다.</span><span class="en" lang="en">A server and client mod. You set everything on a web page that opens in your browser while the game server is running. Save, and it applies from the next raid.</span></p>
+        <p class="hero-context"><span class="ko">서버와 클라이언트로 이루어진 모드입니다. 게임 서버가 켜져 있을 때 브라우저로 여는 웹 화면에서 모든 설정을 하고, 저장하면 다음 레이드부터 적용됩니다. 설정 파일을 직접 열어 고칠 필요가 없습니다.</span><span class="en" lang="en">A server and client mod. Everything is set on a web page you open in your browser while the game server runs; save, and it applies from the next raid. No config files to edit by hand.</span></p>
         <div class="actions">
           <a class="btn primary" href="https://github.com/danyhappy564-cmyk/Gravity/releases"><span class="ko">내려받기</span><span class="en" lang="en">Download</span> <span aria-hidden="true">↓</span></a>
           <a class="btn" href="https://github.com/danyhappy564-cmyk/Gravity">GitHub</a>
@@ -69,11 +71,13 @@
           <circle cx="160" cy="160" r="105" fill="none" stroke="#6ea8ff" stroke-opacity=".28" stroke-dasharray="4 6"/>
           <g class="moon"><circle cx="160" cy="10" r="7" fill="#e8b04b"/></g>
         </svg>
-        <figure class="shot-frame">
-          <div class="bar"><i></i><i></i><i></i><em>127.0.0.1:6969/gravity/</em></div>
-          <img src="img/dashboard-ko.webp" data-src-ko="img/dashboard-ko.webp" data-src-en="img/dashboard-en.webp" width="1440" height="900"
-               alt="Gravity 웹 화면 — 한눈에 페이지" data-alt-ko="Gravity 웹 화면 — 한눈에 페이지" data-alt-en="Gravity web page — Overview">
-        </figure>
+        <a class="zoom" href="img/dashboard-ko.webp" data-href-ko="img/dashboard-ko.webp" data-href-en="img/dashboard-en.webp" target="_blank" rel="noopener">
+          <figure class="shot-frame">
+            <div class="bar"><i></i><i></i><i></i><em>127.0.0.1:6969/gravity/</em></div>
+            <img src="img/dashboard-ko.webp" data-src-ko="img/dashboard-ko.webp" data-src-en="img/dashboard-en.webp" width="1440" height="900"
+                 alt="Gravity 웹 화면 — 한눈에 페이지" data-alt-ko="Gravity 웹 화면 — 한눈에 페이지" data-alt-en="Gravity web page — Overview">
+          </figure>
+        </a>
       </div>
     </div>
     <div class="stats">
@@ -84,127 +88,396 @@
     </div>
   </section>
 
+  <!-- 한 판의 흐름 -->
+  <section class="section wrap" id="flow" aria-labelledby="flow-title">
+    <div class="section-heading">
+      <div><p class="kicker"><span class="ko">레이드 한 판</span><span class="en" lang="en">One raid</span></p>
+        <h2 id="flow-title"><span class="ko">레이드 한 판이<br>이렇게 흘러갑니다.</span><span class="en" lang="en">How a raid<br>plays out.</span></h2></div>
+      <p><span class="ko">Gravity는 레이드가 시작될 때 그 판의 계획을 세우고, 게임 안 플러그인이 계획대로 봇을 넣습니다. 봇이 어떻게 움직이고 싸우는지는 SAIN·ORBIT 같은 AI 모드가 맡고, Gravity는 <b>언제·어디에·누구를</b> 넣을지만 정합니다.</span><span class="en" lang="en">When a raid starts, Gravity draws up a plan for it, and the in-game plugin spawns bots to that plan. How bots move and fight is up to AI mods like SAIN and ORBIT; Gravity only decides <b>when, where, and who</b>.</span></p>
+    </div>
+    <ol class="flow">
+      <li><b><span class="ko">계획</span><span class="en" lang="en">Plan</span></b><span class="ko">레이드 길이(SVM 추가 시간 포함)를 읽고, 이 맵의 PMC·스캐브·보스·특수 봇이 나올 시각과 인원을 정합니다.</span><span class="en" lang="en">Reads the raid length (including SVM extra time) and sets when and how many PMCs, scavs, bosses and specials appear on this map.</span></li>
+      <li><b><span class="ko">시작 분대</span><span class="en" lang="en">Starting squads</span></b><span class="ko">시작 PMC 분대는 로딩 화면에서 미리 만들어져, 레이드 시작과 함께 맵 곳곳에 나옵니다.</span><span class="en" lang="en">Starting PMC squads are built during the loading screen and appear around the map as the raid begins.</span></li>
+      <li><b><span class="ko">웨이브·보충</span><span class="en" lang="en">Waves &amp; refills</span></b><span class="ko">정한 방식대로 PMC 무리가 들어오고, 스캐브는 활동·휴식 주기에 따라 채워집니다. 맵 동시 상한과 거리 규칙을 늘 지킵니다.</span><span class="en" lang="en">PMC groups arrive by the chosen style; scavs fill in by their active/rest cycle. The map cap and distance rules always hold.</span></li>
+      <li><b><span class="ko">보스·특수 봇</span><span class="en" lang="en">Bosses &amp; specials</span></b><span class="ko">보스와 저격 스캐브·레이더·로그·컬티스트 등은 정한 확률과 시각에 나옵니다. 0명으로 두면 나오지 않습니다.</span><span class="en" lang="en">Bosses and snipers, raiders, rogues, cultists and others come at the chance and time you set. Zero means none.</span></li>
+      <li><b><span class="ko">막바지</span><span class="en" lang="en">Endgame</span></b><span class="ko">PMC 중단 시각이 지나면 새 PMC를 넣지 않습니다. 끝나면 계획과 실제가 보고서로 남습니다.</span><span class="en" lang="en">After the PMC stop time, no new PMCs spawn. Afterwards the plan and what really happened are saved as a report.</span></li>
+    </ol>
+  </section>
+
+  <!-- 스폰 -->
   <section class="section wrap" id="spawn" aria-labelledby="spawn-title">
     <div class="section-heading">
       <div><p class="kicker"><span class="ko">스폰 모듈</span><span class="en" lang="en">Spawn module</span></p>
         <h2 id="spawn-title"><span class="ko">누가, 언제, 어디서<br>나올지 정합니다.</span><span class="en" lang="en">Who, when,<br>and where.</span></h2></div>
-      <p><span class="ko">PMC·스캐브·보스·특수 봇의 수와 시각, 나올 구역을 맵마다 정합니다. 바꾸는 동안 맵마다 예상 PMC·스캐브 수를 미리 보여 줍니다.</span><span class="en" lang="en">Set how many PMCs, scavs, bosses and special bots appear, when, and in which zones, per map. While you edit, the page shows the expected PMC and scav count for each map.</span></p>
+      <p><span class="ko">모든 맵 공통 값을 먼저 정하고, 필요한 맵만 "이 맵만 따로"로 덮어씁니다. 값을 바꾸는 동안 맵마다 예상 PMC·스캐브 수를 바로 보여 줍니다.</span><span class="en" lang="en">Set shared values for all maps first, then override only the maps you want with "Override". The expected PMC and scav count per map updates as you edit.</span></p>
     </div>
-    <div class="cards">
-      <article class="card"><div class="icon">⌁</div>
-        <h3><span class="ko">PMC</span><span class="en" lang="en">PMCs</span></h3>
-        <ul class="ko"><li>레이드 <b>시작 분대</b> + <b>웨이브</b> 또는 <b>무한 보충</b></li><li>분대 크기·진영 비율, 난이도·레벨 범위</li><li>레이드 막바지 스폰 중단</li></ul>
-        <ul class="en" lang="en"><li><b>Starting squads</b> plus <b>waves</b> or <b>endless refill</b></li><li>Squad size and faction mix, difficulty and level range</li><li>Stop spawning near raid end</li></ul></article>
-      <article class="card gold"><div class="icon">☰</div>
-        <h3><span class="ko">스캐브</span><span class="en" lang="en">Scavs</span></h3>
-        <ul class="ko"><li>시작 인원, 활동·휴식 주기</li><li>맵 상한(공통 값 또는 맵마다)</li><li>플레이어 근처 보충 보호 거리</li></ul>
-        <ul class="en" lang="en"><li>Starting count, active and rest cycles</li><li>Map bot cap (one value or per map)</li><li>Keep-away distance for refills near the player</li></ul></article>
-      <article class="card green"><div class="icon">★</div>
-        <h3><span class="ko">보스·특수 봇·이벤트</span><span class="en" lang="en">Bosses, specials, events</span></h3>
-        <ul class="ko"><li>저격 스캐브·레이더·로그·컬티스트 등: 확률·인원·<b>등장 시각</b>(타임라인), 0명이면 안 나옴</li><li>팩션 모드(RUAF·BlackDiv 등)·시즌 이벤트 감지와 켜고 끄기</li></ul>
-        <ul class="en" lang="en"><li>Snipers, raiders, rogues, cultists and more: chance, count and <b>arrival time</b> (timeline). Zero means none.</li><li>Detects faction mods (RUAF, BlackDiv…) and seasonal events, with on/off switches</li></ul></article>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">스폰 방식</span><span class="en" lang="en">Spawn style</span></small><span class="ko">세 가지 방식 중 고릅니다</span><span class="en" lang="en">Pick one of three styles</span></h3>
+        <ul class="ko">
+          <li><b>웨이브</b> — 레이드 시작 분대가 나온 뒤, 정한 간격마다 PMC 무리가 들어옵니다. 초반·중반·후반 강도로 리듬을 정합니다.</li>
+          <li><b>무한 보충</b> — 맵 상한까지 계속 채웁니다. 레이드 시간을 늘려 쓰는 분께 맞습니다.</li>
+          <li><b>시작 스폰만</b> — 웨이브 없이 레이드 시작 때만 넣습니다. 이때 시작 PMC 비율이 60% 미만이면 60%로 올려 계산합니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Waves</b> — after the starting squads, PMC groups arrive at set intervals. Early, mid and late intensity shape the rhythm.</li>
+          <li><b>Endless refill</b> — keeps filling up to the map cap. Good if you stretch raid time.</li>
+          <li><b>Start spawns only</b> — no waves, only at raid start. The starting PMC share is raised to at least 60% for this style.</li>
+        </ul>
+        <p class="tip"><span class="ko">한눈에 페이지의 카드를 누르면 13개 맵이 한 번에 그 방식으로 바뀝니다. 맵마다 다르게 하려면 맵 카드 오른쪽 위 방식 표시를 누릅니다.</span><span class="en" lang="en">Clicking a card on the Overview page switches all 13 maps at once. To vary by map, click the style tag on each map card.</span></p>
+      </div>
+      <div><a class="zoom" href="img/styles-ko.webp" data-href-ko="img/styles-ko.webp" data-href-en="img/styles-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/styles-ko.webp" data-src-ko="img/styles-ko.webp" data-src-en="img/styles-en.webp" width="1156" height="240" loading="lazy" alt="스폰 방식 한 번에 바꾸기" data-alt-ko="스폰 방식 한 번에 바꾸기" data-alt-en="Set spawn style for all maps"></figure></a></div>
     </div>
-    <div class="cards two" style="margin-top:16px">
-      <article class="card"><div class="icon">◎</div>
-        <h3><span class="ko">구역과 그룹</span><span class="en" lang="en">Zones and groups</span></h3>
-        <p><span class="ko">맵별 스폰 구역 켜고 끄기, 레이드 전체 그룹 제한, SVM 추가 레이드 시간 감지.</span><span class="en" lang="en">Turn spawn zones on or off per map, cap the total number of groups per raid, and pick up extra raid time from SVM.</span></p></article>
-      <article class="card"><div class="icon">❖</div>
-        <h3><span class="ko">레이드 프리셋</span><span class="en" lang="en">Raid presets</span></h3>
-        <p><span class="ko">기본 · 본섭 느낌 · 난전 · 무한 리필 · 시작 스폰만 · 가볍게(저사양). 내 설정을 저장하고 가져올 수 있습니다.</span><span class="en" lang="en">Default · Live-like · Chaos · Endless · Start spawns only · Lightweight. Save your own and import others.</span></p></article>
+
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">레이드 타임라인</span><span class="en" lang="en">Raid timeline</span></small><span class="ko">한 판 전체를 그림으로 봅니다</span><span class="en" lang="en">See the whole raid as a picture</span></h3>
+        <p><span class="ko">고른 맵의 레이드를 처음부터 끝까지 한 줄로 그립니다. 값을 바꾸면 바로 다시 그려집니다.</span><span class="en" lang="en">Draws the selected map's raid from start to end. It redraws as soon as you change a value.</span></p>
+        <ul class="legend ko">
+          <li><i style="background:#e06c6c"></i>빨간 선 — PMC 중단 시각</li>
+          <li><i style="background:#e6ecf7"></i>흰 막대 — 첫 웨이브</li>
+          <li><i style="background:#59c48b"></i>초록 막대 — 스캐브 시작·끝</li>
+          <li><i style="background:#e8b04b"></i>노란 막대 — 시작 보호, 별 — 보스 등장 시각</li>
+          <li><i style="background:#b79bff"></i>보라 선 양 끝 — 팩션 봇 등장 구간</li>
+        </ul>
+        <ul class="legend en" lang="en">
+          <li><i style="background:#e06c6c"></i>Red line — PMC stop time</li>
+          <li><i style="background:#e6ecf7"></i>White bar — first wave</li>
+          <li><i style="background:#59c48b"></i>Green bar — scav start and end</li>
+          <li><i style="background:#e8b04b"></i>Yellow bar — start protection; stars — boss times</li>
+          <li><i style="background:#b79bff"></i>Purple line ends — faction bot window</li>
+        </ul>
+        <p><span class="ko"><b>편집</b>을 켜면 선·막대·별을 끌거나 이름·점을 눌러 바로 고칠 수 있습니다. SVM이 레이드 시간을 늘리면 Gravity가 실제 시간을 읽어 타임라인을 비율대로 늘립니다(예: 세관 40분 + SVM 60분 → 100분에 맞춰 웨이브 18개). 스캐브로 들어가 "이미 지난 시간"부터 시작하면 지난 구간의 웨이브는 건너뜁니다.</span><span class="en" lang="en">Turn on <b>Edit</b> to drag lines, bars and stars, or click a name or dot to change it. If SVM adds raid time, Gravity reads the real length and stretches the timeline to match (for example Customs 40 + SVM 60 = 100 minutes, 18 waves). When a scav raid starts part-way through, waves from the elapsed part are skipped.</span></p>
+      </div>
+      <div><a class="zoom" href="img/timeline-ko.webp" data-href-ko="img/timeline-ko.webp" data-href-en="img/timeline-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/timeline-ko.webp" data-src-ko="img/timeline-ko.webp" data-src-en="img/timeline-en.webp" width="1156" height="885" loading="lazy" alt="레이드 타임라인" data-alt-ko="레이드 타임라인" data-alt-en="Raid timeline"></figure></a>
+        <p class="zoom-hint"><span class="ko">사진을 누르면 크게 봅니다</span><span class="en" lang="en">Click to enlarge</span></p></div>
+    </div>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">시작 보호 · 스폰 거리</span><span class="en" lang="en">Protection &amp; distances</span></small><span class="ko">눈앞에 봇이 생기지 않게 합니다</span><span class="en" lang="en">No bots spawning in your face</span></h3>
+        <ul class="ko">
+          <li><b>시작 보호</b> — 레이드 처음 90초 동안 플레이어 120m 안에는 PMC를 내지 않습니다(시간·반경 조절). 공장처럼 맵 전체가 그 안에 드는 작은 맵에서는 플레이어에게서 <b>가장 먼 자리</b>에 냅니다.</li>
+          <li><b>PMC 거리</b> — PMC는 플레이어와 다른 PMC에게서 이만큼 떨어진 곳에만 나옵니다(큰 맵 120m, 공장·미궁처럼 작은 맵 40m, 연구소 80m).</li>
+          <li><b>스캐브 거리</b>, <b>플레이어 최소 거리</b>, <b>다른 봇과 최소 거리</b>도 따로 정합니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Start protection</b> — for the first 90 seconds, no PMC spawns within 120 m of the player (both adjustable). On small maps like Factory where the whole map is inside that radius, they spawn at the point <b>farthest</b> from the player.</li>
+          <li><b>PMC distance</b> — PMCs only spawn this far from the player and other PMCs (120 m on big maps, 40 m on small maps like Factory and Labyrinth, 80 m on Labs).</li>
+          <li><b>Scav distance</b>, <b>minimum distance from the player</b> and <b>from other bots</b> are set separately.</li>
+        </ul>
+        <p class="tip"><span class="ko">자리가 막혀 잠시 못 나온 PMC 분대는 대기열에서 기다렸다가 자리가 나면 나옵니다. 끈 구역이 너무 많으면 기다리다 버려질 수 있으니 구역은 넉넉히 남겨 두십시오.</span><span class="en" lang="en">A PMC squad that can't find a spot waits in the queue and spawns when one frees up. If you turn off too many zones it may give up, so leave enough of them on.</span></p>
+      </div>
+      <div><a class="zoom" href="img/spacing-ko.webp" data-href-ko="img/spacing-ko.webp" data-href-en="img/spacing-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/spacing-ko.webp" data-src-ko="img/spacing-ko.webp" data-src-en="img/spacing-en.webp" width="1156" height="715" loading="lazy" alt="시작 보호와 스폰 거리" data-alt-ko="시작 보호와 스폰 거리" data-alt-en="Protection and distances"></figure></a></div>
+    </div>
+
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">그룹 제한 · 맵 동시 상한</span><span class="en" lang="en">Group limits &amp; map cap</span></small><span class="ko">한 번에 몇 명까지 둘지 정합니다</span><span class="en" lang="en">How many at once</span></h3>
+        <ul class="ko">
+          <li><b>맵 동시 상한</b> — 기본은 PMC + 스캐브 동시 인원입니다. 보스·특수 봇·팩션·이벤트 봇은 종류마다 "따로 셈 / 원래대로 / 상한 지킴" 중에서 고릅니다.</li>
+          <li><b>동시 PMC 무리 수</b> — 살아 있는 PMC 무리가 이 수면 다음 무리는 자리가 날 때까지 기다립니다.</li>
+          <li><b>크기별 그룹 제한</b> — 예: 5인 그룹 최대 1개. "레이드 전체"는 한 판 동안 나온 그룹을, "동시에"는 지금 살아 있는 그룹만 셉니다.</li>
+          <li><b>PMC 예약 자리</b> — 스캐브·근처 보충이 PMC 자리를 다 쓰지 않게 비워 둡니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Map cap</b> — by default, PMCs plus scavs alive at once. For bosses, specials, faction and event bots you pick "counted separately / as original / respect cap" per kind.</li>
+          <li><b>Max PMC groups at once</b> — when this many PMC groups are alive, the next waits for room.</li>
+          <li><b>Group size limits</b> — for example at most one 5-man group. "Whole raid" counts every group spawned; "at once" counts only living groups.</li>
+          <li><b>PMC reserved slots</b> — keeps room so scavs and near-player refills don't take all PMC slots.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/caps-ko.webp" data-href-ko="img/caps-ko.webp" data-href-en="img/caps-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/caps-ko.webp" data-src-ko="img/caps-ko.webp" data-src-en="img/caps-en.webp" width="1156" height="860" loading="lazy" alt="그룹 제한과 맵 동시 상한" data-alt-ko="그룹 제한과 맵 동시 상한" data-alt-en="Group limits and map cap"></figure></a></div>
+    </div>
+
+    <div class="cards" style="margin-top:20px">
+      <article class="card"><div class="icon">◌</div>
+        <h3><span class="ko">근처 보충</span><span class="en" lang="en">Near-player refill</span></h3>
+        <p><span class="ko">플레이어 동선 주변에 봇을 계속 던져 넣는 선택 기능입니다. 첫 차례·간격·거리·시야 조건을 정합니다. ORBIT과 함께 쓰면 최소 거리를 ORBIT 잠드는 거리 + 10m 이상으로 맞출 수 있습니다.</span><span class="en" lang="en">An optional feature that keeps sending bots around where you're moving. Set the first delay, interval, distance and line-of-sight rules. With ORBIT, the minimum distance can follow ORBIT's sleep distance + 10 m.</span></p></article>
+      <article class="card gold"><div class="icon">⇢</div>
+        <h3><span class="ko">탈출 보충</span><span class="en" lang="en">Extract refill</span></h3>
+        <p><span class="ko">PMC가 살아서 탈출하면 같은 진영 1명을 보충합니다. 웨이브·시작 스폰만 맵에도 적용되며, 맵 상한·거리·PMC 중단 시각을 지킵니다.</span><span class="en" lang="en">When a PMC extracts alive, one PMC of the same faction is added. Works on wave and start-only maps too, and respects the cap, distances and PMC stop time.</span></p></article>
+      <article class="card green"><div class="icon">⌗</div>
+        <h3><span class="ko">구역·미궁</span><span class="en" lang="en">Zones &amp; Labyrinth</span></h3>
+        <p><span class="ko">맵마다 스폰 구역을 끄고 켭니다. 한 종류(PMC 또는 스캐브)의 구역을 전부 끄면 나올 자리가 없어지므로 "전부 켬"으로 처리합니다. 미궁은 게임 기본처럼 PMC가 없지만, 스위치로 다른 맵처럼 PMC를 넣을 수 있습니다.</span><span class="en" lang="en">Turn spawn zones on or off per map. Turning off every zone of one kind (PMC or scav) would leave nowhere to spawn, so it's treated as "all on". Labyrinth has no PMCs by default, but a switch adds them like any other map.</span></p></article>
     </div>
   </section>
 
+  <!-- 보스·특수 봇·팩션·이벤트 -->
+  <section class="section wrap" id="bosses" aria-labelledby="bosses-title">
+    <div class="section-heading">
+      <div><p class="kicker"><span class="ko">보스 · 특수 봇 · 팩션 · 이벤트</span><span class="en" lang="en">Bosses · Specials · Factions · Events</span></p>
+        <h2 id="bosses-title"><span class="ko">확률과 시각을<br>직접 정합니다.</span><span class="en" lang="en">Set the chance<br>and the time.</span></h2></div>
+      <p><span class="ko">보스·특수 봇·팩션 봇·이벤트 봇도 맵 동시 상한과 ORBIT 연동 규칙을 따릅니다. 등장 시각은 타임라인에 함께 표시됩니다.</span><span class="en" lang="en">Bosses, specials, faction and event bots follow the map cap and the ORBIT rules too. Their times show on the timeline.</span></p>
+    </div>
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">보스</span><span class="en" lang="en">Bosses</span></small><span class="ko">보스마다 맵·구역·확률·호위·시각</span><span class="en" lang="en">Maps, zones, chance, escorts, time</span></h3>
+        <ul class="ko">
+          <li>보스마다 <b>나오는 맵</b>, <b>태어나는 구역</b>(고른 구역 중 무작위), <b>등장 확률</b>, <b>난이도</b>, <b>호위 수</b>, <b>등장 시각</b>을 정합니다.</li>
+          <li><b>공통 확률</b>을 켜면 확률 하나로 모든 보스를 맞춥니다. <b>점증·점감</b>을 켜면 보스가 안 나온 판 다음엔 확률을 올리고, 나온 판 다음엔 내립니다.</li>
+          <li>SVM도 보스 확률을 바꾸면, 어느 쪽 값을 쓸지 호환 페이지에서 고릅니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li>Per boss: <b>maps</b>, <b>spawn zones</b> (random among those picked), <b>chance</b>, <b>difficulty</b>, <b>escort count</b> and <b>arrival time</b>.</li>
+          <li><b>Shared chance</b> sets every boss with one value. <b>Progressive / regressive</b> raises the next raid's chance after a miss and lowers it after a spawn.</li>
+          <li>If SVM also changes boss chances, pick whose values win on the Compatibility page.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/boss-ko.webp" data-href-ko="img/boss-ko.webp" data-href-en="img/boss-en.webp" target="_blank" rel="noopener"><figure class="shot-frame small">
+        <img src="img/boss-ko.webp" data-src-ko="img/boss-ko.webp" data-src-en="img/boss-en.webp" width="898" height="640" loading="lazy" alt="보스 설정(레샬라)" data-alt-ko="보스 설정(레샬라)" data-alt-en="Boss settings (Reshala)"></figure></a></div>
+    </div>
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">특수 봇</span><span class="en" lang="en">Special bots</span></small><span class="ko">저격 스캐브·레이더·로그·컬티스트…</span><span class="en" lang="en">Snipers, raiders, rogues, cultists…</span></h3>
+        <ul class="ko">
+          <li><b>원래 스폰 유지</b>를 켜면 맵에 원래 있는 무리(레버·탈출구 이벤트 포함)를 확률·인원 그대로 두고 <b>시각만</b> 바꿉니다.</li>
+          <li><b>추가 스폰</b> — 원래 스폰과 별도로 판 시작 때 한 무리를 정한 확률로 더 넣습니다(맵 상한을 지킴).</li>
+          <li>시각·인원은 그 종류가 나오는 모든 맵에, 확률은 맵마다 적용됩니다. 0%면 그 맵에는 나오지 않습니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Keep original spawns</b> leaves the map's own groups (lever and extract events included) at their chance and size, and changes <b>only the time</b>.</li>
+          <li><b>Extra spawn</b> — on top of the original, adds one group at raid start at the chance you set (map cap respected).</li>
+          <li>Time and size apply on every map where that kind appears; chance is per map. 0% means none on that map.</li>
+        </ul>
+        <p class="tip"><span class="ko"><b>팩션 모드</b>(RUAF·UNTAR·블랙 디비전 등)는 "모드 설정 그대로" 두거나 "Gravity가 관리"로 바꿔 확률·시각을 정합니다. <b>시즌 이벤트</b>(할로윈·크리스마스 등)는 담당 모드(Gravity·SVM 등) 하나만 켜고 끄게 하고, Gravity는 이벤트 봇 수와 확률을 정합니다.</span><span class="en" lang="en"><b>Faction mods</b> (RUAF, UNTAR, Black Division…) can stay on "mod settings" or switch to "managed by Gravity" for chance and time. For <b>seasonal events</b> (Halloween, Christmas…), let one owner mod (Gravity, SVM…) switch them; Gravity sets the event bot count and chance.</span></p>
+      </div>
+      <div><a class="zoom" href="img/specials-ko.webp" data-href-ko="img/specials-ko.webp" data-href-en="img/specials-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/specials-ko.webp" data-src-ko="img/specials-ko.webp" data-src-en="img/specials-en.webp" width="1156" height="521" loading="lazy" alt="특수 봇 설정(레이더)" data-alt-ko="특수 봇 설정(레이더)" data-alt-en="Special bot settings (Raiders)"></figure></a></div>
+    </div>
+  </section>
+
+  <!-- 장비 -->
   <section class="section wrap" id="gear" aria-labelledby="gear-title">
     <div class="section-heading">
       <div><p class="kicker"><span class="ko">장비 모듈</span><span class="en" lang="en">Loadout module</span></p>
         <h2 id="gear-title"><span class="ko">무엇을 들고 나올지<br>티어로 정합니다.</span><span class="en" lang="en">What they carry,<br>by tier.</span></h2></div>
-      <p><span class="ko">봇 레벨로 T1~T7 티어를 정하고, 티어마다 무기·방어구·방탄판 등급·탄약·의약품·부착물을 고릅니다. 설치된 모드 아이템도 함께 다룹니다.</span><span class="en" lang="en">Bot level sets a tier from T1 to T7. Each tier picks weapons, armor, plate classes, ammo, meds and attachments. Items from your installed mods are included.</span></p>
+      <p><span class="ko">플레이어 레벨에 따라 7단계(T1~T7)로 나눈 장비 수준입니다. 티어마다 무기·방어구·방탄판 등급·탄약·의약품·부착물, 그리고 내구도·소모품 개수까지 정합니다. 설치된 모드 아이템도 함께 다룹니다.</span><span class="en" lang="en">Seven gear levels (T1–T7) tied to player level. Each tier sets weapons, armor, plate classes, ammo, meds and attachments, down to durability and consumable counts. Items from your installed mods are included.</span></p>
     </div>
-    <div class="split">
-      <ul class="points">
-        <li><b><span class="ko">아이템 티어 — 왜 그 티어인지 보입니다</span><span class="en" lang="en">Item tiers, with the reason shown</span></b>
-          <span class="d ko">같은 칸·같은 종류 안에서 가격(플리, 없으면 핸드북) 순위를 7등분해 자동 티어를 매깁니다. 눌러서 직접 바꿀 수 있습니다.</span>
-          <span class="d en" lang="en">Within the same slot and type, items are ranked by price (flea, else handbook) and split into 7 tiers. Click to override.</span></li>
-        <li><b><span class="ko">티어 편집기와 티어 요약</span><span class="en" lang="en">Tier editor and tier summary</span></b>
-          <span class="d ko">티어마다 나올 아이템과 비율, 개수·확률, 상한·방탄판, 부착물을 고치고, 그 티어가 실제로 무엇을 들고 나오는지 요약으로 봅니다.</span>
-          <span class="d en" lang="en">Edit the items and weights, counts and chances, limits, plates and attachments per tier, then see a summary of what that tier really carries.</span></li>
-        <li><b><span class="ko">'맨 총'이 나오지 않는 부착물 티어</span><span class="en" lang="en">Attachment tiers without bare guns</span></b>
-          <span class="d ko">부착물도 티어를 따릅니다. 그 총에 맞는 부착물이 전부 티어 위면 가장 낮은 티어 것을 답니다(무기 구성에서 끌 수 있음).</span>
-          <span class="d en" lang="en">Attachments follow the tier too. If every part that fits is above the tier, the lowest-tier one is used (you can turn this off in Weapon build).</span></li>
-        <li><b><span class="ko">모드 아이템과 장비 프리셋</span><span class="en" lang="en">Mod items and loadout presets</span></b>
-          <span class="d ko">모드별로 켜고 끄기, 레이드마다 일부만 쓰기, PMC만 쓰기. 프리셋은 <b>Gravity 자동</b>과 <b>Realistic and Extended PMC Loadouts</b>(mip01) 두 가지가 들어 있습니다.</span>
-          <span class="d en" lang="en">Toggle each mod, use only part of it each raid, or give mod gear to PMCs only. Two presets are included: <b>Gravity auto</b> and <b>Realistic and Extended PMC Loadouts</b> (mip01).</span></li>
-      </ul>
-      <figure class="shot-frame">
-        <div class="bar"><i></i><i></i><i></i><em>#itemtiers</em></div>
-        <img src="img/itemtiers-ko.webp" data-src-ko="img/itemtiers-ko.webp" data-src-en="img/itemtiers-en.webp" width="1440" height="900" loading="lazy"
-             alt="아이템 티어 페이지" data-alt-ko="아이템 티어 페이지" data-alt-en="Item tiers page">
-        <figcaption><span class="ko">아이템 티어: 가격 순위로 매긴 자동 티어와 근거</span><span class="en" lang="en">Item tiers: auto tier from price rank, with the reason</span></figcaption>
-      </figure>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">티어 정하는 방식</span><span class="en" lang="en">How tiers are picked</span></small><span class="ko">봇 티어를 고르는 세 가지 방식</span><span class="en" lang="en">Three ways to pick a bot's tier</span></h3>
+        <ul class="ko">
+          <li><b>레벨 따라가기</b> — 봇 레벨이 속한 티어를 그대로 씁니다.</li>
+          <li><b>레벨 + 섞기 표</b>(기본) — 봇 레벨의 티어를 기준으로, 표의 비율대로 위아래 티어를 섞습니다.</li>
+          <li><b>고정 티어</b> — 레벨과 상관없이 모든 봇이 같은 티어입니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Follow level</b> — uses the tier the bot's level falls in.</li>
+          <li><b>Level + mix table</b> (default) — starts from the level's tier and mixes tiers above and below by the table.</li>
+          <li><b>Fixed tier</b> — every bot uses the same tier, whatever its level.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/tiermethod-ko.webp" data-href-ko="img/tiermethod-ko.webp" data-href-en="img/tiermethod-en.webp" target="_blank" rel="noopener"><figure class="shot-frame small">
+        <img src="img/tiermethod-ko.webp" data-src-ko="img/tiermethod-ko.webp" data-src-en="img/tiermethod-en.webp" width="577" height="459" loading="lazy" alt="티어 정하는 방식" data-alt-ko="티어 정하는 방식" data-alt-en="How tiers are picked"></figure></a></div>
+    </div>
+
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">봇 레벨 기준</span><span class="en" lang="en">Bot level rules</span></small><span class="ko">내 레벨에 맞춰 봇 레벨이 정해집니다</span><span class="en" lang="en">Bot levels follow yours</span></h3>
+        <ul class="ko">
+          <li>내 레벨이 n일 때 봇 레벨을 <b>위아래로 얼마나</b> 잡을지 티어마다 정합니다. 스캐브는 따로 정할 수 있고, "위로"에 음수를 넣으면 늘 내 레벨보다 낮게 나옵니다.</li>
+          <li><b>티어별 레벨 구간</b> — 티어마다 시작 레벨만 고치면 앞 티어의 끝 레벨이 자동으로 맞춰집니다.</li>
+          <li><b>섞기 표</b> — 줄은 봇 레벨로 정해진 티어, 칸은 실제로 입는 티어입니다. 숫자는 비율이고 0이면 그 티어는 나오지 않습니다.</li>
+          <li><b>미리보기</b> — 슬라이더로 내 레벨을 바꿔 보면, PMC·스캐브가 몇 레벨로 나오고 어느 티어를 몇 % 입는지 보입니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li>Per tier, set <b>how far above and below</b> your level n bots can be. Scavs can have their own rule; a negative "above" keeps them always below you.</li>
+          <li><b>Level bands per tier</b> — edit each tier's start level and the previous tier's end follows.</li>
+          <li><b>Mix table</b> — rows are the tier from bot level, columns the tier actually worn. Numbers are weights; 0 means that tier never appears.</li>
+          <li><b>Preview</b> — move the slider for your level and see what level PMCs and scavs spawn at and what tier mix they wear.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/levels-ko.webp" data-href-ko="img/levels-ko.webp" data-href-en="img/levels-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/levels-ko.webp" data-src-ko="img/levels-ko.webp" data-src-en="img/levels-en.webp" width="1156" height="980" loading="lazy" alt="봇 레벨 기준" data-alt-ko="봇 레벨 기준" data-alt-en="Bot level rules"></figure></a></div>
+    </div>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">아이템 티어</span><span class="en" lang="en">Item tiers</span></small><span class="ko">가격 순위로 매기고, 근거를 보여 줍니다</span><span class="en" lang="en">Ranked by price, with the reason shown</span></h3>
+        <ul class="ko">
+          <li>같은 칸·같은 종류 안에서 가격(플리, 없으면 핸드북) 순위를 <b>7등분</b>해 자동 티어를 매깁니다. 예: "돌격소총 120개를 가격순으로 줄 세운 85번째 → T5".</li>
+          <li>탄약은 같은 구경 안에서 가격순입니다. 헬멧·방탄복·방탄 조끼는 티어의 방탄판 등급 상한도 넘지 않습니다. 부착물(조준경·머즐·손잡이 등)도 종류 안 가격순 7등분입니다.</li>
+          <li>목록에서 T1~T7을 눌러 <b>직접 지정</b>하면 자동 대신 그 값을 씁니다. "자동"으로 되돌릴 수 있습니다.</li>
+          <li>봇은 자기 티어 <b>이하</b> 아이템만 쓰고, 낮은 티어 아이템일수록 적게 고릅니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li>Within the same slot and type, items are ranked by price (flea, else handbook) and split <b>into 7</b>. For example: "85th of 120 assault rifles by price → T5".</li>
+          <li>Ammo is ranked within its caliber. Helmets, vests and armored rigs also never go above the tier's plate class cap. Attachments (scopes, muzzles, grips…) are split by price within their type too.</li>
+          <li>Click T1–T7 in the list to <b>override</b>; set it back to "Auto" any time.</li>
+          <li>Bots only use items <b>at or below</b> their tier, and pick lower-tier items less often.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/itemlist-ko.webp" data-href-ko="img/itemlist-ko.webp" data-href-en="img/itemlist-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/itemlist-ko.webp" data-src-ko="img/itemlist-ko.webp" data-src-en="img/itemlist-en.webp" width="1156" height="820" loading="lazy" alt="아이템 티어 목록" data-alt-ko="아이템 티어 목록" data-alt-en="Item tier list"></figure></a>
+        <a class="zoom" style="margin-top:14px" href="img/itemhow-ko.webp" data-href-ko="img/itemhow-ko.webp" data-href-en="img/itemhow-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/itemhow-ko.webp" data-src-ko="img/itemhow-ko.webp" data-src-en="img/itemhow-en.webp" width="1156" height="463" loading="lazy" alt="티어가 정해지는 방식 설명" data-alt-ko="티어가 정해지는 방식 설명" data-alt-en="How tiers are decided"></figure></a></div>
+    </div>
+
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">티어 편집기</span><span class="en" lang="en">Tier editor</span></small><span class="ko">봇마다, 티어마다, 칸마다</span><span class="en" lang="en">Per bot, per tier, per slot</span></h3>
+        <ul class="ko">
+          <li>왼쪽에서 봇을 켜고 고르고(스위치 = 이 봇에 Gravity 장비 쓰기), 오른쪽에서 티어와 칸을 골라 고칩니다. 봇마다 <b>그룹 표</b>를 함께 쓰거나 <b>전용 표</b>를 만들 수 있습니다.</li>
+          <li>탭: 무기 · 방어구·장비 · 탄약 · 의약품·투척 · 부착물 · 개수·확률 · 상한·방탄판 · <b>티어 요약</b>(그 티어가 실제로 무엇을 들고 나오는지).</li>
+          <li>칸은 처음엔 <b>자동</b>입니다(티어 이하 아이템, 낮은 티어일수록 적게). 무게를 하나라도 바꾸면 그 목록이 그대로 쓰입니다.</li>
+          <li>T 탭을 끌어 다른 봇이나 다른 티어에 놓으면 복사됩니다. 블랙리스트·허용 안 한 모드 아이템은 줄이 그어지고 나오지 않습니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li>Turn bots on and pick one on the left (switch = use Gravity gear on this bot), then choose a tier and slot on the right. Bots can share a <b>group table</b> or get <b>their own</b>.</li>
+          <li>Tabs: Weapons · Armor &amp; gear · Ammo · Meds &amp; throwables · Attachments · Counts &amp; chances · Caps &amp; plates · <b>Tier summary</b> (what that tier really carries).</li>
+          <li>Slots start on <b>Auto</b> (items at or below the tier, lower tiers less often). Change any weight and that list is used as-is.</li>
+          <li>Drag a T tab onto another bot or tier to copy it. Blacklisted items and items from mods you haven't allowed are struck through and never used.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/tieredit-ko.webp" data-href-ko="img/tieredit-ko.webp" data-href-en="img/tieredit-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/tieredit-ko.webp" data-src-ko="img/tieredit-ko.webp" data-src-en="img/tieredit-en.webp" width="1156" height="900" loading="lazy" alt="티어 편집기" data-alt-ko="티어 편집기" data-alt-en="Tier editor"></figure></a></div>
+    </div>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">무기 구성</span><span class="en" lang="en">Weapon build</span></small><span class="ko">'맨 총'이 나오지 않게</span><span class="en" lang="en">No bare guns</span></h3>
+        <ul class="ko">
+          <li><b>부착물도 티어를 따릅니다.</b> 그 총에 맞는 부착물이 전부 티어 위면 가장 낮은 티어 것을 달아, 조준경·개머리판이 빠진 '맨 총'이 나오지 않습니다(끌 수 있음).</li>
+          <li>개머리판·먼지 덮개·조준경 칸 강제, 머즐 확률, 조준경·전술 장치 최대 개수.</li>
+          <li><b>탄창 · 탄약</b> — 장전된 탄과 예비 탄의 등급을 따로 정하고, 느슨한 탄·대용량 탄창 수를 정합니다.</li>
+          <li><b>맵별 무기 성향</b> — 삼림·해안선은 원거리 무기, 공장·연구소는 근거리 무기를 더 자주 고릅니다. 열화상 조준경은 직접 지정·제외할 수 있습니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Attachments follow the tier too.</b> If every part that fits is above the tier, the lowest-tier one is used, so you don't get a "bare gun" missing a scope or stock (can be turned off).</li>
+          <li>Force stock, dust cover and scope slots; muzzle chance; max scopes and tactical devices.</li>
+          <li><b>Mags &amp; ammo</b> — loaded rounds and spare rounds get separate classes; set loose ammo and large-mag counts.</li>
+          <li><b>Weapon range per map</b> — Woods and Shoreline lean to long-range guns, Factory and Labs to close-range. Thermal scopes can be marked or excluded by hand.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/weapons-ko.webp" data-href-ko="img/weapons-ko.webp" data-href-en="img/weapons-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/weapons-ko.webp" data-src-ko="img/weapons-ko.webp" data-src-en="img/weapons-en.webp" width="1156" height="640" loading="lazy" alt="무기 구성" data-alt-ko="무기 구성" data-alt-en="Weapon build"></figure></a></div>
+    </div>
+
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">모드 아이템 · 블랙리스트</span><span class="en" lang="en">Mod items · Blacklist</span></small><span class="ko">모드 장비는 필요한 만큼만</span><span class="en" lang="en">Only as much mod gear as you want</span></h3>
+        <ul class="ko">
+          <li><b>허용할 모드</b> — 실제 설치된 모드마다 켜고 끕니다. 끈 모드의 아이템은 봇이 쓰지 않습니다(바닐라 아이템은 늘 허용).</li>
+          <li><b>레이드마다 일부만 사용</b> — 레이드 시작 때 이번 판에 쓸 모드 아이템을 뽑습니다. 무기를 뽑으면 그 무기 전용 부품은 자동으로 들어갑니다. 램을 크게 아낍니다.</li>
+          <li><b>모드 장비는 PMC만</b> — 스캐브는 바닐라 장비로 둡니다.</li>
+          <li><b>블랙리스트</b> — 봇이 절대 들고 나오지 않을 무기·탄약·장비를 봇 종류별 범위로 정합니다. 그 때문에 총열·탄창 같은 필수 칸이 비면 바닐라 부품으로 채워 총이 깨지지 않습니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Allowed mods</b> — toggle each installed mod. Bots never use items from mods you turn off (vanilla items are always allowed).</li>
+          <li><b>Per-raid subset</b> — at raid start, pick which mod items this raid uses. Picking a weapon brings its own parts along. Saves a lot of RAM.</li>
+          <li><b>Mod gear for PMCs only</b> — scavs stay on vanilla gear.</li>
+          <li><b>Blacklist</b> — weapons, ammo or gear bots must never carry, scoped by bot type. If that empties a required slot (barrel, magazine…), a vanilla part fills it so the gun never breaks.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/moditems-ko.webp" data-href-ko="img/moditems-ko.webp" data-href-en="img/moditems-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/moditems-ko.webp" data-src-ko="img/moditems-ko.webp" data-src-en="img/moditems-en.webp" width="1156" height="548" loading="lazy" alt="모드 아이템" data-alt-ko="모드 아이템" data-alt-en="Mod items"></figure></a></div>
     </div>
   </section>
 
-  <section class="section wrap" id="screens" aria-labelledby="screens-title">
+  <!-- 프리셋 -->
+  <section class="section wrap" id="presets" aria-labelledby="presets-title">
     <div class="section-heading">
-      <div><p class="kicker"><span class="ko">웹 화면</span><span class="en" lang="en">The web page</span></p>
-        <h2 id="screens-title"><span class="ko">설정은 브라우저에서<br>합니다.</span><span class="en" lang="en">Everything is set<br>in your browser.</span></h2></div>
-      <p><span class="ko">쉬움·고급 두 단계로 볼 수 있고, 한국어와 영어를 고를 수 있습니다. 아래는 실제 화면입니다.</span><span class="en" lang="en">Switch between Easy and Advanced, in Korean or English. These are real screenshots.</span></p>
+      <div><p class="kicker"><span class="ko">프리셋 · 백업</span><span class="en" lang="en">Presets · Backup</span></p>
+        <h2 id="presets-title"><span class="ko">한 번에 바꾸고,<br>파일로 주고받습니다.</span><span class="en" lang="en">Switch in one click,<br>share as a file.</span></h2></div>
+      <p><span class="ko">레이드 프리셋은 레이드 쪽(스폰·맵·보스·특수 봇·팩션·이벤트)만, 장비 프리셋은 장비 쪽만 바꿉니다. 서로 건드리지 않습니다.</span><span class="en" lang="en">Raid presets change only the raid side (spawns, maps, bosses, specials, factions, events); loadout presets only the loadout side. Neither touches the other.</span></p>
     </div>
-    <div class="shot-tabs" role="tablist" aria-label="화면 고르기" data-label-ko="화면 고르기" data-label-en="Pick a screen">
-      <button class="shot-tab" role="tab" type="button" data-target="spawn"><span class="ko">스폰</span><span class="en" lang="en">Spawns</span></button>
-      <button class="shot-tab" role="tab" type="button" data-target="specials"><span class="ko">특수 봇</span><span class="en" lang="en">Special bots</span></button>
-      <button class="shot-tab" role="tab" type="button" data-target="tieredit"><span class="ko">티어 편집기</span><span class="en" lang="en">Tier editor</span></button>
-      <button class="shot-tab" role="tab" type="button" data-target="raidpresets"><span class="ko">레이드 프리셋</span><span class="en" lang="en">Raid presets</span></button>
-      <button class="shot-tab" role="tab" type="button" data-target="diag"><span class="ko">호환 · 진단</span><span class="en" lang="en">Compatibility</span></button>
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">레이드 프리셋</span><span class="en" lang="en">Raid presets</span></small><span class="ko">기본 제공 6가지</span><span class="en" lang="en">Six built in</span></h3>
+        <ul class="ko">
+          <li><b>기본</b> — 처음 설치했을 때 값. 무난한 밀도와 리듬.</li>
+          <li><b>본섭 느낌</b> — 초반은 조용하고 중반에 PMC가 몰립니다. 시작 스폰킬을 막습니다.</li>
+          <li><b>난전</b> — 웨이브가 잦고 크며 핫스팟 위주. 레이드 내내 교전.</li>
+          <li><b>무한 리필</b> — 모든 맵을 무한 보충으로. 레이드 시간을 늘려 쓰는 분께.</li>
+          <li><b>시작 스폰만</b> — 웨이브 없이 시작 때만. 조용한 레이드를 원하는 분께.</li>
+          <li><b>가볍게(저사양)</b> — 웨이브와 맵 동시 상한을 줄여 프레임을 아낍니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Default</b> — the out-of-the-box values. Balanced density and pacing.</li>
+          <li><b>Live-like</b> — quiet start, PMCs build up mid-raid. Prevents spawn kills at start.</li>
+          <li><b>Chaos</b> — frequent, larger waves around hotspots. Fighting all raid long.</li>
+          <li><b>Endless</b> — every map on endless refill. For long raids.</li>
+          <li><b>Start spawns only</b> — no waves, only at start. For quiet raids.</li>
+          <li><b>Lightweight</b> — fewer waves and a smaller map cap to save frames.</li>
+        </ul>
+        <p class="tip"><span class="ko">내 프리셋을 저장하고 <code>.json</code> 파일로 내보내고 가져올 수 있습니다. 스폰 프리셋·맵 프리셋처럼 일부만 묶은 프리셋도 있고, <b>전체 백업</b>은 레이드·장비·블랙리스트·시스템 설정과 내 프리셋 목록을 파일 하나로 백업하고 되돌립니다.</span><span class="en" lang="en">Save your own and export or import them as <code>.json</code> files. Partial presets (spawn, single map) exist too, and <b>Full backup</b> saves raid, loadout, blacklist and system settings plus all your presets into one file and restores it.</span></p>
+      </div>
+      <div><a class="zoom" href="img/raidpresets-ko.webp" data-href-ko="img/raidpresets-ko.webp" data-href-en="img/raidpresets-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/raidpresets-ko.webp" data-src-ko="img/raidpresets-ko.webp" data-src-en="img/raidpresets-en.webp" width="1156" height="506" loading="lazy" alt="레이드 프리셋" data-alt-ko="레이드 프리셋" data-alt-en="Raid presets"></figure></a></div>
     </div>
-    <figure class="shot-frame" data-shot="spawn"><div class="bar"><i></i><i></i><i></i><em>#spawn</em></div>
-      <img src="img/spawn-ko.webp" data-src-ko="img/spawn-ko.webp" data-src-en="img/spawn-en.webp" width="1440" height="900" loading="lazy" alt="스폰 페이지" data-alt-ko="스폰 페이지" data-alt-en="Spawns page"></figure>
-    <figure class="shot-frame" data-shot="specials" hidden><div class="bar"><i></i><i></i><i></i><em>#specials</em></div>
-      <img src="img/specials-ko.webp" data-src-ko="img/specials-ko.webp" data-src-en="img/specials-en.webp" width="1440" height="900" loading="lazy" alt="특수 봇 페이지" data-alt-ko="특수 봇 페이지" data-alt-en="Special bots page"></figure>
-    <figure class="shot-frame" data-shot="tieredit" hidden><div class="bar"><i></i><i></i><i></i><em>#tieredit</em></div>
-      <img src="img/tieredit-ko.webp" data-src-ko="img/tieredit-ko.webp" data-src-en="img/tieredit-en.webp" width="1440" height="900" loading="lazy" alt="티어 편집기 페이지" data-alt-ko="티어 편집기 페이지" data-alt-en="Tier editor page"></figure>
-    <figure class="shot-frame" data-shot="raidpresets" hidden><div class="bar"><i></i><i></i><i></i><em>#raidpresets</em></div>
-      <img src="img/raidpresets-ko.webp" data-src-ko="img/raidpresets-ko.webp" data-src-en="img/raidpresets-en.webp" width="1440" height="900" loading="lazy" alt="레이드 프리셋 페이지" data-alt-ko="레이드 프리셋 페이지" data-alt-en="Raid presets page"></figure>
-    <figure class="shot-frame" data-shot="diag" hidden><div class="bar"><i></i><i></i><i></i><em>#diag</em></div>
-      <img src="img/diag-ko.webp" data-src-ko="img/diag-ko.webp" data-src-en="img/diag-en.webp" width="1440" height="900" loading="lazy" alt="호환 · 진단 페이지" data-alt-ko="호환 · 진단 페이지" data-alt-en="Compatibility page"></figure>
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">장비 프리셋</span><span class="en" lang="en">Loadout presets</span></small><span class="ko">두 가지가 들어 있습니다</span><span class="en" lang="en">Two included</span></h3>
+        <ul class="ko">
+          <li><b>Gravity 자동</b>(기본) — 설치된 바닐라·모드 아이템으로 Gravity가 직접 깎은 구성입니다. 모드를 새로 깔면 그 아이템도 티어에 들어옵니다.</li>
+          <li><b>Realistic and Extended PMC Loadouts</b> — mip01님의 APBS 에드온 프리셋을 Gravity 형식으로 옮긴 것입니다. 원작 목록에 있는 무기·방어구만 나오고 모드 아이템은 쓰지 않습니다.</li>
+          <li>장비 프리셋에는 T1~T7 값, 티어 편집기 표, 봇별 장비·무기 구성·모드 아이템 설정이 함께 들어갑니다.</li>
+        </ul>
+        <ul class="en" lang="en">
+          <li><b>Gravity auto</b> (default) — built by Gravity from your installed vanilla and mod items. Install a new mod and its items join the tiers.</li>
+          <li><b>Realistic and Extended PMC Loadouts</b> — mip01's APBS add-on preset, carried over in Gravity's format. Only weapons and armor in the original list appear; no mod items.</li>
+          <li>A loadout preset holds T1–T7 values, tier editor tables, per-bot gear, weapon build and mod item settings together.</li>
+        </ul>
+      </div>
+      <div><a class="zoom" href="img/gearpresets-ko.webp" data-href-ko="img/gearpresets-ko.webp" data-href-en="img/gearpresets-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/gearpresets-ko.webp" data-src-ko="img/gearpresets-ko.webp" data-src-en="img/gearpresets-en.webp" width="1156" height="418" loading="lazy" alt="장비 프리셋" data-alt-ko="장비 프리셋" data-alt-en="Loadout presets"></figure></a></div>
+    </div>
   </section>
 
+  <!-- 설치 -->
   <section class="section wrap" id="install" aria-labelledby="install-title">
     <div class="section-heading">
       <div><p class="kicker"><span class="ko">설치</span><span class="en" lang="en">Install</span></p>
         <h2 id="install-title"><span class="ko">압축을 풀고,<br>웹에서 저장합니다.</span><span class="en" lang="en">Extract, then<br>save on the web page.</span></h2></div>
-      <p><span class="ko">처음 설치하면 기본값으로 동작합니다. 설정 파일은 웹에서 처음 저장할 때 만들어집니다.</span><span class="en" lang="en">A fresh install runs on defaults. The settings file is created the first time you save on the web page.</span></p>
+      <p><span class="ko">처음 설치하면 기본값으로 바로 동작합니다: 스폰·장비 모듈 켬, 레이드 프리셋 "기본", 장비 프리셋 "Gravity 자동", 이벤트 <code>auto</code>, 미궁 PMC 끔. 설정 파일은 웹에서 처음 저장할 때 만들어집니다.</span><span class="en" lang="en">A fresh install works right away on defaults: both modules on, raid preset "Default", loadout preset "Gravity auto", events <code>auto</code>, no PMCs in Labyrinth. The settings file is created the first time you save on the web page.</span></p>
     </div>
     <ol class="steps">
       <li class="step"><h3><span class="ko">압축 풀기</span><span class="en" lang="en">Extract</span></h3>
-        <p><span class="ko">SPT 4.1 폴더에 그대로 풉니다. <code>BepInEx\plugins\Gravity</code>와 <code>SPT_Runtime\user\mods\Gravity</code>가 생기면 맞습니다.</span><span class="en" lang="en">Extract into your SPT 4.1 folder. You should get <code>BepInEx\plugins\Gravity</code> and <code>SPT_Runtime\user\mods\Gravity</code>.</span></p></li>
+        <p><span class="ko">SPT 4.1 폴더에 그대로 풉니다. <code>BepInEx\plugins\Gravity</code>와 <code>SPT_Runtime\user\mods\Gravity</code>가 생기면 맞습니다. 서버 모드와 게임 플러그인이 둘 다 있어야 합니다.</span><span class="en" lang="en">Extract into your SPT 4.1 folder. You should get <code>BepInEx\plugins\Gravity</code> and <code>SPT_Runtime\user\mods\Gravity</code>. Both the server mod and the game plugin are needed.</span></p></li>
       <li class="step"><h3><span class="ko">웹 열기</span><span class="en" lang="en">Open the page</span></h3>
-        <p><span class="ko">서버를 켜고 브라우저에서 <code>https://127.0.0.1:6969/gravity/</code>를 엽니다. SPT 런처의 모드 목록에서도 열 수 있습니다.</span><span class="en" lang="en">Start the server and open <code>https://127.0.0.1:6969/gravity/</code> in your browser, or open it from the mod list in the SPT launcher.</span></p></li>
+        <p><span class="ko">서버를 켜고 브라우저에서 <code>https://127.0.0.1:6969/gravity/</code>를 엽니다. SPT 런처의 모드 목록에서도 열 수 있습니다.</span><span class="en" lang="en">Start the server and open <code>https://127.0.0.1:6969/gravity/</code> in your browser, or from the mod list in the SPT launcher.</span></p></li>
       <li class="step"><h3><span class="ko">저장</span><span class="en" lang="en">Save</span></h3>
-        <p><span class="ko">설정을 바꾸고 <b>저장</b>을 누르면 다음 레이드부터 적용됩니다.</span><span class="en" lang="en">Change what you like and press <b>Save</b>. It applies from the next raid.</span></p></li>
+        <p><span class="ko">설정을 바꾸고 <b>저장</b>을 누르면 다음 레이드부터 적용됩니다. 레이드 중에 바꾸면 다음 판부터입니다. 처음엔 <b>쉬움</b> 모드로 자주 쓰는 설정만 보이고, <b>고급</b>을 누르면 전부 보입니다.</span><span class="en" lang="en">Change what you like and press <b>Save</b>; it applies from the next raid (changes made mid-raid apply next time). <b>Easy</b> mode shows the common settings; <b>Advanced</b> shows everything.</span></p></li>
     </ol>
   </section>
 
+  <!-- 호환 -->
   <section class="section wrap" id="compat" aria-labelledby="compat-title">
     <div class="section-heading">
       <div><p class="kicker"><span class="ko">다른 모드와 함께</span><span class="en" lang="en">With other mods</span></p>
         <h2 id="compat-title"><span class="ko">겹치는 기능은<br>스스로 비켜 섭니다.</span><span class="en" lang="en">Overlaps step<br>aside on their own.</span></h2></div>
-      <p><span class="ko">감지 결과는 웹의 <b>호환 · 진단</b> 페이지에서 볼 수 있습니다.</span><span class="en" lang="en">See what was detected on the <b>Compatibility</b> page.</span></p>
+      <p><span class="ko">함께 깔린 모드를 감지해 겹치는 기능을 조절합니다. 결과는 웹의 <b>호환 · 진단</b> 페이지에서 봅니다.</span><span class="en" lang="en">Gravity detects installed mods and adjusts where they overlap. See the result on the <b>Compatibility</b> page.</span></p>
     </div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th><span class="ko">모드</span><span class="en" lang="en">Mod</span></th><th><span class="ko">Gravity 동작</span><span class="en" lang="en">What Gravity does</span></th></tr></thead>
-        <tbody>
-          <tr><td>ABPS</td><td><span class="tag lock"><span class="ko">잠금</span><span class="en" lang="en">Locked</span></span> <span class="ko">스폰 모듈이 스스로 잠기고 스폰은 ABPS에 맡깁니다.</span><span class="en" lang="en">The spawn module locks itself and leaves spawns to ABPS.</span></td></tr>
-          <tr><td>APBS</td><td><span class="tag lock"><span class="ko">잠금</span><span class="en" lang="en">Locked</span></span> <span class="ko">장비 모듈이 스스로 잠기고 장비는 APBS에 맡깁니다.</span><span class="en" lang="en">The loadout module locks itself and leaves gear to APBS.</span></td></tr>
-          <tr><td>SAIN · ORBIT · SVM</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">감지해서 맞춰 동작합니다(예: SVM 추가 레이드 시간 반영).</span><span class="en" lang="en">Detected and handled (for example, SVM's extra raid time is used).</span></td></tr>
-          <tr><td>MapVariants · Manimal · FactoryClassic</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">변형 맵을 알아보고, 변형 맵에 Gravity 스폰을 쓸지 맵마다 정합니다.</span><span class="en" lang="en">Variant maps are recognized; you choose per map whether Gravity spawns run on them.</span></td></tr>
-          <tr><td>RUAF · BlackDiv · UNTAR · Blackout</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">팩션 모드 봇의 등장을 켜고 끄고, 상한 계산에서 따로 다룹니다.</span><span class="en" lang="en">Faction bots can be switched on or off and are handled separately in the bot cap.</span></td></tr>
-        </tbody>
-      </table>
+    <div class="feature-row">
+      <div class="copy">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th><span class="ko">모드</span><span class="en" lang="en">Mod</span></th><th><span class="ko">Gravity 동작</span><span class="en" lang="en">What Gravity does</span></th></tr></thead>
+            <tbody>
+              <tr><td>ABPS</td><td><span class="tag lock"><span class="ko">잠금</span><span class="en" lang="en">Locked</span></span> <span class="ko">스폰 모듈을 자동으로 끄고 잠급니다. ABPS를 지우면 다시 쓸 수 있습니다.</span><span class="en" lang="en">Turns off and locks the spawn module. Remove ABPS to use it again.</span></td></tr>
+              <tr><td>APBS</td><td><span class="tag lock"><span class="ko">잠금</span><span class="en" lang="en">Locked</span></span> <span class="ko">장비 모듈을 자동으로 끄고 잠급니다.</span><span class="en" lang="en">Turns off and locks the loadout module.</span></td></tr>
+              <tr><td>ORBIT</td><td><span class="tag auto"><span class="ko">연동</span><span class="en" lang="en">Linked</span></span> <span class="ko">봇 재우기·컬링·이동은 ORBIT이 맡고, Gravity는 봇을 지우지 않습니다. ORBIT 설정은 읽기만 합니다.</span><span class="en" lang="en">ORBIT handles sleeping, culling and movement; Gravity never removes bots and only reads ORBIT's settings.</span></td></tr>
+              <tr><td>SVM</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">추가 레이드 시간을 읽어 스폰을 끝까지 맞추고, 보스 확률·이벤트·스캐브 웨이브 교체가 겹치면 알려 줍니다.</span><span class="en" lang="en">Reads extra raid time so spawns last to the end, and warns where boss chances, events or scav wave replacement overlap.</span></td></tr>
+              <tr><td>SAIN</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">봇 행동은 SAIN에 맡깁니다.</span><span class="en" lang="en">Bot behavior is left to SAIN.</span></td></tr>
+              <tr><td>MapVariants · Manimal · FactoryClassic</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">변형 맵을 알아보고, 변형 맵에 Gravity 스폰을 쓸지 맵마다 정합니다. 등록되지 않은 모드도 스폰 지점이 SPT 원본과 다르면 자동 감지합니다.</span><span class="en" lang="en">Recognizes variant maps; choose per map whether Gravity spawns run on them. Unlisted mods are caught too when their spawn points differ from SPT's.</span></td></tr>
+              <tr><td>RUAF · BlackDiv · UNTAR · Blackout</td><td><span class="tag auto"><span class="ko">감지</span><span class="en" lang="en">Detected</span></span> <span class="ko">팩션 봇을 "모드 설정 그대로" 두거나 Gravity가 관리합니다.</span><span class="en" lang="en">Faction bots stay on the mod's settings or are managed by Gravity.</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div><a class="zoom" href="img/compat-ko.webp" data-href-ko="img/compat-ko.webp" data-href-en="img/compat-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="img/compat-ko.webp" data-src-ko="img/compat-ko.webp" data-src-en="img/compat-en.webp" width="1156" height="880" loading="lazy" alt="호환 · 진단 페이지" data-alt-ko="호환 · 진단 페이지" data-alt-en="Compatibility page"></figure></a></div>
     </div>
   </section>
 
+  <!-- 알아 둘 점 -->
   <section class="section wrap" id="notes" aria-labelledby="notes-title">
     <div class="section-heading">
       <div><p class="kicker"><span class="ko">알아 둘 점</span><span class="en" lang="en">Good to know</span></p>
@@ -212,17 +485,41 @@
       <p><span class="ko">1.0 출시 전 13개 맵을 게임 안에서 직접 돌려 보며 확인한 동작입니다.</span><span class="en" lang="en">Behavior confirmed by running all 13 maps in-game before the 1.0 release.</span></p>
     </div>
     <div class="notices">
-      <div class="notice info"><span class="mark">i</span><div><b><span class="ko">시작 보호</span><span class="en" lang="en">Start protection</span></b>
-        <p><span class="ko">레이드 처음 90초 동안은 플레이어 120m 안에 PMC를 내지 않습니다. 공장처럼 맵 전체가 그 안에 드는 작은 맵에서는 플레이어에게서 가장 먼 자리에 냅니다. 시간과 반경은 웹에서 바꿀 수 있습니다.</span><span class="en" lang="en">For the first 90 seconds, no PMC spawns within 120 m of the player. On small maps like Factory, where the whole map is inside that radius, they spawn at the point farthest from the player. Both values can be changed on the web page.</span></p></div></div>
       <div class="notice"><span class="mark">!</span><div><b><span class="ko">할로윈을 시즌 밖에 '켬'으로 두면</span><span class="en" lang="en">Forcing Halloween on outside the season</span></b>
-        <p><span class="ko">게임의 할로윈 모드가 스캐브 무리와 컬티스트로 맵 상한을 먼저 채워, PMC가 늦게 나오거나 안 나올 수 있습니다. 기본값 <code>auto</code>로 두는 것을 권합니다.</span><span class="en" lang="en">The game's Halloween mode fills the map cap with scav groups and cultists first, so PMCs may come late or not at all. We suggest leaving it on the default, <code>auto</code>.</span></p></div></div>
+        <p><span class="ko">게임의 할로윈 모드가 스캐브 무리와 컬티스트로 맵 상한을 먼저 채워, PMC가 늦게 나오거나 안 나올 수 있습니다. 공장처럼 상한이 작은 맵에서 특히 그렇습니다. 기본값 <code>auto</code>로 두는 것을 권합니다.</span><span class="en" lang="en">The game's Halloween mode fills the map cap with scav groups and cultists first, so PMCs may come late or not at all, especially on small-cap maps like Factory. We suggest the default, <code>auto</code>.</span></p></div></div>
+      <div class="notice info"><span class="mark">i</span><div><b><span class="ko">변형 맵</span><span class="en" lang="en">Variant maps</span></b>
+        <p><span class="ko">기본값으로 변형 맵(예: Manimal 등대)에서는 Gravity 스폰을 쓰지 않고 게임 기본 스폰을 씁니다. 맵 설정의 "변형 맵 적용"으로 바꿀 수 있습니다.</span><span class="en" lang="en">By default Gravity doesn't spawn on variant maps (for example Manimal's Lighthouse) and leaves the game's own spawns. Change it with "Variant map" in the map settings.</span></p></div></div>
       <div class="notice info"><span class="mark">i</span><div><b><span class="ko">ABPS·APBS와 함께 쓸 때</span><span class="en" lang="en">With ABPS or APBS installed</span></b>
         <p><span class="ko">해당 모듈은 잠기고 그 모드가 맡습니다. Gravity의 스폰·장비를 쓰려면 그 모드를 빼야 합니다.</span><span class="en" lang="en">The matching module is locked and that mod takes over. To use Gravity's spawns or loadouts, remove that mod.</span></p></div></div>
       <div class="notice info"><span class="mark">i</span><div><b><span class="ko">문제가 있을 때</span><span class="en" lang="en">If something looks off</span></b>
-        <p><span class="ko">웹의 <b>호환 · 진단</b> 페이지에서 로그 수준을 <b>자세히</b>로 바꾸면, PMC 분대가 언제 불렸고 왜 대기했는지까지 로그에 남습니다. 제보할 때 <code>BepInEx\LogOutput.log</code>를 함께 보내 주십시오.</span><span class="en" lang="en">Set the log level to <b>Verbose</b> on the <b>Compatibility</b> page. The log then records when each PMC squad was called and why it waited. Please attach <code>BepInEx\LogOutput.log</code> when you report a problem.</span></p></div></div>
+        <p><span class="ko"><b>호환 · 진단</b> 페이지의 로그 수준을 <b>자세히</b>로 바꾸면, PMC 분대가 언제 불렸고 왜 대기했는지까지 기록됩니다. 레이드가 끝나면 계획과 실제가 <code>config/reports</code>에 남고, "계획 vs 실제" 카드로 비교할 수 있습니다. 제보할 때는 <code>BepInEx\LogOutput.log</code>를 함께 보내 주십시오.</span><span class="en" lang="en">Set the log level to <b>Verbose</b> on the <b>Compatibility</b> page to record when each PMC squad was called and why it waited. After each raid, the plan and what happened are saved to <code>config/reports</code>; compare them on the "Plan vs actual" card. Please attach <code>BepInEx\LogOutput.log</code> when you report a problem.</span></p></div></div>
     </div>
   </section>
 
+  <!-- 자주 묻는 질문 -->
+  <section class="section wrap" id="faq" aria-labelledby="faq-title">
+    <div class="section-heading">
+      <div><p class="kicker"><span class="ko">자주 묻는 질문</span><span class="en" lang="en">FAQ</span></p>
+        <h2 id="faq-title"><span class="ko">궁금한 점을<br>모았습니다.</span><span class="en" lang="en">Common<br>questions.</span></h2></div>
+      <p><span class="ko">더 궁금한 점은 GitHub 이슈로 남겨 주십시오.</span><span class="en" lang="en">Anything else, please open a GitHub issue.</span></p>
+    </div>
+    <div class="faq">
+      <details><summary><span class="ko">설정을 바꿨는데 바로 안 바뀝니다.</span><span class="en" lang="en">I changed a setting but nothing happened.</span></summary>
+        <p><span class="ko">저장한 값은 다음 레이드부터 적용됩니다. 레이드가 시작될 때 게임이 서버에서 값을 받아 가기 때문입니다.</span><span class="en" lang="en">Saved values apply from the next raid, because the game fetches them from the server when a raid starts.</span></p></details>
+      <details><summary><span class="ko">봇이 어떻게 싸우는지도 바뀌나요?</span><span class="en" lang="en">Does it change how bots fight?</span></summary>
+        <p><span class="ko">아닙니다. Gravity는 언제·어디에·누구를 무엇을 들려 넣을지만 정합니다. 움직임과 전투는 SAIN·ORBIT 같은 AI 모드가 맡습니다.</span><span class="en" lang="en">No. Gravity decides when, where, who, and with what gear. Movement and combat belong to AI mods like SAIN and ORBIT.</span></p></details>
+      <details><summary><span class="ko">스폰만, 또는 장비만 쓸 수 있나요?</span><span class="en" lang="en">Can I use only spawns, or only loadouts?</span></summary>
+        <p><span class="ko">됩니다. 한눈에 페이지의 <b>모듈</b>에서 스폰 모듈과 장비 모듈을 따로 켜고 끕니다. 끄면 그쪽은 SPT 기본값으로 돌아갑니다.</span><span class="en" lang="en">Yes. Turn the spawn and loadout modules on or off separately under <b>Modules</b> on the Overview page. Turning one off returns that side to SPT defaults.</span></p></details>
+      <details><summary><span class="ko">모드 무기가 너무 많이 나옵니다.</span><span class="en" lang="en">Too many mod weapons show up.</span></summary>
+        <p><span class="ko"><b>모드 아이템</b> 페이지에서 모드를 끄거나, "레이드마다 일부만 사용"과 "모드 장비는 PMC만"을 켜십시오. 원작 그대로를 원하면 장비 프리셋을 <b>Realistic and Extended</b>로 바꾸면 모드 아이템이 나오지 않습니다.</span><span class="en" lang="en">On the <b>Mod items</b> page, turn mods off or enable "Per-raid subset" and "Mod gear for PMCs only". For a mod-free setup, switch the loadout preset to <b>Realistic and Extended</b>.</span></p></details>
+      <details><summary><span class="ko">처음 몇 분 동안 PMC가 안 보입니다.</span><span class="en" lang="en">I don't see PMCs for the first few minutes.</span></summary>
+        <p><span class="ko">시작 보호(90초·120m) 때문에 시작 PMC는 플레이어에게서 떨어진 곳에 나옵니다. 큰 맵에서는 만나기까지 시간이 걸릴 수 있습니다. 할로윈을 시즌 밖에 '켬'으로 둔 경우라면 위 "알아 둘 점"을 보십시오.</span><span class="en" lang="en">Start protection (90 s, 120 m) puts starting PMCs away from you, so on big maps it can take a while to run into them. If you forced Halloween on out of season, see "Good to know" above.</span></p></details>
+      <details><summary><span class="ko">설정을 다른 사람과 나누고 싶습니다.</span><span class="en" lang="en">How do I share my settings?</span></summary>
+        <p><span class="ko">레이드 프리셋·장비 프리셋을 <code>.json</code> 파일로 내보내 건네면, 받는 쪽은 가져오기로 씁니다. 전체 설정은 <b>전체 백업</b> 파일 하나로 옮길 수 있습니다.</span><span class="en" lang="en">Export a raid or loadout preset as a <code>.json</code> file; the other person imports it. To move everything, use a single <b>Full backup</b> file.</span></p></details>
+    </div>
+  </section>
+
+  <!-- 감사 -->
   <section class="section wrap" id="credits" aria-labelledby="credits-title">
     <div class="section-heading">
       <div><p class="kicker"><span class="ko">감사</span><span class="en" lang="en">Credits</span></p>

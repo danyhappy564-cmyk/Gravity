@@ -30,6 +30,7 @@
       const src = img.getAttribute(`data-src-${next}`);
       if (src && img.getAttribute('src') !== src) img.setAttribute('src', src);
     });
+    document.querySelectorAll('a[data-href-ko]').forEach(a => a.setAttribute('href', a.getAttribute(`data-href-${next}`)));
     document.querySelectorAll('[data-language]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.language === next)));
     if (remember) { try { localStorage.setItem(key, next); } catch { /* 저장 없이도 동작 */ } }
   }
@@ -63,7 +64,7 @@
     };
     addEventListener('scroll', onScroll, { passive: true }); onScroll();
     if (!reduced && 'IntersectionObserver' in window) {
-      const items = document.querySelectorAll('.card, .section-heading, .shot-frame, .step, .notice, .stat, .credit');
+      const items = document.querySelectorAll('.card, .section-heading, .shot-frame, .step, .notice, .stat, .credit, .feature-row .copy, .flow li, .faq details');
       items.forEach((el, i) => { el.classList.add('rv'); el.style.setProperty('--d', (i % 4) * 0.06 + 's'); });
       const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.08 });
       items.forEach(el => io.observe(el));
