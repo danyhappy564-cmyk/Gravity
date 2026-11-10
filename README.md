@@ -3,6 +3,18 @@
   <a href="README.en.md"><img alt="English" src="https://img.shields.io/badge/English-Read%20in%20English-6e7681?style=for-the-badge"></a>
 </p>
 
+<p align="center">
+  <a href="https://danyhappy564-cmyk.github.io/Gravity/"><img src="site/img/og.jpg" alt="Gravity 소개 사이트" width="820"></a>
+</p>
+
+<h2 align="center">📖 <a href="https://danyhappy564-cmyk.github.io/Gravity/">설명은 전부 소개 사이트에 있습니다 →</a></h2>
+<p align="center">스폰 · 보스 · 장비 티어 · 프리셋 · 다른 모드와 함께 · 설치와 주의할 점을 웹 화면 사진과 함께 한 페이지에 정리했습니다.</p>
+
+<p align="center">
+  <a href="https://danyhappy564-cmyk.github.io/Gravity/"><img alt="소개 사이트 열기" src="https://img.shields.io/badge/%EC%86%8C%EA%B0%9C%20%EC%82%AC%EC%9D%B4%ED%8A%B8-%EC%97%B4%EA%B8%B0-3d7be0?style=for-the-badge"></a>
+  <a href="https://github.com/danyhappy564-cmyk/Gravity/releases/latest"><img alt="최신 버전 받기" src="https://img.shields.io/badge/%EC%B5%9C%EC%8B%A0%20%EB%B2%84%EC%A0%84-%EB%B0%9B%EA%B8%B0-2ea043?style=for-the-badge&logo=github&logoColor=white"></a>
+</p>
+
 ## 변경 이력
 
 전체 변경 이력 1개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). 릴리즈별 요약은 [Releases](../../releases).
@@ -12,8 +24,6 @@
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-후원하기-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
 모드가 마음에 드셨다면 후원으로 응원해 주세요: https://buymeacoffee.com/real_feels
-
-소개 사이트: https://danyhappy564-cmyk.github.io/Gravity/
 
 SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, 언제, 어디서, 무엇을 들고** 나오는지를 한 곳에서 정합니다. 설정은 게임 서버가 켜져 있을 때 브라우저로 여는 웹 화면에서 합니다.
 

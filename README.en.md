@@ -3,6 +3,18 @@
   <a href="README.en.md"><img alt="English (this page)" src="https://img.shields.io/badge/English-This%20page-1f6feb?style=for-the-badge"></a>
 </p>
 
+<p align="center">
+  <a href="https://danyhappy564-cmyk.github.io/Gravity/?lang=en"><img src="site/img/og.jpg" alt="Gravity project site" width="820"></a>
+</p>
+
+<h2 align="center">📖 <a href="https://danyhappy564-cmyk.github.io/Gravity/?lang=en">Everything is explained on the project site →</a></h2>
+<p align="center">Spawns · bosses · loadout tiers · presets · other mods · install and notes, all on one page with screenshots of the web UI.</p>
+
+<p align="center">
+  <a href="https://danyhappy564-cmyk.github.io/Gravity/?lang=en"><img alt="Open the project site" src="https://img.shields.io/badge/Project%20site-Open-3d7be0?style=for-the-badge"></a>
+  <a href="https://github.com/danyhappy564-cmyk/Gravity/releases/latest"><img alt="Download latest" src="https://img.shields.io/badge/Latest-Download-2ea043?style=for-the-badge&logo=github&logoColor=white"></a>
+</p>
+
 ## Changelog
 
 The full changelog (1 entry) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). Per-release summaries: [Releases](../../releases).
@@ -12,8 +24,6 @@ The full changelog (1 entry) is in the [`changelog/`](changelog/) folder, 10 per
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
 If you like the mod, you can support it here: https://buymeacoffee.com/real_feels
-
-Project site: https://danyhappy564-cmyk.github.io/Gravity/
 
 A server + client mod for SPT **4.1**. It decides in one place **who spawns, when, where, and with what gear**. Everything is set from a web page you open in your browser while the game server is running.
 
