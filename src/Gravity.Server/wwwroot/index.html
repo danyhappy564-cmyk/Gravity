@@ -499,7 +499,7 @@ const set=(p,v)=>setIn(state,p,v);
 function rng(n){let a=n>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 
 const UI={
-  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.0.0','1.0.0'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
+  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.0.2','1.0.2'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
   offline:T('오프라인 미리보기','Offline preview'),ver:T('SPT 4.1 · 서버 모드','SPT 4.1 · server mod'),
   unsaved:T('저장 안 한 변경 {n}건','{n} unsaved changes'),save:T('저장','Save'),revert:T('되돌리기','Revert'),showChanges:T('바뀐 항목 보기','Show changes'),
   savedT:T('저장했습니다. 다음 레이드부터 적용됩니다.','Saved. Applies from the next raid.'),revertedT:T('마지막 저장 상태로 되돌렸습니다','Reverted to last save'),
@@ -893,7 +893,7 @@ function raidGroupCap(c){const g=c.groupCap||{},rules=g.on&&g.scope==='raid'?(g.
 /** 시작 PMC 분대를 레이드 전체 그룹 장부에 먼저 넣는다(서버 시작 계획과 같은 규칙: 막히면 split은 나눈 조각을, drop은 버림. 5차 검토 9번). */
 function startLedger(c,start,gc,sd){let left=start;for(const k of squadList(c,400,sd)){if(left<=0)break;const w=Math.min(k,left);if(gc.can(w))gc.use(w);else gc.split(w).forEach(q=>gc.use(q));left-=w;}}
 function estimate(m){
-  if(!state.modules.spawn)return null;const c=cfgFor(m),p=plan(m,c),raid=p.raid,cap=capOf(m.id);
+  if(!spawnOn())return null;const c=cfgFor(m),p=plan(m,c),raid=p.raid,cap=capOf(m.id);
   let pmin=p.start+p.waves.reduce((a,w)=>a+w.min,0),pmax=p.start+p.waves.reduce((a,w)=>a+w.max,0);
   if(p.inf){pmin=Math.round(pmin*c.inf.pmcShare/100);pmax=Math.round(pmax*c.inf.pmcShare/100);}
   const sd=c.scav.separateStart?c.scav.delay:0,hasScavs=m.scav||(m.id==='laboratory'&&c.allowScavLab),stop=raid*(1-c.hardStop.scavPct/100);
@@ -929,7 +929,7 @@ function estimate(m){
 }
 function timeline(m,big=false){
   const ed=big&&tlEdit&&page==='spawn';
-  const e=estimate(m);if(!e)return notice(T('스폰 모듈이 꺼져 있어 SPT 기본 스폰을 씁니다.','Spawn module is off — SPT default spawns are used.'),'warn');
+  const e=estimate(m);if(!e)return spawnLocked()?conflictNotice():notice(T('스폰 모듈이 꺼져 있어 SPT 기본 스폰을 씁니다.','Spawn module is off — SPT default spawns are used.'),'warn');
   const {p,c}=e,W=960,L=118,R=22,x=t=>L+(W-L-R)*Math.min(t,p.raid)/p.raid;
   const hv=(k,xx,y0,h,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-9}" y="${y0}" width="18" height="${h}" fill="transparent"/><rect x="${xx-3.5}" y="${y0+h/2-12}" width="7" height="24" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
   const pp=k=>ed?` data-pop="${k}" class="tlc"`:'';
@@ -1136,6 +1136,8 @@ function persistNavigation(){
 }
 window.addEventListener('hashchange',()=>{restoreNavigation();closePop();render();});
 const spawnLocked=()=>abpsDemo||(qbDemo&&state.compat.lockWithQuestingBots);
+// 1.0.2: 잠금은 화면 표시·서버 처리만 한다. state.modules.spawn(사용자 값)은 바꾸지 않는다 — 바꾸면 다음 저장에 꺼짐이 굳어 ABPS를 지워도 안 켜졌다.
+const spawnOn=()=>!!state.modules.spawn&&!spawnLocked();
 const spawnOff=()=>spawnLocked()?conflictNotice():!state.modules.spawn?notice(T('스폰 모듈이 꺼져 있습니다. 값은 저장되지만 적용되지 않습니다.','Spawn module is off. Values are kept but not applied.'),'warn'):'';
 const gearOff=()=>apbsDemo?conflictNotice():!state.modules.gear?notice(T('장비 모듈이 꺼져 있습니다.','Loadout module is off.'),'warn'):'';
 
@@ -1143,13 +1145,13 @@ P.dashboard={desc:T('지금 설정이 레이드에서 어떻게 보일지 요약
   const est=MAPS.map(m=>[m,estimate(m)]),cnt=k=>MAPS.filter(m=>state.maps[m.id].style===k).length;
   const avg=est.filter(([,e])=>e).map(([,e])=>(e.pmin+e.pmax)/2),avgP=avg.length?Math.round(avg.reduce((a,b)=>a+b,0)/avg.length):0;
   const tile=(v,l,sub,col,nav)=>`<button class="bigtile" style="--c:${col}" ${nav?`data-nav="${nav}"`:''}><b>${v}</b><span>${tr(l)}</span><small>${sub}</small></button>`;
-  const lockOf=k=>(k==='spawn'&&spawnLocked())||(k==='gear'&&apbsDemo);const modRow=(k,l,d)=>`<div class="modrow2"><div><b>${tr(l)}</b><small>${lockOf(k)?tr(T('잠김: ','Locked: '))+(k==='spawn'?(abpsDemo?'ABPS':'Questing Bots'):'APBS')+tr(T(' 감지',' detected')):tr(d)}</small></div><label class="sw"><input type="checkbox" data-p="${reg('modules.'+k,l)}" data-t="b" ${state.modules[k]?'checked':''} ${lockOf(k)?'disabled':''}><span class="tr"></span></label></div>`;
+  const lockOf=k=>(k==='spawn'&&spawnLocked())||(k==='gear'&&apbsDemo);const modRow=(k,l,d)=>`<div class="modrow2"><div><b>${tr(l)}</b><small>${lockOf(k)?tr(T('잠김: ','Locked: '))+(k==='spawn'?(abpsDemo?'ABPS':'Questing Bots'):'APBS')+tr(T(' 감지',' detected')):tr(d)}</small></div><label class="sw"><input type="checkbox" data-p="${reg('modules.'+k,l)}" data-t="b" ${state.modules[k]&&!lockOf(k)?'checked':''} ${lockOf(k)?'disabled':''}><span class="tr"></span></label></div>`;
   const cards=est.map(([m,e])=>{const o=state.maps[m.id],st={waves:[T('웨이브','Waves'),'blue'],infinite:[T('무한 보충','Endless'),'gold'],start:[T('시작만','Start only'),'']}[o.style];
     return `<div class="mapcard" data-gomap="${m.id}" role="link" tabindex="0"><div class="mc-h"><b>${tr(m.name)}</b><button class="pill ${st[1]} stylebtn" data-cyclestyle="${m.id}" title="${tr(T('눌러서 이 맵 스폰 방식 바꾸기','Click to change this map’s spawn style'))}">${tr(st[0])} ⇄</button></div>
      <div class="mc-n"><span><em>${e?e.pmin+'–'+e.pmax:'—'}</em><small>PMC</small></span><span><em>${e?e.smin+'–'+e.smax:'—'}</em><small>${tr(T('스캐브','Scavs'))}</small></span><span><em>${raidOf(m)}</em><small>${tr(T('분','min'))}${m.src&&state.spawn.raid.mode==='detect'?' · '+m.src:''}</small></span></div>
      <div class="mc-b">${e&&e.bosses.length?e.bosses.slice(0,2).map(b=>`<span>★ ${tr(b.name)} ${bossChance(b)}%</span>`).join('')+(e.bosses.length>2?`<span>+${e.bosses.length-2}</span>`:''):`<span class="muted">${tr(T('보스 없음','No bosses'))}</span>`}</div></div>`;}).join('');
   return `<div class="stack"><div class="bigtiles">
-    ${tile(state.modules.spawn?u('on'):u('off'),T('스폰','Spawns'),fmt(tr(T('웨이브 {a} · 무한 {b} · 시작만 {c}','Waves {a} · Endless {b} · Start {c}')),{a:cnt('waves'),b:cnt('infinite'),c:cnt('start')}),state.modules.spawn?'#6ea8ff':'#647089','flow')}
+    ${tile(spawnOn()?u('on'):u('off'),T('스폰','Spawns'),fmt(tr(T('웨이브 {a} · 무한 {b} · 시작만 {c}','Waves {a} · Endless {b} · Start {c}')),{a:cnt('waves'),b:cnt('infinite'),c:cnt('start')}),spawnOn()?'#6ea8ff':'#647089','flow')}
     ${tile(state.modules.gear?u('on'):u('off'),T('장비','Loadouts'),fmt(tr(T('적용 봇 {n}종','{n} bot types dressed')),{n:ROLES.filter(r=>state.roles[r.id].on).length}),state.modules.gear?'#5fd4a6':'#647089','roles')}
     ${tile(avgP,T('맵 평균 PMC','Avg PMCs per map'),tr(T('레이드 전체 기준','whole raid')),'#a78bfa','maps')}
     ${tile(BOSSES.filter(b=>state.bosses[b.id].on).length+'/'+BOSSES.length,T('켜진 보스','Bosses on'),state.bossCommon.on?tr(T('공통 확률','shared chance'))+' '+state.bossCommon.chance+'%':tr(T('보스별 확률','per-boss chance')),'#e8b04b','bosses')}</div>
@@ -1983,7 +1985,6 @@ function conflictNotice(){const a=[];
   if(apbsDemo)a.push(notice(T('APBS가 깔려 있어 Gravity 장비 모듈을 자동으로 껐습니다. 두 모드가 같은 봇 장비를 동시에 만들면 충돌합니다. APBS를 지우면 다시 켤 수 있습니다.','APBS is installed, so the Gravity loadout module was turned off automatically. Remove APBS to turn it back on.'),'bad'));
   if(qbDemo&&state.compat.lockWithQuestingBots)a.push(notice(T('설정에 따라 Questing Bots 감지로 스폰이 잠겼습니다. 호환 · 진단에서 잠금을 끌 수 있습니다.','Spawns are locked by your Questing Bots compatibility setting. Unlock on Compatibility.'),'warn'));
   return a.join('');}
-function applyConflicts(){if(abpsDemo)state.modules.spawn=false;if(apbsDemo)state.modules.gear=false;}
 /* ================= render ================= */
 function renderNav(){
   const btn=([id,ic,t])=>`<button class="nav-btn ${page===id?'on':''}" data-nav="${id}"><span class="ic">${ic}</span>${tr(t)}${id==='spawn'?`<span class="badge">${MAPS.filter(m=>Object.keys(CARD_FIELDS).some(k=>cardOn(m.id,k))||state.maps[m.id].style==='infinite').length||''}</span>`:''}${id==='factions'?`<span class="badge">${FACTIONS.filter(f=>state.factions[f.id].managed).length||''}</span>`:''}${id==='diag'&&qbDemo?'<span class="badge" style="color:var(--red)">!</span>':''}</button>`;
@@ -2093,7 +2094,7 @@ document.addEventListener('change',e=>{const el=e.target;
   if(el.dataset.iadd!=null){if(el.value){get(el.dataset.iadd)[el.value]=10;rerender();}return;}
   if(el.id==='flowMapSel'){flowMap=el.value;render();return;}
   if(el.id==='devMapSel'){devMap=el.value;simRows=null;devJson='';render();return;}
-  if(el.id==='abpsDemo'||el.id==='apbsDemo'){if(el.id==='abpsDemo')abpsDemo=el.checked;else apbsDemo=el.checked;if(!abpsDemo)state.modules.spawn=saved.modules.spawn;if(!apbsDemo)state.modules.gear=saved.modules.gear;applyConflicts();render();return;}
+  if(el.id==='abpsDemo'||el.id==='apbsDemo'){if(el.id==='abpsDemo')abpsDemo=el.checked;else apbsDemo=el.checked;render();return;}
   if(el.id==='qbDemo'){qbDemo=el.checked;render();return;}
   if(el.dataset.ovr)ensureOverride(el.dataset.ovr);
   if(el.dataset.p)apply(el,true);});
@@ -2360,7 +2361,7 @@ function detectedMods(){const d=serverMeta&&serverMeta.detect;if(!d)return ['ORB
   [...new Set(Object.values(d.variantMaps||{}).flat())].forEach(n=>l.push(n));if(d.ruaf)l.push('RUAF');if(d.untar)l.push('UNTAR');if(d.blackDiv)l.push('BlackDiv');if(d.blackout)l.push('Blackout');if(d.ppes)l.push('PastPresentEventSelector');if(d.moreBots)l.push('MoreBotsAPI');return l;}
 function variantMods(id){const d=serverMeta&&serverMeta.detect;if(!d)return id==='interchange'||id==='lighthouse'?['Manimal']:[];const known=(d.variantMaps||{})[id]||[],auto=(serverMeta.automaticVariants||[]).includes(id);return [...known,...(auto?[tr(T('자동 감지된 변형 맵','Automatically detected variant'))]:[])];}
 function applyMeta(meta){
-  serverMeta=meta;EVMETA=meta.events||null;FACMETA=meta.factions||null;
+  serverMeta=meta;if(meta.version)UI.mock=T(meta.version,meta.version);EVMETA=meta.events||null;FACMETA=meta.factions||null;
   if(FACMETA)['ruaf','blackdiv'].forEach(id=>{const fm=FACMETA[id],f=FACTIONS.find(x=>x.id===id);if(f&&fm&&fm.maps&&fm.maps.length)f.maps=fm.maps.filter(m=>MAPS.some(x=>x.id===m));});
   if(EVMETA){const sv=EVMETA.svm;SVM.disableEvents=!!(sv&&sv.disableEvents);SVM.forceXmas=!!(sv&&sv.christmas);SVM.forceHallo=!!(sv&&sv.halloween);}
   abpsDemo=!!(meta.detect&&meta.detect.abps);apbsDemo=!!(meta.locked&&meta.locked.gear);qbDemo=!!(meta.detect&&meta.detect.questingBots);
@@ -2408,7 +2409,6 @@ async function boot(){
     const meta=await mr.json(),st=await sr.json();
     applyMeta(meta);DEFAULTS=makeDefaults();
     normalizeState(st.state);
-    if(abpsDemo)state.modules.spawn=false;
     saved=clone(state);serverWarn=st.loadWarning||'';libSaved=JSON.stringify(libObj());
   }catch(e){serverErr=String(e.message||e);}
   render();

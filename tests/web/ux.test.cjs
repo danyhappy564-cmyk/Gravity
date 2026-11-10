@@ -239,7 +239,7 @@ test('Questing Bots는 경고가 기본이고 잠금을 선택해도 모듈 선�
   a.run("applyMeta({detect:{questingBots:true},locked:{spawn:false}})");
   assert.match(a.run("liveBanner('dashboard')"),/봇이 두 배로 나올 수 있습니다/);
   assert.equal(a.run('spawnLocked()'),false);
-  a.run("state.compat.lockWithQuestingBots=true;applyConflicts()");
+  a.run("state.compat.lockWithQuestingBots=true");
   assert.equal(a.run('spawnLocked()'),true);
   assert.equal(a.run('state.modules.spawn'),true);
 });
@@ -786,4 +786,23 @@ test('시작 스캐브 인원 방식·스캐브 레이드 PMC 무리 개수 방�
   assert.doesNotMatch(html,/data-p="spawn\.scav\.startPct"/);
   for(const f of ['scav.startMode','scav.startMin','scav.startMax','scav.remainMode','scav.remainMin','scav.remainMax'])
     assert.equal(a.run(`CARD_FIELDS.scav.includes('${f}')`),true,f);
+});
+test('ABPS 감지 잠금이 저장된 스폰 모듈 값을 바꾸지 않고, 왼쪽 위 버전은 서버 판을 따릅니다(1.0.2)', async () => {
+  const meta = {version: '9.9.9', detect: {abps: true}, locked: {spawn: true, gear: false}, maps: []};
+  const ok = body => ({ok: true, status: 200, json: async () => body});
+  const fetch = async url => url === 'api/meta' ? ok(meta) : url === 'api/state' ? ok({state: {modules: {spawn: true, gear: true}}}) : ok(null);
+  const a = app({fetch});
+  await a.run('boot()');
+  assert.equal(a.run('state.modules.spawn'), true);
+  assert.equal(a.run('saved.modules.spawn'), true);
+  assert.equal(a.run('spawnOn()'), false);
+  assert.equal(a.run('estimate(mapById("bigmap"))'), null);
+  assert.equal(a.run('u("mock")'), '9.9.9');
+  assert.doesNotMatch(a.run("page='settings';P.settings?P.settings.render():''"), /data-p="modules\.spawn"[^>]*checked/);
+  a.run('abpsDemo=false');
+  assert.equal(a.run('spawnOn()'), true);
+  assert.equal(a.run("UI.mock.ko===undefined?u('mock'):u('mock')"), '9.9.9');
+});
+test('서버 판을 못 받아도 기본 버전 표시는 1.0.2입니다', () => {
+  assert.match(html, /mock:T\('1\.0\.2','1\.0\.2'\)/);
 });
