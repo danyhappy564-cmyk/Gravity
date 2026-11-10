@@ -145,6 +145,7 @@ input[type=range]:disabled{filter:grayscale(1)}
 .sum{font-size:11px;padding:1px 7px;border-radius:6px}
 .sum.ok{color:var(--green);background:#5fd4a614}
 .sum.bad{color:var(--amber);background:#f0c07014}
+.rst{border:0;background:none;color:var(--muted);font-size:13px;line-height:1;padding:0 4px;cursor:pointer;margin-left:2px}.rst:hover{color:var(--text,#fff)}
 .mini-btn{border:1px solid var(--line-2);background:#0e131b;border-radius:7px;padding:4px 10px;font-size:12px;color:var(--muted)}
 .mini-btn:hover{color:var(--text);border-color:#3a4760}
 .btn{border:1px solid var(--line-2);background:#121925;border-radius:8px;padding:7px 14px;font-size:12.5px}
@@ -666,7 +667,7 @@ function makeDefaults(){
     bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'normal',maps:mm,zones:zz};});
   const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],tFrom:0,tTo:0,xFrom:0,xTo:0};
     // 레이더·로그(ABPS식): 원래 스폰(레버·탈출구 이벤트 포함)은 그대로 두고, 맵 확률·인원은 따로 넣는 "추가 스폰"에만(기본 0% = 원래 스폰만)
-    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1]});});
+    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,vanillaMax:0,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1]});});
   const factions={};FACTIONS.forEach(f=>{factions[f.id]={managed:false,style:'waves',shareCap:false,maps:Object.fromEntries(MAPS.map(m=>[m.id,f.maps.includes(m.id)])),
     patrol:{on:true,chance:45,count:2,min:3,max:6,tMin:5,tMax:28},checkpoint:{on:true,chance:45,count:2,min:3,max:4,radius:20},hunt:{on:true,chance:20,min:3,max:4},
     bd:{chance:25,tMin:10,tMax:80,huntMin:3,huntMax:5,labsGate:20,labsStart:15,wedge:true,wedgeChance:15}};});
@@ -762,9 +763,12 @@ const tip=t=>t?`<span class="tip" tabindex="0" data-tip="${esc(tr(t))}">?</span>
 const pctOf=(v,min,max)=>((v-min)/(max-min)*100).toFixed(1)+'%';
 function showVal(v,unit,step){const n=step<1?Number(v).toFixed(step<.1?2:1):v;return unit?`${n}${tr(unit)}`:String(n);}
 const uattr=unit=>esc(JSON.stringify(unit||''));
+/** 슬라이더 기본값 되돌리기(↺, 1.0.1): 기본값(DEFAULTS 같은 경로)과 다를 때만 보인다. ps = 경로 목록. */
+function rstBtn(ps,vals,dis){if(dis)return '';const ds=ps.map(q=>get(q,DEFAULTS));if(ds.some(d=>typeof d!=='number')||ds.every((d,i)=>Number(vals[i])===d))return '';
+  return `<button class="rst" data-rst="${ps.join('|')}" title="${esc(fmt(tr(T('기본값 {d}(으)로 되돌리기','Reset to default {d}')),{d:ds.join(' – ')}))}" aria-label="${esc(tr(T('기본값으로','Reset to default')))}">↺</button>`;}
 function slider(p,label,t,o={}){
   const {min=0,max=100,step=1,unit=UI.pct,adv,dis,val}=o;reg(p,label);const v=val??get(p);
-  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}<span class="val" data-v="${p}">${showVal(v,unit,step)}</span></div>
+  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}${o.val===undefined?rstBtn([p],[v],dis):''}<span class="val" data-v="${p}">${showVal(v,unit,step)}</span></div>
   <input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-p="${p}" data-t="n" data-unit="${uattr(unit)}" style="--p:${pctOf(v,min,max)}" ${dis?'disabled':''}>
   <div class="ends"><span>${showVal(min,unit,step)}</span><span>${showVal(max,unit,step)}</span></div></div>`;
 }
@@ -772,7 +776,7 @@ function range(pMin,pMax,label,t,o={}){
   const {min=0,max=100,step=1,unit=UI.pct,adv,dis}=o;reg(pMin,T(label.ko+' · 최소',label.en+' · min'));reg(pMax,T(label.ko+' · 최대',label.en+' · max'));
   const [a,b]=o.values||[get(pMin),get(pMax)];
   const one=(p,v,cap,side,pair)=>`<div><label>${cap}</label><input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-p="${p}" data-t="n" data-pair="${pair}" data-side="${side}" data-unit="${uattr(unit)}" style="--p:${pctOf(v,min,max)}" ${dis?'disabled':''}></div>`;
-  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}<span class="val" data-v="${pMin}|${pMax}">${showVal(a,unit,step)} – ${showVal(b,unit,step)}</span></div>
+  return `<div class="ctl${adv?' adv':''}${dis?' dis':''}"><div class="ctl-h"><span>${tr(label)}</span>${tip(t)}${o.values?'':rstBtn([pMin,pMax],[a,b],dis)}<span class="val" data-v="${pMin}|${pMax}">${showVal(a,unit,step)} – ${showVal(b,unit,step)}</span></div>
   <div class="range2">${one(pMin,a,u('min'),'min',pMax)}${one(pMax,b,u('max'),'max',pMin)}</div></div>`;
 }
 function sw(p,label,t,o={}){reg(p,label);return `<div class="ctl${o.adv?' adv':''}${o.dis?' dis':''}"><label class="sw"><input type="checkbox" data-p="${p}" data-t="b" ${(o.val??get(p))?'checked':''} ${o.dis?'disabled':''}><span class="tr"></span><span>${tr(label)}</span>${tip(t)}</label></div>`;}
@@ -1339,6 +1343,7 @@ P.specials={desc:T('특수 봇마다 탭을 골라 맵별 등장 확률과 무�
   const maps=MAPS.map(m=>slider(p+key+m.id,T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en),'',{dis:!sp.on}).replace(`<span>${tr(T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en))}</span>`,`<span>${tr(m.name)}</span>`)).join('');
   return `<div class="stack">${spawnOff()}${tabs}
    ${card(def[1],sw(p+'on',T('켜기','Enable'),'')+(ex?sw(p+'vanilla',T('원래 스폰 유지','Keep original spawns'),T('맵에 원래 있는 무리(레버·탈출구 같은 이벤트 포함)를 확률·인원 그대로 둡니다. 끄면 원래 무리는 나오지 않습니다.','Keeps the map’s own groups (incl. lever/exfil events) at their original chance and size. Off = original groups never spawn.'),{dis:!sp.on})
+       +slider(p+'vanillaMax',T('원래 무리 한 판 최대 인원 (0 = 그대로)','Original groups · max bots per raid (0 = unchanged)'),T('맵에 원래 있는 무리(우두머리+호위)를 한 판에 모두 합쳐 이 인원까지만 내보냅니다. 넘치면 마지막 무리의 호위를 줄이거나 그 무리를 뺍니다. 레버·탈출구 같은 이벤트 무리와 추가 스폰은 세지 않습니다.','Caps the map’s own groups (leader + escorts) to this many bots in total per raid. Extra groups lose escorts or are skipped. Event groups (lever/exfil) and extra spawns are not counted.'),{min:0,max:30,unit:UI.ppl,dis:!sp.on||!sp.vanilla})
        +range(p+'tFrom',p+'tTo',T('원래 스폰 시각 (0~0 = 원래 시각, 레버 같은 이벤트 무리는 그대로)','Original spawn time (0–0 = original; event groups unchanged)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})+range(p+'extraMin',p+'extraMax',T('추가 스폰 인원 (최대 0 = 추가 끔)','Extra group size (max 0 = no extra)'),'',{min:0,max:8,unit:UI.ppl,dis:!sp.on})+range(p+'xFrom',p+'xTo',T('추가 스폰 시각 (0~0 = 판 시작)','Extra spawn time (0–0 = raid start)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})
        :range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})+(id==='infected'?'':range(p+'tFrom',p+'tTo',T('나오는 시각 (0~0 = 원래 시각)','Spawn time (0–0 = original time)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id]})}
    ${card(ex?T('맵별 추가 스폰 확률','Extra spawn chance per map'):T('맵별 등장 확률','Chance per map'),`<div class="grid g2" style="gap:0 26px">${maps}</div>`,{desc:ex?T('원래 스폰과 별도로 판 시작 때 한 무리를 이 확률로 더 넣습니다(맵 상한을 지킴). 원래 무리가 있는 맵에서만 넣습니다. 0% = 추가 없음.','Adds one more group at raid start with this chance, on top of the original spawns (respects the map cap). Only on maps that already have this group. 0% = no extra.'):T('0% = 그 맵에 안 나옴.','0% = never on that map.')})}
@@ -2092,6 +2097,7 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
   const pe=e.target.closest('[data-pop]');if(pe&&!e.target.closest('button')){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
   const b=e.target.closest('button');if(!b){const g=e.target.closest('[data-gomap]');if(g){mapSel=g.dataset.gomap;page='spawn';spawnTab=mapSel;render();window.scrollTo(0,0);}return;}if(b.disabled)return;const d=b.dataset;
+  if(d.rst){d.rst.split('|').forEach(q=>{const dv=get(q,DEFAULTS);if(typeof dv==='number')writeSetting(q,dv);});updateSavebar();refreshLive();rerender();return;}
   if(d.spawnTab){spawnTab=d.spawnTab;if(spawnTab!=='all')mapSel=spawnTab;batch=batch.filter(x=>x!==mapSel);closePop();rerender();return;}
   if(d.spawnStyle){const p=d.spawnStyle,v=d.v;if(!['waves','infinite','start'].includes(v)||(p.startsWith('factions.')&&v==='infinite'))return;if(p.startsWith('factions.'))facManage(p.split('.')[1]);else if(isSpawnMap()){const mid=p.split('.')[1],card=p.endsWith('.scavStyle')?'scav':'flow';[mid,...batch].forEach(id=>ensureOverride(id,card));}set(p,v);const parts=p.split('.');if(parts[0]==='maps'&&parts[1]===mapSel&&isSpawnMap())batch.forEach(id=>setIn(state,['maps',id,...parts.slice(2)].join('.'),v));const key=tlPopKey;rerender();openPop(key,e);return;}
   if(d.cyclestyle){const o=state.maps[d.cyclestyle],order=['waves','infinite','start'];o.style=order[(order.indexOf(o.style)+1)%3];rerender();return;}

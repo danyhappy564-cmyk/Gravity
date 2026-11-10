@@ -183,4 +183,21 @@ public class ApplierTests
         Assert.Equal(600, plan.SimStartSec);
         Assert.All(plan.Groups, g => Assert.InRange(g.TimeSec, 0, 1500));
     }
+    [Fact]
+    public void 로그_원래_무리_한판_총인원을_상한까지_자른다()
+    {
+        for (int seed = 0; seed < 200; seed++)
+        {
+            var list = new List<BossLocationSpawn>();
+            for (int k = 0; k < 8; k++) list.Add(new BossLocationSpawn { BossName = "exUsec", BossChance = 80, BossEscortAmount = "1,2" });
+            list.Add(new BossLocationSpawn { BossName = "exUsec", BossChance = 50, BossEscortAmount = "2", TriggerName = "interactObject" });
+            list.Add(new BossLocationSpawn { BossName = "bossBully", BossChance = 40, BossEscortAmount = "4" });
+            RaidSpawnApplier.CapVanillaGroups(list, "exUsec", 5, new Random(seed));
+            var free = list.Where(x => x.BossName == "exUsec" && string.IsNullOrEmpty(x.TriggerName)).ToList();
+            Assert.All(free, x => Assert.True(x.BossChance is 0 or 100));
+            Assert.True(free.Where(x => x.BossChance == 100).Sum(x => 1 + int.Parse(x.BossEscortAmount!)) <= 5);
+            Assert.Equal(50, list[8].BossChance); // 이벤트 무리는 그대로
+            Assert.Equal("4", list[9].BossEscortAmount); // 다른 역할은 그대로
+        }
+    }
 }

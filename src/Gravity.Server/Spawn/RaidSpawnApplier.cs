@@ -137,6 +137,8 @@ public static class RaidSpawnApplier
             }
             result.Add(e);
         }
+        foreach (var (sr, sp) in specialByRole)
+            if (extraRoles.Contains(sr) && sp.On && sp.VanillaMax > 0) CapVanillaGroups(result, sr, sp.VanillaMax, rnd);
         // 0.4: 웹에서 이 맵을 켰는데 바닐라 항목이 없는 보스는 다른 맵 항목을 본보기로 새로 넣는다(즈랴치는 등대 섬 전용이라 제외).
         if (templates != null)
             foreach (var (role, id) in BossRoleToId)
@@ -238,6 +240,28 @@ public static class RaidSpawnApplier
                 BossEscortAmount = Range(Math.Max(0, sp.ExtraMin - 1), Math.Max(0, Math.Max(sp.ExtraMin, sp.ExtraMax) - 1)),
                 TriggerId = Gravity.Shared.WaveMark.ExtraSpecial(mapId, role), TriggerName = "", Time = SpecialTime(sp.XFrom, sp.XTo, rnd, raidSec), Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
             });
+        }
+    }
+
+    /// <summary>
+    /// 레이더·로그 원래 항목(트리거 없는 것)의 한 판 총인원을 max로 자른다(1.0.1). 서버에서 확률을 미리 굴려 나올 무리는 100%,
+    /// 안 나올 무리는 0%로 정하고, 인원(우두머리 1 + 호위)이 넘치면 마지막 무리 호위를 줄이거나 뺀다. 순서는 섞어서 앞 항목만 유리하지 않게.
+    /// 레버·탈출구 같은 이벤트 항목은 플레이어가 일으키는 것이라 세지 않고 그대로 둔다.
+    /// </summary>
+    internal static void CapVanillaGroups(List<BossLocationSpawn> list, string role, int max, Random rnd)
+    {
+        var idx = Enumerable.Range(0, list.Count).Where(i => string.Equals(list[i].BossName, role, StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrEmpty(list[i].TriggerName) && (list[i].BossChance ?? 0) > 0 && list[i].SptId != "gravity").OrderBy(_ => rnd.Next()).ToList();
+        int total = 0;
+        foreach (var i in idx)
+        {
+            var e = list[i];
+            if (rnd.NextDouble() * 100 >= (e.BossChance ?? 0) || total >= max) { list[i] = e with { BossChance = 0 }; continue; }
+            var opts = (e.BossEscortAmount ?? "0").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => int.TryParse(x, out var n) ? Math.Max(0, n) : 0).DefaultIfEmpty(0).ToArray();
+            int escorts = Math.Min(opts[rnd.Next(opts.Length)], max - total - 1);
+            total += 1 + escorts;
+            list[i] = e with { BossChance = 100, BossEscortAmount = escorts.ToString() };
         }
     }
 

@@ -739,3 +739,21 @@ test('파일 장비 프리셋을 읽는 동안 다른 프리셋을 고르면 늦
   await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
   assert.equal(a.run('state.tierPreset'),'auto');
 });
+
+test('슬라이더 ↺ 버튼은 기본값과 다를 때만 보이고 누르면 그 값만 기본값으로 돌립니다(1.0.1)', () => {
+  const a=app();
+  const html=()=>a.run(`slider('spawn.interval',T('간격','Interval'),'')`);
+  assert.doesNotMatch(html(),/data-rst=/);
+  a.run(`state.spawn.interval=DEFAULTS.spawn.interval+3;state.spawn.waveMax=DEFAULTS.spawn.waveMax+1;`);
+  assert.match(html(),/data-rst="spawn\.interval"/);
+  assert.match(a.run(`range('spawn.waveMin','spawn.waveMax',T('웨이브','Waves'),'')`),/data-rst="spawn\.waveMin\|spawn\.waveMax"/);
+  a.click({rst:'spawn.interval'});
+  assert.equal(a.run('state.spawn.interval===DEFAULTS.spawn.interval'),true);
+  assert.equal(a.run('state.spawn.waveMax===DEFAULTS.spawn.waveMax+1'),true);
+  assert.doesNotMatch(html(),/data-rst=/);
+});
+
+test('로그 원래 무리 한 판 최대 인원 슬라이더가 있고 기본 0입니다(1.0.1)', () => {
+  const a=app();
+  assert.equal(a.run(`DEFAULTS.specials.rogues.vanillaMax`),0);
+});
