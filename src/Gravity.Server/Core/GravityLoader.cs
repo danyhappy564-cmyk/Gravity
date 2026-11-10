@@ -106,7 +106,7 @@ public class GravityLoader(
         RaidStartPatch.Activity = activity;
         new RaidStartPatch().Enable();
 
-        // 0.5 장비: 아이템 정보·자동 티어(읽기만)와 봇 생성 패치. APBS가 있으면 패치는 켜 두되 매번 손대지 않는다(GearRuntime.Active).
+        // 0.5 장비: 아이템 정보·자동 티어(읽기만)와 봇 생성 패치. APBS가 있으면 패치를 걸지 않는다(GearRuntime.Active도 잠금).
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -118,16 +118,21 @@ public class GravityLoader(
             Gravity.Gear.GearRuntime.Activity = activity;
             Gravity.Gear.GearRuntime.Templates = templates.Items;
             Gravity.Gear.GearRuntime.Locale = lang => locales.GetLocaleDb(lang);
-            new Gravity.Gear.GearLevelPatch().Enable();
-            new Gravity.Gear.GearFilterPatch().Enable();
-            new Gravity.Gear.GearPlatePatch().Enable();
-            new Gravity.Gear.GearBotPatch().Enable();
-            new Gravity.Gear.GearDynamicModPatch().Enable();
-            new Gravity.Gear.GearModPoolPatch().Enable();
-            new Gravity.Gear.GearItemDbModPatch().Enable();
-            new Gravity.Gear.GearDynamicGearPatch().Enable();
-            new Gravity.Gear.GearLootPatch().Enable();
-            new Gravity.Gear.GearUnheardPatch().Enable();
+            // APBS가 있으면 장비 패치를 아예 걸지 않는다. 걸어만 둬도 Harmony_Profiles(PBT)가 봇 레벨 함수에
+            // 다른 모드 패치가 있다고 보고 APBS 커리어 연동을 끈다(1.0.1).
+            if (!detect.GearLocked)
+            {
+                new Gravity.Gear.GearLevelPatch().Enable();
+                new Gravity.Gear.GearFilterPatch().Enable();
+                new Gravity.Gear.GearPlatePatch().Enable();
+                new Gravity.Gear.GearBotPatch().Enable();
+                new Gravity.Gear.GearDynamicModPatch().Enable();
+                new Gravity.Gear.GearModPoolPatch().Enable();
+                new Gravity.Gear.GearItemDbModPatch().Enable();
+                new Gravity.Gear.GearDynamicGearPatch().Enable();
+                new Gravity.Gear.GearLootPatch().Enable();
+                new Gravity.Gear.GearUnheardPatch().Enable();
+            }
             var gi = Gravity.Gear.GearRuntime.Items;
             logger.Info($"{GravityInfo.Tag} " + L.T($"장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}",
                 $"Gear data: {gi.Info.Count} items, {gi.SlotTier.Count} gear slots, mod items: {gi.ModWeapons.Count} weapons · {gi.ModEquipment.Count} gear · {gi.ModAttachments.Count} attachments") + $""
