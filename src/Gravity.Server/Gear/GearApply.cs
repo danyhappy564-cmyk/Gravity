@@ -202,10 +202,15 @@ public static class GearApply
         }
 
         // 3) 부품 목록
-        if(inv!=null && addedEquipment.Count>0)
+        // 원래 목록에 있던 장비도 부품 표가 통째로 없으면 채운다. SPT 원본의 일반 스캐브 TT 플레이트 캐리어처럼
+        // 표가 없으면 SPT가 "lacks a mod slot pool" 경고만 남기고 판·내장재를 하나도 안 단다. 표가 있는 장비는 원래 규칙 그대로 둔다.
+        var noPool = inv?.Equipment == null ? [] : inv.Equipment.Values.Where(p => p != null).SelectMany(p => p.Keys)
+            .Select(m => m.ToString()).Where(id => !addedEquipment.Contains(id) && c.Items.CompatibleMods.ContainsKey(id)
+                && (inv.Mods == null || !inv.Mods.ContainsKey(id))).ToHashSet();
+        if(inv!=null && (addedEquipment.Count>0 || noPool.Count>0))
         {
             inv.Mods??=new();
-            GearCompatibility.AddMissing(inv.Mods,addedEquipment.Where(id=>!c.Blocked(id)),c.Items);
+            GearCompatibility.AddMissing(inv.Mods,addedEquipment.Concat(noPool).Where(id=>!c.Blocked(id)),c.Items);
         }
         if (inv?.Mods != null)
             foreach (var (parentId, slots) in inv.Mods)

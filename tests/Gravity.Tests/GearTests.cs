@@ -170,6 +170,26 @@ public class GearTests
     public void 역할_이름_대응(string role, bool pmc, string? side, string? want) =>
         Assert.Equal(want, GearTier.RoleId(role, pmc, side));
 
+    [Fact]
+    public void 원래_목록_장비도_부품_표가_없으면_채운다()
+    {
+        // SPT 원본 데이터: 일반 스캐브 목록의 TT 플레이트 캐리어에 부품 표가 없어 판 없이 나왔다(서버 경고 "lacks a mod slot pool").
+        Items(out var info);
+        var pools = new List<(string, string)> { ("Headwear", Id(20)), ("Headwear", Id(21)) };
+        var compat = new Dictionary<string, IReadOnlyDictionary<string, string[]>>
+        {
+            [Id(20)] = new Dictionary<string, string[]> { ["Helmet_top"] = [Id(70)] }
+        };
+        var items = new GearItems(info, pools, compat);
+        var g = Cfg("""{"gear":{"thermalsT7":true},"mods":{"subset":false,"pmcOnly":true}}""");
+        var bot = Bot();
+        GearApply.Apply(bot, g, new GearPick("scav", "scavs", 1, false), items, GearRaid.Pick(items, false, 0, 0, 0, 1), false, new Random(3));
+        Assert.Contains((MongoId)Id(20), bot.BotInventory.Equipment[EquipmentSlots.Headwear].Keys); // 원래 목록에 있던 헬멧
+        Assert.True(bot.BotInventory.Mods.ContainsKey(Id(20)));
+        Assert.Equal([Id(70)], bot.BotInventory.Mods[Id(20)]["Helmet_top"].Select(k => k.ToString()));
+        Assert.Equal([Id(40)], bot.BotInventory.Mods[Id(99)]["front_plate"].Select(k => k.ToString())); // 원래 있던 표는 그대로 거름
+    }
+
     private static GearItems Items(out Dictionary<string, ItemInfo> info)
     {
         info = new Dictionary<string, ItemInfo>();
