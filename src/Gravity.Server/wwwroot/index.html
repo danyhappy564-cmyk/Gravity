@@ -2233,7 +2233,17 @@ function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toL
 function clientCard(){
   const c=serverMeta&&serverMeta.client,has=!!(c&&c.version);
   const kvs=has?[[tr(T('클라 판','Client version')),esc(c.version)],[tr(T('판 호환','Compatible')),c.compatible?tr(T('예','Yes')):tr(T('아니오','No'))],['ABPS',c.abps?tr(T('있음 · 스폰 잠김','Present · spawns locked')):tr(T('없음','None'))],[tr(T('마지막 연결','Last hello')),esc(fmtAt(c.lastHello))]]:[];
-  return card(T('클라 플러그인 연결','Client plugin link'),has?`<div class="kv">${kvs.map(([k,v])=>`<div><b>${v}</b><small>${k}</small></div>`).join('')}</div>`:`<p class="muted small">${tr(T('아직 클라 플러그인이 연결된 적이 없습니다(이번 서버 실행 중). 게임 메뉴까지 가면 연결됩니다.','No client plugin has connected since the server started. It connects at the game menu.'))}</p>`,{icon:'⇄',right:has?pill(c.compatible?'✓ '+tr(T('연결됨','Linked')):'✕ '+tr(T('판 불일치','Version mismatch')),c.compatible?'good':'bad'):pill(tr(T('연결 없음','Not linked')))});
+  return card(T('클라 플러그인 연결','Client plugin link'),has?`<div class="kv">${kvs.map(([k,v])=>`<div><b>${v}</b><small>${k}</small></div>`).join('')}</div>`:`<p class="muted small">${tr(T('아직 게임 쪽 플러그인이 연결된 적이 없습니다(이번 서버 실행 중). 게임을 메인 메뉴까지 켜면 연결됩니다. 켰는데도 그대로면 게임 폴더 BepInEx/plugins/Gravity 설치를 확인하세요.','The in-game plugin has not connected since the server started. It connects when the game reaches the main menu. If it still does not, check BepInEx/plugins/Gravity in the game folder.'))}</p>`,{icon:'⇄',right:has?pill(c.compatible?'✓ '+tr(T('연결됨','Linked')):'✕ '+tr(T('판 불일치','Version mismatch')),c.compatible?'good':'bad'):pill(tr(T('연결 없음','Not linked')))});
+}
+/** 클라 플러그인 연결 상태: never=이번 서버 실행 중 한 번도 안 옴(게임을 아직 안 켰거나 미설치), mismatch=판 앞 두 자리가 다름, ok. */
+function clientLink(){const c=serverMeta&&serverMeta.client;return !c||!c.version?'never':c.compatible?'ok':'mismatch';}
+function clientLinkNotice(){
+  const st=clientLink();if(st==='ok')return '';
+  const c=serverMeta&&serverMeta.client,btn=` <button class="mini-btn" data-act="refreshRaid">${tr(T('다시 확인','Check again'))}</button>`;
+  const off=T(' 그동안 공장·미궁 PMC·스캐브·상한·근처 보충은 적용되지 않습니다.',' Until then Factory/Labyrinth PMCs, scavs, the bot cap and near-player refill are not applied.');
+  if(st==='never')return notice(T('게임 쪽 Gravity 플러그인이 아직 서버에 연결되지 않았습니다(서버를 켠 뒤로 한 번도). 게임을 메인 메뉴까지 켜면 자동으로 연결되고 이 안내는 사라집니다. 게임을 켰는데도 그대로면 게임 폴더의 BepInEx/plugins/Gravity 안에 Gravity.Client.dll과 Gravity.Shared.dll이 있는지 확인하세요(압축 파일의 BepInEx 폴더를 게임 폴더에 덮어쓰기).'+off.ko+btn,'The in-game Gravity plugin has not connected to this server yet (not once since the server started). Launch the game to the main menu and it connects by itself, then this notice goes away. If it stays after the game is running, check that BepInEx/plugins/Gravity in your game folder contains Gravity.Client.dll and Gravity.Shared.dll (copy the BepInEx folder from the zip into the game folder).'+off.en+btn),'warn');
+  const p={c:esc(c.version),s:esc(serverMeta.version||'?'),t:esc(fmtAt(c.lastHello))};
+  return notice(T(fmt('게임 쪽 Gravity 플러그인의 판이 서버 쪽과 다릅니다: 게임 쪽 {c} · 서버 쪽 {s} (마지막 연결 {t}). 압축 파일 하나의 BepInEx 폴더와 SPT 폴더를 둘 다 덮어쓴 뒤 서버와 게임을 다시 켜세요.',p)+off.ko+btn,fmt('The in-game Gravity plugin version differs from the server: game side {c} · server side {s} (last connected {t}). Copy both the BepInEx and SPT folders from the same zip, then restart the server and the game.',p)+off.en+btn),'warn');
 }
 function raidReportCard(){
   const refresh=`<button class="mini-btn" data-act="refreshRaid">${tr(T('새로고침','Refresh'))}</button>`;
@@ -2267,8 +2277,8 @@ function applyInfo(id,groups){
 }
 document.addEventListener('toggle',e=>{const d=e.target.dataset||{};if(d.sum!==undefined){e.target.open?sumOpen.add(d.sum):sumOpen.delete(d.sum);}if(d.ithow!==undefined)itHowOpen=e.target.open;if(d.applyInfo)writeLocal('gravity.applyInfo.'+d.applyInfo,e.target.open?'1':'0');if(d.navGroup!==undefined)writeLocal('gravity.nav.'+d.navGroup,e.target.open?'1':'0');if(d.fold)writeLocal('gravity.fold.'+d.fold,e.target.open?'1':'0');},true);
 function applyTable(){
-  const client=serverMeta?.client,ready=!!(client?.version&&client.compatible),off=spawnLocked()||!state.modules.spawn;
-  const ST={on:[T('적용 중','Applied'),'good'],client:ready?[T('적용 중','Applied'),'good']:[T('게임 플러그인 필요','Needs game plugin'),'warn'],restart:[T('켜고 끄기는 서버 재시작 후','On/off after server restart'),'gold'],off:[T('쓰이지 않음','Not used'),''],todo:[T('아직 없음','Not yet'),'']};
+  const link=clientLink(),ready=link==='ok',off=spawnLocked()||!state.modules.spawn;
+  const ST={on:[T('적용 중','Applied'),'good'],client:ready?[T('적용 중','Applied'),'good']:link==='never'?[T('게임 연결 대기','Waiting for the game'),'warn']:[T('플러그인 판 다름','Plugin version differs'),'bad'],restart:[T('켜고 끄기는 서버 재시작 후','On/off after server restart'),'gold'],off:[T('쓰이지 않음','Not used'),''],todo:[T('아직 없음','Not yet'),'']};
   const R=[
     [T('PMC가 나오는 방식','How PMCs appear'),'on',T('처음에 몇 명, 그 뒤 언제·몇 명씩 더 나오는지, 분대 크기와 진영','How many at the start, when and how many more arrive, squad size and side')],
     [T('스캐브가 나오는 방식','How scavs appear'),'client',T('처음 스캐브 수, 쉬는 시간, 줄어들면 다시 채우는 규칙','Starting scavs, quiet periods and how they are refilled')],
@@ -2281,7 +2291,7 @@ function applyTable(){
     [T('시즌 이벤트','Seasonal events'),'restart',T('할로윈·크리스마스 등. 등장 확률은 다음 판부터, 이벤트 켜고 끄기는 서버를 다시 켠 뒤','Halloween, Christmas and others. Chances apply next raid; turning events on/off needs a server restart')],
     [T('레이드 중 직접 넣어 보기','Spawning bots during a raid'),'todo',T('다음 판에서 추가 예정','Planned for a later version')]];
   const rows=R.map(([n,k,t])=>{const s=ST[off&&k!=='todo'?'off':k];return {n,s,t};}),count=rows.filter(r=>r.s[1]==='good'||r.s[1]==='gold').length,open=readLocal('gravity.applyInfo.spawn')==='1';
-  return `<details class="apply-info" data-apply-info="spawn" ${open?'open':''}><summary>${fmt(tr(T('Gravity가 지금 바꾸는 것 {n}가지','{n} things Gravity changes now')),{n:count})} <span class="muted">· ${tr(T('펼쳐 보기 ▾','Show ▾'))}</span></summary>${off?notice(T('스폰 관리가 꺼져 있거나 다른 스폰 모드가 맡고 있어 아래 항목은 쓰이지 않습니다.','Spawn management is off or another spawn mod is in charge, so nothing below is used.'),'warn'):''}<div class="tw"><table class="apply-table"><thead><tr><th>${tr(T('무엇을','What'))}</th><th>${tr(T('지금 상태','Status'))}</th><th>${tr(T('쉽게 말하면','In plain words'))}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(tr(r.n))}</b></td><td>${pill(tr(r.s[0]),r.s[1])}</td><td class="muted">${esc(tr(r.t))}</td></tr>`).join('')}</tbody></table></div>${ready?'':`<p class="small muted" style="margin:10px 2px 0">${esc(tr(T('"게임 플러그인 필요" 항목은 BepInEx 폴더의 Gravity 클라이언트가 게임에서 서버에 연결되면 자동으로 적용됩니다.','"Needs game plugin" items apply automatically once the Gravity client in BepInEx connects from the game.')))}</p>`}</details>`;
+  return `<details class="apply-info" data-apply-info="spawn" ${open?'open':''}><summary>${fmt(tr(T('Gravity가 지금 바꾸는 것 {n}가지','{n} things Gravity changes now')),{n:count})} <span class="muted">· ${tr(T('펼쳐 보기 ▾','Show ▾'))}</span></summary>${off?notice(T('스폰 관리가 꺼져 있거나 다른 스폰 모드가 맡고 있어 아래 항목은 쓰이지 않습니다.','Spawn management is off or another spawn mod is in charge, so nothing below is used.'),'warn'):''}<div class="tw"><table class="apply-table"><thead><tr><th>${tr(T('무엇을','What'))}</th><th>${tr(T('지금 상태','Status'))}</th><th>${tr(T('쉽게 말하면','In plain words'))}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(tr(r.n))}</b></td><td>${pill(tr(r.s[0]),r.s[1])}</td><td class="muted">${esc(tr(r.t))}</td></tr>`).join('')}</tbody></table></div>${ready?'':`<p class="small muted" style="margin:10px 2px 0">${esc(tr(link==='never'?T('"게임 연결 대기" 항목은 게임을 메인 메뉴까지 켜서 게임 쪽 Gravity 플러그인(BepInEx/plugins/Gravity)이 서버에 연결되면 자동으로 적용됩니다.','"Waiting for the game" items apply automatically once the game reaches the main menu and the in-game Gravity plugin (BepInEx/plugins/Gravity) connects.'):T('"플러그인 판 다름" 항목은 게임 쪽과 서버 쪽 Gravity를 같은 판으로 맞추면 적용됩니다.','"Plugin version differs" items apply once the game-side and server-side Gravity are the same version.')))}</p>`}</details>`;
 }
 function liveBanner(pg){
   if(serverErr)return notice(T('서버에 연결하지 못했습니다: ','Cannot reach the server: ')[lang]+serverErr,'warn');
@@ -2300,8 +2310,7 @@ function liveBanner(pg){
   if((pg==='raidpresets'||pg==='gearpresets'||pg==='presets'||pg==='spawn')&&serverMeta&&!libReady)h+=notice(T('내 프리셋 목록을 서버에서 읽지 못해 프리셋 저장을 막았습니다(기존 목록을 덮어쓰지 않도록). 페이지를 새로 고치세요. ','Could not load your presets from the server, so preset saving is blocked (to avoid overwriting them). Reload the page. ')[lang]+libLoadErr,'warn');
   if(pg==='events')h+=notice(T('이벤트 켜고 끄기·이벤트 장비·산타 사용·선물·겨울 옷은 서버를 다시 켜야 적용됩니다(SPT가 서버 시작 때 한 번 적용). 감염자·밤 컬티스트·산타 확률은 판마다 바로 적용됩니다.','Event on/off, event gear, Santa, gifts and winter outfits apply after a server restart (SPT applies events once at start). Infected, night cult and Santa chances apply every raid.'),'flat');
   if(pg==='spawn'||pg==='dashboard'||pg==='near'){
-    const c=serverMeta&&serverMeta.client,ok=!!(c&&c.version&&c.compatible);
-    if(!ok)h+=notice(T('클라 플러그인 없음(또는 판 다름): 공장·미궁 PMC·스캐브·상한·근처 보충이 꺼져 있습니다.','Client plugin missing (or version differs): Factory/Labyrinth PMCs, scavs, bot cap and near-player refill are off.'),'warn');
+    h+=clientLinkNotice();
     if(pg==='near')h+=notice(T('"기본: PMC / 스캐브"를 끄고 직접 고르기를 켜면 모든 자리가 직접 고른 종류로 나옵니다. 둘 다 끄면 기본을 씁니다.','With "Default" off and custom types on, every slot uses the custom types. If both are off, default is used.'),'flat');
     h+=applyTable();
   }
@@ -2380,6 +2389,13 @@ async function boot(){
   }catch(e){serverErr=String(e.message||e);}
   render();
   if(serverMeta)loadCatalog();
+  if(serverMeta&&typeof setInterval==='function')setInterval(pollClientLink,10000);
+}
+/** 클라가 아직 안 붙었을 때만 api/meta의 client 칸을 다시 읽는다. 연결 상태가 바뀐 때만 화면을 다시 그린다(편집 중 값은 건드리지 않음). */
+let clientPolling=false;
+async function pollClientLink(){
+  if(clientPolling||!serverMeta||clientLink()==='ok'||document.hidden)return;clientPolling=true;
+  try{const r=await fetch('api/meta');if(r.ok){const m=await r.json(),before=clientLink();if(m&&m.client){serverMeta.client=m.client;if(clientLink()!==before)rerender();}}}catch(_){}finally{clientPolling=false;}
 }
 async function saveToServer(){
   // 서버 없이 열린 화면은 실제 설정이 아니라 기본값을 들고 있다: 이 상태로 저장하면 서버 설정을 기본값으로 덮어쓴다.
