@@ -1217,9 +1217,11 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
       +slider(s+'startGroup.maxCount',T('시작 분대 최대 개수 (미적용)','Starting group count (not applied)'),'',{min:1,max:8,unit:'',adv:true})
       +slider(s+'maxRespawn.pmc',T('PMC 최대 리스폰 횟수 (미적용)','Max PMC respawns (not applied)'),'',{max:60,unit:'',adv:true})
       +slider(s+'maxRespawn.scav',T('스캐브 최대 리스폰 횟수 (미적용)','Max scav respawns (not applied)'),'',{max:200,step:5,unit:'',adv:true})
-      +sw(s+'allowPmcLabyrinth',T('미궁에도 PMC 웨이브','PMC waves on Labyrinth'),'')+sw(s+'allowScavLab',T('연구소에도 스캐브','Scavs on the Lab'),'')
+      +sw('spawn.allowPmcLabyrinth',T('미궁에도 PMC 스폰','PMCs on the Labyrinth'),T('끄면 미궁에는 시작·보충 PMC 모두 나오지 않습니다(게임 기본). 켜면 다른 맵처럼 Gravity PMC가 나옵니다. 미궁 탭에서도 바꿀 수 있습니다.','Off = no starting or refill PMCs on the Labyrinth (game default). On = Gravity PMCs like other maps. Also on the Labyrinth tab.'))+sw(s+'allowScavLab',T('연구소에도 스캐브','Scavs on the Lab'),'')
       +`<button class="mini-btn" data-nav="tiers">${tr(T('장비 티어 · 봇 레벨 기준','Gear tiers · bot level rules'))} →</button>`);
-  const controls=`<div class="grid g2">${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}</div>`;
+  const labPmc=mid==='labyrinth'?card(T('미궁 PMC','Labyrinth PMCs'),sw('spawn.allowPmcLabyrinth',T('미궁에도 PMC 스폰','PMCs on the Labyrinth'),T('게임 기본은 미궁에 PMC가 없습니다. 켜면 시작 PMC·보충 PMC가 다른 맵처럼 나옵니다(미궁은 PMC 구역이 없어 게임 스폰 지점을 씁니다).','The game has no PMCs on the Labyrinth by default. On = starting and refill PMCs like other maps (uses game spawn points, since the Labyrinth has no PMC zones).'))
+      +`<p class="small muted" style="margin:4px 0 0">${tr(state.spawn.allowPmcLabyrinth?T('지금: 미궁에 PMC가 나옵니다.','Now: PMCs spawn on the Labyrinth.'):T('지금: 미궁에 PMC가 나오지 않습니다(스캐브·보스만).','Now: no PMCs on the Labyrinth (scavs and bosses only).'))}</p>`):'';
+  const controls=`<div class="grid g2">${labPmc}${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}</div>`;
   return controlsOnly?controls:header+controls+'</div>';
 }};
 function mapCapControl(mid){const o=state.maps[mid],src=o.capOn?T('이 맵 값','this map'):state.spawn.botCap>0?T('모든 맵 공통 값','shared value'):T('맵 기본값','map default');
