@@ -84,6 +84,17 @@ public class SpawnRequestTests
         Assert.False(s.SeeLeader());
     }
 
+    [Fact]
+    public void 로딩준비와_활성화콜백이_겹쳐도_대원은_한번만_시작합니다()
+    {
+        var s = new SquadLifecycle();
+        Assert.True(s.SeeLeader());
+        Assert.True(s.StartSupports());
+        Assert.False(s.StartSupports());
+        Assert.True(s.SupportsStarted);
+        Assert.False(s.Terminate());
+        Assert.False(s.StartSupports());
+    }
     [Theory]
     [InlineData(24, 19, 4, 1)]
     [InlineData(24, 20, 4, 0)]

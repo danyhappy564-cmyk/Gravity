@@ -803,6 +803,29 @@ test('ABPS 감지 잠금이 저장된 스폰 모듈 값을 바꾸지 않고, 왼
   assert.equal(a.run('spawnOn()'), true);
   assert.equal(a.run("UI.mock.ko===undefined?u('mock'):u('mock')"), '9.9.9');
 });
-test('서버 판을 못 받아도 기본 버전 표시는 1.0.2입니다', () => {
-  assert.match(html, /mock:T\('1\.0\.2','1\.0\.2'\)/);
+test('서버 판을 못 받아도 기본 버전 표시는 1.1.0입니다', () => {
+  assert.match(html, /mock:T\('1\.1\.0','1\.1\.0'\)/);
+});
+
+test('타임라인 시작 인원 팝업도 최소·최대 짝을 검사합니다', () => {
+  const a=app();a.run("page='spawn';spawnTab='all';state.spawn.scav.startMode='count';openPop('scav',{clientX:20,clientY:20})");
+  const out=a.nodes.get('#tlpop').innerHTML;
+  assert.match(out, /data-p="spawn\.scav\.startMin"[^>]*data-pair="spawn\.scav\.startMax"/);
+  assert.match(out, /data-p="spawn\.scav\.startMax"[^>]*data-pair="spawn\.scav\.startMin"/);
+});
+test('역전된 시작 인원 견적도 서버의 최대 올림 보정을 따릅니다',()=>{
+  const a=app();a.run("state.spawn.scav.startMode='count';state.spawn.scav.startMin=10;state.spawn.scav.startMax=6;state.spawn.startMode='count';state.spawn.startPmcMin=10;state.spawn.startPmcMax=6");
+  assert.equal(a.run("startScavOf(mapById('bigmap'),cfgFor(mapById('bigmap')))"),10);
+  assert.equal(a.run("startPmcOf(mapById('bigmap'),cfgFor(mapById('bigmap')))"),10);
+});
+
+test('생성된 팝업 입력으로 최소를 올려도 최대를 넘지 않고 카드가 갱신됩니다',()=>{
+  const a=app();a.run("page='spawn';spawnTab='all';state.spawn.scav.startMode='count';openPop('scav',{clientX:20,clientY:20})");
+  const tag=a.nodes.get('#tlpop').innerHTML.match(/<input[^>]*data-p="spawn\.scav\.startMin"[^>]*>/)[0];
+  const dataset=Object.fromEntries([...tag.matchAll(/data-([a-z]+)="([^"]*)"/g)].map(m=>[m[1],m[2].replaceAll('&quot;','"')]));
+  a.run(`apply({dataset:${JSON.stringify(dataset)},value:'10',type:'range',min:0,max:40,step:1,style:{setProperty(){}}},true)`);
+  assert.equal(a.run('state.spawn.scav.startMin'),6);
+  assert.equal(a.run('state.spawn.scav.startMax'),6);
+  assert.equal(a.run("startScavOf(mapById('bigmap'),cfgFor(mapById('bigmap')))"),6);
+  assert.match(a.nodes.get('#main').innerHTML,/value="6"[^>]*data-p="spawn\.scav\.startMin"/);
 });

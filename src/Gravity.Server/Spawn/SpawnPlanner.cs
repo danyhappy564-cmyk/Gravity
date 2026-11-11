@@ -99,7 +99,8 @@ public static class SpawnPlanner
         }
 
         // 3) 스캐브(무한 보충 방식이 아닐 때 따로 계획)
-        PlanScavs();
+        if (map.Id != "laboratory" || s.AllowScavLab) PlanScavs();
+        else scav.Clear(); // 인원 방식도 연구소 스캐브 허용 스위치를 우회하지 않습니다.
 
         // 4) 스캐브 레이드 시작 지연: 이른 항목 빼고 시각을 당긴다
         if (simStartSec > 0)
@@ -153,11 +154,11 @@ public static class SpawnPlanner
             var initial = !(ms.StartScav && s.Scav.StartOn) ? 0
                 : s.Scav.StartMode == "count" ? rnd.Next(Math.Min(s.Scav.StartMin, s.Scav.StartMax), Math.Max(s.Scav.StartMin, s.Scav.StartMax) + 1)
                 : (int)R(map.BaseScav * s.Scav.StartPct / 100);
-            var slots = Math.Min(Math.Max(0, firstWindow), initial);
-            for (var i = 0; i < slots; i++)
+            // 시작 인원은 첫 활동 구간에 흩뿌리지 않고 설정한 지연 시각에 한 번 준비합니다.
+            if (initial > 0)
             {
-                var n = initial / slots + (i < initial % slots ? 1 : 0);
-                scav.Add(new ScavWave((int)R(times[i] * 60), (int)R(times[i] * 60) + 30, n, n, true));
+                var sec = (int)R(startMin * 60);
+                scav.Add(new ScavWave(sec, sec, initial, initial, true));
             }
             if (ms.ScavStyle != "start" && (ms.Style != "infinite" || ms.ScavStyle != "waves"))
                 for (var i = firstWindow; i < times.Count; i++) scav.Add(Wave(times[i], Math.Max(1, (int)R(per))));

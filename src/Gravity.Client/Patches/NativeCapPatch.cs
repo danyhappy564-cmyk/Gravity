@@ -197,18 +197,20 @@ namespace Gravity.Client.Patches
             typeof(BotBossSpawn).GetMethod(nameof(BotBossSpawn.SpawnBossSupports), BindingFlags.Instance | BindingFlags.Public)!;
 
         [PatchPrefix]
-        private static bool Prefix(BossLocationSpawn wave, ref Task __result)
+        private static bool Prefix(BossLocationSpawn wave, ref Task __result, out bool __state)
         {
+            __state = false;
             var c = RaidContext.Current;
             if (c == null || wave == null || !c.WatchOf.TryGetValue(wave, out var w)) return true;
-            if (w.Life.StartSupports()) return true;
+            if (w.Life.StartSupports()) { __state = true; return true; }
             __result = Task.CompletedTask;
             return false;
         }
 
         [PatchPostfix]
-        private static void Postfix(BossLocationSpawn wave, Task __result)
+        private static void Postfix(BossLocationSpawn wave, Task __result, bool __state)
         {
+            if (!__state) return; // 중복 호출을 건너뛴 Task로 진행 중인 예약을 풀지 않습니다.
             var c = RaidContext.Current;
             if (c == null || wave == null || !c.WatchOf.TryGetValue(wave, out var w) || w.EscortTask) return;
             Finish(c, w, __result);
@@ -279,6 +281,13 @@ namespace Gravity.Client.Patches
                         Log.ErrorOnce("SpawnBossMain.Watch", ex);
                     }
                     inner?.Invoke(owner!);
+                    // 로딩 중에는 분대장 Active 이벤트가 오지 않습니다. 몸체가 준비되면 같은 네이티브 대원 경로를 한 번 시작합니다.
+                    if (owner != null && !c.Started && ReferenceEquals(RaidContext.Current, c) && !w.Life.Terminal)
+                    {
+                        var prepare = w.PrepareStarts;
+                        w.PrepareStarts = null;
+                        prepare?.Invoke();
+                    }
                 };
             }
             catch (Exception ex)
@@ -327,11 +336,16 @@ namespace Gravity.Client.Patches
                 }
                 state.Callback = true;
                 c.Requests.Register(w.Wave, owner.Profile.Id);
+                c.MarkStartBody(w.Wave, owner.Profile.Id);
                 if (leader && !c.LeaderOf.TryGetValue(owner, out _)) c.LeaderOf.Add(owner, w);
                 Action<EBotState>? onState = null;
                 onState = value =>
                 {
-                    if (value == EBotState.Active) owner.OnBotStateChange -= onState;
+                    if (value == EBotState.Active)
+                    {
+                        owner.OnBotStateChange -= onState;
+                        ReportActive(c, w);
+                    }
                     else if (value == EBotState.ActiveFail)
                     {
                         owner.OnBotStateChange -= onState;
@@ -345,11 +359,19 @@ namespace Gravity.Client.Patches
                     if (leader) c.SquadFailed(w, "활성화 실패");
                 }
                 else if (owner.BotState != EBotState.Active) owner.OnBotStateChange += onState;
+                else ReportActive(c, w);
                 if (WaveMark.IsExtraSpecial(w.Wave.TriggerId, w.Wave.TriggerName)) c.ExtraSpecialProfiles.Add(owner.Profile.Id);
                 inner?.Invoke(owner);
                 if (w.Wave.EscortCount == 0 && leader) c.FinishSubmission(w);
             };
             return true;
+        }
+
+        private static void ReportActive(RaidContext c, RaidContext.SquadWatch w)
+        {
+            if (Log.Level != "verbose" || !w.Wave.BossType.IsPmcBot()) return;
+            Log.Verbose($"{c.S.MapId} PMC 활성화 완료: {w.Wave.BossType}, {w.Wave.Time:0}초 웨이브, "
+                + (c.Started ? $"경과 {c.Elapsed:0.00}초" : "시작 전"));
         }
 
         [PatchPostfix]

@@ -53,6 +53,9 @@ namespace Gravity.Client
             else
             {
                 Enable(new CapPatch());
+                Enable(new ScavWaveSettingsPatch());
+                Enable(new StartupPmcPatch());
+                Enable(new StartupSquadPatch());
                 Enable(new ProfileSanitizerPatch());
                 // PMC 지점 고르기(방식 A): 구역 0개 맵 보충·구역 가중 순서·지점 고르기·동시 그룹 제한·대기열 만료
                 Enable(new PmcZonesPatch());

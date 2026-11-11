@@ -23,6 +23,24 @@ namespace Gravity.Client
         private static float _pendingStart;
 
         public ClientRaidSettings S { get; }
+        public StartupPreparation Startup { get; }
+        internal Action? ResumeSpawnTimers;
+
+        internal bool IsStartupWave(BossLocationSpawn wave)
+        {
+            if (!Gravity.Shared.WaveMark.Is(wave.TriggerId, wave.TriggerName)) return false;
+            int colon = wave.TriggerId.LastIndexOf(':');
+            return colon >= 0 && int.TryParse(wave.TriggerId.Substring(colon + 1), out var index)
+                && Startup.ContainsWave(index);
+        }
+
+        internal void MarkStartBody(BossLocationSpawn wave, string profileId)
+        {
+            if (!Gravity.Shared.WaveMark.Is(wave.TriggerId, wave.TriggerName)) return;
+            var id = wave.TriggerId;
+            int colon = id.LastIndexOf(':');
+            if (colon >= 0 && int.TryParse(id.Substring(colon + 1), out var index)) Startup.Mark(index, profileId);
+        }
 
         /// <summary>레이드 시작 시각(Time.time). 만들 때 한 번, OnGameStarted 때 다시 맞춘다.</summary>
         public float StartTime { get; internal set; }
@@ -242,6 +260,7 @@ namespace Gravity.Client
             public bool SupportsStarted => Life.SupportsStarted;
             public global::BotCreationData? LeaderData;
             public bool EscortTask;
+            public Action? PrepareStarts;
             public bool Submitted;
             public int Requested;
             public SquadWatch(BossLocationSpawn wave) => Wave = wave;
@@ -366,6 +385,7 @@ namespace Gravity.Client
         private RaidContext(ClientRaidSettings s, float startTime)
         {
             S = s;
+            Startup = new StartupPreparation(s.PlannedGroups, s.StartGroups);
             StartTime = startTime;
             Rng = new System.Random(s.Seed);
             Refill = new List<RefillGroup>(s.RefillGroups ?? (IReadOnlyList<RefillGroup>)Array.Empty<RefillGroup>());
@@ -440,6 +460,9 @@ namespace Gravity.Client
                 {
                     _current.StartTime = Time.time;
                     _current.Started = true;
+                    var resume = _current.ResumeSpawnTimers;
+                    _current.ResumeSpawnTimers = null;
+                    resume?.Invoke();
                 }
             }
         }
@@ -456,6 +479,8 @@ namespace Gravity.Client
                 _pending = null;
             }
             if (c == null) return;
+            c.ResumeSpawnTimers?.Invoke();
+            c.ResumeSpawnTimers = null;
             ClientLink.SendReport(new RaidReport(
                 c.S.MapId, c.S.Seed,
                 new Dictionary<string, int>(c.Spawned), new Dictionary<string, int>(c.Dropped),

@@ -152,6 +152,8 @@ namespace Gravity.Shared
         /// <summary>스캐브에만 걸리는 판정. 순서: 휴식 창, 스캐브 하드 스톱, 대기 수, 플레이어당 한도, softCap.</summary>
         private ScavBlock ScavGate(float raidElapsed, int pending, int spawnedPerPlayer, int aliveScavs)
         {
+            // 시작 묶음과 같은 틱에 보충 1명을 더 넣지 않습니다. 활동 창·PMC 보충 시계는 그대로 둡니다.
+            if (raidElapsed < (_s.FirstRefillSec ?? _s.StartDelaySec)) return ScavBlock.Interval;
             if (_pmcGate && raidElapsed < _scavStart) return ScavBlock.Interval; // PMC 시계가 먼저 열려도 스캐브는 자기 시작 지연까지
             if (_s.Style != "infinite" && !_active) return ScavBlock.Quiet;
             if (raidElapsed >= _hardStop) return ScavBlock.HardStop;

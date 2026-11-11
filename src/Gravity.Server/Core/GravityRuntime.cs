@@ -141,7 +141,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     {
         var plan = SpawnPlanner.Plan(cfg, info, raidSec, simStart, s, clientAliveCap: hasClient);
         // 스캐브: 클라 플러그인이 없으면 바닐라 그대로(웨이브 밖 자동 스폰이 있어 웨이브만 바꿔서는 통제가 안 된다).
-        // 클라가 있으면 시작 스캐브(첫 활동 구간)만 서버가 넣고 이후는 클라의 ScavDirector가 맡는다.
+        // 클라가 있으면 시작 스캐브(설정한 지연 시각의 묶음)만 서버가 넣고 이후는 클라의 ScavDirector가 맡는다.
         plan = plan with { ScavWaves = hasClient && cfg.MapFor(id).StartScav ? plan.ScavWaves.Where(w => w.IsStart).ToList() : [] };
         // 공장·미궁은 PMC 구역이 없어 클라가 지점을 골라야 한다: 클라가 없으면(미궁은 allowPmcLabyrinth 꺼짐도) Gravity PMC를 넣지 않는다.
         string? pmcWhy = null;

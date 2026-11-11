@@ -17,9 +17,9 @@
 
 ## 변경 이력
 
-전체 변경 이력 5개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). 릴리즈별 요약은 [Releases](../../releases).
+전체 변경 이력 6개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). 릴리즈별 요약은 [Releases](../../releases).
 
-# Gravity 1.0.2
+# Gravity 1.1.0
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-후원하기-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -52,6 +52,8 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 1. SPT 4.1이 설치된 폴더에 압축을 그대로 풉니다. `BepInEx\plugins\Gravity`와 `SPT_Runtime\user\mods\Gravity`가 생기면 맞습니다.
 2. 서버를 켜고 브라우저에서 `https://127.0.0.1:6969/gravity/`를 엽니다(SPT 런처의 모드 목록에서도 열 수 있습니다).
 3. 설정을 바꾸고 **저장**을 누르면 다음 레이드부터 적용됩니다.
+
+서버와 클라이언트는 모두 **1.1.x**로 맞추십시오. 시작 스캐브는 설정한 지연 시각에 함께 준비합니다. 지연 0분이면 로딩 중에 준비하며, 기본 지연은 4분입니다. 시작 PMC 분대는 로딩 중에 대원까지 준비하며, 추가 대기는 최대 60초입니다. 맵 상한·그룹 제한·지점 부족으로 준비하지 못한 인원은 기존 대기열로 진행하므로 생성이 늦어질 수 있습니다.
 
 ## 다른 모드와 함께 쓸 때
 

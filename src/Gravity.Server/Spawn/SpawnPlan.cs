@@ -5,7 +5,7 @@ public sealed record MapInfo(string Id, int BasePmc, int BaseScav, int DbRaidSec
 
 public sealed record PmcGroup(int TimeSec, bool Usec, int Size, string Difficulty, bool IsStart);
 
-/// <summary>IsStart: 첫 활동 구간(첫 휴식 전)에 속한 웨이브 = 클라가 있을 때 서버가 넣는 "시작 스캐브".</summary>
+/// <summary>IsStart: 설정한 시작 지연 시각에 함께 준비하는 시작 스캐브 묶음입니다.</summary>
 public sealed record ScavWave(int TimeMinSec, int TimeMaxSec, int SlotsMin, int SlotsMax, bool IsStart = false);
 
 public sealed record SpawnPlan(

@@ -64,7 +64,8 @@ public static class ClientSettingsBuilder
             s.Protect.On, s.Protect.Sec, s.Protect.Radius,
             s.Placement, s.HotspotShare / 100, weights, s.AllowPmcLabyrinth,
             new GroupCapDto(s.GroupCap.On, s.GroupCap.Scope, s.GroupCap.Over, rules),
-            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart, ms.ScavStyle),
+            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart, ms.ScavStyle,
+                plan.ScavWaves.Any(w => w.IsStart && w.SlotsMax > 0) ? scavStart + Math.Max(2, sc.Refill) : scavStart, plan.ScavWaves.Where(w => w.IsStart).Sum(w => w.SlotsMax)),
             // 좁은 맵(공장·미궁)은 ORBIT 수면 거리 밖 지점이 없어 근처 보충이 전부 버려진다(11-09 공장 판 noPoint 5) → 거리 보정 안 함.
             inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
             cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.DiagOrDefault.Log, scavWeights,

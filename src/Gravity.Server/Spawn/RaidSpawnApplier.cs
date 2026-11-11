@@ -62,13 +62,33 @@ public static class RaidSpawnApplier
         var manageScavs = hasClient;
         var waves = (loc.Waves ?? []).Where(w => !manageScavs
             || (w.WildSpawnType != WildSpawnType.assault && (s.Scav.StartMarksman || w.WildSpawnType != WildSpawnType.marksman))).ToList();
+        var startZones = scavZones.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var startIndex = 0;
         foreach (var w in plan.ScavWaves)
-            waves.Add(new Wave
+        {
+            if (manageScavs && w.IsStart)
+            {
+                // 일반 웨이브는 쉼표 목록을 해석하지 않습니다. 한 명씩 허용 구역에 분산하고 인원을 표식에 보존합니다.
+                // 지연 0은 게임의 BeforeGameStarted 경로에서 프로필·모델을 준비하게 합니다.
+                var time = w.TimeMinSec == 0 ? -1 : w.TimeMinSec;
+                for (var n = 0; n < w.SlotsMax; n++)
+                {
+                    var zone = startZones.Length == 0 ? "" : startZones[startIndex++ % startZones.Length];
+                    waves.Add(new Wave
+                    {
+                        BotPreset = "normal", BotSide = "Savage", WildSpawnType = WildSpawnType.assault, IsPlayers = false,
+                        KeepZoneOnSpawn = false, SpawnPoints = Gravity.Shared.ScavWaveMark.Encode(1, 1, zone), SlotsMin = 1, SlotsMax = 1,
+                        TimeMin = time, TimeMax = time, SpawnMode = [.. Modes], SptId = "gravity"
+                    });
+                }
+            }
+            else waves.Add(new Wave
             {
                 BotPreset = "normal", BotSide = "Savage", WildSpawnType = WildSpawnType.assault, IsPlayers = false,
                 KeepZoneOnSpawn = false, SpawnPoints = scavZones, SlotsMin = w.SlotsMin, SlotsMax = w.SlotsMax,
                 TimeMin = w.TimeMinSec, TimeMax = w.TimeMaxSec, SpawnMode = [.. Modes], SptId = "gravity"
             });
+        }
         if (manageScavs) for (var i = 0; i < waves.Count; i++) waves[i].Number = i;
 
         // BotMax는 웨이브 밖 자동 스폰의 목표치라 건드리지 않는다(4.1 클라 전체 상한은 클라 설정 — 2-2에서 클라 플러그인으로).

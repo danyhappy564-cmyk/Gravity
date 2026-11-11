@@ -240,7 +240,7 @@ public class ClientSettingsTests
         var mine = loc.Waves.Where(w => w.WildSpawnType == WildSpawnType.assault && w.SptId == "gravity").ToList();
         Assert.NotEmpty(mine);
         Assert.All(rt.Last!.Plan!.ScavWaves, w => Assert.True(w.IsStart));
-        Assert.Equal(rt.Last.Plan.ScavWaves.Count, mine.Count);
+        Assert.Equal(rt.Last.Plan.ScavWaves.Sum(w => w.SlotsMax), mine.Sum(w => w.SlotsMax));
         Assert.Contains(loc.Waves, w => w.WildSpawnType == WildSpawnType.marksman);
     }
 
@@ -291,10 +291,11 @@ public class ClientSettingsTests
     public void Hello_ReportsCompatibilityAndLock()
     {
         var (rt, _) = Runtime();
-        var ok = rt.OnHello("s1", new HelloRequest("1.0.7", false));
+        var ok = rt.OnHello("s1", new HelloRequest("1.1.7", false));
         Assert.True(ok.Compatible);
         Assert.False(ok.SpawnLocked);
-        Assert.Equal("1.0.7", rt.Sessions.LastVersion);
+        Assert.Equal("1.1.7", rt.Sessions.LastVersion);
+        Assert.False(rt.OnHello("old-start-protocol", new HelloRequest("1.0.2", false)).Compatible);
         var bad = rt.OnHello("s2", new HelloRequest("0.2.0", false));
         Assert.False(bad.Compatible);
         Assert.True(rt.OnHello("s3", new HelloRequest("0.2.0", true)).SpawnLocked);

@@ -125,7 +125,7 @@ namespace Gravity.Shared
         public bool Terminal { get; private set; }
 
         public bool SeeLeader() { lock (_gate) { if (Terminal) return false; LeaderSeen = true; return true; } }
-        public bool StartSupports() { lock (_gate) { if (Terminal) return false; SupportsStarted = true; return true; } }
+        public bool StartSupports() { lock (_gate) { if (Terminal || SupportsStarted) return false; SupportsStarted = true; return true; } }
         public bool Terminate() { lock (_gate) { Terminal = true; return !SupportsStarted; } }
     }
 
