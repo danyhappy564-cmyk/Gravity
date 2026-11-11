@@ -181,6 +181,8 @@ tr:last-child td { border-bottom: 0; }
 
 /* 자주 묻는 질문 */
 .faq { display: grid; gap: 10px; }
+.faq-group { margin: 24px 0 2px; color: var(--blue); font-size: 17px; font-weight: 700; }
+.faq-group:first-child { margin-top: 0; }
 .faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0 18px; }
 .faq summary { cursor: pointer; padding: 16px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
 .faq summary::-webkit-details-marker { display: none; }

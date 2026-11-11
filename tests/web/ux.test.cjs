@@ -803,8 +803,8 @@ test('ABPS 감지 잠금이 저장된 스폰 모듈 값을 바꾸지 않고, 왼
   assert.equal(a.run('spawnOn()'), true);
   assert.equal(a.run("UI.mock.ko===undefined?u('mock'):u('mock')"), '9.9.9');
 });
-test('서버 판을 못 받아도 기본 버전 표시는 1.1.0입니다', () => {
-  assert.match(html, /mock:T\('1\.1\.0','1\.1\.0'\)/);
+test('서버 판을 못 받아도 기본 버전 표시는 1.0.3입니다', () => {
+  assert.match(html, /mock:T\('1\.0\.3','1\.0\.3'\)/);
 });
 
 test('타임라인 시작 인원 팝업도 최소·최대 짝을 검사합니다', () => {

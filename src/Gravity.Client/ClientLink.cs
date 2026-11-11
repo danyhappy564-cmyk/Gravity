@@ -84,7 +84,7 @@ namespace Gravity.Client
                 Log.Warn("서버 연결 실패: hello 응답이 비었음(서버 Gravity 0.2가 없거나 꺼짐)");
                 return null;
             }
-            return r;
+            return GravityVersion.ValidateHello(r);
         }
 
         private static ClientRaidSettings? ParseRaid(string json)
