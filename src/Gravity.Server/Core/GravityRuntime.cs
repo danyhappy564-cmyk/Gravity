@@ -225,13 +225,13 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     }
 
     /// <summary>개발 페이지 한 줄: PMC·스캐브 계획 수와 나올 보스·특수 봇(확률 굴림).</summary>
-    public sealed record SimRow(int Pmc, int Scav, string[] Bosses, string[] Specials, string Layout);
+    public sealed record SimRow(int Pmc, int Scav, string[] Bosses, string[] Specials, string Layout, string[]? Conditional = null);
 
     /// <summary>시뮬레이션 결과: 줄들과, 실제 레이드라면 건너뛸 이유(없으면 null).</summary>
     public sealed record SimResult(List<SimRow> Rows, string? Skip, bool Client);
 
     /// <summary>
-    /// 이 맵 DB 복제본에 지금 설정을 n번(다른 시드) 적용해 본다(바깥 상태 안 바꿈, 판정 60). 보스·특수 봇은 항목 확률만 굴린다.
+    /// 이 맵 DB 복제본에 지금 설정을 n번(다른 시드) 적용해 본다(바깥 상태 안 바꿈, 판정 60). 일반 보스·특수 봇은 항목 확률을 굴리고, 이벤트 조건부 항목은 별도 후보로만 표시한다.
     /// 스캐브는 서버 계획 웨이브 인원(최대) + 클라가 있으면 보충 한도(소프트 캡). 맵을 못 찾으면 null.
     /// </summary>
     public SimResult? Simulate(string mapId, int n, int seed0)
@@ -262,21 +262,38 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     {
         var bosses = new List<string>();
         var specials = new List<string>();
+        var conditional = new List<string>();
         foreach (var e in loc.BossLocationSpawn ?? [])
         {
             if (e.BossName is not { } bn || MapCatalog.IsPmc(e)) continue;
+            // 이벤트 발동은 계산하지 않습니다. 발동 조건이 붙은100%를 매 레이드 출현으로 세지 않습니다.
+            if (!string.IsNullOrWhiteSpace(e.TriggerName) && !e.TriggerName.Trim().Equals("none", StringComparison.OrdinalIgnoreCase))
+            {
+                if ((e.BossChance ?? 0) > 0) conditional.Add(SimRoleName(bn));
+                continue;
+            }
             if (rnd.NextDouble() * 100 >= (e.BossChance ?? 0)) continue;
             if (RaidSpawnApplier.BossRoleToId.TryGetValue(bn, out var bid)) bosses.Add(bid);
             else if (ConfigModel.SpecialRoles.FirstOrDefault(kv => kv.Value == bn).Key is { } sid) specials.Add(sid);
             else if (Gravity.Factions.FactionRaid.RuafRoles.Contains(bn)) specials.Add("ruaf");
-            else if (Gravity.Factions.FactionRaid.BlackDivRoles.Contains(bn)) specials.Add("blackdiv");
+            else if (Gravity.Factions.FactionRaid.BlackDivRoles.Contains(bn)) specials.Add(bn.Equals("bossWedge", StringComparison.OrdinalIgnoreCase) ? "wedge" : "blackdiv");
             else specials.Add(bn);
         }
         // 클라 스캐브 관리 조건은 ClientSettingsBuilder와 같다(연구소는 allowScavLab일 때만, 방식과 상관없이).
         var scavManaged = hasClient && (id != "laboratory" || cfg.Spawn.AllowScavLab);
         var scav = b.Plan.ScavWaves.Sum(w => w.SlotsMax)
             + (scavManaged && cfg.MapFor(id).ScavStyle != "start" ? cfg.SpawnFor(id).Scav.SoftCap : 0);
-        return new SimRow(b.Plan.PmcTotal, scav, bosses.Distinct().ToArray(), specials.Distinct().ToArray(), layout);
+        return new SimRow(b.Plan.PmcTotal, scav, bosses.Distinct().ToArray(), specials.Distinct().ToArray(), layout, conditional.Distinct().ToArray());
+    }
+
+    private static string SimRoleName(string role)
+    {
+        if (RaidSpawnApplier.BossRoleToId.TryGetValue(role, out var boss)) return boss;
+        var special = ConfigModel.SpecialRoles.FirstOrDefault(kv => kv.Value == role).Key;
+        if (special is not null) return special;
+        if (Gravity.Factions.FactionRaid.RuafRoles.Contains(role)) return "ruaf";
+        if (Gravity.Factions.FactionRaid.BlackDivRoles.Contains(role)) return role.Equals("bossWedge", StringComparison.OrdinalIgnoreCase) ? "wedge" : "blackdiv";
+        return role;
     }
 
     /// <summary>개발 페이지 "웨이브 표": DB 복제본에 한 번 적용한 계획과 BossLocationSpawn 항목(바깥 상태 안 바꿈).</summary>

@@ -829,3 +829,25 @@ test('생성된 팝업 입력으로 최소를 올려도 최대를 넘지 않고 
   assert.equal(a.run("startScavOf(mapById('bigmap'),cfgFor(mapById('bigmap')))"),6);
   assert.match(a.nodes.get('#main').innerHTML,/value="6"[^>]*data-p="spawn\.scav\.startMin"/);
 });
+test('미리 굴리기에서 조건부 후보와 일반 등장을 나누고 웨지 이름을 구별합니다', async()=>{
+  const urls=[];
+  const a=app({fetch:async url=>{urls.push(url);return {json:async()=>({client:true,rows:[{pmc:1,scav:2,bosses:[],specials:['blackdiv'],conditional:['blackdiv','ISBBossCommander','wedge','killa']}]})}}});
+  a.run("serverMeta={version:'1.0.3',detect:{blackDiv:true}};page='dev';devMap='woods'");
+  a.click({act:'devSim'});
+  await new Promise(setImmediate);
+  assert.deepEqual(urls,['api/dev/sim?map=woods&n=10']);
+  const row=JSON.parse(a.run('JSON.stringify(simRows[0])'));
+  assert.deepEqual(row.sp,['블랙 디비전']);
+  assert.deepEqual(row.c,['블랙 디비전','ISBBossCommander','웨지','킬라']);
+  const view=a.run('P.dev.render()');
+  assert.match(view,/조건부 이벤트 후보/);
+  assert.match(view,/서버에 저장된 설정/);
+  assert.doesNotMatch(view,/블랙 디비전 · 웨지/);
+});
+
+test('미리 굴리기 구형 응답은 조건부 목록 없이도 표시합니다', async()=>{
+  const a=app({fetch:async()=>({json:async()=>({client:true,rows:[{pmc:1,scav:2,bosses:[],specials:[]}]})})});
+  a.run("serverMeta={version:'1.0.3'};page='dev'");a.click({act:'devSim'});await new Promise(setImmediate);
+  assert.deepEqual(JSON.parse(a.run('JSON.stringify(simRows[0].c)')),[]);
+  assert.match(a.run('P.dev.render()'),/조건부 이벤트 후보/);
+});
