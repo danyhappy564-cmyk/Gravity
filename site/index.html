@@ -55,7 +55,7 @@
   <section class="hero wrap" id="top" aria-labelledby="hero-title">
     <div class="hero-grid">
       <div>
-        <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.0.3 · SPT 4.1</span></p>
+        <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.0.4 · SPT 4.1</span></p>
         <h1 id="hero-title">Gravity<span>.</span></h1>
         <p class="hero-lead"><span class="ko">레이드에 <b>누가, 언제, 어디서, 무엇을 들고</b> 나오는지 한 곳에서 정합니다.</span><span class="en" lang="en">Decide <b>who</b> shows up in your raids, <b>when, where, and with what gear</b>, all in one place.</span></p>
         <p class="hero-context"><span class="ko">서버와 클라이언트로 이루어진 모드입니다. 게임 서버가 켜져 있을 때 브라우저로 여는 웹 화면에서 모든 설정을 하고, 저장하면 다음 레이드부터 적용됩니다. 설정 파일을 직접 열어 고칠 필요가 없습니다.</span><span class="en" lang="en">A server and client mod. Everything is set on a web page you open in your browser while the game server runs; save, and it applies from the next raid. No config files to edit by hand.</span></p>
@@ -417,12 +417,12 @@
         <h3><small><span class="ko">장비 프리셋</span><span class="en" lang="en">Loadout presets</span></small><span class="ko">두 가지가 들어 있습니다</span><span class="en" lang="en">Two included</span></h3>
         <ul class="ko">
           <li><b>Gravity 자동</b>(기본) — 설치된 바닐라·모드 아이템으로 Gravity가 직접 깎은 구성입니다. 모드를 새로 깔면 그 아이템도 티어에 들어옵니다.</li>
-          <li><b>Realistic and Extended PMC Loadouts</b> — mip01님의 APBS 에드온 프리셋을 Gravity 형식으로 옮긴 것입니다. 원작 목록에 있는 무기·방어구만 나오고 모드 아이템은 쓰지 않습니다.</li>
+          <li><b>Realistic and Extended PMC Loadouts</b> — R_F의 Realistic Live-like 1.0.2 저장본을 사용합니다. 7티어·33개 표와 봇별 설정을 함께 적용하며, 모드 아이템은 쓰지 않습니다.</li>
           <li>장비 프리셋에는 T1~T7 값, 티어 편집기 표, 봇별 장비·무기 구성·모드 아이템 설정이 함께 들어갑니다.</li>
         </ul>
         <ul class="en" lang="en">
           <li><b>Gravity auto</b> (default) — built by Gravity from your installed vanilla and mod items. Install a new mod and its items join the tiers.</li>
-          <li><b>Realistic and Extended PMC Loadouts</b> — mip01's APBS add-on preset, carried over in Gravity's format. Only weapons and armor in the original list appear; no mod items.</li>
+          <li><b>Realistic and Extended PMC Loadouts</b> — R_F’s saved Realistic Live-like 1.0.2 setup, with 7 tiers, 33 tables and bot-role settings; no mod items.</li>
           <li>A loadout preset holds T1–T7 values, tier editor tables, per-bot gear, weapon build and mod item settings together.</li>
         </ul>
       </div>
@@ -508,12 +508,12 @@
       <details id="faq-save"><summary><span class="ko">설정을 바꿨는데 지금 레이드에서는 그대로입니다.</span><span class="en" lang="en">Why did a setting not change my current raid?</span></summary>
         <p><span class="ko">웹 화면에서 값을 바꾼 뒤 <b>저장</b>을 누르십시오. 저장한 값은 <b>다음 레이드부터</b> 적용됩니다. 레이드가 시작될 때 게임이 서버에서 설정을 받아 가므로, 진행 중인 판의 봇 구성을 즉시 다시 만드는 기능은 아닙니다.</span><span class="en" lang="en">Change the value and press <b>Save</b>. Saved settings apply from the <b>next raid</b>. The game fetches settings when a raid starts; it does not rebuild the current raid’s bot population immediately.</span></p></details>
       <details id="faq-map-override"><summary><span class="ko">타임라인에서 바꾼 값과 아래 설정이 다른 것 같습니다.</span><span class="en" lang="en">Why do the timeline and settings below seem different?</span></summary>
-        <p><span class="ko">먼저 <b>공통 / 이 맵만</b> 중 어느 쪽을 편집하는지 확인하십시오. 특정 맵만 바꾸려면 해당 카드의 <b>이 맵만(This map only)</b>을 켜고 편집한 뒤 저장합니다. 프리셋을 다시 선택하면 그 프리셋 값이 들어옵니다. 1.0.3에서는 시작 인원 팝업의 최소·최대 역전과 예상 인원 불일치도 수정했습니다.</span><span class="en" lang="en">Check whether you are editing <b>Common</b> or <b>This map only</b>. For a map-specific change, enable <b>This map only</b> on that card, edit it and save. Selecting a preset again loads its values. Version 1.0.3 also fixes reversed minimum/maximum values in the starting-count popup and the resulting estimate mismatch.</span></p></details>
+        <p><span class="ko">1.0.4의 미리보기는 <b>PMC 설정 / 스캐브 설정 → 기본 수정 / 자세한 수정</b>에서 스폰 설정을 고칠 수 있습니다. 맵별 도구에는 관련 항목만 표시하며, 전체 공통 설정은 <b>모든 맵(공통)</b>에서 분류를 눌러 엽니다. 공통 카드를 처음 수정하면 해당 카드만 맵 설정으로 전환되고, 다른 카드는 유지됩니다. 여러 맵을 고르기만 해서는 값이 바뀌지 않으며, 이후 고친 필드만 따라갑니다. 전체 복사는 변경·유지 목록을 검토한 뒤 적용합니다.</span><span class="en" lang="en">In 1.0.4, open <b>PMC settings / Scav settings → Basic / Details</b> in the preview. Map tools show relevant controls; expand categories under <b>All maps (shared)</b> for global settings. Editing an inherited card switches that card to a map override and preserves other cards. Selecting maps changes no values; subsequent edited fields propagate. Full copies show changed and preserved values before applying.</span></p></details>
       <details id="faq-reset"><summary><span class="ko">전체 설정을 지우지 않고 슬라이더 하나만 초기화할 수 있나요?</span><span class="en" lang="en">Can I reset one slider without resetting everything?</span></summary>
         <p><span class="ko">됩니다. 슬라이더 옆의 <b>되돌리기 화살표</b>로 그 항목의 기본값을 불러온 뒤 저장하십시오. 프리셋 재선택과 전체 초기화는 더 넓은 범위의 값을 바꾸므로 구분해서 사용합니다.</span><span class="en" lang="en">Yes. Use the <b>reset arrow</b> beside the slider to restore that item’s default, then save. Reloading a preset or resetting everything changes a wider set of values.</span></p></details>
       <h3 class="faq-group" id="faq-spawns"><span class="ko">스폰 인원과 시작 시각</span><span class="en" lang="en">Spawn counts and timing</span></h3>
       <details id="faq-starting-count"><summary><span class="ko">시작 인원을 10명으로 정했는데 바로 10명이 보이지 않습니다.</span><span class="en" lang="en">Why do I not immediately see all 10 starting bots?</span></summary>
-        <p><span class="ko">시작 인원은 요청할 인원이며, 실제 생성에는 <b>맵 상한·그룹 제한·빈 지점·모델 준비</b>가 함께 적용됩니다. 상한을 이미 쓰고 있거나 자리가 없으면 대기할 수 있습니다. 1.0.3에서는 시작 스캐브가 0명으로 바뀌거나 구역을 못 찾던 문제를 고쳤습니다. 숫자가 계속 다르면 아래 진단 안내대로 실제 생존 수와 로그를 함께 확인하십시오.</span><span class="en" lang="en">The starting count is the requested number. <b>Map capacity, group limits, available points and model preparation</b> also affect activation. Bots can wait when capacity or positions are occupied. Version 1.0.3 fixes starting scavs being converted to zero and failing to find their zone. If counts remain different, compare live counts and logs using the diagnostics guidance below.</span></p></details>
+        <p><span class="ko">시작 인원은 요청할 인원이며, 실제 생성에는 <b>맵 상한·그룹 제한·빈 지점·모델 준비</b>가 함께 적용됩니다. 상한을 이미 쓰고 있거나 자리가 없으면 대기할 수 있습니다. 1.0.3에서는 시작 스캐브가 0명으로 바뀌거나 구역을 못 찾던 문제를 고쳤습니다. 1.0.4에서는 저격 스캐브를 끈 상태에서도 남아 있던 원본 최소 인원이 일반 스캐브 웨이브를 늘리는 문제를 수정했습니다. 숫자가 계속 다르면 아래 진단 안내대로 실제 생존 수와 로그를 함께 확인하십시오.</span><span class="en" lang="en">The starting count is the requested number. <b>Map capacity, group limits, available points and model preparation</b> also affect activation. Bots can wait when capacity or positions are occupied. Version 1.0.3 fixes starting scavs being converted to zero and failing to find their zone. Version 1.0.4 also prevents leftover native minimum counts from increasing ordinary scav waves when starting snipers are disabled. If counts remain different, compare live counts and logs using the diagnostics guidance below.</span></p></details>
       <details id="faq-percent-count"><summary><span class="ko">시작 비율은 무엇의 비율인가요? 맵마다 인원으로 정할 수 있나요?</span><span class="en" lang="en">What is the starting share based on? Can I set a count per map?</span></summary>
         <p><span class="ko">시작 비율은 <b>그 맵의 기본 PMC 또는 스캐브 인원</b>을 기준으로 계산합니다. 현재 살아 있는 모든 AI의 비율이 아닙니다. 정확한 범위를 원하면 시작 방식을 <b>인원</b>으로 바꾸고 최소·최대를 정하십시오. 예를 들어 10~10은 고정 10명 요청, 8~12는 판마다 그 범위에서 선택합니다. 맵별 카드를 사용하면 맵마다 다르게 정할 수 있습니다.</span><span class="en" lang="en">Starting share is calculated from the <b>map’s base PMC or scav count</b>, not the current total of living AI. Choose <b>Count</b> and set minimum/maximum values for an explicit range: 10–10 requests 10, while 8–12 selects within that range for each raid. Map overrides let you use different values per map.</span></p></details>
       <details id="faq-scav-delay"><summary><span class="ko">스캐브가 4~6분 뒤에야 나옵니다. 시작부터 나오게 할 수 있나요?</span><span class="en" lang="en">Why do scavs appear after 4–6 minutes? Can they be present at the start?</span></summary>
@@ -555,8 +555,8 @@
       <p><span class="ko">Gravity는 MIT 라이선스입니다.</span><span class="en" lang="en">Gravity is MIT licensed.</span></p>
     </div>
     <div class="credit">
-      <b>Realistic and Extended PMC Loadouts — mip01</b>
-      <p><span class="ko">장비 프리셋은 mip01님의 <i>APBS Realistic and Extended PMC Loadouts Preset</i>을 값 그대로 Gravity 형식으로 옮긴 것입니다(모드 아이템 제외, Gravity에 없는 기능 몇 가지는 가장 가까운 값). 원작 APBS 프리셋 제작자의 허락을 받아 만든 에드온이며, 바탕은 acidphantasm님의 APBS입니다.</span><span class="en" lang="en">The loadout preset carries over the values of <i>APBS Realistic and Extended PMC Loadouts Preset</i> by mip01, only reformatted for Gravity (mod items excluded; a few features Gravity lacks use the closest match). mip01 made it with permission from the original APBS preset author; it is based on APBS by acidphantasm.</span></p>
+      <b>Realistic and Extended PMC Loadouts</b>
+      <p><span class="ko">1.0.4부터 R_F의 Realistic Live-like 1.0.2 저장본을 기본으로 사용합니다. 1.0.3 이하에 제공한 mip01님의 APBS 프리셋과 acidphantasm님의 APBS에 대한 감사는 CREDITS.md에 보존합니다.</span><span class="en" lang="en">From 1.0.4, the default uses R_F’s saved Realistic Live-like 1.0.2 setup. CREDITS.md preserves the credits for mip01’s preset bundled with 1.0.3 and earlier, and for APBS by acidphantasm.</span></p>
     </div>
     <div class="credit" id="feedback-thanks">
       <b><span class="ko">피드백과 관심</span><span class="en" lang="en">Feedback and support</span></b>
@@ -566,7 +566,7 @@
 </main>
 
 <footer class="site-footer"><div class="wrap footer-inner">
-  <span>Gravity 1.0.3 · SPT 4.1 · MIT · <span class="ko">제작</span><span class="en" lang="en">by</span> R_F</span>
+  <span>Gravity 1.0.4 · SPT 4.1 · MIT · <span class="ko">제작</span><span class="en" lang="en">by</span> R_F</span>
   <a href="#top"><span class="ko">맨 위로</span><span class="en" lang="en">Back to top</span> <span aria-hidden="true">↑</span></a>
 </div></footer>
 </body>

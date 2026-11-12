@@ -20,6 +20,25 @@ public class StartScavRegressionTests
     }
 
     [Theory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void NativeMinimumCannotInflateManagedScavWaves(bool hasClient, bool keepMarksman)
+    {
+        var root=JsonNode.Parse("""{"spawn":{"scav":{"startMode":"count","startMin":1,"startMax":1,"delay":0}},"maps":{"interchange":{"scavStyle":"start"}}}""")!;
+        root["spawn"]!["scav"]!["startMarksman"]=keepMarksman;
+        var cfg=ConfigModel.FromState(root,[]);
+        var source=new List<MinMaxBot>{new(){WildSpawnType="assault",Min=3,Max=20},new(){WildSpawnType="marksman",Min=2,Max=10},new(){WildSpawnType="bossBully",Min=1,Max=1}};
+        var loc=new LocationBase{Id=Map.Id,BossLocationSpawn=[],Waves=[],MinMaxBots=source};
+        RaidSpawnApplier.Apply(loc,SpawnPlanner.Plan(cfg,Map,2400,0,7,hasClient),cfg,Map,hasClient);
+        Assert.Equal(hasClient?0:3,loc.MinMaxBots.Single(x=>x.WildSpawnType=="assault").Min);
+        Assert.Equal(hasClient&&!keepMarksman?0:2,loc.MinMaxBots.Single(x=>x.WildSpawnType=="marksman").Min);
+        Assert.Equal(20,loc.MinMaxBots.Single(x=>x.WildSpawnType=="assault").Max);
+        Assert.Equal(1,loc.MinMaxBots.Single(x=>x.WildSpawnType=="bossBully").Min);
+        Assert.Equal(3,source[0].Min);Assert.Equal(2,source[1].Min);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(4)]
     public void StartingCountIsPreparedTogetherAtConfiguredDelay(int delay)

@@ -17,9 +17,9 @@
 
 ## 변경 이력
 
-전체 변경 이력 8개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). 릴리즈별 요약은 [Releases](../../releases).
+전체 변경 이력 9개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). 릴리즈별 요약은 [Releases](../../releases).
 
-# Gravity 1.0.3
+# Gravity 1.0.4
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-후원하기-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -55,7 +55,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 
 서버와 클라이언트는 모두 **1.0.3 이상인 같은 1.0.x 버전**으로 맞추십시오. 1.0.2 이하와 혼용할 수 없습니다. 시작 스캐브는 설정한 지연 시각에 함께 준비합니다. 지연 0분이면 로딩 중에 준비하며, 기본 지연은 4분입니다. 시작 PMC 분대는 로딩 중에 대원까지 준비하며, 추가 대기는 최대 60초입니다. 맵 상한·그룹 제한·지점 부족으로 준비하지 못한 인원은 기존 대기열로 진행하므로 생성이 늦어질 수 있습니다.
 
-**2026-11-12 교체된 1.0.3**에는 미리보기 수정이 포함됩니다. 먼저 받은 1.0.3은 다시 내려받아 업데이트하십시오.
+**1.0.4 미리보기 편집:** PMC·스캐브는 **기본 수정 / 자세한 수정**으로 나뉩니다. 맵 화면에는 해당 맵의 설정·등장 대상만 표시하며, 공통 설정은 **모든 맵(공통)**에서 분류를 눌러 엽니다. 여러 맵 동시 편집은 변경·유지 범위를 안내하고, 전체 복사는 차이를 검토한 뒤 적용합니다.
 
 개발·확인의 **10번 굴리기**는 서버에 저장된 설정으로 계산합니다. 이벤트·퀘스트·상호작용 조건이 필요한 항목은 **조건부 이벤트 후보**로 따로 표시하며, 실제 등장 결과로 세지 않습니다.
 
@@ -66,7 +66,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 
 ## 감사
 
-장비 프리셋 **Realistic and Extended PMC Loadouts**는 **mip01**님의 *APBS Realistic and Extended PMC Loadouts Preset*을 값 그대로 옮긴 것입니다(모드 아이템 제외, Gravity에 없는 기능 몇 가지는 가장 가까운 값). mip01님이 원작 APBS 프리셋 제작자의 허락을 받아 만든 에드온이며, 바탕은 **acidphantasm**님의 APBS입니다. 자세한 내용은 [CREDITS.md](CREDITS.md)에 있습니다.
+장비 프리셋 **Realistic and Extended PMC Loadouts**는 1.0.4부터 R_F의 저장된 **Realistic Live-like 1.0.2** 구성(7티어·33개 표)을 사용합니다. APBS를 바탕으로 변환한 커스텀 구성이며, 이전 1.0.3 이하에서 제공한 mip01 프리셋의 감사·출처도 [CREDITS.md](CREDITS.md)에 보존합니다.
 
 ## 라이선스
 

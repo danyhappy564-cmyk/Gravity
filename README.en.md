@@ -17,9 +17,9 @@
 
 ## Changelog
 
-The full changelog (8 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (9 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). Per-release summaries: [Releases](../../releases).
 
-# Gravity 1.0.3
+# Gravity 1.0.4
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -55,7 +55,7 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 
 Use **1.0.3 or later within the 1.0.x series** for both server and client. Mixing with 1.0.2 or older is unsupported. Starting scavs are prepared together at the configured delay: 0 min prepares them during loading; the default delay is 4 min. Starting PMC squads prepare their members during loading, with up to 60 seconds of additional waiting. Map capacity, group limits, or unavailable spawn points can leave some bots in the existing queue and delay activation.
 
-**The 1.0.3 package replaced on 2026-11-12** includes the preview fix. If you downloaded 1.0.3 earlier, download and update it again.
+**1.0.4 preview editing:** PMC and scav controls share **Basic / Details** tabs. Each map shows its own settings and relevant actors; open categories under **All maps (shared)** for global controls. Multi-map editing explains changed and preserved values, and full copies require a difference review before applying.
 
 The **Roll 10 raids** tool uses saved server settings. Entries requiring an event, quest, or interaction are shown separately as **Conditional event candidates**, not counted as actual spawns.
 
@@ -66,7 +66,7 @@ The **Roll 10 raids** tool uses saved server settings. Entries requiring an even
 
 ## Credits
 
-The **Realistic and Extended PMC Loadouts** preset carries over the values of *APBS Realistic and Extended PMC Loadouts Preset* by **mip01** unchanged (mod items excluded; a few features Gravity lacks use the closest match). mip01 made it with permission from the original APBS preset author; it is based on APBS by **acidphantasm**. Details in [CREDITS.md](CREDITS.md).
+From 1.0.4, **Realistic and Extended PMC Loadouts** uses R_F’s saved **Realistic Live-like 1.0.2** setup (7 tiers and 33 tables), converted from an APBS-based custom setup. Credits for the mip01 preset bundled with 1.0.3 and earlier remain in [CREDITS.md](CREDITS.md).
 
 ## License
 

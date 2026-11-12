@@ -24,7 +24,7 @@ function app({stored = {}, hash = '', denied = false, fetch} = {}) {
     requestAnimationFrame() {}, cancelAnimationFrame() {}});
   vm.runInContext(source, context);
   return {run: code => vm.runInContext(code, context), listeners, nodes, storage,
-    click(dataset) {const button = {dataset, disabled: false, closest: s => s === 'button' ? button : s === '#tlpop' && dataset.spawnStyle ? nodes.get('#tlpop') : null};
+    click(dataset) {const button = {dataset, disabled: false, closest: s => s === 'button' ? button : s === '#tlpop' && (dataset.spawnStyle || dataset.popTab || dataset.popMode || dataset.rst) ? nodes.get('#tlpop') : null};
       for (const fn of listeners.click || []) fn({target: button, clientX: 20, clientY: 20});}};
 }
 
@@ -286,6 +286,7 @@ test('맵 전체 복사는 두 배치의 대상 맵 구역을 보존합니다', 
   const a=app();
   a.run("mapSel='bigmap';batch=['woods'];state.maps.woods.zonesAlt={Original:{wPmc:20}};state.maps.bigmap.zonesAlt={Other:{wPmc:80}};");
   a.click({act:'copyMap'});
+  a.click({act:'copyMapConfirm'});
   assert.equal(a.run('state.maps.woods.zonesAlt.Original.wPmc'),20);
   assert.equal(a.run('state.maps.woods.zonesAlt.Other'),undefined);
 });
@@ -803,8 +804,8 @@ test('ABPS 감지 잠금이 저장된 스폰 모듈 값을 바꾸지 않고, 왼
   assert.equal(a.run('spawnOn()'), true);
   assert.equal(a.run("UI.mock.ko===undefined?u('mock'):u('mock')"), '9.9.9');
 });
-test('서버 판을 못 받아도 기본 버전 표시는 1.0.3입니다', () => {
-  assert.match(html, /mock:T\('1\.0\.3','1\.0\.3'\)/);
+test('서버 판을 못 받아도 기본 버전 표시는 1.0.4입니다', () => {
+  assert.match(html, /mock:T\('1\.0\.4','1\.0\.4'\)/);
 });
 
 test('타임라인 시작 인원 팝업도 최소·최대 짝을 검사합니다', () => {
@@ -850,4 +851,113 @@ test('미리 굴리기 구형 응답은 조건부 목록 없이도 표시합니�
   a.run("serverMeta={version:'1.0.3'};page='dev'");a.click({act:'devSim'});await new Promise(setImmediate);
   assert.deepEqual(JSON.parse(a.run('JSON.stringify(simRows[0].c)')),[]);
   assert.match(a.run('P.dev.render()'),/조건부 이벤트 후보/);
+});
+
+
+test('1.0.4 같은 편집창에서 방식을 반복 변경해도 처음 위치를 유지합니다', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';openPop('wave',{clientX:140,clientY:120})");
+  const box=a.nodes.get('#tlpop'), pos=[box.style.left,box.style.top];
+  for (const v of ['infinite','start','waves','infinite','waves']) {
+    a.click({spawnStyle:'maps.bigmap.style',v});
+    assert.deepEqual([box.style.left,box.style.top],pos);
+  }
+});
+test('1.0.4 PMC와 스캐브는 기본 수정과 자세한 수정을 나누고 탭 이동은 값을 바꾸지 않습니다', () => {
+  for(const kind of ['wave','scav']) {
+    const a=app();a.run(`page='spawn';spawnTab='woods';mapSel='woods';openPop('${kind}',{clientX:140,clientY:120})`);
+    const box=a.nodes.get('#tlpop'),before=a.run('JSON.stringify(state)');
+    assert.match(box.innerHTML,/data-pop-tab="basic"/);
+    assert.match(box.innerHTML,/data-pop-tab="details"/);
+    if(kind==='scav') assert.ok(!box.innerHTML.includes('data-p="maps.woods.scav.perPlayer"'));
+    a.click({popTab:'details'});
+    assert.match(box.innerHTML,kind==='scav'?/data-p="maps.woods.scav.perPlayer"/:/data-p="maps.woods.firstDelay"/);
+    assert.equal(a.run('JSON.stringify(state)'),before);
+  }
+});
+test('1.0.4 여러 맵 전체 복사는 변경·유지 내역을 검토한 뒤에만 적용합니다', () => {
+  const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';batch=['woods'];state.maps.bigmap.style='start';state.maps.woods.style='waves';state.maps.woods.zonesAlt={Original:{wPmc:20}};");
+  const zones=a.run('JSON.stringify(state.maps.woods.zonesAlt)');
+  a.click({act:'copyMap'});
+  assert.equal(a.run('state.maps.woods.style'),'waves');
+  assert.match(a.nodes.get('#main').innerHTML,/data-act="copyMapConfirm"/);
+  assert.match(a.nodes.get('#main').innerHTML,/스폰 구역/);
+  a.click({act:'copyMapConfirm'});
+  assert.equal(a.run('state.maps.woods.style'),'start');
+  assert.equal(a.run('JSON.stringify(state.maps.woods.zonesAlt)'),zones);
+});
+test('1.0.4 일괄 편집은 바꾼 항목과 카드 공통값 고정 효과를 남기고 나머지 카드를 보존합니다', () => {
+  const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';batch=['woods'];ensureOverride('bigmap','flow');state.spawn.interval=9;state.spawn.waveMax=7;writeSetting('maps.bigmap.interval',12)");
+  assert.equal(a.run('cfgFor(mapById("woods")).interval'),12);
+  assert.equal(a.run('cfgFor(mapById("woods")).waveMax'),7);
+  assert.equal(a.run('cardOn("woods","scav")'),false);
+  const out=a.run('batchSummary()');
+  assert.match(out,/12/);
+  assert.match(out,/9/);
+  assert.match(out,/공통 값/);
+});
+
+test('1.0.4 팝업의 기본값 버튼은 공통 카드도 이 맵에서 되돌리고 창 값을 갱신합니다',()=>{
+ const a=app();a.run("page='spawn';spawnTab='woods';mapSel='woods';state.spawn.interval=12;openPop('wave',{clientX:20,clientY:20})");
+ a.click({rst:'maps.woods.interval'});
+ assert.equal(a.run('fieldValue("woods","spawn.interval")'),6);
+ assert.equal(a.run('state.spawn.interval'),12);
+ assert.match(a.nodes.get('#tlpop').innerHTML,/value="6" data-p="maps.woods.interval"/);
+});
+
+test('1.0.4 미리보기 자세한 수정은 기존 카드의 전체 설정을 제공합니다',()=>{
+ const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';openPop('wave',{clientX:20,clientY:20})");a.click({popTab:'details'});
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="maps.bigmap.startPlayerOnly"/);
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="maps.bigmap.ignoreCap.start"/);
+ a.run("openPop('panel|limits',{clientX:20,clientY:20})");
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="maps.bigmap.capOn"/);
+ a.run("openPop('panel|zones',{clientX:20,clientY:20})");
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="maps.bigmap.zones.dorms.wPmc"/);
+});
+test('1.0.4 보스·특수봇·팩션도 미리보기에서 전체 설정과 꺼진 종류를 편집할 수 있습니다',()=>{
+ const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';openPop('boss|reshala',{clientX:20,clientY:20})");a.click({popTab:'details'});
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="bosses.reshala.followers"/);
+ a.run("openPop('panel|factions',{clientX:20,clientY:20})");
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-fac="blackdiv"/);
+});
+
+test('1.0.4 맵 도구는 그 맵의 등장 대상만 보이고 공통 설정은 분류를 눌러야 보입니다',()=>{
+ const a=app();a.run("page='spawn';spawnTab='factory4_day';mapSel='factory4_day';serverMeta={detect:{ruaf:true,untar:true,blackDiv:false,variantMaps:{}}}");
+ const map=a.run('previewTools(mapById("factory4_day"))');
+ assert.ok(!map.includes('data-pop="panel|shared"'));assert.ok(!map.includes('data-pop="panel|events"'));assert.ok(!map.includes('data-pop="panel|layout"'));assert.ok(!map.includes('data-pop="panel|factions"'));
+ a.run("openPop('panel|bosses',{clientX:20,clientY:20})");
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-boss="tagilla"/);assert.doesNotMatch(a.nodes.get('#tlpop').innerHTML,/data-boss="reshala"/);
+ a.run("spawnTab='all'");const common=a.run('previewTools(mapById("bigmap"))');
+ assert.match(common,/data-preview-group=/);assert.ok(!common.includes('data-pop="panel|events"'));
+ a.click({previewGroup:'events'});assert.match(a.run('previewTools(mapById("bigmap"))'),/data-pop="panel|events"/);
+});
+
+test('1.0.4 연구소 팩션 설정은 남기고 다른 맵에서는 웨지·연구소 항목을 숨깁니다',()=>{
+ const a=app();a.run("page='spawn';spawnTab='laboratory';mapSel='laboratory';FACMETA={blackdiv:{installed:true},ruaf:{installed:false},untar:{installed:false}}");
+ assert.match(a.run('previewTools(mapById("laboratory"))'),/data-pop="panel\|factions"/);
+ a.run("openPop('panel|factions',{clientX:20,clientY:20})");assert.match(a.nodes.get('#tlpop').innerHTML,/연구소 · 웨지/);
+ a.run("spawnTab='bigmap';mapSel='bigmap';openPop('panel|factions',{clientX:20,clientY:20})");assert.doesNotMatch(a.nodes.get('#tlpop').innerHTML,/연구소 · 웨지/);
+});
+
+test('1.0.4 13개 맵의 모든 미리보기 패널이 상태를 바꾸지 않고 해당 맵 경로만 렌더링합니다',()=>{
+ const a=app();const ids=JSON.parse(a.run('JSON.stringify(MAPS.map(m=>m.id))'));assert.equal(ids.length,13);
+ for(const mid of ids){
+  a.run(`page='spawn';spawnTab='${mid}';mapSel='${mid}'`);const before=a.run('JSON.stringify(state)');
+  for(const panel of ['style','dist','limits','zones','hotspot','near','layout','bosses','specials','factions']){
+   a.run(`openPop('panel|${panel}',{clientX:50,clientY:50})`);const out=a.nodes.get('#tlpop').innerHTML;
+   assert.ok(out.length>100,mid+':'+panel);assert.doesNotMatch(out,/value="(?:undefined|NaN)"/,mid+':'+panel);
+   const paths=[...out.matchAll(/data-p="maps\.([^.]+)\./g)].map(x=>x[1]);assert.ok(paths.every(id=>id===mid),mid+':'+panel+' target map');
+  }
+  assert.equal(a.run('JSON.stringify(state)'),before,mid+' read-only render');
+ }
+});
+
+test('1.0.4 공통 타임라인의 자세한 수정도 맵별 값이 아닌 공통 경로를 사용합니다',()=>{
+ for(const kind of ['wave','scav']){
+  const a=app();a.run(`page='spawn';spawnTab='all';flowMap='woods';mapSel='woods';openPop('${kind}',{clientX:20,clientY:20})`);
+  a.click({popTab:'details'});const out=a.nodes.get('#tlpop').innerHTML;
+  assert.match(out,kind==='scav'?/data-p="spawn\.scav\.perPlayer"/:/data-p="spawn\.firstDelay"/);
+  assert.doesNotMatch(out,/data-p="maps\.woods\./);
+  assert.match(out,/모든 맵 공통/);
+ }
 });

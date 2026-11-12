@@ -239,6 +239,21 @@ body.easy .adv{display:none!important}
   .zone{grid-template-columns:auto 1fr 110px 48px}.zone .pill{display:none}
 }
 @media(max-width:560px){:root{--appbar:96px}.appbar{gap:8px;padding:0 12px}.brand-text,.mock{display:none}.tools{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px;justify-items:end}.tool,.tool select{width:100%;min-width:0}.seg button{padding:5px 7px}.stat{grid-template-columns:1fr}.savebar ul{columns:1}}
+
+.tp-h{position:sticky;top:-12px;z-index:2;background:#121925;padding:4px 0 10px}
+.tp-tabs{display:flex;gap:6px;margin:10px 0;border-bottom:1px solid var(--line);padding-bottom:8px}
+.tp-tabs button{flex:1;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--muted);padding:8px;cursor:pointer}
+.tp-tabs button.on{background:#243958;color:#dceaff;border-color:#5274a0}
+.tp-context{font-size:11px;line-height:1.6;color:var(--muted);padding:8px 10px;background:#0e1520;border-radius:8px;margin-bottom:8px}
+.tp-context span,.tp-context b{display:block}.tp-context b{color:#a9caff}
+.tp-exact{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin:-6px 0 10px}
+.tp-exact input{width:80px;max-width:40%;padding:4px 6px}.tp-row .ctl{padding:10px 0}.tp-footer{font-size:11px;line-height:1.6;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.tp-help{font-size:11px;margin:8px 0}.tp-help summary{cursor:pointer;color:#d3b779}
+.tl-shortcuts{margin:12px 0 6px}.tl-shortcuts .btn{padding:6px 12px}.batch-summary{font-size:12px;line-height:1.7;margin-top:12px}.batch-summary ul{padding-left:20px}.batch-last,.batch-review{padding:12px;border:1px solid #526c91;border-radius:9px;margin-top:10px;background:#111b2b}.batch-last small{display:block;color:#d3b779}.batch-diff{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:5px}.batch-diff span{overflow-wrap:anywhere}.batch-review details{margin:10px 0}.batch-review summary{cursor:pointer;color:#a9caff}
+
+.preview-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}.preview-overview button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;border:1px solid var(--line-2);border-radius:9px;background:#111b2c;color:var(--text);padding:10px;text-align:left;cursor:pointer}.preview-overview span{color:#b7d1fa;font-size:13px}.preview-overview small{color:var(--muted);font-size:11px}.preview-tools{border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}.preview-tools>b{font-size:13px}.preview-tools .chips{margin-top:8px}.tlpop.tp-expanded{width:520px}.tp-full .grid,.tp-full .split{grid-template-columns:minmax(0,1fr)}.tp-full .list{display:flex;flex-wrap:wrap;max-height:140px;overflow:auto}.tp-full .list button{width:auto;flex:1 0 100px}.tp-full .card{margin-bottom:12px;padding:12px}.tp-full .card-h{margin-bottom:8px}.tp-full .card h2{font-size:15px}.tp-full .adv{display:revert!important}.tp-full .spawn-scope{font-size:11px}.tp-full .grid{gap:10px}.tp-full .notice{font-size:11px}.tp-full .choice{grid-template-columns:minmax(0,1fr)}
+@media(max-width:600px){.preview-overview{grid-template-columns:minmax(0,1fr)}.preview-overview button{padding:9px}.preview-tools .chips{gap:5px}.tp-full .ratio-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tp-full[data-preview-map] .preview-common-only{display:none}
 </style>
 <style>
 /* v003 additions */
@@ -499,7 +514,7 @@ const set=(p,v)=>setIn(state,p,v);
 function rng(n){let a=n>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 
 const UI={
-  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.0.3','1.0.3'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
+  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.0.4','1.0.4'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
   offline:T('오프라인 미리보기','Offline preview'),ver:T('SPT 4.1 · 서버 모드','SPT 4.1 · server mod'),
   unsaved:T('저장 안 한 변경 {n}건','{n} unsaved changes'),save:T('저장','Save'),revert:T('되돌리기','Revert'),showChanges:T('바뀐 항목 보기','Show changes'),
   savedT:T('저장했습니다. 다음 레이드부터 적용됩니다.','Saved. Applies from the next raid.'),revertedT:T('마지막 저장 상태로 되돌렸습니다','Reverted to last save'),
@@ -869,7 +884,7 @@ function rosterBox(m){const {items,add}=mapRoster(m),tag={van:[T('원본','Origi
   return `<div class="roster"><h4>${tr(T('이 맵 등장 목록','On this map'))}</h4>${items.map(row).join('')||`<p class="small muted">${tr(T('이 맵에 원래 나오는 보스·특수 봇이 없습니다.','No bosses or special bots on this map by default.'))}</p>`}`
    +(items.some(x=>x.off)?`<p class="small muted" style="margin-top:6px">${tr(T('흐린 줄은 보스·특수 봇·팩션 페이지에서 전체가 꺼져 있거나(레이더·로그 "원래 스폰 유지" 포함) 모드가 없는 것입니다.','Dimmed rows are off on their own page (incl. raiders/rogues "keep original spawns") or the mod is missing.'))}</p>`:'')
    +(add.length?`<details><summary>＋ ${tr(T('다른 봇 추가','Add another bot'))}</summary><div class="addlist">${add.map(x=>`<button class="mini-btn" data-roster="${x.type}|${x.id}|${m.id}">${tr(x.name).replace(/ ·.*/,'')}</button>`).join('')}</div></details>`:'')
-   +`<p class="small muted" style="margin-top:8px">${tr(T('켠 것만 타임라인에 그립니다. 확률·인원은 각 페이지에서 정합니다.','Only checked bots are drawn. Chances and sizes are set on their own pages.'))}</p></div>`;}
+   +`<p class="small muted" style="margin-top:8px">${tr(T('켠 것만 타임라인에 그립니다. 이름이나 이 맵 도구에서 확률·인원을 고칩니다.','Only checked bots are drawn. Edit chances and sizes through their names or this map’s tools.'))}</p></div>`;}
 function rosterToggle(key){const[type,id,mid]=key.split('|');
   if(type==='boss'){writeSetting(`bosses.${id}.maps.${mid}`,!state.bosses[id].maps[mid]);return;}
   if(type==='fac'){facManage(id);writeSetting(`factions.${id}.maps.${mid}`,!state.factions[id].maps[mid]);return;}
@@ -978,7 +993,7 @@ function timeline(m,big=false){
   s+=`<text x="${W-R}" y="${H-10}" fill="#647089" font-size="12" text-anchor="end">${tr(T('분','min'))}</text>`;
   const notes=[];bs.forEach(b=>{const bb=state.bosses[b.id];notes.push(ed?`<span class="pill gold tlc" data-pop="boss|${b.id}">★ ${tr(b.name)} ${bossChance(b)}% · ${bb.zones[m.id].map(z=>zname(m.id,z)).join(', ')}</span>`:pill('★ '+tr(b.name)+' '+bossChance(b)+'% · '+bb.zones[m.id].map(z=>zname(m.id,z)).join(', '),'gold'));});
   if(m.id==='laboratory'&&state.lab.blackoutLink!=='always')notes.push(pill(tr(T('블랙아웃 연동','Blackout link'))+': '+tr(state.lab.blackoutLink==='only'?T('정전 판에만 블디','BlackDiv on blackout only'):T('정전 판 확률 ×','Blackout ×'))+(state.lab.blackoutLink==='boost'?state.lab.blackoutMult:''),'warn'));
-  return `<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
+  return `${ed?previewOverview(m):''}<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-shortcuts chips"><button class="btn" data-pop="wave">${tr(T('PMC 설정','PMC settings'))}</button>${m.id!=='laboratory'||state.spawn.allowScavLab?`<button class="btn" data-pop="scav">${tr(T('스캐브 설정','Scav settings'))}</button>`:''}<span class="small muted">${tr(T('이름이나 점을 누르기 어려우면 여기서 엽니다.','Use these buttons when a timeline target is hard to click.'))}</span></div>${previewTools(m)}<div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
 }
 const legend=()=>`<div class="legend"><span><i style="background:#6ea8ff;border-radius:50%"></i>${tr(T('웨이브 (숫자 = 최대 인원)','Wave (number = max size)'))}</span><span><i style="background:#6ea8ff55;border:1px solid #6ea8ff"></i>${tr(T('계속 보충','Continuous refill'))}</span><span><i style="background:#bff3df;width:2px"></i>${tr(T('보충 확인 시점','Refill check'))}</span><span><i style="background:repeating-linear-gradient(45deg,#f0c07088 0 2px,transparent 2px 5px)"></i>${tr(T('시작 보호','Start protection'))}</span><span><i style="background:#f27f8c;height:2px"></i>${tr(T('PMC 중단','PMC stop'))}</span></div>`;
 const MAPFIELDS=['startPmcPct','interval','waveMin','waveMax','early','mid','late'];
@@ -1037,24 +1052,92 @@ function popSpecs(kind,arg,m){const c=cfgFor(m),mid=m.id,raid=Math.round(raidOf(
       [T('무리 인원 · 최대','Group size · max'),P0+'max',sp.max,1,10,1,UI.ppl,''],
       [T('나오는 시각 · 처음 (끝이 0이면 원래 시각)','Spawn time · from (0 end = original time)'),P0+'tFrom',sp.tFrom||0,0,raid,1,UI.min_,''],
       [T('나오는 시각 · 끝 (0 = 원래 시각)','Spawn time · to (0 = original time)'),P0+'tTo',sp.tTo||0,0,raid,1,UI.min_,'']];
-    return {title:tr(def[1]),note:tr(ex?T('원래 스폰(레버·탈출구 같은 이벤트 무리)은 확률·인원이 맵 기본 그대로이고 시각만 바꿀 수 있습니다(이벤트 무리는 시각도 그대로). 추가 스폰은 Gravity가 따로 넣는 무리입니다. 이 종류를 아예 끄려면 특수 봇 페이지의 "켜기"를 끄십시오.','Original groups keep the map’s chance and size; only their time can change (event groups keep their time). Extra is a separate Gravity group. To turn this type off entirely, switch off "Enable" on the Special bots page.'):T('시각·인원은 이 종류가 나오는 모든 맵에, 확률은 이 맵에만 적용됩니다. 0%면 이 맵에 안 나옵니다.','Time and size apply on every map; chance only on this map. 0% = never here.')),rows};}
+    return {title:tr(def[1]),note:tr(ex?T('원래 스폰(레버·탈출구 같은 이벤트 무리)은 확률·인원이 맵 기본 그대로이고 시각만 바꿀 수 있습니다(이벤트 무리는 시각도 그대로). 추가 스폰은 Gravity가 따로 넣는 무리입니다. 이 종류를 아예 끄려면 자세한 수정의 "켜기"를 끄십시오.','Original groups keep the map’s chance and size; only their time can change (event groups keep their time). Extra is a separate Gravity group. To turn this type off entirely, switch off "Enable" under Details.'):T('시각·인원은 이 종류가 나오는 모든 맵에, 확률은 이 맵에만 적용됩니다. 0%면 이 맵에 안 나옵니다.','Time and size apply on every map; chance only on this map. 0% = never here.')),rows};}
   if(kind==='fac'){const f=FACTIONS.find(x=>x.id===arg),F=state.factions[arg],o=F.managed?'':'fac:'+arg,pre='factions.'+arg+'.',note=F.managed?'':tr(T('지금은 "모드 설정 그대로"입니다. 값을 바꾸면 "Gravity가 관리"로 바뀌고 이 값이 적용됩니다.','Currently "use the mod’s own config". Changing a value switches to Gravity-managed.'));
-    if(arg==='blackdiv')return {title:tr(f.name),note,rows:[[T('맵마다 등장 확률','Chance per map'),pre+'bd.chance',F.bd.chance,0,100,1,UI.pct,o],[T('등장 시작 (레이드 %)','Appears from (% of raid)'),pre+'bd.tMin',F.bd.tMin,0,100,1,UI.pct,o],[T('등장 끝 (레이드 %)','Appears until (% of raid)'),pre+'bd.tMax',F.bd.tMax,0,100,1,UI.pct,o]]};
-    return {title:tr(f.name),note,rows:[[T('순찰 확률','Patrol chance'),pre+'patrol.chance',F.patrol.chance,0,100,1,UI.pct,o],[T('맵당 순찰조 수','Patrols per map'),pre+'patrol.count',F.patrol.count,1,5,1,'',o],[T('등장 시작','Appears from'),pre+'patrol.tMin',F.patrol.tMin,0,raid,1,UI.min_,o],[T('등장 끝','Appears until'),pre+'patrol.tMax',F.patrol.tMax,0,raid,1,UI.min_,o]]};}
+    if(arg==='blackdiv')return {title:tr(f.name),note:note+' '+tr(T('사냥조·연구소 게이트·웨지·다른 모드의 조건부 이벤트는 별도 등장 경로입니다. 이 확률은 일반 사냥조에 적용됩니다.','Hunters, Lab gates, Wedge and other mods’ conditional events are separate spawn paths. This chance applies to ordinary hunters.')),rows:[[T('맵마다 등장 확률','Chance per map'),pre+'bd.chance',F.bd.chance,0,100,1,UI.pct,o],[T('등장 시작 (레이드 %)','Appears from (% of raid)'),pre+'bd.tMin',F.bd.tMin,0,100,1,UI.pct,o],[T('등장 끝 (레이드 %)','Appears until (% of raid)'),pre+'bd.tMax',F.bd.tMax,0,100,1,UI.pct,o]]};
+    return {title:tr(f.name),note:note+' '+tr(T('순찰조마다 이 확률을 따로 굴립니다. 검문소·사냥조는 자세한 수정의 별도 확률을 사용합니다. 따라서 이 수치가 이 팩션 전체의 레이드당 등장 확률은 아닙니다.','Each patrol rolls this chance separately. Checkpoints and hunters use their own chances under Details. This is not the faction’s overall chance per raid.')),rows:[[T('순찰 확률','Patrol chance'),pre+'patrol.chance',F.patrol.chance,0,100,1,UI.pct,o],[T('맵당 순찰조 수','Patrols per map'),pre+'patrol.count',F.patrol.count,1,5,1,'',o],[T('등장 시작','Appears from'),pre+'patrol.tMin',F.patrol.tMin,0,raid,1,UI.min_,o],[T('등장 끝','Appears until'),pre+'patrol.tMax',F.patrol.tMax,0,raid,1,UI.min_,o]]};}
   return null;}
-const scopeOf=p=>p.startsWith('factions.')?T('팩션 모드 설정 (이 팩션이 나오는 모든 맵)','Faction mod setting (every map it uses)'):p.startsWith('maps.')?T('이 맵만'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):''),'This map only'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):'')):(p.startsWith('spawn.')||p.startsWith('near.'))?T('모든 맵 공통','All maps'):p.startsWith('bosses.')||p.startsWith('bossCommon')?T('보스 설정 (이 보스가 나오는 모든 맵)','Boss setting (every map it uses)'):T('이 맵의 특수 봇 확률','Special bot chance on this map');
-let tlPopKey='';
+const scopeOf=p=>p.startsWith('factions.')?T('팩션 모드 설정 (이 팩션이 나오는 모든 맵)','Faction mod setting (every map it uses)'):p.startsWith('maps.')?T('이 맵만'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):''),'This map only'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):'')):(p.startsWith('spawn.')||p.startsWith('near.'))?T('모든 맵 공통','All maps'):p.startsWith('bosses.')||p.startsWith('bossCommon')?T('보스 설정 (이 보스가 나오는 모든 맵)','Boss setting (every map it uses)'):p.startsWith('specials.')&&!/^specials\.[^.]+\.(chance|extra|keep)\./.test(p)?T('특수 봇 공통 · 이 종류가 나오는 모든 맵','Special bot setting · every map of this type'):T('이 맵의 특수 봇 확률','Special bot chance on this map');
+let tlPopKey='',tlPopTab='basic',tlPopAnchor=null,previewRendering=false,previewGroup='';
 function spawnStyleButtons(kind,arg,mid){
   const faction=kind==='fac',pmc=['wave','start','inf'].includes(kind);
   if(!faction&&!pmc&&kind!=='scav')return '';
   const p=faction?`factions.${arg}.style`:`maps.${mid}.${pmc?'style':'scavStyle'}`,v=get(p)||'waves';
   return `<div class="tp-style"><div class="tp-scope">${tr(scopeOf(p))}</div><div class="seg">${[['waves',T('웨이브','Waves')],['infinite',T('무한 보충','Endless refill')],['start',T('시작만','Start only')]].map(([k,l])=>`<button data-spawn-style="${p}" data-v="${k}" class="${v===k?'on':''}" aria-pressed="${v===k}" ${faction&&k==='infinite'?'disabled':''}>${tr(l)}</button>`).join('')}</div>${faction?`<p class="small muted">${tr(T('무한 보충은 팩션 모드의 봇 관리와 충돌할 수 있어 지원하지 않습니다. 시작만은 순찰·사냥조를 시작 시각에 배치하며, 트리거 조건은 유지합니다.','Endless refill is unavailable because faction mods manage their own bots. Start only schedules patrols and hunts at raid start; trigger conditions remain.'))}</p>`:''}</div>`;
 }
-function openPop(key,ev){const svg=tlSvg();const mid=svg?svg.dataset.map:(isSpawnMap()?mapSel:flowMap),m=mapById(mid);let [kind,arg]=key.split('|');if(['wave','start','inf'].includes(kind))kind={waves:'wave',infinite:'inf',start:'start'}[state.maps[mid].style]||'wave';const sp=popSpecs(kind,arg,m);if(!sp)return;tlPopKey=arg?kind+'|'+arg:kind;
-  const rows=sp.rows.map(([l,p,v,mn,mx,st,un,o])=>{if(p.startsWith('maps.')&&p.includes('.inf.')&&!cardOn(mid,'flow'))o=mid+':flow';const side=/\.(?:startMin|startPmcMin)$/.test(p)?'min':/\.(?:startMax|startPmcMax)$/.test(p)?'max':'',pair=side?p.replace(side==='min'?/Min$/:/Max$/,side==='min'?'Max':'Min'):'';const h=slider(p,l,'',{min:mn,max:mx,step:st,unit:un,val:v}).replace('data-t="n"',`data-t="n"${pair?` data-pair="${pair}" data-side="${side}"`:''}`);return `<div class="tp-row"><div class="tp-scope">${tr(scopeOf(p))}${o?' · '+tr(String(o).startsWith('fac:')?T('처음 바꿀 때 "Gravity가 관리"로 바뀝니다','first change switches to Gravity-managed'):T('처음 바꾸면 이 카드만 이 맵 설정으로 바뀝니다','first change enables only this card for this map')):''}</div>${o?h.replace(/data-p="/g,`data-ovr="${o}" data-p="`):h}</div>`;}).join('');
-  const box=$('#tlpop');box.innerHTML=`<div class="tp-h"><b>${esc(sp.title)}</b><span class="small muted">${esc(mname(mid))}</span><button class="mini-btn" data-act="tlpopClose">✕</button></div>${spawnStyleButtons(kind,arg,mid)}${sp.note?`<div class="notice warn" style="margin:6px 0"><span>ⓘ</span><span>${esc(sp.note)}</span></div>`:''}${rows}`;
-  box.hidden=false;const bw=340,bh=box.offsetHeight||220;box.style.left=Math.max(8,Math.min(window.innerWidth-bw-8,ev.clientX+12))+'px';box.style.top=Math.max(8,Math.min(window.innerHeight-bh-8,ev.clientY+12))+'px';}
-function closePop(){const b=$('#tlpop');if(b&&!b.hidden){b.hidden=true;b.innerHTML='';tlPopKey='';}}
+// PMC·스캐브 기본창은 같은 구조로, 덜 쓰는 설정은 별도 탭에 둡니다.
+function popPair(p){
+  for(const [lo,hi] of [['startMin','startMax'],['startPmcMin','startPmcMax'],['waveMin','waveMax'],['activeMin','activeMax'],['quietMin','quietMax'],['min','max'],['tFrom','tTo'],['xFrom','xTo']]){
+    if(p.endsWith('.'+lo))return [p.slice(0,-lo.length)+hi,'min'];
+    if(p.endsWith('.'+hi))return [p.slice(0,-hi.length)+lo,'max'];
+  }return ['',''];
+}
+function popRows(rows,mid){return rows.map(([l,p,v,mn,mx,st,un,o])=>{
+  if(p.startsWith('maps.')&&p.includes('.inf.')&&!cardOn(mid,'flow'))o=mid+':flow';
+  const [pair,side]=popPair(p),attrs=`${pair?` data-pair="${pair}" data-side="${side}"`:''}${o?` data-ovr="${o}"`:''}`;
+  const h=slider(p,l,'',{min:mn,max:mx,step:st,unit:un,val:v}).replace('data-t="n"',`data-t="n"${attrs}`);
+  return `<div class="tp-row"><div class="tp-scope">${tr(scopeOf(p))}</div>${h}<label class="tp-exact"><span>${tr(T('직접 입력','Exact value'))}</span><input type="number" min="${mn}" max="${mx}" step="${st}" value="${v}" data-p="${p}" data-t="n"${attrs} aria-label="${esc(tr(l))}"><span>${tr(un)}</span></label></div>`;
+}).join('');}
+function previewEntities(m,type){const items=mapRoster(m).items.filter(x=>x.type===type&&(type!=='fac'||facInst(x.id)));if(type==='fac'&&m.id==='laboratory'&&facInst('blackdiv')&&!items.some(x=>x.id==='blackdiv'))items.push({type:'fac',id:'blackdiv',name:FACTIONS.find(x=>x.id==='blackdiv').name});return items;}
+const GLOBAL_PREVIEW={globalFlow:'flow',globalScav:'scav',globalDist:'dist',globalLimits:'limits',globalNear:'near',globalHotspot:'hotspot'};
+const PREVIEW_PANELS={globalFlow:T('PMC 공통','Shared PMC flow'),globalScav:T('스캐브 공통','Shared scavs'),globalDist:T('거리 · 보호 공통','Shared distances & protection'),globalLimits:T('상한 · 그룹 공통','Shared caps & groups'),globalNear:T('근처 보충 공통','Shared near-player refill'),globalHotspot:T('위치 방식 공통','Shared placement'),dist:T('거리 · 시작 보호','Distances & protection'),limits:T('동시 상한 · 그룹 제한','Caps & group limits'),near:T('근처 보충','Near-player refill'),hotspot:T('스폰 위치 · 핫스팟','Placement & hotspots'),shared:T('레이드 시간 · PMC 구성','Raid time & PMC makeup'),style:T('맵 방식 · 시간','Map styles & time'),zones:T('스폰 구역','Spawn zones'),layout:T('원본 · 변형 적용','Original & variant enablement'),bosses:T('모든 보스 설정','All boss settings'),specials:T('모든 특수 봇 설정','All special-bot settings'),factions:T('모든 팩션 설정','All faction settings'),events:T('시즌 이벤트','Seasonal events')};
+function previewDetails(kind,arg,m){
+  const fold=FOLD;FOLD=null;previewRendering=true;
+  try{
+    if(['wave','start','inf'].includes(kind))return spawnCommon.render(isSpawnMap()?m.id:null,true,'flow')+(isSpawnMap()&&m.id==='labyrinth'?sw('spawn.allowPmcLabyrinth',T('미궁에도 PMC 스폰','PMCs on the Labyrinth'),''):'');
+    if(kind==='scav')return spawnCommon.render(isSpawnMap()?m.id:null,true,'scav');
+    if(kind==='boss'){bossSel=arg;return P.bosses.render(true,isSpawnMap()?m.id:'');}
+    if(kind==='spec'){specSel=arg;return P.specials.render(isSpawnMap()?m.id:'');}
+    if(kind==='fac'){facSel=arg;return P.factions.render(isSpawnMap()?m.id:'');}
+    if(kind==='panel'){
+      if(GLOBAL_PREVIEW[arg])return spawnCommon.render(null,true,GLOBAL_PREVIEW[arg]);
+      if(arg==='bosses')return P.bosses.render(isSpawnMap(),isSpawnMap()?m.id:'');
+      if(['specials','factions'].includes(arg))return P[arg].render(isSpawnMap()?m.id:'');
+      if(arg==='events')return P.events.render();
+      if(['style','zones','layout'].includes(arg))return spawnMap.render(arg,m.id);
+      return spawnCommon.render(m.id,true,arg);
+    }
+    return '';
+  }finally{previewRendering=false;FOLD=fold;}
+}
+function previewOverview(m){const e=estimate(m);if(!e)return '';const c=e.c,st=state.maps[m.id];return `<div class="preview-overview"><button data-pop="start"><b>PMC</b><span>${tr(T('시작','Start'))} ${startPmcOf(m,c)} · ${tr(T('상한','Cap'))} ${capOf(m.id)}</span><small>${tr(st.style==='start'?T('시작만','Start only'):st.style==='infinite'?T('무한 보충','Endless refill'):T('웨이브','Waves'))} · ${c.waveMin}–${c.waveMax} / ${c.interval}${u('min_')}</small></button>${m.scav>0||(m.id==='laboratory'&&state.spawn.allowScavLab)?`<button data-pop="scav"><b>${tr(T('스캐브','Scavs'))}</b><span>${tr(T('시작','Start'))} ${c.scav.startOn?startScavOf(m,c):0} · +${c.scav.delay}${u('min_')}</span><small>${tr(T('동시 소프트 캡','Soft cap'))} ${c.scav.softCap} · ${tr(T('보충 확인','Check'))} ${c.scav.refill}${u('sec')}</small></button>`:''}<button data-pop="panel|limits"><b>${tr(T('맵 동시 상한','Map bot cap'))}</b><span>${capOf(m.id)}${u('ppl')}</span><small>${tr(T('시작·보충·종류별 상한 확인','Review start, refill & per-kind limits'))}</small></button></div>`;}
+function previewTools(m){
+  const button=(k,label)=>`<button class="mini-btn" data-pop="panel|${k}">${tr(label||PREVIEW_PANELS[k])}</button>`;
+  if(!isSpawnMap()){
+    const groups={flow:['globalFlow','globalScav','globalDist','globalLimits','globalNear','globalHotspot','shared'],actors:['bosses','specials','factions'],events:['events']};
+    return `<div class="preview-tools"><b>${tr(T('모든 맵 공통 설정','Shared settings for all maps'))}</b><div class="tp-tabs">${[['flow',T('스폰 공통','Shared spawns')],['actors',T('보스 · 특수 · 팩션','Bosses · specials · factions')],['events',T('시즌 이벤트','Seasonal events')]].map(([k,l])=>`<button data-preview-group="${k}" class="${previewGroup===k?'on':''}">${tr(l)}</button>`).join('')}</div>${previewGroup?`<div class="chips">${groups[previewGroup].map(k=>button(k)).join('')}</div>`:`<p class="small muted">${tr(T('필요한 분류를 눌러 공통 설정을 엽니다. 맵별 값이 켜진 카드는 공통 값을 따르지 않습니다.','Choose a category to open shared settings. Map-specific cards do not follow shared values.'))}</p>`}</div>`;
+  }
+  const keys=['style','dist','limits'];
+  if(zoneView(m.id).zones.length)keys.push('zones','hotspot');
+  keys.push('near');if(variantMods(m.id).length)keys.push('layout');
+  const actors=[['boss','bosses',T('이 맵 보스','Bosses on this map')],['spec','specials',T('이 맵 특수 봇','Special bots on this map')],['fac','factions',T('이 맵 팩션','Factions on this map')]].filter(([type])=>previewEntities(m,type).length);
+  return `<div class="preview-tools"><b>${tr(T('이 맵에서 바로 수정','Edit this map here'))}</b><div class="chips">${keys.map(k=>button(k)).join('')}${actors.map(([,k,l])=>button(k,l)).join('')}</div><p class="small muted">${tr(T('이 맵에 해당하는 항목만 표시합니다. 전체 맵 공통 설정은 위의 모든 맵(공통) 탭에서 분류를 눌러 엽니다.','Only settings relevant to this map are shown. Open a category in All maps (shared) for global settings.'))}<button class="mini-btn" data-spawn-tab="all">${tr(T('모든 맵 공통으로','Open shared settings'))}</button></p></div>`;
+}
+
+function openPop(key,ev,keep=false){
+  const svg=tlSvg(),mid=keep&&tlPopAnchor?tlPopAnchor.mid:svg?svg.dataset.map:(isSpawnMap()?mapSel:flowMap),m=mapById(mid);if(!m)return;
+  let [kind,arg]=key.split('|');if(['wave','start','inf'].includes(kind))kind={waves:'wave',infinite:'inf',start:'start'}[state.maps[mid].style]||'wave';
+  const sp=kind==='panel'&&PREVIEW_PANELS[arg]?{title:tr(isSpawnMap()?({bosses:T('이 맵 보스','Bosses on this map'),specials:T('이 맵 특수 봇','Special bots on this map'),factions:T('이 맵 팩션','Factions on this map')}[arg]||PREVIEW_PANELS[arg]):PREVIEW_PANELS[arg]),rows:[]}:popSpecs(kind,arg,m);if(!sp)return;const pmc=['wave','start','inf'].includes(kind),split=pmc||['scav','boss','spec','fac'].includes(kind);
+  if(!keep){tlPopTab=kind==='panel'?'details':'basic';tlPopAnchor={mid,x:(ev?.clientX||0)+12,y:(ev?.clientY||0)+12};}
+  tlPopKey=arg?kind+'|'+arg:kind;
+  let rows=sp.rows;
+  if(split){if(tlPopTab==='details')rows=[];else if(kind==='scav'){rows=rows.slice(0,cfgFor(m).scav.startMode==='count'?4:3);if(state.maps[mid].scavStyle==='start')rows=rows.slice(0,-1);}}
+  const c=cfgFor(m),F=f=>tlField(f,mid),modeField=kind==='scav'?'scav.startMode':'startMode',modePath=F(modeField)[0];
+  const startMode=(pmc||kind==='scav')&&((tlPopTab==='basic'&&(kind==='start'||kind==='scav'))||(tlPopTab==='details'&&pmc&&kind!=='start'))?`<div class="tp-startmode">${seg(modePath,T('시작 인원 지정','Starting count'),'',[["pct",T('비율 (%)','Share (%)')],["count",T('인원 범위','Count range')]],{val:kind==='scav'?c.scav.startMode:c.startMode}).replace(/data-segp=/g,`data-pop-mode=`)}</div>`:'';
+  const e=estimate(m),scope=(pmc||kind==='scav')&&!isSpawnMap()?tr(T('모든 맵 공통 · 맵별 카드가 켜진 곳은 그 값을 유지합니다.','Shared across maps; existing map-specific cards keep their values.')):(pmc||kind==='scav')?tr(T('바꾸는 카드는 이 맵 설정으로 전환됩니다. 다른 카드는 유지됩니다.','The edited card switches to map values; other cards stay as they are.')):tr(scopeOf(rows[0]?.[1]||''));
+  const panelScope=kind==='panel'?tr(['bosses','specials','factions','events','shared',...Object.keys(GLOBAL_PREVIEW)].includes(arg)?T('항목에 표시된 맵 또는 전체 공통에 적용됩니다. 맵 동시 선택과 별개입니다.','Applies to each stated map or globally, independently of the batch map selection.'):T('현재 미리보기 맵에 적용합니다. 변경한 카드만 맵별 설정으로 전환됩니다.','Applies to the preview map. Only edited cards switch to map-specific values.')):scope;
+  const targets=isSpawnMap()&&batch.length&&(pmc||kind==='scav')?[mid,...batch].map(mname).join(' · '):mname(mid);
+  const box=$('#tlpop');box.innerHTML=`<div class="tp-h"><b>${esc(pmc?'PMC · '+sp.title:sp.title)}</b><span class="small muted">${esc(mname(mid))}</span><button class="mini-btn" data-act="tlpopClose" aria-label="${tr(T('닫기','Close'))}">✕</button></div>
+    ${spawnStyleButtons(kind,arg,mid)}${split?`<div class="tp-tabs" role="tablist">${[['basic',T('기본 수정','Basic')],['details',T('자세한 수정','Details')]].map(([k,l])=>`<button role="tab" aria-selected="${tlPopTab===k}" class="${tlPopTab===k?'on':''}" data-pop-tab="${k}">${tr(l)}</button>`).join('')}</div>`:''}
+    <div class="tp-context"><b>${esc(targets)}</b><span>${esc(panelScope)}</span>${e&&(pmc||kind==='scav')?`<span data-pop-estimate>${tr(kind==='scav'?T('예상 스캐브','Expected scavs'):T('예상 PMC','Expected PMCs'))}: ${kind==='scav'?e.smin+'–'+e.smax:e.pmin+'–'+e.pmax} · ${tr(T('레이드 전체의 견적','estimate for the entire raid'))}</span>`:''}</div>
+    ${sp.note?`<details class="tp-help"><summary>${tr(T('적용 방식 안내','How this applies'))}</summary><p class="small muted">${esc(sp.note)}</p></details>`:''}${tlPopTab==='details'?`<div class="tp-full" ${isSpawnMap()?'data-preview-map="'+mid+'"':''}>${previewDetails(kind,arg,m)}</div>`:startMode+popRows(rows,mid)}
+    <p class="tp-footer">${tr(T('수정값은 미리보기에 바로 반영됩니다. 아래 저장바에서 저장하면 다음 레이드부터 적용됩니다.','Preview updates immediately. Save with the bottom save bar to apply from the next raid.'))}</p>`;
+  box.classList.toggle('tp-expanded',tlPopTab==='details');box.hidden=false;
+  const bw=box.offsetWidth||340,x=clampN(tlPopAnchor.x,8,Math.max(8,window.innerWidth-bw-8)),y=clampN(tlPopAnchor.y,8,Math.max(8,window.innerHeight-680));
+  box.style.left=x+'px';box.style.top=y+'px';box.style.maxHeight=Math.max(180,window.innerHeight-y-8)+'px';
+}
+function closePop(){const b=$('#tlpop');if(b&&!b.hidden){b.hidden=true;b.innerHTML='';tlPopKey='';tlPopAnchor=null;}}
+
 document.addEventListener('pointerdown',e=>{const h=e.target.closest&&e.target.closest('svg.tl-ed [data-drag]');if(!h)return;e.preventDefault();closePop();const [kind,arg]=h.dataset.drag.split('|');tlDrag={kind,arg,x0:e.clientX};tlDragged=false;document.body.classList.add('tl-dragging');});
 let tlRaf=0;
 function applyTimeline(kind,arg,t,raid,m){dragVals(kind,arg,t,raid,m).forEach(([p,v])=>{if(p.startsWith('spawn.')){const [target,ovr]=tlField(p.slice(6),m.id);if(ovr)ensureOverride(ovr);writeSetting(target,v,true);}else writeSetting(p,v,true);});}
@@ -1161,7 +1244,7 @@ P.dashboard={desc:T('지금 설정이 레이드에서 어떻게 보일지 요약
    <div class="sub" style="margin-top:4px">${tr(T('맵','MAPS'))}</div><div class="mapgrid">${cards}</div></div>`;}};
 function flowPath(mid,p){return mid&&cardFor(p)?localPath(mid,p):p;}
 function scopedControls(mid){
-  const opt=(p,o={})=>({...o,val:fieldValue(mid,p),dis:!!o.dis||!!(mid&&cardFor(p)&&!cardOn(mid,cardFor(p)))});
+  const opt=(p,o={})=>({...o,val:fieldValue(mid,p),dis:!!o.dis||!!(!previewRendering&&mid&&cardFor(p)&&!cardOn(mid,cardFor(p)))});
   return {
     slider:(p,l,t,o={})=>slider(flowPath(mid,p),l,t,opt(p,o)),
     range:(a,b,l,t,o={})=>range(flowPath(mid,a),flowPath(mid,b),l,t,{...opt(a,o),values:[fieldValue(mid,a),fieldValue(mid,b)]}),
@@ -1177,10 +1260,10 @@ function spawnCard(mid,id,body){
   const on=mid&&cardOn(mid,id),maps=MAPS.filter(m=>cardOn(m.id,id));
   const scope=mid?sw(`maps.${mid}.ovr.${id}`,on?T('이 맵만','This map only'):T('공통 값 사용','Use shared values'),T('켜면 지금 공통 값을 복사합니다. 끄면 다시 공통 값을 따릅니다.','On copies current shared values. Off follows shared values again.')):
     `<details class="spawn-scope" data-card-maps="${id}"><summary>${fmt(tr(T('{n}개 맵이 따로 설정함','{n} maps use their own values')),{n:maps.length})}</summary><div class="chips">${maps.map(m=>`<button class="mini-btn" data-spawn-tab="${m.id}">${esc(mname(m.id))}</button>`).join('')||tr(T('없음','None'))}</div></details>`;
-  return card(CARD_NAMES[id],scope+body,{cls:mid&&!on?'shared-card':''});
+  return card(CARD_NAMES[id],scope+body,{cls:mid&&!on&&!previewRendering?'shared-card':''});
 }
 function mapCard(l,b,o={}){return card(l,`<p class="spawn-scope">${tr(T('이 맵 값','Map values'))}</p>`+b,o);}
-const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','Default flow for every map.'),render(mid=null,controlsOnly=false){
+const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','Default flow for every map.'),render(mid=null,controlsOnly=false,section=''){
   const {slider,range,sw,seg,choice}=scopedControls(mid),s='spawn.',m=mapById(mid||flowMap),c=mid?cfgFor(m):{...state.spawn,near:state.near},sc=c.scav,det=state.spawn.raid.mode==='detect';
   const header=`<div class="stack">${spawnOff()}
   ${card(T('레이드 타임라인','Raid timeline'),`<div class="wide-tl" data-live="timeline" data-arg="${flowMap}">${timeline(m,true)}</div>${legend()}<div style="margin-top:14px" data-live="stat" data-arg="${flowMap}">${statBox(m)}</div>`,
@@ -1245,6 +1328,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
       +`<button class="mini-btn" data-nav="tiers">${tr(T('장비 티어 · 봇 레벨 기준','Gear tiers · bot level rules'))} →</button>`);
   const labPmc=mid==='labyrinth'?card(T('미궁 PMC','Labyrinth PMCs'),sw('spawn.allowPmcLabyrinth',T('미궁에도 PMC 스폰','PMCs on the Labyrinth'),T('게임 기본은 미궁에 PMC가 없습니다. 켜면 시작 PMC·보충 PMC가 다른 맵처럼 나옵니다(미궁은 PMC 구역이 없어 게임 스폰 지점을 씁니다).','The game has no PMCs on the Labyrinth by default. On = starting and refill PMCs like other maps (uses game spawn points, since the Labyrinth has no PMC zones).'))
       +`<p class="small muted" style="margin:4px 0 0">${tr(state.spawn.allowPmcLabyrinth?T('지금: 미궁에 PMC가 나옵니다.','Now: PMCs spawn on the Labyrinth.'):T('지금: 미궁에 PMC가 나오지 않습니다(스캐브·보스만).','Now: no PMCs on the Labyrinth (scavs and bosses only).'))}</p>`):'';
+  if(section){if(section==='shared')return shared;const bodies={flow,scav,dist,hotspot,limits,near:P.near.render(mid,true)};return spawnCard(mid,section,bodies[section]||'');}
   const controls=`<div class="grid g2">${labPmc}${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}</div>`;
   return controlsOnly?controls:header+controls+'</div>';
 }};
@@ -1274,19 +1358,31 @@ function itemOverrideCard(list,title){
   return card(title,`<p class="muted small">${tr(tier?T('실제 아이템을 찾아 T1~T7로 지정합니다. 자동 또는 지움은 가격 기준으로 돌아갑니다.','Find a real item and assign T1–T7. Auto or Remove restores its price tier.'):list==='thermalAdd'?T('이 목록의 아이템은 이름과 관계없이 열화상으로 취급합니다.','These items count as thermal regardless of name.'):T('이 목록의 아이템은 이름이나 추가 목록에 걸려도 열화상으로 취급하지 않습니다.','These items are never thermal, even when their name or Add list matches.'))}</p><div class="modlist">${rows||tr(T('지정한 아이템 없음','No overrides'))}</div><input type="search" id="manualSearch-${list}" data-item-search="${list}" value="${esc(itemQuery)}" placeholder="${tr(T('이름 또는 ID로 검색','Search by name or ID'))}"><div class="modlist">${serverMeta?results||esc(itemError)||tr(T('검색어를 입력하십시오','Enter a search term')):tr(T('실제 아이템 검색은 서버 연결 후 사용할 수 있습니다','Connect to the server to search installed items'))}</div>`);
 }
 
-const spawnMap={desc:T('맵마다 웨이브/무한 보충, 레이드 시간, 스폰 구역을 정합니다.','Per map: waves or endless refill, raid time, spawn zones.'),render(){
+let batchLastChange=null,batchCopyPlan=null;
+function batchValue(id,suffix){const p='maps.'+id+'.'+suffix,card=mapFieldCard(p);return clone(card?fieldValue(id,commonPath(suffix)):get(p));}
+function batchCapture(p){const suffix=p.split('.').slice(2).join('.'),ids=[mapSel,...batch];return {p,suffix,before:ids.map(id=>({id,value:batchValue(id,suffix),initialized:!!mapFieldCard(p)&&!cardOn(id,mapFieldCard(p))}))};}
+function batchShow(v){if(v===true)return tr(T('켜짐','On'));if(v===false)return tr(T('꺼짐','Off'));if(v==null)return '—';return typeof v==='object'?JSON.stringify(v):String(v);}
+function batchSummary(){
+ const rules=`<ul><li>${tr(T('맵을 선택하는 것만으로 기존 값은 바뀌지 않습니다. 이후 수정한 항목만 선택한 맵에 함께 들어갑니다.','Selecting maps changes nothing. Only fields edited afterwards are mirrored.'))}</li><li>${tr(T('처음 수정하는 카드는 각 맵의 현재 공통 값 전체를 복사해 이 맵 설정으로 고정합니다. 이후 공통 값을 바꿔도 그 카드는 따라가지 않습니다. 이미 따로 설정한 카드의 다른 값은 유지됩니다.','A card edited for the first time copies its current shared values into that map. Later shared changes no longer affect the card. Other values of existing map-specific cards stay unchanged.'))}</li><li>${tr(T('스폰 구역·구역 비중은 현재 맵만 바뀝니다. 보스·특수 봇·팩션 설정은 각 항목에 표시된 적용 범위를 따르며, 맵 선택만으로 복사되지 않습니다.','Zones and zone weights change only on the current map. Boss, special-bot and faction settings follow their own stated scope; selecting maps does not copy them.'))}</li><li>${tr(T('다른 카드·장비·블랙리스트는 유지됩니다. 전체 복사는 별도로 변경 내역을 확인하고 적용합니다.','Other cards, loadouts and blacklists stay unchanged. Full map copy has a separate review before applying.'))}</li></ul>`;
+ const last=batchLastChange,changed=last?`<div class="batch-last"><b>${tr(T('마지막 일괄 수정','Last mirrored edit'))}: ${esc(labelFor(last.p))}</b>${last.before.map((b,i)=>`<div><b>${esc(mname(b.id))}</b> ${esc(batchShow(b.value))} → ${esc(batchShow(last.after[i].value))}${b.initialized?`<small>${tr(T('이 카드의 나머지 공통 값도 현재 값으로 고정했습니다.','The card’s remaining shared values were also frozen at their current values.'))}</small>`:''}</div>`).join('')}</div>`:'';
+ return `<div class="batch-summary">${rules}${changed}${batchCopyReview()}</div>`;
+}
+function prepareBatchCopy(){
+ const ids=[...new Set(batch)].filter(id=>id!==mapSel&&state.maps[id]);if(!ids.length){batchCopyPlan=null;return;}
+ const source=clone(state.maps[mapSel]);batchCopyPlan={mid:mapSel,ids,before:JSON.stringify([state.maps[mapSel],...ids.map(id=>state.maps[id])]),maps:ids.map(id=>({...clone(source),zones:clone(state.maps[id].zones),zonesAlt:clone(state.maps[id].zonesAlt||{})}))};
+}
+function batchCopyReview(){const p=batchCopyPlan;if(!p)return '';return `<div class="batch-review"><h3>${tr(T('전체 복사 · 적용 전 확인','Full copy · review before applying'))}</h3><p>${esc(mname(p.mid))} → ${p.ids.map(id=>esc(mname(id))).join(' · ')}</p><p>${tr(T('변경: 스폰 방식·카드별 공통/개별 선택·인원·시간·거리·상한·원본/변형 적용 여부. 유지: 대상 맵의 스폰 구역(두 배치)·장비·보스·특수 봇·팩션·전체 공통 설정.','Replace: spawn styles, shared/map-specific switches, counts, times, distances, caps and original/variant enablement. Keep: destination zones in both layouts, loadouts, bosses, special bots, factions and global settings.'))}</p>${p.ids.map((id,i)=>{const a=flatten(state.maps[id]),b=flatten(p.maps[i]),keys=[...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>a[k]!==b[k]);return `<details><summary>${esc(mname(id))} · ${keys.length}${tr(T('개 값 변경',' changed values'))}</summary>${keys.map(k=>`<div class="batch-diff"><b>${esc(batchFieldLabel(id,k))}</b><span>${esc(batchShow(a[k]))} → ${esc(batchShow(b[k]))}</span></div>`).join('')||tr(T('바뀌는 값 없음','No changes'))}</details>`;}).join('')}<div class="chips"><button class="btn pri" data-act="copyMapConfirm">${tr(T('확인한 내용 적용','Apply reviewed changes'))}</button><button class="btn" data-act="copyMapCancel">${tr(T('취소','Cancel'))}</button></div></div>`;}
+function batchFieldLabel(id,k){if(k.startsWith('ovr.'))return tr(CARD_NAMES[k.split('.')[1]]||k)+' · '+tr(T('이 맵만 설정','Map-specific'));const cp=commonPath(k);return REG[cp]?tr(REG[cp]):labelFor('maps.'+id+'.'+k);}
+function confirmBatchCopy(){const p=batchCopyPlan;if(!p)return;if(mapSel!==p.mid||JSON.stringify(batch)!==JSON.stringify(p.ids)||JSON.stringify([state.maps[p.mid],...p.ids.map(id=>state.maps[id])])!==p.before){prepareBatchCopy();toast(tr(T('설정이나 선택 맵이 바뀌어 내역을 다시 계산했습니다. 확인 후 적용하십시오.','Settings or selected maps changed. Review the refreshed changes before applying.')));return;}p.ids.forEach((id,i)=>state.maps[id]=clone(p.maps[i]));presetTouched('maps.'+p.mid+'.style');batchCopyPlan=null;batchLastChange=null;toast(tr(T('확인한 맵 설정을 복사했습니다. 저장하면 다음 레이드부터 적용됩니다.','Reviewed map settings copied. Save to apply from the next raid.')));}
+const spawnMap={desc:T('맵마다 웨이브/무한 보충, 레이드 시간, 스폰 구역을 정합니다.','Per map: waves or endless refill, raid time, spawn zones.'),render(section='',selectedMap=mapSel){
   const card=mapCard;
-  const m=mapById(mapSel),o=state.maps[m.id],pre='maps.'+m.id+'.',inf=o.style==='infinite';
-  const tabs=card(T('여러 맵 동시 설정','Edit several maps at once'),`<div class="tog">${MAPS.map(x=>`<button class="${batch.includes(x.id)||x.id===mapSel?'on':''}" data-batch="${x.id}" ${x.id===mapSel?'disabled':''}>${tr(x.name)}</button>`).join('')}</div><hr class="sub-sep"><div class="chips" style="margin-top:10px">${batch.length?pill(fmt(tr(T('지금 바꾸는 값이 {n}개 맵에 같이 들어갑니다','Changes also apply to {n} more maps')),{n:batch.length}),'gold'):pill(tr(T('맵을 고르면 바꾸는 값이 함께 들어갑니다','Pick maps to edit them together')))}<button class="mini-btn" data-act="batchAll">${tr(T('모두 선택','Select all'))}</button><button class="mini-btn" data-act="batchNone">${tr(T('선택 해제','Clear'))}</button><button class="mini-btn" data-act="copyMap" ${batch.length?'':'disabled'}>${tr(T('이 맵 설정 전체를 고른 맵에 복사','Copy this map to selected'))}</button></div>`,{icon:'⧉',desc:T('현재 맵에서 값을 바꾸면 고른 맵에도 똑같이 들어갑니다.','Changes on the current map are mirrored to the picked maps.')});
+  const m=mapById(selectedMap),o=state.maps[m.id],pre='maps.'+m.id+'.',inf=o.style==='infinite';
+  const tabs=card(T('여러 맵 동시 설정','Edit several maps at once'),`<div class="tog">${MAPS.map(x=>`<button class="${batch.includes(x.id)||x.id===mapSel?'on':''}" data-batch="${x.id}" ${x.id===mapSel?'disabled':''}>${tr(x.name)}</button>`).join('')}</div><hr class="sub-sep"><div class="chips" style="margin-top:10px">${batch.length?pill(fmt(tr(T('지금 바꾸는 값이 {n}개 맵에 같이 들어갑니다','Changes also apply to {n} more maps')),{n:batch.length}),'gold'):pill(tr(T('맵을 고르면 바꾸는 값이 함께 들어갑니다','Pick maps to edit them together')))}<button class="mini-btn" data-act="batchAll">${tr(T('모두 선택','Select all'))}</button><button class="mini-btn" data-act="batchNone">${tr(T('선택 해제','Clear'))}</button><button class="mini-btn" data-act="copyMap" ${batch.length?'':'disabled'}>${tr(T('이 맵 설정 전체를 고른 맵에 복사','Copy this map to selected'))}</button></div>${batchSummary()}`,{icon:'⧉',desc:T('현재 맵에서 값을 바꾸면 고른 맵에도 똑같이 들어갑니다.','Changes on the current map are mirrored to the picked maps.')});
   const view=zoneView(m.id),zoneSettings=o[view.key]||{};
   const zones=view.zones.map(z=>{const zz=zoneSettings[z.id]||{on:true,w:z.w},enabled=zz.on!==false,kind={pmc:T('PMC','PMC'),scav:T('스캐브','Scav'),both:T('둘 다','Both')}[z.kind];
     const weight=(key,label)=>{const v=zz[key]??zz.w??100,p=pre+view.key+'.'+z.id+'.'+key;return `<label class="zone-weight"><span>${tr(label)}</span><input type="range" min="0" max="200" step="10" value="${v}" data-p="${p}" data-t="n" data-unit='"%"' style="--p:${v/2}%" ${enabled?'':'disabled'}><span class="val small" data-v="${p}">${v}%</span></label>`;};
     return `<div class="zone-split${enabled?'':' dis'}"><label class="sw"><input type="checkbox" aria-label="${esc(tr(z.name))}" data-p="${pre}${view.key}.${z.id}.on" data-t="b" ${enabled?'checked':''}><span class="tr"></span></label><span>${tr(z.name)}</span>${pill(tr(kind),z.kind==='pmc'?'blue':z.kind==='scav'?'good':'')}<div class="zone-weights">${z.kind!=='scav'?weight('wPmc',T('PMC','PMC')):''}${z.kind!=='pmc'?weight('wScav',T('스캐브','Scavs')):''}</div></div>`;}).join('');
-  return `<div class="stack">${tabs}
-   ${card(T('미리보기','Preview'),`<div class="tl-split"><div style="min-width:0"><div class="wide-tl" data-live="timeline" data-arg="${m.id}">${timeline(m,true)}</div>${legend()}</div>${rosterBox(m)}</div><div style="margin-top:14px" data-live="stat" data-arg="${m.id}">${statBox(m)}</div>`,{icon:'▦',desc:T(tr(m.name)+' · '+m.id,tr(m.name)+' · '+m.id),right:`<div class="sw-row"><button class="mini-btn ${tlEdit?'on':''}" data-act="tlEdit">✎ ${tr(T('미리보기에서 고치기','Edit in preview'))}</button><button class="mini-btn" data-act="reroll">↻ ${tr(T('다시 굴리기','Re-roll'))}</button></div>`})}
-   ${spawnPresetCard('maps')}
-   <div class="grid g2">
-   ${card(T('스폰 방식','Spawn style'),choice(pre+'style',MAPF.style,'',[
+  const mapSections={style:()=>card(T('스폰 방식','Spawn style'),choice(pre+'style',MAPF.style,'',[
       ['waves','⌁',T('웨이브','Waves'),T('정해진 간격으로 무리 지어 들어옵니다.','Groups arrive at intervals.')],
       ['infinite','∞',T('무한 보충','Endless refill'),T('동시 상한까지 계속 채웁니다. 죽으면 곧 다시 나옵니다.','Keeps filling up to the cap.')],
       ['start','▶',T('시작 스폰만','Start spawns only'),T('레이드 시작 때만 넣고 이후 보충 없음.','Spawns once at raid start, no refills.')]])
@@ -1296,10 +1392,17 @@ const spawnMap={desc:T('맵마다 웨이브/무한 보충, 레이드 시간, 스
         +slider(pre+'inf.pmcShare',T('보충 중 PMC 비율','PMC share of refills'),T('나머지는 스캐브.','Rest are scavs.')):'')
      +(o.style==='start'?notice(T('시작 PMC 비율이 60% 미만이면 60%로 올려 계산합니다. 스캐브 방식은 따로 정합니다.','Starting PMC share is raised to at least 60%. Scav style is set independently.'),'flat'):'')
      +seg(pre+'scavStyle',MAPF.scavStyle,'',[['waves',T('웨이브','Waves')],['infinite',T('무한 보충','Endless refill')],['start',T('시작만','Start only')]])
-     +(state.spawn.raid.mode==='set'?slider(pre+'raidSet',MAPF.raidSet,'',{min:10,max:240,step:5,unit:UI.min_}):`<div class="ctl"><div class="ctl-h"><span>${tr(MAPF.raidSet)}</span><span class="val">${m.det}${u('min_')}${m.src?' · '+m.src:''}</span></div><p class="muted small">${tr(T('레이드 시간은 감지 모드입니다. 스폰 흐름에서 바꿀 수 있습니다.','Raid time is detected. Change it in Spawn flow.'))}</p></div>`),{icon:'∞'})}
-    ${card(T('스폰 구역','Spawn zones'),zoneLayoutTabs(m.id)+(cfgFor(m).placement==='vanilla'?notice(T('스폰 위치 방식이 "바닐라 지점"이라 가중치는 지금 쓰이지 않습니다.','Placement is "Vanilla" — weights unused.'),'flat'):'')+(()=>{const kinds=view.zones.reduce((a,z)=>{const on=(zoneSettings[z.id]||{}).on!==false;if(z.kind!=='scav'){a.p++;if(on)a.pOn++;}if(z.kind!=='pmc'){a.s++;if(on)a.sOn++;}return a;},{p:0,pOn:0,s:0,sOn:0});const all=(kinds.p&&!kinds.pOn)||(kinds.s&&!kinds.sOn),some=kinds.pOn<kinds.p||kinds.sOn<kinds.s;return all?notice(T('한 종류(PMC 또는 스캐브)의 구역을 전부 끄면 봇이 나올 자리가 없어지므로 Gravity는 그 종류를 "전부 켬"으로 처리합니다.','If every zone of one kind (PMC or scav) is off, there is nowhere to spawn, so Gravity treats that kind as all on.'),'warn'):some?notice(T('끈 구역에서는 나오지 않습니다. 남은 구역의 지점이 막히면 PMC는 잠시 기다렸다가(최대 3분) 버려지니, 너무 적게 남기지 마십시오. 구역 끄기는 게임 플러그인이 있어야 적용됩니다.','Off zones are never used. If the remaining spawn points are blocked, PMCs wait (up to 3 min) and are then dropped, so keep enough zones on. Zone exclusion needs the game plugin.'),'flat'):'';})()+`<div style="margin-top:6px">${zones}</div>`,{desc:T('100% = 이 구역의 보통 비중(합계가 아님)','100% = this zone’s normal weight (not a total).'),right:`<button class="mini-btn" data-act="zonesReset">${tr(T('기본값','Defaults'))}</button>`})}
-   ${card(T('원본 / 변형 맵 · 거리','Original / variant · distance'),sw(pre+'original',MAPF.original,T('게임 기본 맵 데이터에 Gravity를 적용합니다.','Apply to stock map data.'))+(()=>{const vmods=variantMods(m.id),lay=serverMeta&&serverMeta.layout&&serverMeta.layout[m.id];return `<p class="muted small" style="margin:4px 0 8px">${vmods.length?tr(T('이 맵의 변형 모드','Variant mods for this map'))+': <b>'+esc(vmods.join(' · '))+'</b>'+(lay?' · '+tr(T('지난 판','last raid'))+' '+tr(lay==='variant'?T('변형','variant'):T('원본','original')):''):tr(T('이 맵에는 감지된 변형 모드가 없습니다(늘 원본).','No variant mod detected for this map (always original).'))}</p>`;})()+sw(pre+'variant',MAPF.variant,T('MapVariants·Manimal 등이 바꿔 끼운 맵에도 적용합니다.','Also when another mod swapped the map.'))
-     +(!o.original&&!o.variant?notice(T('둘 다 끄면 이 맵은 SPT 기본 스폰을 씁니다.','Both off — SPT default spawns.'),'warn'):''),{icon:'⇄'})}
+     +(state.spawn.raid.mode==='set'?slider(pre+'raidSet',MAPF.raidSet,'',{min:10,max:240,step:5,unit:UI.min_}):`<div class="ctl"><div class="ctl-h"><span>${tr(MAPF.raidSet)}</span><span class="val">${m.det}${u('min_')}${m.src?' · '+m.src:''}</span></div><p class="muted small">${tr(T('레이드 시간은 감지 모드입니다. 모든 맵(공통) → 스폰 공통 → 레이드 시간에서 바꿉니다.','Raid time is detected. Change it in All maps (shared) → Shared spawns → Raid time.'))}</p></div>`),{icon:'∞'}),zones:()=>card(T('스폰 구역','Spawn zones'),zoneLayoutTabs(m.id)+(cfgFor(m).placement==='vanilla'?notice(T('스폰 위치 방식이 "바닐라 지점"이라 가중치는 지금 쓰이지 않습니다.','Placement is "Vanilla" — weights unused.'),'flat'):'')+(()=>{const kinds=view.zones.reduce((a,z)=>{const on=(zoneSettings[z.id]||{}).on!==false;if(z.kind!=='scav'){a.p++;if(on)a.pOn++;}if(z.kind!=='pmc'){a.s++;if(on)a.sOn++;}return a;},{p:0,pOn:0,s:0,sOn:0});const all=(kinds.p&&!kinds.pOn)||(kinds.s&&!kinds.sOn),some=kinds.pOn<kinds.p||kinds.sOn<kinds.s;return all?notice(T('한 종류(PMC 또는 스캐브)의 구역을 전부 끄면 봇이 나올 자리가 없어지므로 Gravity는 그 종류를 "전부 켬"으로 처리합니다.','If every zone of one kind (PMC or scav) is off, there is nowhere to spawn, so Gravity treats that kind as all on.'),'warn'):some?notice(T('끈 구역에서는 나오지 않습니다. 남은 구역의 지점이 막히면 PMC는 잠시 기다렸다가(최대 3분) 버려지니, 너무 적게 남기지 마십시오. 구역 끄기는 게임 플러그인이 있어야 적용됩니다.','Off zones are never used. If the remaining spawn points are blocked, PMCs wait (up to 3 min) and are then dropped, so keep enough zones on. Zone exclusion needs the game plugin.'),'flat'):'';})()+`<div style="margin-top:6px">${zones}</div>`,{desc:T('100% = 이 구역의 보통 비중(합계가 아님)','100% = this zone’s normal weight (not a total).'),right:`<button class="mini-btn" data-act="zonesReset">${tr(T('기본값','Defaults'))}</button>`}),layout:()=>card(T('원본 / 변형 맵 · 거리','Original / variant · distance'),sw(pre+'original',MAPF.original,T('게임 기본 맵 데이터에 Gravity를 적용합니다.','Apply to stock map data.'))+(()=>{const vmods=variantMods(m.id),lay=serverMeta&&serverMeta.layout&&serverMeta.layout[m.id];return `<p class="muted small" style="margin:4px 0 8px">${vmods.length?tr(T('이 맵의 변형 모드','Variant mods for this map'))+': <b>'+esc(vmods.join(' · '))+'</b>'+(lay?' · '+tr(T('지난 판','last raid'))+' '+tr(lay==='variant'?T('변형','variant'):T('원본','original')):''):tr(T('이 맵에는 감지된 변형 모드가 없습니다(늘 원본).','No variant mod detected for this map (always original).'))}</p>`;})()+sw(pre+'variant',MAPF.variant,T('MapVariants·Manimal 등이 바꿔 끼운 맵에도 적용합니다.','Also when another mod swapped the map.'))
+     +(!o.original&&!o.variant?notice(T('둘 다 끄면 이 맵은 SPT 기본 스폰을 씁니다.','Both off — SPT default spawns.'),'warn'):''),{icon:'⇄'})};
+  if(section)return (mapSections[section]?.()||'')+(section==='style'&&!variantMods(m.id).length?card(T('이 맵 적용','Enable on this map'),sw(pre+'original',T('이 맵에 Gravity 스폰 적용','Use Gravity spawns on this map'),T('끄면 이 맵은 게임 기본 스폰을 사용합니다.','Off uses the game’s default spawns on this map.'))):'');
+  return `<div class="stack">${tabs}
+   ${card(T('미리보기','Preview'),`<div class="tl-split"><div style="min-width:0"><div class="wide-tl" data-live="timeline" data-arg="${m.id}">${timeline(m,true)}</div>${legend()}</div>${rosterBox(m)}</div><div style="margin-top:14px" data-live="stat" data-arg="${m.id}">${statBox(m)}</div>`,{icon:'▦',desc:T(tr(m.name)+' · '+m.id,tr(m.name)+' · '+m.id),right:`<div class="sw-row"><button class="mini-btn ${tlEdit?'on':''}" data-act="tlEdit">✎ ${tr(T('미리보기에서 고치기','Edit in preview'))}</button><button class="mini-btn" data-act="reroll">↻ ${tr(T('다시 굴리기','Re-roll'))}</button></div>`})}
+   ${spawnPresetCard('maps')}
+   <div class="grid g2">
+   ${mapSections.style()}
+   ${mapSections.zones()}
+   ${mapSections.layout()}
+
   </div>${spawnCommon.render(m.id,true)}</div>`;}};
 
 P.spawn={desc:T('공통 흐름과 맵별 스폰 설정을 한곳에서 정합니다.','Set shared flow and per-map spawns in one place.'),render(){
@@ -1332,15 +1435,16 @@ P.near={desc:T('플레이어 동선 주변에 봇을 계속 던져 넣는 선택
      +seg(n+'custom.diff',T('난이도','Difficulty'),'',[['easy',T('쉬움','Easy')],['normal',T('보통','Normal')],['hard',T('어려움','Hard')],['impossible',T('불가능','Imposs.')],['random',T('무작위','Random')]],{dis:off||!cu.on})+`</div></div>`,{icon:'☰',cls:off?'off':''})}
   </div>`;}};
 
-P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호위, 시각, 난이도를 정합니다.','Per boss: maps, spawn zones, chance, escorts, timing and difficulty.'),render(){
+P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호위, 시각, 난이도를 정합니다.','Per boss: maps, spawn zones, chance, escorts, timing and difficulty.'),render(inPreview=false,previewMid=''){
+  const relevant=previewMid?previewEntities(mapById(previewMid),'boss').map(x=>x.id):null;if(relevant&&!relevant.includes(bossSel)){if(!relevant.length)return notice(T('이 맵에 해당하는 보스가 없습니다.','No relevant bosses on this map.'));bossSel=relevant[0];}
   const b=BOSSES.find(x=>x.id===bossSel),bb=state.bosses[b.id],p='bosses.'+b.id+'.',c=state.bossCommon,lock=c.on&&b.id!=='zryachiy';
-  const list=`<div class="list">${BOSSES.map(x=>`<button data-boss="${x.id}" class="${x.id===bossSel?'on':''}">★ ${tr(x.name)}<span class="st ${state.bosses[x.id].on?'on':''}"></span></button>`).join('')}</div>`;
-  const selMaps=MAPS.filter(m=>bb.maps[m.id]);
+  const list=`<div class="list">${BOSSES.filter(x=>!relevant||relevant.includes(x.id)).map(x=>`<button data-boss="${x.id}" class="${x.id===bossSel?'on':''}">★ ${tr(x.name)}<span class="st ${state.bosses[x.id].on?'on':''}"></span></button>`).join('')}</div>`;
+  const selMaps=MAPS.filter(m=>bb.maps[m.id]&&(!previewMid||m.id===previewMid));
   const zoneBoxes=selMaps.map(m=>`<div class="zbox"><h4>${tr(m.name)}${pill(bb.zones[m.id].length+' '+tr(T('구역','zones')))}</h4><div class="tog">${['default',...(BOSSZ[m.id]||ZONES[m.id].map(z=>z.id))].map(z=>`<button class="gold ${bb.zones[m.id].includes(z)?'on':''}" data-zone="${b.id}|${m.id}|${z}">${BOSSZ[m.id]&&z!=='default'?zoneLabel(z):zname(m.id,z)}</button>`).join('')}</div></div>`).join('')||notice(T('나오는 맵을 하나 이상 고르세요.','Pick at least one map.'),'warn');
   const detail=card(T(b.name.ko,b.name.en),sw(p+'on',BOSSF.on,'')
      +slider(p+'chance',T('등장 확률','Spawn chance'),lock?T('공통 확률이 켜져 있어 잠겨 있습니다.','Locked by shared chance.'):'',{dis:lock||!bb.on,val:lock?c.chance:bb.chance})
      +seg(p+'diff',BOSSF.diff,'',[['easy',T('쉬움','Easy')],['normal',T('보통','Normal')],['hard',T('어려움','Hard')],['impossible',T('불가능','Imposs.')]],{adv:true})
-     +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.map(m=>flipBtn(p+'maps.'+m.id,tr(m.name))).join('')}</div>`
+     +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.filter(m=>!previewMid||m.id===previewMid).map(m=>flipBtn(p+'maps.'+m.id,tr(m.name))).join('')}</div>`
      +`<div class="sub">${tr(T('태어나는 구역 (여러 개면 그중 무작위)','Spawn zones (random among selected)'))}</div>${zoneBoxes}`
      +`<div class="sub">${tr(T('호위 · 시각','Escorts · timing'))}</div>`
      +sw(p+'followers',BOSSF.followers,'')
@@ -1348,6 +1452,7 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
      +range(p+'tFrom',p+'tTo',T('등장 시각 (분)','Appears at (min)'),T('0–0 = 레이드 시작 때. 범위면 그 사이 무작위.','0–0 = at start. A range = random within.'),{min:0,max:120,unit:UI.min_})
      +sw(p+'extra',BOSSF.extra,T('맵 기본 자리 외에 추가로 한 번 더 굴립니다.','Roll once more besides the default spawn.'),{adv:true})
      +sw(p+'noVanilla',BOSSF.noVanilla,T('게임 기본 보스 스폰을 지우고 Gravity 것만 씁니다. 지금 판은 Gravity가 바닐라 항목을 직접 고치므로 이 칸은 효과가 없습니다.','Remove vanilla boss spawns; use Gravity only. No effect in this version: Gravity edits the vanilla entries directly.'),{adv:true}),{icon:'★',right:pill(bb.on?u('on'):u('off'),bb.on?'good':'')});
+  if(inPreview)return `<div class="stack">${previewMid?notice(T('켜기·확률·호위·시각·난이도는 이 보스가 나오는 모든 맵에 적용됩니다. 나오는 맵·구역 선택만 현재 맵 설정입니다.','Enable, chance, escorts, time and difficulty apply on every map of this boss. Only the map toggle and zones are local.')):''}${list}${detail}<button class="btn preview-common-only" data-spawn-tab="all">${tr(T('보스 공통 확률 · 난이도 · 주간 설정','Shared boss chance, difficulty & weekly settings'))}</button></div>`;
   return `<div class="stack">${spawnOff()}<div class="grid g3">
    ${card(T('공통 확률','Shared chance'),sw('bossCommon.on',T('모든 보스에 같은 확률','One chance for all'),T('즈랴치처럼 항상 나오는 보스는 제외.','Excludes always-on bosses.'))+slider('bossCommon.chance',T('공통 확률','Shared chance'),'',{dis:!c.on}),{icon:'★'})}
    ${card(T('점증 · 점감','Progressive · regressive'),sw('bossProg.on',T('안 나오면 다음 판 확률 올리기','Raise after a miss'),'')+sw('bossProg.regressive',T('나오면 다음 판 확률 내리기','Lower after a spawn'),'',{adv:true})+slider('bossProg.step',T('한 판마다','Step per raid'),'',{min:1,max:30,dis:!state.bossProg.on})+range('bossProg.min','bossProg.max',T('확률 범위','Chance range'),'',{adv:true}),{icon:'↗'})}
@@ -1355,36 +1460,38 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
    <div class="split">${list}${detail}</div></div>`;}};
 
 const SPEC_DESC={raiders:T('연구소·리저브의 정예 무장 집단. 레버·스위치로도 나옵니다.','Elite groups on Lab/Reserve; also lever-triggered.'),rogues:T('등대 수처리장을 지키는 전직 USEC.','Ex-USEC guarding Lighthouse water treatment.'),cultists:T('밤에 나오는 칼잡이 무리.','Knife-wielding night groups.'),bloodhounds:T('나이트 3인방 주변에 나오는 사냥꾼.','Hunters around the Goons.'),snipers:T('맵 기본 저격 자리의 스캐브.','Scavs in default sniper spots.'),infected:T('할로윈 감염자. 이벤트가 켜졌을 때만 나옵니다.','Halloween infected; only during the event.')};
-P.specials={desc:T('특수 봇마다 탭을 골라 맵별 등장 확률과 무리 인원을 정합니다.','Pick a special bot tab to set per-map chance and group size.'),render(){
+P.specials={desc:T('특수 봇마다 탭을 골라 맵별 등장 확률과 무리 인원을 정합니다.','Pick a special bot tab to set per-map chance and group size.'),render(previewMid=''){
+  const relevant=previewMid?previewEntities(mapById(previewMid),'spec').map(x=>x.id):null;if(relevant&&!relevant.includes(specSel)){if(!relevant.length)return notice(T('이 맵에 해당하는 특수 봇이 없습니다.','No relevant special bots on this map.'));specSel=relevant[0];}
   const id=specSel,sp=state.specials[id],def=SPECIALS.find(x=>x[0]===id),p='specials.'+id+'.';
-  const tabs=`<div class="tabs">${SPECIALS.map(([k,n])=>`<button data-spec="${k}" class="${k===specSel?'on':''}">${tr(n)}${state.specials[k].on?'':` <small class="muted">(${u('off')})</small>`}</button>`).join('')}</div>`;
+  const tabs=`<div class="tabs">${SPECIALS.filter(([k])=>!relevant||relevant.includes(k)).map(([k,n])=>`<button data-spec="${k}" class="${k===specSel?'on':''}">${tr(n)}${state.specials[k].on?'':` <small class="muted">(${u('off')})</small>`}</button>`).join('')}</div>`;
   const ex=SPEC_EXTRA.includes(id),key=ex?'extra.':'chance.';
   const on=MAPS.filter(m=>specChance(id,m.id)>0).length;
-  const maps=MAPS.map(m=>slider(p+key+m.id,T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en),'',{dis:!sp.on}).replace(`<span>${tr(T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en))}</span>`,`<span>${tr(m.name)}</span>`)).join('');
-  return `<div class="stack">${spawnOff()}${tabs}
+  const maps=MAPS.filter(m=>!previewMid||m.id===previewMid).map(m=>slider(p+key+m.id,T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en),'',{dis:!sp.on}).replace(`<span>${tr(T(def[1].ko+' · '+m.name.ko,def[1].en+' · '+m.name.en))}</span>`,`<span>${tr(m.name)}</span>`)).join('');
+  return `<div class="stack">${previewMid?notice(T('켜기·인원·시각은 이 종류의 모든 맵에 적용됩니다. 아래 맵 확률은 현재 맵에만 적용됩니다.','Enable, group sizes and timing apply on every map of this type. The map chance below applies only here.')):''}${spawnOff()}${tabs}
    ${card(def[1],sw(p+'on',T('켜기','Enable'),'')+(ex?sw(p+'vanilla',T('원래 스폰 유지','Keep original spawns'),T('맵에 원래 있는 무리(레버·탈출구 같은 이벤트 포함)를 확률·인원 그대로 둡니다. 끄면 원래 무리는 나오지 않습니다.','Keeps the map’s own groups (incl. lever/exfil events) at their original chance and size. Off = original groups never spawn.'),{dis:!sp.on})
        +slider(p+'vanillaMax',T('원래 무리 한 판 최대 인원 (0 = 그대로)','Original groups · max bots per raid (0 = unchanged)'),T('맵에 원래 있는 무리(우두머리+호위)를 한 판에 모두 합쳐 이 인원까지만 내보냅니다. 넘치면 마지막 무리의 호위를 줄이거나 그 무리를 뺍니다. 레버·탈출구 같은 이벤트 무리와 추가 스폰은 세지 않습니다.','Caps the map’s own groups (leader + escorts) to this many bots in total per raid. Extra groups lose escorts or are skipped. Event groups (lever/exfil) and extra spawns are not counted.'),{min:0,max:30,unit:UI.ppl,dis:!sp.on||!sp.vanilla})
        +range(p+'tFrom',p+'tTo',T('원래 스폰 시각 (0~0 = 원래 시각, 레버 같은 이벤트 무리는 그대로)','Original spawn time (0–0 = original; event groups unchanged)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})+range(p+'extraMin',p+'extraMax',T('추가 스폰 인원 (최대 0 = 추가 끔)','Extra group size (max 0 = no extra)'),'',{min:0,max:8,unit:UI.ppl,dis:!sp.on})+range(p+'xFrom',p+'xTo',T('추가 스폰 시각 (0~0 = 판 시작)','Extra spawn time (0–0 = raid start)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})
-       :range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})+(id==='infected'?'':range(p+'tFrom',p+'tTo',T('나오는 시각 (0~0 = 원래 시각)','Spawn time (0–0 = original time)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id]})}
+       :range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})+(id==='infected'?'':range(p+'tFrom',p+'tTo',T('나오는 시각 (0~0 = 원래 시각)','Spawn time (0–0 = original time)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn preview-common-only" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn preview-common-only" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id]})}
    ${card(ex?T('맵별 추가 스폰 확률','Extra spawn chance per map'):T('맵별 등장 확률','Chance per map'),`<div class="grid g2" style="gap:0 26px">${maps}</div>`,{desc:ex?T('원래 스폰과 별도로 판 시작 때 한 무리를 이 확률로 더 넣습니다(맵 상한을 지킴). 원래 무리가 있는 맵에서만 넣습니다. 0% = 추가 없음.','Adds one more group at raid start with this chance, on top of the original spawns (respects the map cap). Only on maps that already have this group. 0% = no extra.'):T('0% = 그 맵에 안 나옴.','0% = never on that map.')})}
    ${id==='infected'?notice(T('감염자는 이벤트가 켜졌을 때만 나옵니다. 이벤트 켜기는 이벤트 페이지의 담당 모드를 따릅니다.','Infected only appear while the event is active; see Events for who controls it.'),'flat'):''}
    ${notice(T('ORBIT이 특수 봇을 장악하면 행동은 ORBIT, 스폰은 Gravity가 맡습니다.','If ORBIT takes over a special type, ORBIT drives behaviour and Gravity still spawns it.'),'flat')}</div>`;}};
-P.factions={desc:T('RUAF·UNTAR·블랙 디비전처럼 봇을 추가하는 모드의 스폰을 Gravity에서 정합니다.','Control spawns of faction mods like RUAF, UNTAR and Black Division.'),render(){
+P.factions={desc:T('RUAF·UNTAR·블랙 디비전처럼 봇을 추가하는 모드의 스폰을 Gravity에서 정합니다.','Control spawns of faction mods like RUAF, UNTAR and Black Division.'),render(previewMid=''){
+  const relevant=previewMid?previewEntities(mapById(previewMid),'fac').map(x=>x.id):null;if(relevant&&!relevant.includes(facSel)){if(!relevant.length)return notice(T('이 맵에 해당하는 설치된 팩션이 없습니다.','No installed factions relevant to this map.'));facSel=relevant[0];}
   const f=FACTIONS.find(x=>x.id===facSel),F=state.factions[f.id],p='factions.'+f.id+'.',man=F.managed;
-  const list=`<div class="list"><div class="cap">${tr(T('감지된 모드','DETECTED'))}</div>${FACTIONS.map(x=>`<button data-fac="${x.id}" class="${x.id===facSel?'on':''}"><span style="color:${x.color}">⚑</span> ${tr(x.name)}${facInst(x.id)?'':` <span class="muted small">(${tr(T('없음','none'))})</span>`}<span class="st ${state.factions[x.id].managed?'on':''}"></span></button>`).join('')}</div>`;
+  const list=`<div class="list"><div class="cap">${tr(T('감지된 모드','DETECTED'))}</div>${FACTIONS.filter(x=>!relevant||relevant.includes(x.id)).map(x=>`<button data-fac="${x.id}" class="${x.id===facSel?'on':''}"><span style="color:${x.color}">⚑</span> ${tr(x.name)}${facInst(x.id)?'':` <span class="muted small">(${tr(T('없음','none'))})</span>`}<span class="st ${state.factions[x.id].managed?'on':''}"></span></button>`).join('')}</div>`;
   const kind=(k,title,body)=>card(title,sw(p+k+'.on',T('켜기','Enable'),'',{dis:!man})+body,{cls:man&&F[k].on?'':'off'});
   let body='';
   if(f.id==='blackdiv'){const d=p+'bd.';body=`<div class="grid g2">${card(T('사냥조 (블랙 디비전)','Hunt teams'),slider(d+'chance',T('맵마다 등장 확률','Chance per map'),'',{dis:!man})+range(d+'tMin',d+'tMax',T('등장 시점 (레이드 진행 %)','Appears at (% of raid)'),T('레이드 비율이라 레이드가 길어지면 같이 늘어납니다. 타임라인의 보라 선 양 끝을 끌어도 바뀝니다.','Scales with raid length. Also drag the line ends on the timeline.'),{dis:!man})+range(d+'huntMin',d+'huntMax',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man}))}
-    ${card(T('연구소 · 웨지','Lab · Wedge'),`<div class="chips" style="margin-bottom:8px">${FACMETA&&!(FACMETA.blackout&&FACMETA.blackout.installed)?pill('✕ Blackout '+tr(T('없음 · 연동 안 함','not found · no link'))):pill('✓ Blackout '+fmt(tr(T('감지 · 정전 확률 {p}%','detected · {p}% blackout')),{p:FACMETA&&FACMETA.blackout&&FACMETA.blackout.chance!=null?FACMETA.blackout.chance:25}),'good')}</div>`+seg('lab.blackoutLink',T('블랙아웃(정전) 판과 연동','Link to Blackout raids'),T('Blackout 모드가 연구소를 정전시키는 판에 블디·웨지를 맞춥니다.','Tie BlackDiv/Wedge to Lab blackout raids.'),[['always',T('상관없이','Always')],['only',T('정전 판에만','Blackout only')],['boost',T('정전 판 확률 ×','Blackout ×')]],{dis:!man})+slider('lab.blackoutMult',T('정전 판 확률 배율','Blackout multiplier'),'',{min:1,max:5,step:.5,unit:UI.x,dis:!man||state.lab.blackoutLink!=='boost'})+slider(d+'labsGate',T('연구소 게이트 진입 확률','Lab gate entry chance'),T('게이트마다 따로 굴립니다. 되면 그 게이트의 레이더 대신 블랙 디비전이 들어옵니다.','Rolled per gate; on success Black Division replaces that gate’s raiders.'),{dis:!man})+sw(d+'wedge',T('웨지 (보스) 켜기','Enable Wedge (boss)'),'',{dis:!man})+slider(d+'wedgeChance',T('웨지 무리 확률 (연구소 시작)','Wedge squad chance (Lab start)'),T('웨지와 호위가 레이드 시작부터 연구소에 있을 확률입니다(모드의 "연구소 시작" 확률과 같은 값).','Chance that Wedge and escorts are in the Lab from raid start (same as the mod’s Lab start chance).'),{dis:!man||!F.bd.wedge}))}</div>`;}
+    ${!previewMid||previewMid==='laboratory'?card(T('연구소 · 웨지','Lab · Wedge'),`<div class="chips" style="margin-bottom:8px">${FACMETA&&!(FACMETA.blackout&&FACMETA.blackout.installed)?pill('✕ Blackout '+tr(T('없음 · 연동 안 함','not found · no link'))):pill('✓ Blackout '+fmt(tr(T('감지 · 정전 확률 {p}%','detected · {p}% blackout')),{p:FACMETA&&FACMETA.blackout&&FACMETA.blackout.chance!=null?FACMETA.blackout.chance:25}),'good')}</div>`+seg('lab.blackoutLink',T('블랙아웃(정전) 판과 연동','Link to Blackout raids'),T('Blackout 모드가 연구소를 정전시키는 판에 블디·웨지를 맞춥니다.','Tie BlackDiv/Wedge to Lab blackout raids.'),[['always',T('상관없이','Always')],['only',T('정전 판에만','Blackout only')],['boost',T('정전 판 확률 ×','Blackout ×')]],{dis:!man})+slider('lab.blackoutMult',T('정전 판 확률 배율','Blackout multiplier'),'',{min:1,max:5,step:.5,unit:UI.x,dis:!man||state.lab.blackoutLink!=='boost'})+slider(d+'labsGate',T('연구소 게이트 진입 확률','Lab gate entry chance'),T('게이트마다 따로 굴립니다. 되면 그 게이트의 레이더 대신 블랙 디비전이 들어옵니다.','Rolled per gate; on success Black Division replaces that gate’s raiders.'),{dis:!man})+sw(d+'wedge',T('웨지 (보스) 켜기','Enable Wedge (boss)'),'',{dis:!man})+slider(d+'wedgeChance',T('웨지 무리 확률 (연구소 시작)','Wedge squad chance (Lab start)'),T('웨지와 호위가 레이드 시작부터 연구소에 있을 확률입니다(모드의 "연구소 시작" 확률과 같은 값).','Chance that Wedge and escorts are in the Lab from raid start (same as the mod’s Lab start chance).'),{dis:!man||!F.bd.wedge})):''}</div>`;}
   else body=`<div class="grid g3">${kind('patrol',T('순찰','Patrols'),slider(p+'patrol.chance',T('확률','Chance'),'',{dis:!man})+slider(p+'patrol.count',T('맵당 순찰조 수','Patrols per map'),'',{min:1,max:5,unit:'',dis:!man})+range(p+'patrol.min',p+'patrol.max',T('인원','Size'),'',{min:1,max:10,unit:UI.ppl,dis:!man})+range(p+'patrol.tMin',p+'patrol.tMax',T('등장 시각','Appears at'),T('스폰 흐름·맵별 설정 타임라인의 보라 선 양 끝을 끌어도 바뀝니다.','Also drag the purple line ends on the spawn timeline.'),{min:0,max:180,unit:UI.min_,dis:!man}))}
     ${kind('checkpoint',T('검문소','Checkpoints'),slider(p+'checkpoint.chance',T('확률','Chance'),T('레이드 시작 때 나옵니다. RUAF 설정에서 검문소를 켠 맵, 좌표가 있는 구역에만 세웁니다.','Spawn at raid start, only on maps where RUAF enables checkpoints and only in zones with coordinates.'),{dis:!man})+slider(p+'checkpoint.count',T('맵당 검문소 수','Checkpoints per map'),'',{min:1,max:4,unit:'',dis:!man})+range(p+'checkpoint.min',p+'checkpoint.max',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man})+slider(p+'checkpoint.radius',T('지키는 반경','Guard radius'),T('RUAF 클라가 자기 설정 값을 씁니다(Gravity는 적용하지 않음).','The RUAF client uses its own value (not applied by Gravity).'),{min:5,max:60,unit:UI.m,adv:true,dis:true}))}
     ${kind('hunt',T('사냥조','Hunts'),slider(p+'hunt.chance',T('확률','Chance'),T('레이드 10~90% 사이에 들어옵니다. 레넌트·전 USEC 사냥조는 모드 설정 그대로입니다.','Enters between 10–90% of the raid. Remnant and ex-USEC hunts keep the mod’s own config.'),{dis:!man})+range(p+'hunt.min',p+'hunt.max',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man}))}</div>`;
   const detail=`<div class="stack">${card(T(f.name.ko,f.name.en),`<div class="ctl"><div class="seg"><button data-segp="${p}managed" data-v="false" class="${!man?'on':''}">${tr(T('모드 설정 그대로','Use the mod’s own config'))}</button><button data-segp="${p}managed" data-v="true" class="${man?'on':''}">${tr(T('Gravity가 관리','Managed by Gravity'))}</button></div></div>`
-     +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.map(m=>flipBtn(p+'maps.'+m.id,tr(m.name),{dis:!man})).join('')}</div>`
+     +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.filter(m=>!previewMid||m.id===previewMid).map(m=>flipBtn(p+'maps.'+m.id,tr(m.name),{dis:!man})).join('')}</div>`
      +notice(fmt(tr(T('맵 상한과의 관계는 스폰 → 상한 카드의 "종류별 상한 · 팩션" 줄에서 정합니다(지금: {m}).','How factions count toward the map cap is set in Spawn → Limits, "Cap by bot type · Factions" (now: {m}).')),{m:tr((CAP_MODES.find(x=>x[0]===state.spawn.caps.faction.mode)||CAP_MODES[0])[1])}),'flat')
      +`<div class="chips" style="margin-top:8px">${facInst(f.id)?pill('✓ '+f.mod+' '+tr(T('감지됨','detected')),'good'):pill('✕ '+f.mod+' '+tr(T('설치되지 않음','not installed')))}${pill('ORBIT '+f.orbit+': '+(f.id==='untar'||f.id==='ruaf'?'false':'false'),'blue')}</div>`,{icon:'⚑',desc:T('그대로 두면 그 모드가 자기 설정대로 스폰합니다. Gravity가 관리하면 아래 값으로 덮어씁니다.','Left alone, the mod spawns per its own config. Managed = Gravity overrides.')})}${body}</div>`;
   const inst=facInst(f.id)?(f.id==='untar'?notice(T('UNTAR는 아직 Gravity가 관리하지 않습니다(설치본으로 봇 이름을 확인하지 못함). 모드 설정 그대로 나옵니다.','UNTAR is not managed by Gravity yet; it uses its own config.'),'flat'):''):notice(T('이 게임에는 설치되어 있지 않습니다. 값은 저장되지만 효과가 없습니다.','Not installed in this game. Values are saved but have no effect.'),'flat');
-  return `<div class="stack">${spawnOff()}${inst}<div class="split">${list}${detail}</div></div>`;}};
+  return `<div class="stack">${previewMid?notice(T('관리 방식·종류별 확률·인원·시각은 이 팩션의 모든 맵에 적용됩니다. 나오는 맵 선택만 현재 맵 설정입니다.','Management, group chances, sizes and timing apply across all maps of this faction. Only the map toggle is local.')):''}${spawnOff()}${inst}<div class="split">${list}${detail}</div></div>`;}};
 
 P.events={desc:T('SPT 시즌 이벤트(할로윈·크리스마스 등)를 켜고 끄고, 이벤트 봇 스폰을 정합니다.','Turn SPT seasonal events on/off and set event bot spawns.'),render(){
   const ev=state.events,m3=[['auto',T('날짜 따라 자동','By date')],['on',T('항상 켜기','Always on')],['off',T('끄기','Off')]];
@@ -1597,9 +1704,10 @@ P.presets={desc:T('레이드·장비·시스템 설정 전체를 파일 하나�
 
 const TIER_PRESETS=[
  {id:'auto',name:T('Gravity 자동','Gravity auto'),desc:T('설치된 바닐라·모드 아이템으로 Gravity가 직접 깎은 기본 구성.','Built by Gravity from your installed vanilla + mod items.'),f:t=>t},
- {id:'apbs-realistic',name:T('Realistic and Extended PMC Loadouts','Realistic and Extended PMC Loadouts'),desc:T('APBS 에드온 "Realistic and Extended PMC Loadouts Preset"의 티어별 무기·방어구·탄·확률을 고치지 않고 그대로 옮긴 프리셋입니다. 모드 아이템은 넣지 않고, 원작 목록에 없는 무기·방어구는 쓰지 않습니다.','The APBS add-on "Realistic and Extended PMC Loadouts Preset" carried over unchanged: weapons, armor, ammo and chances per tier. No mod items; anything not in the original lists is left out.'),f:t=>t,file:'presets/apbs-realistic-mip01.json',
-  credit:T('제작: mip01. \n\nmip01 by. jsjsj님이 원작 프리셋 제작자의 허락을 받아 만든 에드온입니다. 좋은 프리셋을 만들어 주셔서 감사합니다. ^^7','By mip01. \n\nmip01 by. jsjsj — made with permission from the original preset author. Thank you for the great preset. ^^7'),
-  chips:[T('레벨 T1 1–10 … T7 61–100','Levels T1 1–10 … T7 61–100'),T('판 T1 3–4 · T7 4–6','Plates T1 3–4 · T7 4–6'),T('탄: 원작 탄 목록','Ammo: original lists'),T('모드 아이템 0','Mod items 0')]}
+ {id:'apbs-realistic',name:T('Realistic and Extended PMC Loadouts','Realistic and Extended PMC Loadouts'),desc:T('Realistic Live-like 1.0.2의 사용자 저장본을 반영했습니다. 시작 레벨·티어별 무장·가중치·봇별 적용 설정을 함께 불러옵니다. 현재 설정은 이 카드를 눌러 적용할 때 바뀝니다.','Includes the saved Realistic Live-like 1.0.2 custom preset: level ranges, tier loadouts, weights and role settings. Your current settings change only when you apply this card.'),f:t=>t,file:'presets/apbs-realistic-mip01.json',
+  credit:T('구성: Realistic Live-like 1.0.2 · R_F 사용자 저장본.\nAPBS 기반 자료를 Gravity 형식으로 변환했습니다.\n이전 기본 구성(1.0.3 이하): mip01님의 Realistic and Extended PMC Loadouts. 좋은 프리셋을 만들어 주셔서 감사합니다. ^^7','Configuration: Realistic Live-like 1.0.2 · saved by R_F.\nConverted from APBS-based data to Gravity.\nPrevious built-in (1.0.3 and earlier): Realistic and Extended PMC Loadouts by mip01. Thank you for the great preset. ^^7'),
+  chips:[T('Realistic Live-like 1.0.2','Realistic Live-like 1.0.2'),T('T1–T7 · 봇별 전용 표','T1–T7 · role-specific tables'),T('사용자 저장 무장·가중치','Saved loadouts & weights'),T('적용할 때만 변경','Changes only when applied')]}
+
 ];
 let customTierPresets=[];
 let customSpawnPresets=[];
@@ -2021,7 +2129,7 @@ let toastT;function toast(msg){clearTimeout(toastT);const t=$('#toast');t.textCo
 
 /* ================= events ================= */
 const readVal=el=>el.dataset.t==='b'?el.checked:el.dataset.t==='n'?Number(el.value):el.value;
-function writeSetting(p,v,auto=false){const ok=writeSettingRaw(p,v,auto);if(ok)presetTouched(p);return ok;}
+function writeSetting(p,v,auto=false){const inline=tlPopTab==='details'&&!!tlPopAnchor&&p.startsWith('maps.'+tlPopAnchor.mid+'.');const ok=writeSettingRaw(p,v,auto||inline);if(ok)presetTouched(p);return ok;}
 let presetTimer=0;
 /** 새 커스텀 프리셋 이름: 지금 있는 번호 중 가장 큰 번호 + 1(지운 번호를 다시 쓰면 지운 프리셋이 되살아난 것처럼 보인다). */
 const customName=list=>{let mx=0;list.forEach(x=>{const m=/(?:커스텀 프리셋|Custom preset) (\d+)$/.exec(x.name||'');if(m)mx=Math.max(mx,+m[1]);});return tr(T('커스텀 프리셋 ','Custom preset '))+(mx+1);};
@@ -2038,6 +2146,7 @@ function presetTouched(p){
 }
 function schedulePresetSync(){clearTimeout(presetTimer);presetTimer=setTimeout(()=>{const c=customPresets.find(x=>x.id===state.preset);if(c)c.snap=pickKeys(state,RAID_KEYS);const t=customTierPresets.find(x=>x.id===state.tierPreset);if(t){t.tiers=clone(state.gear.tiers);t.data=clone(state.tierData);t.gearSnap=pickKeys(state,GEAR_KEYS);}if(typeof libSync==='function')libSync();renderShell();},300);}
 function writeSettingRaw(p,v,auto=false){
+  const impact=isSpawnMap()&&batch.length&&p.startsWith('maps.'+mapSel+'.')&&!/^maps\.[^.]+\.zones/.test(p)?batchCapture(p):null;
   {const m=/^tierData\.([^.]+)\.(\d+)\.(weapons|armor|ammo|meds|parts)\.([^.]+)\.[0-9a-f]{24}$/.exec(p);if(m)materialize(m[1],+m[2],m[3],m[4]);}
   const k=p.split('.');
   if(k[0]!=='maps'){putPath(state,p,v);return true;}
@@ -2048,7 +2157,7 @@ function writeSettingRaw(p,v,auto=false){
   targets.forEach(id=>{if(card&&(auto||id!==mid))ensureOverride(id,card);putPath(state,`maps.${id}.${suffix}`,clone(v));
     if(card==='flow'&&['early','mid','late'].includes(k[2]))putPath(state,`maps.${id}.intensity.${k[2]}`,v);
     if(card==='flow'&&k[2]==='intensity')state.maps[id][k[3]]=v;
-  });return true;
+  });if(impact)batchLastChange={...impact,after:targets.map(id=>({id,value:batchValue(id,suffix)}))};return true;
 }
 function apply(el,final){
   const p=el.dataset.p;let v=readVal(el);
@@ -2065,7 +2174,7 @@ function apply(el,final){
     document.querySelectorAll('[data-v*="|"]').forEach(x=>{const[a,b]=x.dataset.v.split('|');if(a===p||b===p)x.textContent=`${showVal(get(a),unit,step)} – ${showVal(get(b),unit,step)}`;});
     if(el.dataset.ratio){const host=el.closest('[data-ratiohost]');const parts=[...host.querySelectorAll('input[type=range]')].map(i=>Number(i.value)),sum=parts.reduce((a,b)=>a+b,0);
       host.querySelectorAll('.ratio-bar span').forEach((s,i)=>s.style.width=(sum?parts[i]/sum*100:0)+'%');const sm=host.querySelector('.sum');sm.textContent=`${tr(T('합계','Total'))} ${sum}%`;sm.className='sum '+(sum===100?'ok':'bad');}}
-  updateSavebar();refreshLive();if(final){const y=window.scrollY;render();window.scrollTo(0,y);}
+  updateSavebar();refreshLive();if(final){const y=window.scrollY;render();window.scrollTo(0,y);if(tlPopKey)openPop(tlPopKey,null,true);}
 }
 document.addEventListener('input',e=>{const el=e.target;
   if(el.dataset.itemSearch){itemQuery=el.value;itemFetchSequence++;itemResults=[];itemError='';clearTimeout(itemTimer);itemTimer=setTimeout(fetchManualItems,250);return;}
@@ -2105,7 +2214,7 @@ document.addEventListener('drop',e=>{if(dragTier==null)return;const t=e.target.c
 document.addEventListener('dragend',endDrag);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tFull){tFull=false;document.body.classList.remove('noscroll');render();}});
-function rerender(){const y=window.scrollY;render();window.scrollTo(0,y);libSync();}
+function rerender(){const y=window.scrollY;render();window.scrollTo(0,y);if(tlPopKey)openPop(tlPopKey,null,true);libSync();}
 /* 내 프리셋 서버 저장(0.6): libReady = 서버 목록을 읽었음(못 읽었으면 덮어쓰지 않게 저장을 막음). 저장은 한 번에 하나, 도는 동안 바뀐 것은 끝난 뒤 마지막 상태로 한 번 더. */
 let libReady=false,libSaved='',libBusy=false,libLoadErr='';
 const libObj=()=>({raid:customPresets,gear:customTierPresets,spawn:customSpawnPresets});
@@ -2114,11 +2223,14 @@ function libSync(){if(!serverMeta||!libReady||libBusy)return;const j=JSON.string
   fetch('api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({library:JSON.parse(j)})}).then(r=>r.json()).then(x=>done(!!x.ok,x.error||'')).catch(e=>done(false,e.message));}
 document.addEventListener('click',e=>{
   if(!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
-  const pe=e.target.closest('[data-pop]');if(pe&&!e.target.closest('button')){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
+  const pe=e.target.closest('[data-pop]');if(pe){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
   const b=e.target.closest('button');if(!b){const g=e.target.closest('[data-gomap]');if(g){mapSel=g.dataset.gomap;page='spawn';spawnTab=mapSel;render();window.scrollTo(0,0);}return;}if(b.disabled)return;const d=b.dataset;
-  if(d.rst){d.rst.split('|').forEach(q=>{const dv=defOf(q);if(typeof dv==='number')writeSetting(q,dv);});updateSavebar();refreshLive();rerender();return;}
-  if(d.spawnTab){spawnTab=d.spawnTab;if(spawnTab!=='all')mapSel=spawnTab;batch=batch.filter(x=>x!==mapSel);closePop();rerender();return;}
-  if(d.spawnStyle){const p=d.spawnStyle,v=d.v;if(!['waves','infinite','start'].includes(v)||(p.startsWith('factions.')&&v==='infinite'))return;if(p.startsWith('factions.'))facManage(p.split('.')[1]);else if(isSpawnMap()){const mid=p.split('.')[1],card=p.endsWith('.scavStyle')?'scav':'flow';[mid,...batch].forEach(id=>ensureOverride(id,card));}set(p,v);const parts=p.split('.');if(parts[0]==='maps'&&parts[1]===mapSel&&isSpawnMap())batch.forEach(id=>setIn(state,['maps',id,...parts.slice(2)].join('.'),v));const key=tlPopKey;rerender();openPop(key,e);return;}
+  if(d.rst){d.rst.split('|').forEach(q=>{const dv=defOf(q);if(typeof dv==='number')writeSetting(q,dv,true);});updateSavebar();refreshLive();rerender();return;}
+  if(d.spawnTab){if(d.spawnTab==='all'){flowMap=mapSel;previewGroup='';}spawnTab=d.spawnTab;if(spawnTab!=='all')mapSel=spawnTab;batch=batch.filter(x=>x!==mapSel);closePop();rerender();return;}
+  if(d.previewGroup){if(!['flow','actors','events'].includes(d.previewGroup))return;previewGroup=previewGroup===d.previewGroup?'':d.previewGroup;rerender();return;}
+  if(d.popTab){if(!['basic','details'].includes(d.popTab))return;tlPopTab=d.popTab;openPop(tlPopKey,null,true);return;}
+  if(d.popMode){const mid=tlPopAnchor?.mid;if(!mid)return;const card=d.popMode.includes('.scav.')?'scav':'flow';if(d.popMode.startsWith('maps.'))ensureOverride(mid,card);writeSetting(d.popMode,d.v,true);rerender();openPop(tlPopKey,null,true);return;}
+  if(d.spawnStyle){const p=d.spawnStyle,v=d.v;if(!['waves','infinite','start'].includes(v)||(p.startsWith('factions.')&&v==='infinite'))return;if(p.startsWith('factions.'))facManage(p.split('.')[1]);else if(isSpawnMap()){const mid=p.split('.')[1],card=p.endsWith('.scavStyle')?'scav':'flow';[mid,...batch].forEach(id=>ensureOverride(id,card));}writeSetting(p,v,true);const key=tlPopKey;rerender();openPop(key,null,true);return;}
   if(d.cyclestyle){const o=state.maps[d.cyclestyle],order=['waves','infinite','start'];o.style=order[(order.indexOf(o.style)+1)%3];rerender();return;}
   if(d.allstyle){MAPS.forEach(m=>state.maps[m.id].style=d.allstyle);toast(fmt(tr(T('13개 맵을 모두 "{s}"(으)로 바꿨습니다','All 13 maps set to "{s}"')),{s:{waves:tr(T('웨이브','Waves')),infinite:tr(T('무한 보충','Endless')),start:tr(T('시작 스폰만','Start only'))}[d.allstyle]}));rerender();return;}
   if(d.svm){SVM[d.svm]=!SVM[d.svm];rerender();return;}
@@ -2145,9 +2257,9 @@ document.addEventListener('click',e=>{
   if(d.mode){mode=d.mode;rerender();return;}
   if(d.lang){lang=d.lang;rerender();return;}
   if(d.map){mapSel=d.map;spawnTab=mapSel;batch=batch.filter(x=>x!==mapSel);rerender();return;}
-  if(d.boss){bossSel=d.boss;rerender();return;}
+  if(d.boss){bossSel=d.boss;if(tlPopKey.startsWith('boss|'))tlPopKey='boss|'+d.boss;rerender();return;}
   if(d.role){roleSel=d.role;rerender();return;}
-  if(d.fac){facSel=d.fac;rerender();return;}
+  if(d.fac){facSel=d.fac;if(tlPopKey.startsWith('fac|'))tlPopKey='fac|'+d.fac;rerender();return;}
   if(d.tier!=null){tierSel=+d.tier;pickTiers=null;rerender();return;}
   if(d.modtab){modTab=d.modtab;modSearch='';rerender();return;}
   if(d.it){const [k,v]=d.it.split('|');
@@ -2162,7 +2274,7 @@ document.addEventListener('click',e=>{
   if(d.flip){set(d.flip,!get(d.flip));rerender();return;}
   if(d.zone){const[bid,mid,z]=d.zone.split('|');const arr=state.bosses[bid].zones[mid];const i=arr.indexOf(z);if(i>=0){if(arr.length>1)arr.splice(i,1);else toast(tr(T('구역은 하나 이상 있어야 합니다','At least one zone is required')));}else arr.push(z);rerender();return;}
   if(d.gomap){mapSel=d.gomap;page='spawn';spawnTab=mapSel;render();window.scrollTo(0,0);return;}
-  if(d.spec){specSel=d.spec;rerender();return;}
+  if(d.spec){specSel=d.spec;if(tlPopKey.startsWith('spec|'))tlPopKey='spec|'+d.spec;rerender();return;}
   if(d.tbot){tBot=d.tbot;if(tCopyTo===tBot)tCopyTo=TBOTS.find(x=>x[0]!==tBot)[0];rerender();return;}
   if(d.tsec){tSec=d.tsec;iq='';pickOpen='';pq='';rerender();return;}
   if(d.iadd2){const[p,id]=d.iadd2.split('|');get(p)[id]=10;toast(tr(T('추가했습니다','Added')));rerender();return;}
@@ -2186,7 +2298,7 @@ document.addEventListener('click',e=>{
   if(d.blcat){blCat=d.blcat;blFetch();rerender();return;}
   if(d.bladd){state.blacklist.entries.push({id:d.bladd,bots:['all']});rerender();return;}
   if(d.blrm!=null){state.blacklist.entries.splice(+d.blrm,1);blOpen=-1;rerender();return;}
-  if(d.batch){const i=batch.indexOf(d.batch);if(i>=0)batch.splice(i,1);else batch.push(d.batch);rerender();return;}
+  if(d.batch){batchLastChange=null;batchCopyPlan=null;const i=batch.indexOf(d.batch);if(i>=0)batch.splice(i,1);else batch.push(d.batch);rerender();return;}
   const a=d.act,arg=d.arg;if(!a)return;
   if(a==='save'){saveToServer();}
   else if(a==='revert'){state=clone(saved);toast(u('revertedT'));rerender();}
@@ -2201,7 +2313,7 @@ document.addEventListener('click',e=>{
   else if(a==='resetMap'){const m=mapById(mapSel);if(confirm(fmt(tr(T('{m}의 맵별 설정(방식·구역·카드별 값)을 모두 지우고 공통 값을 따르게 할까요?','Clear every per-map setting of {m} (style, zones, card values) and follow the shared values?')),{m:tr(m.name)}))){state.maps[m.id]=clone(DEFAULTS.maps[m.id]);presetTouched('maps');toast(fmt(tr(T('{m}을(를) 원본으로 되돌렸습니다','{m} reset')),{m:tr(m.name)}));rerender();}}
   else if(a==='toEasy'){mode='easy';rerender();}
   else if(a==='normalize'){const o=get(arg),ks=Object.keys(o),sum=ks.reduce((s,k)=>s+o[k],0)||1;let acc=0;ks.forEach((k,i)=>{o[k]=i===ks.length-1?100-acc:Math.round(o[k]/sum*100);acc+=o[k];});rerender();}
-  else if(a==='zonesReset'){const view=zoneView(mapSel);state.maps[mapSel][view.key]||={};view.zones.forEach(z=>state.maps[mapSel][view.key][z.id]={on:true,w:z.w,wPmc:z.w,wScav:z.w});rerender();}
+  else if(a==='zonesReset'){const mid=tlPopKey==='panel|zones'?tlPopAnchor.mid:mapSel,view=zoneView(mid);state.maps[mid][view.key]||={};view.zones.forEach(z=>state.maps[mid][view.key][z.id]={on:true,w:z.w,wPmc:z.w,wScav:z.w});rerender();}
   else if(a==='tiersReset'){state.gear.tiers=clone(DEFAULTS.gear.tiers);rerender();}
   else if(a==='resetRole'){state.roles[roleSel]=roleDefaults(roleSel);rerender();}
   else if(a==='copyRole'){const grp=ROLE_GROUPS.find(([,l])=>l.some(x=>x[0]===roleSel))[1];grp.forEach(([id])=>{if(id!==roleSel)state.roles[id]=clone(state.roles[roleSel]);});toast(fmt(tr(T('{n}개 봇에 복사했습니다','Copied to {n} bots')),{n:grp.length-1}));rerender();}
@@ -2225,9 +2337,11 @@ document.addEventListener('click',e=>{
   else if(a==='tierDel'){customTierPresets=customTierPresets.filter(x=>x.id!==state.tierPreset);tierPresetApply('auto');rerender();}
   else if(a==='specZero'){const sp=state.specials[specSel],o=SPEC_EXTRA.includes(specSel)?(sp.extra||(sp.extra={})):sp.chance;MAPS.forEach(m=>o[m.id]=0);rerender();}
   else if(a==='specReset'){state.specials[specSel]=clone(DEFAULTS.specials[specSel]);rerender();}
-  else if(a==='batchAll'){batch=MAPS.map(m=>m.id).filter(id=>id!==mapSel);rerender();}
-  else if(a==='batchNone'){batch=[];rerender();}
-  else if(a==='copyMap'){const src=clone(state.maps[mapSel]);batch.forEach(id=>{const z=state.maps[id].zones,alt=state.maps[id].zonesAlt;state.maps[id]={...clone(src),zones:z,zonesAlt:alt||{}};});toast(fmt(tr(T('{n}개 맵에 복사했습니다 (스폰 구역은 맵마다 유지)','Copied to {n} maps (zones kept)')),{n:batch.length}));rerender();}
+  else if(a==='batchAll'){batchLastChange=null;batchCopyPlan=null;batch=MAPS.map(m=>m.id).filter(id=>id!==mapSel);rerender();}
+  else if(a==='batchNone'){batchLastChange=null;batchCopyPlan=null;batch=[];rerender();}
+  else if(a==='copyMap'){prepareBatchCopy();rerender();}
+  else if(a==='copyMapConfirm'){confirmBatchCopy();rerender();}
+  else if(a==='copyMapCancel'){batchCopyPlan=null;rerender();}
   else if(a==='devSim'&&serverMeta){const bn=id=>{const b=BOSSES.find(x=>x.id===id);return b?tr(b.name):id;},spn=id=>{if(id==='blackdiv')return tr(T('블랙 디비전','Black Division'));if(id==='wedge')return tr(T('웨지','Wedge'));const x=SPECIALS.find(y=>y[0]===id);if(x)return tr(x[1]);const f=FACTIONS.find(y=>y.id===id);return f?tr(f.name):id;};
     fetch('api/dev/sim?map='+encodeURIComponent(devMap)+'&n=10').then(r=>r.json()).then(j=>{if(!j.rows){toast(j.error||'');return;}simRows=j.rows.map(r=>({p:r.pmc,s:r.scav,b:r.bosses.map(bn),sp:r.specials.map(spn),c:(r.conditional||[]).map(id=>BOSSES.some(b=>b.id===id)?bn(id):spn(id))}));if(j.skip)toast(tr(T('실제 레이드에서는 건너뜁니다(계산만): ','A real raid would skip this map (calculation only): '))+j.skip);else if(!j.client)toast(tr(T('클라 플러그인이 연결되지 않은 상태로 계산했습니다(스캐브 보충·공장 PMC 빠짐).','Calculated without a linked client plugin (no scav refill, no Factory PMCs).')));rerender();}).catch(e=>toast(e.message));}
   else if(a==='devSim'){const m=mapById(devMap),e=estimate(m);simRows=[];for(let i=0;i<10;i++){const r=rng(seed*977+i*31);const rr=(a,b)=>Math.round(a+(b-a)*r());simRows.push({p:e?rr(e.pmin,e.pmax):0,s:e?rr(e.smin,e.smax):0,b:(e?e.bosses:[]).filter(b=>r()*100<bossChance(b)).map(b=>tr(b.name)),sp:SPECIALS.filter(([id])=>state.specials[id].on&&r()*100<specChance(id,m.id)).map(([,n])=>tr(n))});}rerender();}
@@ -2354,7 +2468,7 @@ const GEAR_NOTE={
 };
 function blFetch(){if(!serverMeta)return;fetch('api/items?q='+encodeURIComponent(blSearch)+'&cat='+encodeURIComponent(blCat)).then(r=>r.json()).then(j=>{BLSRV=(j.items||[]).map(x=>[x.id,(x.ko||x.en)+'|'+(x.en||x.ko),x.cat,x.mod?'mod':'']);BLSRV.forEach(x=>BLNAMES[x[0]]=x[1]);if(page==='blacklist')rerender();}).catch(()=>{});}
 function blName(id){if(BLNAMES[id]||!serverMeta||blAsked[id])return;blAsked[id]=1;fetch('api/items?q='+encodeURIComponent(id)+'&cat=all').then(r=>r.json()).then(j=>{(j.items||[]).forEach(x=>BLNAMES[x.id]=(x.ko||x.en)+'|'+(x.en||x.ko));if(page==='blacklist')rerender();}).catch(()=>{});}
-var EVMETA=null,FACMETA=null;function facInst(id){return FACMETA?!!(FACMETA[id]&&FACMETA[id].installed):true;}
+var EVMETA=null,FACMETA=null;function facInst(id){if(FACMETA)return !!(FACMETA[id]&&FACMETA[id].installed);const d=serverMeta&&serverMeta.detect;if(d)return !!d[id==='blackdiv'?'blackDiv':id];return true;}
 function evOwn(){return state.eventsOwner!=='auto'?state.eventsOwner:(EVMETA&&EVMETA.owner)||(serverMeta&&serverMeta.detect&&serverMeta.detect.ppes?'ppes':SVM.on&&(SVM.disableEvents||SVM.forceXmas||SVM.forceHallo)?'svm':'gravity');}
 function detectedMods(){const d=serverMeta&&serverMeta.detect;if(!d)return ['ORBIT 3.1','SAIN','SVM','MapVariants','Manimal','RUAF','UNTAR','BlackDiv','Blackout','PastPresentEventSelector'];
   const o=serverMeta.orbit,l=[];if(d.orbit)l.push('ORBIT'+(o&&o.version?' '+o.version:''));if(d.sain)l.push('SAIN');if(d.svm)l.push('SVM');if(d.mapVariants)l.push('MapVariants');

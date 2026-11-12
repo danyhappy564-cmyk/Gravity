@@ -184,13 +184,13 @@ public class ReleaseBTests
     }
 
     [Fact]
-    public void BundledApbsRealisticPresetKeepsOriginalWeightsAndKeepsModWeaponsOut()
+    public void BundledRealisticLiveLikePresetAppliesSavedWeightsAndKeepsUnlistedWeaponsOut()
     {
         var dir=new DirectoryInfo(AppContext.BaseDirectory);
         for(int i=0;i<10&&dir!=null&&!File.Exists(Path.Combine(dir.FullName,"Gravity.sln"));i++)dir=dir.Parent;
         Assert.NotNull(dir);
         var preset=JsonNode.Parse(File.ReadAllText(Path.Combine(dir!.FullName,"src/Gravity.Server/wwwroot/presets/apbs-realistic-mip01.json")))!;
-        Assert.Equal("mip01",(string?)preset["credits"]!["presetAuthor"]);
+        Assert.Equal("Realistic Live-like 1.0.2",(string?)preset["name"]);
         var state=preset["settings"]!.DeepClone();state["tierData"]=preset["tables"]!.DeepClone();state["tierOwn"]=preset["ownTables"]!.DeepClone();
         var g=ConfigModel.FromState(V2(state!),[]).Gear!;
         const string m4="5447a9cd4bdc2dbd208b4567";
