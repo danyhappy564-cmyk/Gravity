@@ -1114,3 +1114,14 @@ test('1.0.5: 장비 프리셋 카드 이름이 내용(Realistic Live-like 1.0.2)
  assert.match(p.desc.ko,/mip01님의 APBS Realistic and Extended PMC Loadouts Preset/);assert.match(p.credit.en,/by mip01/);
  assert.ok(!p.chips.some(c=>c.ko===p.name.ko),'이름과 같은 칩 중복 없음');
 });
+
+test('1.0.5: 다른 PC에서 열어 저장이 막히면 SPT 로그인 안내 막대를 띄운다',async()=>{
+ const login='/login?returnUrl=%2Fgravity%2F';
+ const a=app({fetch:async()=>({ok:false,status:403,json:async()=>({ok:false,error:'SPT 웹 관리자 로그인이 필요합니다 / SPT web admin login required',login})})});
+ a.run("serverMeta={version:'1.0.5'}");await a.run('saveToServer()');
+ const bar=a.nodes.get('#loginbar');assert.equal(bar.hidden,false);assert.match(bar.innerHTML,/href="\/login\?returnUrl=%2Fgravity%2F"/);assert.match(bar.innerHTML,/SPT 웹 관리자로 로그인/);
+ a.run("lang='en';renderShell()");assert.match(a.nodes.get('#loginbar').innerHTML,/Log in as an SPT web admin/);
+ const b=app();b.run(`applyServerWrite({ok:false,login:'${login}'})`);assert.equal(b.nodes.get('#loginbar').hidden,false);
+ const c=app();c.run("applyServerWrite({ok:true})");assert.notEqual(c.nodes.get('#loginbar')?.hidden,false,'저장 가능하면 막대 없음');
+ assert.match(html,/id="loginbar"/);
+});

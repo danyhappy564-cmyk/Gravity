@@ -222,6 +222,7 @@ tbody tr:hover td{background:#6ea8ff07}
 .tierin input{width:56px}
 
 /* savebar + toast */
+.loginbar{position:sticky;top:var(--appbar);z-index:35;margin-left:var(--drawer);background:#33270ff2;border-bottom:1px solid #d3b77988;padding:10px 20px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}.loginbar .small{color:#e8d7ae;flex:1;min-width:200px}.loginbar .btn{text-decoration:none}
 .savebar{position:sticky;top:var(--appbar);z-index:34;margin-left:var(--drawer);background:linear-gradient(90deg,#14223af4,#1a1f35f4);border-bottom:1px solid #6ea8ff55;box-shadow:0 8px 24px #0006;padding:10px 32px;backdrop-filter:blur(12px)}
 .savebar .row{display:flex;align-items:center;gap:12px}
 .savebar .row b{color:#d8e6ff}
@@ -235,7 +236,7 @@ body.easy .adv{display:none!important}
 @media(max-width:900px){
   .iconbtn{display:inline-grid;place-items:center}.brand{min-width:0}.brand-text small,.mock{display:none}
   .drawer{transform:translateX(-100%);transition:transform .2s}.drawer.open{transform:none;box-shadow:20px 0 60px #000a}
-  main,.savebar{margin-left:0}main{padding:20px 16px 50px}.g2,.g3{grid-template-columns:1fr}.tool span{display:none}
+  main,.savebar,.loginbar{margin-left:0}main{padding:20px 16px 50px}.g2,.g3{grid-template-columns:1fr}.tool span{display:none}
   .zone{grid-template-columns:auto 1fr 110px 48px}.zone .pill{display:none}
 }
 @media(max-width:560px){:root{--appbar:96px}.appbar{gap:8px;padding:0 12px}.brand-text,.mock{display:none}.tools{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px;justify-items:end}.tool,.tool select{width:100%;min-width:0}.seg button{padding:5px 7px}.stat{grid-template-columns:1fr}.savebar ul{columns:1}}
@@ -483,8 +484,9 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
 </header>
 <aside class="drawer" id="drawer">
   <nav id="nav"></nav>
-  <div class="drawer-foot"><div><span class="dot"></span><span data-k="offline"></span></div><div class="mono">127.0.0.1:6969/gravity</div><div data-k="ver"></div></div>
+  <div class="drawer-foot"><div><span class="dot"></span><span data-k="offline"></span></div><div class="mono" id="hostLabel">127.0.0.1:6969/gravity</div><div data-k="ver"></div></div>
 </aside>
+<section class="loginbar" id="loginbar" hidden></section>
 <section class="savebar" id="savebar" hidden>
   <div class="row"><b id="dirty"></b><span class="sp"></span><button class="btn" data-act="revert" data-k="revert"></button><button class="btn pri" data-act="save" data-k="save"></button></div>
   <details><summary data-k="showChanges"></summary><ul id="changes"></ul></details>
@@ -2117,7 +2119,13 @@ function renderNav(){
   $('#nav').innerHTML=btn(top)+NAV.map(([cap,items],i)=>{const list=items.filter(x=>x[0]!=='dashboard'),open=readLocal('gravity.nav.'+i,'1')!=='0'||list.some(x=>x[0]===page);
     return `<hr class="nav-sep"><details class="nav-group" data-nav-group="${i}" ${open?'open':''}><summary class="nav-cap">${tr(cap)}</summary>${list.map(btn).join('')}</details>`;}).join('');}
 
+/** 1.0.5: 다른 PC에서 열었고 SPT 웹 관리자로 로그인하지 않아 저장이 막힌 상태 — 서버가 알려 준 SPT 로그인 주소로 안내한다. */
+let writeLogin=null;
+function needLogin(url){writeLogin=url||'/login?returnUrl=%2Fgravity%2F';const b=$('#loginbar');if(!b)return;b.hidden=false;
+  b.innerHTML=`<b>${tr(T('저장하려면 SPT 웹 관리자로 로그인하십시오','Log in as an SPT web admin to save'))}</b><span class="small">${tr(T('이 화면은 서버 PC가 아닌 곳(다른 PC·내부망·Fika 주소)에서 열렸습니다. 서버 PC에서 127.0.0.1로 열면 로그인 없이 저장됩니다.','This page was opened from another address (another PC, LAN or Fika). Opened on the server PC at 127.0.0.1, it saves without logging in.'))}</span><a class="btn pri" href="${esc(writeLogin)}">${tr(T('SPT 로그인','SPT login'))}</a>`;}
+function applyServerWrite(w){if(w&&w.ok===false)needLogin(w.login);}
 function renderShell(){
+  if(writeLogin)needLogin(writeLogin);
   document.documentElement.lang=lang;document.querySelectorAll('[data-k]').forEach(el=>el.textContent=u(el.dataset.k));
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
   document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.lang===lang));
@@ -2250,7 +2258,7 @@ let libReady=false,libSaved='',libBusy=false,libLoadErr='';
 const libObj=()=>({raid:customPresets,gear:customTierPresets,spawn:customSpawnPresets});
 function libSync(){if(!serverMeta||!libReady||libBusy)return;const j=JSON.stringify(libObj());if(j===libSaved)return;libBusy=true;
   const done=(ok,err)=>{libBusy=false;if(ok){libSaved=j;if(delToast){toast(fmt(tr(T('"{n}" 프리셋을 지웠습니다(서버에 저장됨).','Deleted "{n}" (saved on the server).')),{n:delToast}));delToast=null;}}else toast(tr(T('프리셋 저장 실패(다음 변경 때 다시 저장): ','Preset save failed (will retry on next change): '))+err);if(ok)libSync();};
-  fetch('api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({library:JSON.parse(j)})}).then(r=>r.json()).then(x=>done(!!x.ok,x.error||'')).catch(e=>done(false,e.message));}
+  fetch('api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({library:JSON.parse(j)})}).then(r=>r.json()).then(x=>{if(x.login)needLogin(x.login);done(!!x.ok,x.error||'');}).catch(e=>done(false,e.message));}
 document.addEventListener('click',e=>{
   if(!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
   const pe=e.target.closest('[data-pop]');if(pe){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
@@ -2356,7 +2364,7 @@ document.addEventListener('click',e=>{
   else if(a==='tierImportDemo'){const data=clone(state.tierData);data.pmc[5].weapons.primaryLong.epic_scar=25;data.pmc[5].weapons.primaryLong.ghost_gun=10;data.pmc[6].weapons.primaryLong.epic_scar=30;const obj={format:'gravity-tier-preset',version:1,name:"Friend's chad tiers",exportedAt:new Date().toISOString(),tiers:state.gear.tiers,tables:data,ownTables:[],items:{...tierModItems(data),epic_scar:{source:'Epic Gun Pack',code:'9ec9ac395c1f0e9a7b3d2e6f'},ghost_gun:{source:'Ghost Arms',code:'7a1f00c35c1f0e9a7b3d2e6f'}}};importTierJson(JSON.stringify(obj),'friend-chads.json');}
   else if(a==='autoRebuild'){state.tierData=tierDataDefaults();state.tierPreset='auto';rerender();
     if(!serverMeta){toast(tr(T('설치된 아이템으로 다시 만들었습니다 (목업)','Rebuilt from installed items (mockup)')));}
-    else fetch('api/gear/rebuild',{method:'POST'}).then(r=>r.json()).then(j=>toast(j.ok?tr(T('설치된 아이템 가격으로 티어를 다시 계산했습니다: ','Recomputed item tiers from installed prices: '))+j.summary:tr(T('다시 계산 실패: ','Rebuild failed: '))+(j.error||''))).catch(e=>toast(e.message));}
+    else fetch('api/gear/rebuild',{method:'POST'}).then(r=>r.json()).then(j=>{if(j.login)needLogin(j.login);return j;}).then(j=>toast(j.ok?tr(T('설치된 아이템 가격으로 티어를 다시 계산했습니다: ','Recomputed item tiers from installed prices: '))+j.summary:tr(T('다시 계산 실패: ','Rebuild failed: '))+(j.error||''))).catch(e=>toast(e.message));}
   else if(a==='slotClear'){const k=arg.split('.');const o=materialize(k[1],+k[2],k[3],k[4]);Object.keys(o).forEach(id=>o[id]=0);presetTouched('tierData');rerender();}
   else if(a==='slotAuto'){const o=get(arg);Object.keys(o).forEach(k=>delete o[k]);presetTouched('tierData');rerender();}
   else if(a==='tcopyTiers'){const src=state.tierData[tBot][tierSel];state.tierData[tBot].forEach((d,i)=>{if(i===tierSel)return;if(tSec==='gen'){d.gen=clone(src.gen);d.chance=clone(src.chance);d.mods=clone(src.mods);}else d[tSec]=clone(src[tSec]||{});});toast(tr(T('모든 티어에 복사했습니다','Copied to all tiers')));rerender();}
@@ -2508,7 +2516,7 @@ function detectedMods(){const d=serverMeta&&serverMeta.detect;if(!d)return ['ORB
   [...new Set(Object.values(d.variantMaps||{}).flat())].forEach(n=>l.push(n));if(d.ruaf)l.push('RUAF');if(d.untar)l.push('UNTAR');if(d.blackDiv)l.push('BlackDiv');if(d.blackout)l.push('Blackout');if(d.ppes)l.push('PastPresentEventSelector');if(d.moreBots)l.push('MoreBotsAPI');return l;}
 function variantMods(id){const d=serverMeta&&serverMeta.detect;if(!d)return id==='interchange'||id==='lighthouse'?['Manimal']:[];const known=(d.variantMaps||{})[id]||[],auto=(serverMeta.automaticVariants||[]).includes(id);return [...known,...(auto?[tr(T('자동 감지된 변형 맵','Automatically detected variant'))]:[])];}
 function applyMeta(meta){
-  serverMeta=meta;if(meta.version)UI.mock=T(meta.version,meta.version);EVMETA=meta.events||null;FACMETA=meta.factions||null;
+  serverMeta=meta;if(meta.version)UI.mock=T(meta.version,meta.version);EVMETA=meta.events||null;FACMETA=meta.factions||null;applyServerWrite(meta.write);{const hl=$('#hostLabel');if(hl&&location.host)hl.textContent=location.host+'/gravity';}
   if(FACMETA)['ruaf','blackdiv'].forEach(id=>{const fm=FACMETA[id],f=FACTIONS.find(x=>x.id===id);if(f&&fm&&fm.maps&&fm.maps.length)f.maps=fm.maps.filter(m=>MAPS.some(x=>x.id===m));});
   if(EVMETA){const sv=EVMETA.svm;SVM.disableEvents=!!(sv&&sv.disableEvents);SVM.forceXmas=!!(sv&&sv.christmas);SVM.forceHallo=!!(sv&&sv.halloween);}
   abpsDemo=!!(meta.detect&&meta.detect.abps);apbsDemo=!!(meta.locked&&meta.locked.gear);qbDemo=!!(meta.detect&&meta.detect.questingBots);
@@ -2582,7 +2590,7 @@ async function saveToServer(){
   try{
     const r=await fetch('api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state})});
     const j=await r.json();
-    if(!r.ok||!j.ok){toast(tr(T('저장 실패: ','Save failed: '))+(j.error||r.status));return;}
+    if(!r.ok||!j.ok){if(j.login)needLogin(j.login);toast(tr(T('저장 실패: ','Save failed: '))+(j.error||r.status));return;}
     saved=clone(state);
     toast(j.clamped&&j.clamped.length?fmt(tr(T('저장했습니다. 범위를 넘은 값 {n}개는 서버가 고쳐 씁니다.','Saved. {n} out-of-range values were clamped.')),{n:j.clamped.length}):u('savedT'));
     rerender();

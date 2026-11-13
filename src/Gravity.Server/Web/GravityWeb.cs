@@ -68,7 +68,7 @@ public class GravityWeb : IHttpListener
                         await Send(res, 200, new { state = rt.Store.RawState, loadWarning = rt.Store.LoadWarning });
                         return;
                     case ("state", "POST"):
-                        if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 저장할 수 있습니다" }); return; }
+                        if (!await WriteAccess.CheckAsync(context)) { await Send(res, 403, Denied); return; }
                         if (req.ContentLength > MaxBody) { await Send(res, 413, new { error = "너무 큽니다" }); return; }
                         JsonNode? node;
                         try { node = await ReadJson(req, MaxBody, cancellationToken); }
@@ -83,6 +83,7 @@ public class GravityWeb : IHttpListener
                         await Send(res, 200, new
                         {
                             version = GravityInfo.Version, detect = rt.Detect,
+                            write = new { ok = await WriteAccess.CheckAsync(context), login = WriteAccess.LoginUrl },
                             locked = new { spawn = rt.Detect.SpawnLocked, gear = rt.Detect.GearLocked },
                             maps = rt.Catalog.All,
                             automaticVariants = rt.Catalog.AutomaticVariants.OrderBy(id => id).ToArray(),
@@ -116,7 +117,7 @@ public class GravityWeb : IHttpListener
                         return;
                     case ("library", "POST"):
                     {
-                        if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 저장할 수 있습니다" }); return; }
+                        if (!await WriteAccess.CheckAsync(context)) { await Send(res, 403, Denied); return; }
                         if (req.ContentLength > MaxLibrary) { await Send(res, 413, new { ok = false, error = "너무 큽니다" }); return; }
                         if (rt.Library is null) { await Send(res, 503, new { ok = false, error = "프리셋 저장소 없음" }); return; }
                         JsonNode? lib;
@@ -129,7 +130,7 @@ public class GravityWeb : IHttpListener
                     }
                     case ("gear/rebuild", "POST"):
                     {
-                        if (!IsLoopback(context.Connection.RemoteIpAddress)) { await Send(res, 403, new { error = "이 PC에서만 할 수 있습니다" }); return; }
+                        if (!await WriteAccess.CheckAsync(context)) { await Send(res, 403, Denied); return; }
                         var sum = Gravity.Gear.GearRuntime.RebuildItems();
                         if (sum != null) rt.Note($"{GravityInfo.Tag} {L.T("장비 아이템 티어 다시 계산", "Gear item tiers recalculated")}: {sum}");
                         await Send(res, sum != null ? 200 : 503, new { ok = sum != null, summary = sum, error = sum == null ? "장비 자료가 준비되지 않았습니다" : null });
@@ -250,7 +251,8 @@ public class GravityWeb : IHttpListener
         return full.StartsWith(rootFull.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ? full : null;
     }
 
-    private static bool IsLoopback(IPAddress? ip) => ip is not null && IPAddress.IsLoopback(ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip);
+    /// <summary>다른 PC에서 열었고 SPT 웹 관리자로 로그인하지 않은 저장 요청(1.0.5). 웹은 login 주소로 로그인 안내를 띄운다.</summary>
+    private static readonly object Denied = new { ok = false, error = "SPT 웹 관리자 로그인이 필요합니다 / SPT web admin login required", login = WriteAccess.LoginUrl };
 
     private static async Task Send(HttpResponse res, int status, object? body)
     {
