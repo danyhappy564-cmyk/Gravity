@@ -114,6 +114,14 @@ public static class RaidSpawnApplier
     /// 구역은 이 맵 보스 항목에 실제로 있는 이름만 남기고(웹 목업 id 등 모르는 이름은 버림), 다 버려지면 바닐라 구역.
     /// </summary>
     /// <param name="templates">보스 역할 → 다른 맵 DB 항목(MapCatalog.BossTemplates). 웹에서 원래 없던 맵을 켠 보스는 이걸 복제해 넣는다(0.4).</param>
+    /// <summary>1.0.5: 이 맵에서 보스 등장 확률. 꺼짐·맵 꺼짐 = 0, 맵별 값 > 보스 공통(즈랴치 제외) > 보스 기본.</summary>
+    internal static double BossChanceFor(GravityConfig cfg, string id, BossSettings b, string mapId)
+    {
+        if (!b.On || (b.Maps.TryGetValue(mapId, out var on) && !on)) return 0;
+        if (b.MapChance != null && b.MapChance.TryGetValue(mapId, out var mc)) return mc;
+        return cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance;
+    }
+
     public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId, int seed = 1, int raidSec = 0,
         IReadOnlyDictionary<string, BossLocationSpawn>? templates = null)
     {
@@ -134,8 +142,7 @@ public static class RaidSpawnApplier
         {
             if (e.BossName is { } role && BossRoleToId.TryGetValue(role, out var id) && cfg.Bosses.TryGetValue(id, out var b))
             {
-                var mapOn = !b.Maps.TryGetValue(mapId, out var on) || on;
-                var chance = !b.On || !mapOn ? 0 : cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance;
+                var chance = BossChanceFor(cfg, id, b, mapId);
                 var n = Detail(e with { BossChance = chance }, b);
                 result.Add(n);
                 if (b.Extra && chance > 0) extra.Add(n with { SptId = "gravity" });
@@ -175,7 +182,7 @@ public static class RaidSpawnApplier
                 if (!b.Maps.TryGetValue(mapId, out var on) || !on) continue;
                 if (result.Any(x => string.Equals(x.BossName, role, StringComparison.OrdinalIgnoreCase))) continue;
                 if (!templates.TryGetValue(role, out var tpl)) continue;
-                var chance = cfg.BossCommonOn ? cfg.BossCommonChance : b.Chance;
+                var chance = BossChanceFor(cfg, id, b, mapId);
                 if (chance <= 0) continue;
                 var zones = valid.Where(z => !z.StartsWith("ZoneSniper", StringComparison.OrdinalIgnoreCase)).ToArray();
                 var n = Detail(tpl with { BossChance = chance, BossZone = string.Join(",", zones.Length > 0 ? zones : valid), TriggerId = "", TriggerName = "", SptId = "gravity" }, b);

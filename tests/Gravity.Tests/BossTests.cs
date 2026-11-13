@@ -273,4 +273,45 @@ public class BossTests
         var cfg = Cfg(json);
         Assert.Equal(expected, cfg.Maps["bigmap"].Cap);
     }
+
+    // 1.0.5: 보스 맵별 등장 확률 — 맵별 값 > 보스 공통 > 보스 기본. 0이면 그 맵에서 안 나옴.
+    [Fact]
+    public void MapChance_Overrides_Common_And_Base()
+    {
+        var cfg = Cfg("""{"bossCommon":{"on":true,"chance":35},"bosses":{"reshala":{"chance":39,"mapChance":{"bigmap":100}}}}""");
+        var l = Loc();
+        RaidSpawnApplier.ApplyBosses(l, cfg, "bigmap", 1, 2400);
+        Assert.Equal(100, Boss(l, "bossBully").BossChance);
+        Assert.Equal(35, RaidSpawnApplier.BossChanceFor(cfg, "reshala", cfg.Bosses["reshala"], "woods"));
+        var noCommon = Cfg("""{"bosses":{"reshala":{"chance":39,"mapChance":{"bigmap":80}}}}""");
+        Assert.Equal(39, RaidSpawnApplier.BossChanceFor(noCommon, "reshala", noCommon.Bosses["reshala"], "woods"));
+        Assert.Equal(80, RaidSpawnApplier.BossChanceFor(noCommon, "reshala", noCommon.Bosses["reshala"], "bigmap"));
+    }
+
+    [Fact]
+    public void MapChance_Zero_Disables_OnThatMap()
+    {
+        var l = Loc();
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"bosses":{"reshala":{"mapChance":{"bigmap":0}}}}"""), "bigmap", 1, 2400);
+        Assert.Equal(0, Boss(l, "bossBully").BossChance);
+        // 원래 없던 맵에 템플릿으로 새로 넣는 경로도 맵별 값을 따른다.
+        var tpl = new Dictionary<string, BossLocationSpawn> { ["bossBully"] = Boss(Loc(), "bossBully") };
+        var w0 = new LocationBase { Id = "woods", EscapeTimeLimit = 40, BotMax = 20, BossLocationSpawn = [new BossLocationSpawn { BossName = "pmcUSEC", BossChance = 100, BossZone = "ZoneA" }] };
+        RaidSpawnApplier.ApplyBosses(w0, Cfg("""{"bosses":{"reshala":{"maps":{"woods":true},"mapChance":{"woods":0}}}}"""), "woods", 1, 2400, tpl);
+        Assert.DoesNotContain(w0.BossLocationSpawn, e => e.BossName == "bossBully");
+        var w1 = new LocationBase { Id = "woods", EscapeTimeLimit = 40, BotMax = 20, BossLocationSpawn = [new BossLocationSpawn { BossName = "pmcUSEC", BossChance = 100, BossZone = "ZoneA" }] };
+        RaidSpawnApplier.ApplyBosses(w1, Cfg("""{"bossCommon":{"on":true,"chance":20},"bosses":{"reshala":{"maps":{"woods":true},"mapChance":{"woods":70}}}}"""), "woods", 1, 2400, tpl);
+        Assert.Equal(70, Boss(w1, "bossBully").BossChance);
+    }
+
+    [Fact]
+    public void MapChance_Clamped_And_MapOff_Wins()
+    {
+        var cfg = Cfg("""{"bosses":{"reshala":{"mapChance":{"bigmap":150,"woods":-5}},"killa":{"maps":{"interchange":false},"mapChance":{"interchange":90}}}}""");
+        Assert.Equal(100, RaidSpawnApplier.BossChanceFor(cfg, "reshala", cfg.Bosses["reshala"], "bigmap"));
+        Assert.Equal(0, RaidSpawnApplier.BossChanceFor(cfg, "reshala", cfg.Bosses["reshala"], "woods"));
+        Assert.Equal(0, RaidSpawnApplier.BossChanceFor(cfg, "killa", cfg.Bosses["killa"], "interchange"));
+        var off = Cfg("""{"bosses":{"reshala":{"on":false,"mapChance":{"bigmap":100}}}}""");
+        Assert.Equal(0, RaidSpawnApplier.BossChanceFor(off, "reshala", off.Bosses["reshala"], "bigmap"));
+    }
 }

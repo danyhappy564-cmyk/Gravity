@@ -87,7 +87,8 @@ public sealed record DiagSettings(string Log, bool Report, bool BotLog);
 /// <summary>보스 하나. EscMin·EscMax 둘 다 0, TFrom·TTo 둘 다 0, Diff 빈 값, 구역 없음 = 바닐라 유지(0.3).</summary>
 public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<string, bool> Maps,
     bool Followers = true, int EscMin = 0, int EscMax = 0, double TFrom = 0, double TTo = 0, string Diff = "",
-    bool Extra = false, IReadOnlyDictionary<string, string[]>? Zones = null);
+    bool Extra = false, IReadOnlyDictionary<string, string[]>? Zones = null,
+    IReadOnlyDictionary<string, double>? MapChance = null);
 
 /// <summary>특수 봇 무리(레이더·로그·컬티스트·블러드하운드). Chance는 맵별(없는 맵은 바닐라 확률 유지), Min·Max는 무리 전체 인원.</summary>
 /// <summary>특수 봇 설정. 레이더·로그(ExtraModel)는 ABPS식(사용자 결정 11-10): 원래 항목(레버·탈출구 이벤트 포함)은 Vanilla면 확률·인원 그대로 두고,
@@ -273,12 +274,18 @@ public static partial class ConfigModel
                     if (v is JsonArray za)
                         zones[k] = za.OfType<JsonValue>().Select(x => x.TryGetValue<string>(out var sv) ? sv : null)
                             .Where(sv => sv is { Length: > 0 and <= 60 }).Select(sv => sv!).ToArray();
+            // 1.0.5: 맵별 등장 확률(없는 맵 = 보스 기본/공통 확률). 0이면 그 맵에서 안 나온다.
+            var mapChance = new Dictionary<string, double>();
+            if (r.Node(p + "mapChance") is JsonObject mco)
+                foreach (var (k, v) in mco)
+                    if (k.Length is > 0 and <= 40 && v is JsonValue mv && mv.GetValueKind() == JsonValueKind.Number)
+                        mapChance[k] = r.Num(p + "mapChance." + k, 0, 0, 100);
             var eMin = (int)r.Num(p + "escMin", 0, 0, 10);
             var tFrom = r.Num(p + "tFrom", 0, 0, 600);
             bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm,
                 r.Bool(p + "followers", true), eMin, (int)Math.Max(eMin, r.Num(p + "escMax", 0, 0, 10)),
                 tFrom, Math.Max(tFrom, r.Num(p + "tTo", 0, 0, 600)),
-                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random"), r.Bool(p + "extra", false), zones);
+                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random"), r.Bool(p + "extra", false), zones, mapChance);
         }
 
         var specials = new Dictionary<string, SpecialSettings>();

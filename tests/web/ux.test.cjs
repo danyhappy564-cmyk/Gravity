@@ -1012,3 +1012,21 @@ test('자동 프리셋 이름은 현재 언어로 보이고 직접 지은 이름
  assert.equal(a.run("presetName('c1')"),'Custom preset 2');assert.equal(a.run("gearPresetName('t1')"),'My loadout 5');
  assert.equal(a.run("JSON.stringify(customPresets[0].name)"),'"커스텀 프리셋 2"','저장값은 그대로');
 });
+
+test('보스 맵별 확률: 칸이 있으면 그 값, 비우면 공통/기본',()=>{
+ const a=app();
+ assert.equal(a.run("JSON.stringify(DEFAULTS.bosses.reshala.mapChance)"),'{}');
+ a.run("state.bosses.reshala.mapChance={bigmap:80};state.bossCommon={on:true,chance:35}");
+ const ch=m=>a.run(`bossChance(BOSSES.find(b=>b.id==='reshala')${m?`,'${m}'`:''})`);
+ assert.equal(ch('bigmap'),80);assert.equal(ch('woods'),35);assert.equal(ch(),35);
+ a.run("state.bossCommon.on=false");assert.equal(ch('woods'),a.run('state.bosses.reshala.chance'));
+ a.run("page='spawn';spawnTab='all';bossSel='reshala'");const html=a.run('P.bosses.render()');
+ assert.match(html,/data-mapchance="reshala\|bigmap"[^>]*value="80"/);
+ const fire=(v)=>{for(const fn of a.listeners.change||[])fn({target:{dataset:{mapchance:'reshala|bigmap'},value:v,id:''}});};
+ fire('120');assert.equal(a.run('state.bosses.reshala.mapChance.bigmap'),100);
+ fire('0');assert.equal(a.run('state.bosses.reshala.mapChance.bigmap'),0,'0은 비움과 다름');
+ fire('');assert.equal(a.run("'bigmap' in state.bosses.reshala.mapChance"),false,'비우면 키 삭제');
+ a.run("state.bosses.reshala.mapChance={bigmap:55};page='spawn';spawnTab='bigmap';mapSel='bigmap';tlEdit=true;openPop('boss|reshala',{clientX:20,clientY:20})");
+ assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="bosses\.reshala\.mapChance\.bigmap"/);
+ assert.match(a.run("timeline(mapById('bigmap'),true)"),/레샬라 55%/);
+});
