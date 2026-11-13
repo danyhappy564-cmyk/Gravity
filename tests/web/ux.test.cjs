@@ -1070,3 +1070,17 @@ test('옛 기본값 그대로 저장된 PMC 표만 새 기본으로 올린다',(
  const b=app();raw.gear.chanceVer=2;b.run(`normalizeState(${JSON.stringify(raw)})`);
  assert.equal(b.run('state.tierData.pmc[0].chance.armorVest'),40,'새 판으로 저장된 값은 사용자의 선택');assert.equal(b.run('state.roles.usec.frontPlate'),90);
 });
+
+test('기본 레이드 프리셋 light 값: 맵 동시 상한이 실제로 줄어든다',()=>{
+ const a=app();a.run("applyPreset('light')");
+ for(const m of ['bigmap','factory4_day','tarkovstreets']){
+  const def=a.run(`DEFAULTS.maps['${m}'].cap`);assert.equal(a.run(`capOf('${m}')`),Math.max(8,Math.round(def*.75)),m);
+ }
+ assert.equal(a.run('state.spawn.waveMax'),3);assert.equal(a.run('state.near.on'),false);
+});
+
+test('기본 레이드 프리셋 startonly 값: PMC·스캐브 모두 시작 때만',()=>{
+ const a=app();a.run("applyPreset('startonly')");
+ for(const m of ['bigmap','woods','factory4_day']){assert.equal(a.run(`state.maps['${m}'].style`),'start');assert.equal(a.run(`state.maps['${m}'].scavStyle`),'start',m);}
+ const def=app();const s0=def.run("estimate(mapById('bigmap')).smax");assert.ok(a.run("estimate(mapById('bigmap')).smax")<s0,'스캐브 웨이브가 빠져 견적이 줄어듦');
+});

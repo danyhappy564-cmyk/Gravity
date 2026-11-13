@@ -737,10 +737,10 @@ const PRESETS=[
   patch:{'spawn.startPmcPct':50,'spawn.interval':4,'spawn.waveMin':3,'spawn.waveMax':6,'spawn.placement':'hotspot','spawn.intensity.late':1.2,'near.on':true,'bossCommon.on':true,'bossCommon.chance':60}},
  {id:'endless',name:T('무한 리필','Endless'),desc:T('모든 맵을 무한 보충으로. 레이드 시간을 늘려 쓰는 분께.','Every map refills endlessly. For long raids.'),
   patch:Object.fromEntries(MAPS.map(m=>['maps.'+m.id+'.style','infinite']))},
- {id:'startonly',name:T('시작 스폰만','Start spawns only'),desc:T('웨이브 없이 레이드 시작 때만 넣습니다. 조용한 레이드를 원하는 분께.','Spawn only at raid start, no waves. For quiet raids.'),
-  patch:Object.fromEntries(MAPS.map(m=>['maps.'+m.id+'.style','start']))},
+ {id:'startonly',name:T('시작 스폰만','Start spawns only'),desc:T('웨이브 없이 레이드 시작 때만 넣습니다(PMC·스캐브 모두). 조용한 레이드를 원하는 분께.','Spawn only at raid start, no waves (PMCs and scavs). For quiet raids.'),
+  patch:Object.fromEntries(MAPS.flatMap(m=>[['maps.'+m.id+'.style','start'],['maps.'+m.id+'.scavStyle','start']]))},
  {id:'light',name:T('가볍게(저사양)','Lightweight'),desc:T('웨이브와 맵 동시 상한을 줄여 프레임을 아낍니다. 모드 아이템 줄이기는 장비 → 모드 아이템에 있습니다.','Smaller waves and map caps to save frames. Fewer mod items: Loadout → Mod items.'),
-  patch:Object.assign({'spawn.waveMin':1,'spawn.waveMax':3,'spawn.interval':8,'near.on':false},Object.fromEntries(MAPS.map(m=>['maps.'+m.id+'.cap',Math.max(8,Math.round(DEFAULTS.maps[m.id].cap*.75))])))}
+  patch:Object.assign({'spawn.waveMin':1,'spawn.waveMax':3,'spawn.interval':8,'near.on':false},Object.fromEntries(MAPS.flatMap(m=>[['maps.'+m.id+'.capOn',true],['maps.'+m.id+'.cap',Math.max(8,Math.round(DEFAULTS.maps[m.id].cap*.75))]])))}
 ];
 let customPresets=[];
 let state=clone(DEFAULTS),saved=clone(state);
