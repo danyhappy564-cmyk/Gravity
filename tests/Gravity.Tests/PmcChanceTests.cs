@@ -26,6 +26,29 @@ public class PmcChanceTests
         Assert.Equal(40, g.RoleFor("scav").FrontPlate);
     }
 
+    // 1.0.5 Task 6: 판이 빠지는 원인이 등급 상한인지 확인. 상한 밖 판만 있으면 가장 가까운 등급을 되살려 칸이 비지 않아야 한다.
+    [Fact]
+    public void T1_PMC_조끼에_맞는_판이_전부_등급_밖이면_빈칸이_되지_않는다()
+    {
+        string Id(int n) => n.ToString("x24");
+        var g = Cfg();
+        var info = new Dictionary<string, Gravity.Gear.ItemInfo>
+        {
+            [Id(40)] = new(1, 4, 0, false, false, Plate: true), [Id(41)] = new(1, 5, 0, false, false, Plate: true),
+            [Id(42)] = new(1, 5, 0, false, false, Plate: true)
+        };
+        var items = new Gravity.Gear.GearItems(info, [("mods", Id(40)), ("mods", Id(41)), ("mods", Id(42))]);
+        var c = Gravity.Gear.GearApply.Context(g, new Gravity.Gear.GearPick("usec", "pmc", 0, true), items, Gravity.Gear.GearRaid.Pick(items, false, 0, 0, 0, 1), false, new Random(1));
+        Assert.True(c.Caps.FMax < 4, "T1 앞판 상한이 4급 미만이어야 재현 조건");
+        foreach (var slot in new[] { "front_plate", "back_plate", "left_side_plate" })
+        {
+            var set = new HashSet<SPTarkov.Server.Core.Models.Common.MongoId> { Id(40), Id(41), Id(42) };
+            Gravity.Gear.GearApply.FilterModSet(set, slot, c);
+            Assert.NotEmpty(set);
+            Assert.All(set, m => Assert.Equal(4, info[m.ToString()].ArmorClass));
+        }
+    }
+
     private static string PmcTable(Func<int, string> chance) =>
         "[" + string.Join(",", Enumerable.Range(0, 7).Select(t => "{\"chance\":" + chance(t) + "}")) + "]";
 
