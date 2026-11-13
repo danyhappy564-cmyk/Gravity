@@ -961,3 +961,24 @@ test('1.0.4 공통 타임라인의 자세한 수정도 맵별 값이 아닌 공�
   assert.match(out,/모든 맵 공통/);
  }
 });
+
+test('Codex 점검: 자세한 수정 탭의 적용 범위 안내가 항목 종류와 맞습니다',()=>{
+ const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';tlEdit=true");
+ const ctx=()=>(a.nodes.get('#tlpop').innerHTML.match(/<div class="tp-context">([\s\S]*?)<\/div>/)||[])[1]||'';
+ for(const [key,want] of [['boss|reshala',/보스 설정 \(이 보스가 나오는 모든 맵\)/],['fac|ruaf',/팩션 모드 설정/],['spec|snipers',/특수 봇/]]){
+  a.run(`openPop('${key}',{clientX:20,clientY:20})`);const basic=ctx();
+  a.click({popTab:'details'});const det=ctx();
+  assert.match(det,want,key+' details');assert.equal(det,basic,key+' basic/details same scope');
+  a.run('closePop()');
+ }
+});
+
+test('Codex 점검: 미리보기 안내 글의 용어와 위치가 실제 화면과 맞습니다',()=>{
+ assert.ok(!html.includes('저장바'),'저장 바 띄어쓰기 통일');
+ assert.ok(!html.includes('레이드 전체의 견적'),'견적 → 예상치');
+ assert.doesNotMatch(html,/사냥조·연구소 게이트·웨지·다른 모드의 조건부 이벤트는 별도/,'블랙 디비전 안내가 사냥조를 별도 경로라 하면서 사냥조에 적용된다고 함');
+ assert.ok(!html.includes('스폰 공통 → 레이드 시간'),'레이드 시간 카드 이름은 "레이드 시간 (공통)"');
+ const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap'");
+ a.run('tlEdit=false');assert.match(a.run('rosterBox(mapById("bigmap"))'),/각 페이지에서 정합니다/);
+ a.run('tlEdit=true');assert.match(a.run('rosterBox(mapById("bigmap"))'),/이 맵에서 바로 수정/);
+});
