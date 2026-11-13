@@ -1,3 +1,4 @@
+using Gravity.Core;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 
@@ -31,13 +32,16 @@ public static class GearClothing
     private static string? SideOf(string roleId) => roleId switch { "usec" => "usec", "bear" => "bear", "scav" => "savage", _ => null };
 
     /// <returns>바꾼 항목 수(더함 + 뺌 + 무게 고침).</returns>
-    public static int Apply(BotType bot, GearContext c, Random rnd)
+    public static int Apply(BotType bot, GearContext c, Random rnd) => Apply(bot, c.Settings, c.Pick.RoleId, c.Items);
+
+    /// <summary>장비 티어를 안 고치는 봇(역할 장비 스위치 꺼짐, 기본 스캐브)도 의상만은 적용한다(Codex 1.0.5 검토 2번).</summary>
+    public static int Apply(BotType bot, GearSettings settings, string roleId, GearItems items)
     {
-        var allowed = c.Settings.ClothingOn;
-        if (allowed == null || !c.Settings.Module || bot.BotAppearance == null) return 0;
-        var side = SideOf(c.Pick.RoleId);
+        var allowed = settings.ClothingOn;
+        if (allowed == null || !settings.Module || bot.BotAppearance == null) return 0;
+        var side = SideOf(roleId);
         if (side == null) return 0;
-        var mods = c.Items.Clothing.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
+        var mods = items.Clothing.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
         int changed = 0;
         foreach (var part in new[] { "Body", "Feet" })
         {
@@ -45,9 +49,9 @@ public static class GearClothing
             if (pool == null) continue;
             var vanilla = pool.Where(kv => !mods.ContainsKey(kv.Key.ToString())).ToList();
             var baseW = (vanilla.Count > 0 ? vanilla : pool.ToList()).Select(kv => kv.Value).DefaultIfEmpty(1).Average();
-            var w = Math.Max(1, Math.Round(baseW * c.Settings.ModMult / 100));
+            var w = Math.Max(1, Math.Round(baseW * settings.ModMult / 100));
             var next = vanilla.ToDictionary(kv => kv.Key, kv => kv.Value);
-            foreach (var m in c.Items.Clothing)
+            foreach (var m in items.Clothing)
                 if (m.Part == part && m.Sides.Contains(side) && allowed.Contains(m.Source)) next[new MongoId(m.Id)] = w;
             if (next.Count == 0) continue;
             var before = pool.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value);

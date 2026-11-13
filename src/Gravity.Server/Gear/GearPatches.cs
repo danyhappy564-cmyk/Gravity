@@ -154,7 +154,8 @@ public class GearFilterPatch : AbstractPatch
             var id = GearTier.RoleId(botGenerationDetails.Role, botGenerationDetails.IsPmc, botGenerationDetails.Side);
             if (id == null) return;
             var role = g.RoleFor(id);
-            if (!role.On) return;
+            // 1.0.5: 장비 스위치가 꺼진 봇(기본 스캐브)도 의상 탭 설정은 따른다.
+            if (!role.On) { GearClothing.Apply(baseBotNode, g, id, GearRuntime.Items); return; }
             var group = GearDefaults.GroupOf(id);
             var rnd = Random.Shared;
             int? lvl = botGenerationDetails.IsPmc ? GearRuntime.PmcLevel ?? botGenerationDetails.BotLevel : null;
@@ -412,7 +413,7 @@ public class GearBotPatch : AbstractPatch
             if (info is { ArmorClass: > 0 }) armor = Math.Max(armor, info.ArmorClass);
             if (it.SlotId == "ArmorVest" || (it.SlotId == "TacticalVest" && info is { ArmorClass: > 0 })) vest = true;
             if (it.SlotId == "Earpiece") ear = true;
-            if (it.SlotId is "front_plate" or "back_plate") plate = true;
+            if (string.Equals(it.SlotId, "front_plate", StringComparison.OrdinalIgnoreCase) || string.Equals(it.SlotId, "back_plate", StringComparison.OrdinalIgnoreCase)) plate = true;
         }
         var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon);
         string Src(MongoId? id) => id is { } m ? items.Clothing.FirstOrDefault(c => c.Id == m.ToString())?.Source ?? "vanilla" : "-";

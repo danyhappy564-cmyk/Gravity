@@ -19,6 +19,8 @@ public static class DiagLog
     private static readonly object Gate = new();
     private static readonly LinkedList<Entry> Recent = new();
     private static readonly List<string> GearLines = [];
+    // 1.0.5: 같은 줄(필수 칸 복원 등)은 한 판에 한 번 — 반복이 2000줄 한도를 채워 봇 줄이 잘리던 것.
+    private static readonly HashSet<string> GearSeen = new(StringComparer.Ordinal);
     private static bool _gearOverflow;
 
     /// <summary>지금 로그 수준(off·summary·verbose). 로더가 설정 저장소를 읽게 바꾼다.</summary>
@@ -44,7 +46,7 @@ public static class DiagLog
 
     internal static void ClearForTest()
     {
-        lock (Gate) { Recent.Clear(); GearLines.Clear(); _gearOverflow = false; }
+        lock (Gate) { Recent.Clear(); GearLines.Clear(); GearSeen.Clear(); _gearOverflow = false; }
     }
 
     /// <summary>경고: 늘 남김.</summary>
@@ -62,7 +64,7 @@ public static class DiagLog
     public static void NewGearRaid(string header)
     {
         FlushGear();
-        lock (Gate) { GearLines.Clear(); _gearOverflow = false; GearLines.Add(header); }
+        lock (Gate) { GearLines.Clear(); GearSeen.Clear(); _gearOverflow = false; GearLines.Add(header); }
     }
 
     public static void GearLine(string line)
@@ -70,6 +72,7 @@ public static class DiagLog
         bool flush;
         lock (Gate)
         {
+            if (!GearSeen.Add(line)) return;
             if (GearLines.Count >= GearLinesMax) { _gearOverflow = true; return; }
             GearLines.Add(line);
             flush = GearLines.Count % 50 == 0;

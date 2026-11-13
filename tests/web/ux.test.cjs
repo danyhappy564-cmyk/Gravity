@@ -1084,3 +1084,26 @@ test('기본 레이드 프리셋 startonly 값: PMC·스캐브 모두 시작 때
  for(const m of ['bigmap','woods','factory4_day']){assert.equal(a.run(`state.maps['${m}'].style`),'start');assert.equal(a.run(`state.maps['${m}'].scavStyle`),'start',m);}
  const def=app();const s0=def.run("estimate(mapById('bigmap')).smax");assert.ok(a.run("estimate(mapById('bigmap')).smax")<s0,'스캐브 웨이브가 빠져 견적이 줄어듦');
 });
+
+test('Codex 1.0.5 검토 1번: 옛 장비 프리셋을 다시 적용해도 PMC 확률 변환이 같다',()=>{
+ const a=app();const old=(lo,hi,t)=>Math.round(lo+(hi-lo)*t/6);
+ const oldTables=()=>({pmc:[0,1,2,3,4,5,6].map(t=>({chance:{armorVest:t===3?33:old(40,95,t),earpiece:old(15,85,t)}}))});
+ const oldSnap={gear:{poolVer:2},roles:{usec:{frontPlate:90},bear:{frontPlate:80}}};
+ a.run(`normalizeState(${JSON.stringify({gear:{poolVer:2},tierData:oldTables(),roles:oldSnap.roles})})`);
+ a.run(`customTierPresets=[{id:'old1',name:'내 장비 1',tiers:clone(DEFAULTS.gear.tiers),data:mergeInto(tierDataDefaults(),${JSON.stringify(oldTables())}),gearSnap:Object.assign(pickKeys(DEFAULTS,GEAR_KEYS),${JSON.stringify(oldSnap)})}];tierPresetApply('old1')`);
+ assert.equal(a.run('state.tierData.pmc[0].chance.armorVest'),75);assert.equal(a.run('state.tierData.pmc[0].chance.earpiece'),50);
+ assert.equal(a.run('state.tierData.pmc[3].chance.armorVest'),33,'사용자 값 유지');
+ assert.equal(a.run('state.roles.usec.frontPlate'),100);assert.equal(a.run('state.roles.bear.frontPlate'),80);
+ assert.equal(a.run('state.gear.chanceVer'),2);
+ // 1.0.5에서 저장한 프리셋(chanceVer 2)의 40·90은 사용자가 고른 값 — 그대로.
+ a.run(`customTierPresets.push({id:'new1',name:'내 장비 2',tiers:clone(DEFAULTS.gear.tiers),data:mergeInto(tierDataDefaults(),${JSON.stringify(oldTables())}),gearSnap:Object.assign(pickKeys(DEFAULTS,GEAR_KEYS),{roles:mergeInto(clone(DEFAULTS.roles),{usec:{frontPlate:90}})})});tierPresetApply('new1')`);
+ assert.equal(a.run('state.tierData.pmc[0].chance.armorVest'),40);assert.equal(a.run('state.roles.usec.frontPlate'),90);
+});
+
+test('Codex 1.0.5 검토 3번: 맵별 보스 확률 팝업은 공통 확률 안내를 띄우지 않는다',()=>{
+ const a=app();a.run("state.bossCommon={on:true,chance:35};page='spawn';spawnTab='bigmap';mapSel='bigmap';tlEdit=true");
+ a.run("openPop('boss|reshala',{clientX:20,clientY:20})");assert.match(a.nodes.get('#tlpop').innerHTML,/모든 보스에 적용됩니다/,'맵별 값 없으면 공통 안내');
+ a.run("state.bosses.reshala.mapChance={bigmap:70};openPop('boss|reshala',{clientX:20,clientY:20})");
+ const out=a.nodes.get('#tlpop').innerHTML;assert.doesNotMatch(out,/모든 보스에 적용됩니다/);assert.match(out,/이 맵만 · 보스 확률/);
+ assert.match(a.run("P.bosses.render(true,'bigmap')"),/맵별 확률만 현재 맵 설정/);
+});

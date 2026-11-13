@@ -143,7 +143,7 @@ public class ClothingTests
         {
             Info = new Info { Level = 7 },
             Customization = new Customization { Body = Id(101), Feet = Id(3) },
-            Inventory = new BotBaseInventory { Items = [It(1, 70, "ArmorVest"), It(2, 71, "front_plate"), It(3, 72, "Earpiece")] }
+            Inventory = new BotBaseInventory { Items = [It(1, 70, "ArmorVest"), It(2, 71, "Front_plate"), It(3, 72, "Earpiece")] }
         };
         var f = GearBotPatch.BotLine(new GearPick("usec", "pmc", 0, true), full, items).Split('\t');
         Assert.Equal(["usec", "T1", "Lv7"], f[..3]);
@@ -153,6 +153,19 @@ public class ClothingTests
         var b = GearBotPatch.BotLine(new GearPick("bear", "pmc", 0, true), bare, items).Split('\t');
         Assert.EndsWith("-", b[5]); Assert.EndsWith("-", b[6]); Assert.EndsWith("-", b[7]);
         Assert.EndsWith("vanilla/vanilla", b[8]);
+    }
+
+    // Codex 1.0.5 검토 2번: 스캐브 장비 스위치(roles.scav.on)는 기본 꺼짐 — 장비를 안 고치는 봇도 의상은 적용돼야 한다.
+    [Fact]
+    public void 장비_스위치가_꺼진_봇도_의상은_적용된다()
+    {
+        var g = Cfg("""{"mods":{"clothingOn":["A"]}}""");
+        Assert.False(g.RoleFor("scav").On);
+        var bot = Bot();
+        Assert.True(GearClothing.Apply(bot, g, "scav", Items()) > 0);
+        Assert.True(bot.BotAppearance.Body.ContainsKey(Id(104)));
+        var off = Cfg("""{"modules":{"gear":false},"mods":{"clothingOn":["A"]}}""");
+        Assert.Equal(0, GearClothing.Apply(Bot(), off, "scav", Items()));
     }
 
     [Fact]
