@@ -19,7 +19,7 @@
 
 The full changelog (9 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-001.md`](changelog/CHANGELOG-001.md)). Per-release summaries: [Releases](../../releases).
 
-# Gravity 1.0.4
+# Gravity 1.0.5
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -33,7 +33,7 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 
 - PMCs: starting squads plus waves or continuous refills, squad-size mix, faction mix, difficulty and level range, stop near the end of the raid.
 - Scavs: starting count, active/quiet cycles, map caps (one shared value or per map), protection radius around the player for refills.
-- Bosses and special bots (sniper scavs, Raiders, Rogues, Cultists, …): chance, count and timing on a timeline; 0 means they never appear.
+- Bosses and special bots (sniper scavs, Raiders, Rogues, Cultists, …): chance, count and timing on a timeline; 0 means they never appear. Bosses can have a **chance per map** (empty = the boss's default/shared chance).
 - Faction mods (RUAF, BlackDiv, …) and events (Halloween, Christmas, …): detected, each can be turned on or off.
 - Per-map spawn zones, raid-wide group limits, SVM extra raid time detection, raid presets you can save and import.
 - Each map shows an estimate of how many PMCs and scavs to expect.
@@ -45,6 +45,7 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 - **Tier editor**: per tier, the items and their share, counts and chances, caps and plates, attachments, and a **Tier summary** tab showing what that tier actually carries.
 - Attachments follow tiers too. If every part that fits a gun is above the tier, the lowest-tier one is used, so guns never come out bare (can be turned off in Weapon build).
 - Mod items: on/off per installed mod, use only part of them each raid, PMC-only.
+- **Clothing** (Mod items → Clothing tab): PMCs and scavs wear clothes only from checked mods (matching their side; chosen per mod). Until you save it once, bot outfits are left untouched.
 - Loadout presets: **Gravity auto** and **Realistic and Extended PMC Loadouts** (see Credits) are built in; you can save your own.
 
 ## Install
@@ -54,6 +55,8 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 3. Change settings and press **Save**; they apply from the next raid.
 
 Use **1.0.3 or later within the 1.0.x series** for both server and client. Mixing with 1.0.2 or older is unsupported. Starting scavs are prepared together at the configured delay: 0 min prepares them during loading; the default delay is 4 min. Starting PMC squads prepare their members during loading, with up to 60 seconds of additional waiting. Map capacity, group limits, or unavailable spawn points can leave some bots in the existing queue and delay activation.
+
+**1.0.5:** The web UI remembers your language (first visit follows the browser). Auto-generated preset names (Custom preset N, etc.) show in the current language. PMC armor-vest/earpiece chances at low tiers and front/back plate chances were raised to SPT's original level (settings still on the old defaults from 1.0.4 or earlier switch automatically). The built-in "Lightweight" raid preset now really lowers map caps, and "Start spawns only" also limits scavs to the raid start.
 
 **1.0.4 preview editing:** PMC and scav controls share **Basic / Details** tabs. Each map shows its own settings and relevant actors; open categories under **All maps (shared)** for global controls. Multi-map editing explains changed and preserved values, and full copies require a difference review before applying.
 

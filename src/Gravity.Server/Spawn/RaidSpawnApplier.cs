@@ -98,7 +98,7 @@ public static class RaidSpawnApplier
             // 네이티브 CheckMinCounts는 종류별 최소 인원이 모자라면 다른 종류의 웨이브까지 늘립니다.
             // 저격을 끈 세관(원본 marksman 최소 2)에서 시작 assault 1명이 2명이 되는 것을 방지합니다.
             // 레이드 복제본만 바꾸고, 클라가 없거나 유지한 저격·다른 역할의 범위는 보존합니다.
-            loc.MinMaxBots = loc.MinMaxBots?.Select(b => b.WildSpawnType == "assault"
+            if (loc.MinMaxBots != null) loc.MinMaxBots = loc.MinMaxBots.Select(b => b.WildSpawnType == "assault"
                 || !s.Scav.StartMarksman && b.WildSpawnType == "marksman" ? b with { Min = 0 } : b).ToList();
             loc.Waves = waves;
         }

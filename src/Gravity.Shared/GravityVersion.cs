@@ -5,7 +5,7 @@ namespace Gravity.Shared
     /// <summary>앞 두 자리와 시작 웨이브 전달 방식의 세대를 비교합니다. 1.0.3 전후는 서로 호환하지 않습니다.</summary>
     public static class GravityVersion
     {
-        public const string Current = "1.0.4";
+        public const string Current = "1.0.5";
 
         public static bool Compatible(string? a, string? b)
         {
