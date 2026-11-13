@@ -82,7 +82,7 @@ public static class GearDefaults
             fac = id is "ruaf" or "untar" or "blackdiv" or "wedge";
         int tier = boss ? 6 : fol ? 5 : fac ? 5 : id is "scav" or "marksman" ? 2 : id == "pscav" ? 3 : 4;
         return new RoleGear(pmc, pmc ? "follow" : "fixed", tier, 0,
-            pmc ? 90 : boss ? 100 : fol ? 85 : 40, pmc ? 35 : boss ? 60 : fol ? 30 : 10,
+            pmc ? 100 : boss ? 100 : fol ? 85 : 40, pmc ? 35 : boss ? 60 : fol ? 30 : 10,
             pmc ? 75 : 60, 100, pmc ? 70 : 50, 100, true, pmc ? 5 : 0);
     }
 
@@ -118,6 +118,16 @@ public static class GearDefaults
         ("headwear", 50, 95), ("earpiece", 15, 85), ("faceCover", 30, 70), ("armorVest", 40, 95),
         ("armouredRig", 10, 60), ("backpack", 40, 90), ("holster", 20, 60), ("eyewear", 20, 60)
     ];
+    /// <summary>1.0.5: PMC 묶음만 T1 하한을 SPT 원본 usec/bear 수준으로(방탄복 75·헤드셋 50). T7 값은 Chance 그대로.</summary>
+    public static readonly IReadOnlyDictionary<string, double> PmcChanceLo = new Dictionary<string, double> { ["armorVest"] = 75, ["earpiece"] = 50 };
+
+    /// <summary>1.0.4까지의 PMC 기본값(gear.chanceVer &lt; 2로 저장된 설정에서 "손대지 않은 옛 기본"을 알아보는 데만 쓴다).</summary>
+    public static double LegacyChance(string key, int tier0)
+    {
+        var c = Chance.First(x => x.Key == key);
+        return Lerp(c.Lo, c.Hi, Eff("pmc", tier0));
+    }
+
     public static readonly (string Key, double Lo, double Hi)[] ModChance =
     [
         ("scope", 40, 95), ("muzzle", 20, 80), ("tactical", 10, 70), ("foregrip", 20, 75), ("stock", 70, 100), ("mount", 30, 90)
@@ -138,7 +148,7 @@ public static class GearDefaults
         var eff = Eff(group, tier0);
         return new GearTable(
             Gen.ToDictionary(g => g.Key, g => ((int)Lerp(g.LoMin, g.HiMin, eff), (int)Lerp(g.LoMax, g.HiMax, eff))),
-            Chance.ToDictionary(c => c.Key, c => Lerp(c.Lo, c.Hi, eff)),
+            Chance.ToDictionary(c => c.Key, c => Lerp(group == "pmc" && PmcChanceLo.TryGetValue(c.Key, out var lo) ? lo : c.Lo, c.Hi, eff)),
             ModChance.ToDictionary(c => c.Key, c => Lerp(c.Lo, c.Hi, eff)));
     }
 }
@@ -184,6 +194,8 @@ public static partial class ConfigModel
             fixMin, (int)Math.Max(fixMin, r.Num(g + "lv.fixMax", ld.FixMax, 1, 100)),
             Deltas(g + "lv.deltas", ld.Deltas), r.Bool(g + "lv.scavSame", false), Deltas(g + "lv.scavDeltas", ld.ScavDeltas), weights);
 
+        // 1.0.5: chanceVer < 2(1.0.4 이하 웹이 저장)면 손대지 않은 옛 PMC 기본값(방탄복·헤드셋 표, 앞뒤판 90)을 새 기본으로 읽는다.
+        bool legacyChance = r.Num(g + "chanceVer", 0, 0, 99) < 2;
         var roles = new Dictionary<string, RoleGear>();
         foreach (var id in GearRoleIds)
         {
@@ -192,7 +204,7 @@ public static partial class ConfigModel
             double wd = r.Num(p + "wDurMin", d.WDurMin, 1, 100), ad = r.Num(p + "aDurMin", d.ADurMin, 1, 100);
             roles[id] = new RoleGear(r.Bool(p + "on", d.On), r.Str(p + "mode", d.Mode, "follow", "fixed", "offset"),
                 (int)r.Num(p + "tier", d.Tier, 1, 7), (int)r.Num(p + "offset", 0, -3, 3),
-                r.Num(p + "frontPlate", d.FrontPlate, 0, 100), r.Num(p + "sidePlate", d.SidePlate, 0, 100),
+                r.Num(p + "frontPlate", d.FrontPlate, 0, 100) is var fp && legacyChance && d.On && fp == 90 ? d.FrontPlate : fp, r.Num(p + "sidePlate", d.SidePlate, 0, 100),
                 wd, Math.Max(wd, r.Num(p + "wDurMax", d.WDurMax, 1, 100)), ad, Math.Max(ad, r.Num(p + "aDurMax", d.ADurMax, 1, 100)),
                 r.Bool(p + "loot", true), r.Num(p + "poverty", d.Poverty, 0, 100));
         }
@@ -214,7 +226,8 @@ public static partial class ConfigModel
                     return (mn, (int)Math.Max(mn, r.Num($"{p}gen.{kv.Key}.max", kv.Value.Max, 0, 30)));
                 });
                 return new GearTable(gen,
-                    d.Chance.ToDictionary(kv => kv.Key, kv => r.Num($"{p}chance.{kv.Key}", kv.Value, 0, 100)),
+                    d.Chance.ToDictionary(kv => kv.Key, kv => r.Num($"{p}chance.{kv.Key}", kv.Value, 0, 100) is var v && legacyChance && key == "pmc"
+                        && GearDefaults.PmcChanceLo.ContainsKey(kv.Key) && v == GearDefaults.LegacyChance(kv.Key, t) ? kv.Value : v),
                     d.Mods.ToDictionary(kv => kv.Key, kv => r.Num($"{p}mods.{kv.Key}", kv.Value, 0, 100)))
                     { Pools = r.Num("gear.poolVer", 0, 0, 99) >= 2 ? Gravity.Gear.GearPools.Read(r, p) : new Dictionary<string, IReadOnlyDictionary<string, double>>(), SlotChances = Gravity.Gear.GearPools.Chances(r,p+"slotChances"),
                       PartChances = Gravity.Gear.GearPools.Chances(r,p+"partChances"), GenWeights = Gravity.Gear.GearPools.Generation(r,p+"genWeights"), Only = r.Num("gear.poolVer", 0, 0, 99) >= 2 && r.Bool(p + "only", false) };

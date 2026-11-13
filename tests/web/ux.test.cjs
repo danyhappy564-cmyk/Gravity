@@ -1048,3 +1048,25 @@ test('의상 탭: 모드 단위 체크만, 저장 경로는 mods.clothingOn',()=
  assert.doesNotMatch(a.run('P.items.render()'),/data-p="mods\.clothing"/,'옛 부위별 슬라이더 없음');
  a.run("GEAR_CLOTHING=[]");assert.match(a.run('modSourceList()'),/의상 모드가 없습니다/);
 });
+
+test('PMC 기본 장비 확률이 서버와 같다',()=>{
+ const a=app();const d=JSON.parse(a.run('JSON.stringify(tierDataDefaults())'));
+ assert.equal(d.pmc[0].chance.armorVest,75);assert.equal(d.pmc[0].chance.earpiece,50);
+ assert.equal(d.pmc[6].chance.armorVest,95);assert.equal(d.pmc[6].chance.earpiece,85);
+ assert.equal(d.scavs[0].chance.armorVest,40);assert.equal(d.scavs[0].chance.earpiece,15);assert.equal(d.pmc[0].chance.headwear,50);
+ assert.equal(a.run("roleDefaults('usec').frontPlate"),100);assert.equal(a.run("roleDefaults('bear').frontPlate"),100);assert.equal(a.run("roleDefaults('scav').frontPlate"),40);
+ assert.equal(a.run('DEFAULTS.gear.chanceVer'),2);
+});
+
+test('옛 기본값 그대로 저장된 PMC 표만 새 기본으로 올린다',()=>{
+ const a=app();const old=(lo,hi,t)=>Math.round(lo+(hi-lo)*t/6);
+ const raw={gear:{poolVer:2},tierData:{pmc:[0,1,2,3,4,5,6].map(t=>({chance:{armorVest:t===3?33:old(40,95,t),earpiece:old(15,85,t),headwear:old(50,95,t)}})),scavs:[0,1,2,3,4,5,6].map(()=>({chance:{armorVest:40}}))},roles:{usec:{frontPlate:90},bear:{frontPlate:70}}};
+ a.run(`normalizeState(${JSON.stringify(raw)})`);
+ assert.equal(a.run('state.tierData.pmc[0].chance.armorVest'),75);assert.equal(a.run('state.tierData.pmc[3].chance.armorVest'),33,'사용자가 고친 값은 그대로');
+ assert.equal(a.run('state.tierData.pmc[0].chance.earpiece'),50);assert.equal(a.run('state.tierData.pmc[0].chance.headwear'),50);
+ assert.equal(a.run('state.tierData.scavs[0].chance.armorVest'),40,'스캐브 표는 그대로');
+ assert.equal(a.run('state.roles.usec.frontPlate'),100);assert.equal(a.run('state.roles.bear.frontPlate'),70);
+ assert.equal(a.run('state.gear.chanceVer'),2);
+ const b=app();raw.gear.chanceVer=2;b.run(`normalizeState(${JSON.stringify(raw)})`);
+ assert.equal(b.run('state.tierData.pmc[0].chance.armorVest'),40,'새 판으로 저장된 값은 사용자의 선택');assert.equal(b.run('state.roles.usec.frontPlate'),90);
+});

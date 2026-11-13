@@ -667,18 +667,20 @@ const TSECS=[['weapons',T('무기','Weapons')],['armor',T('방어구 · 장비',
 const TBOTS=[['pmc',T('PMC','PMC')],['scavs',T('스캐브','Scavs')],['boss',T('보스','Bosses')],['follower',T('호위','Followers')],['special',T('특수','Special')],['faction',T('팩션 모드','Faction mods')]];
 const GEN=[['magazines',T('탄창','Magazines'),[1,3],[3,5]],['meds',T('의약품','Meds'),[0,1],[2,4]],['stims',T('주사기','Stims'),[0,0],[1,2]],['grenades',T('수류탄','Grenades'),[0,1],[2,4]],['food',T('음식','Food'),[0,1],[1,2]],['drink',T('음료','Drink'),[0,1],[1,2]],['backpackLoot',T('가방 전리품','Backpack loot'),[0,3],[4,10]],['pocketLoot',T('주머니 전리품','Pocket loot'),[0,2],[1,4]],['vestLoot',T('리그 전리품','Vest loot'),[0,2],[2,5]]];
 const CHSLOTS=[['headwear',T('헬멧','Headwear'),50,95],['earpiece',T('헤드셋','Earpiece'),15,85],['faceCover',T('얼굴','Face cover'),30,70],['armorVest',T('방탄복','Armor vest'),40,95],['armouredRig',T('방탄 리그','Armoured rig'),10,60],['backpack',T('가방','Backpack'),40,90],['holster',T('권총','Sidearm'),20,60],['eyewear',T('안경','Eyewear'),20,60]];
+/** 1.0.5: PMC 묶음만 T1 하한을 SPT 원본 usec/bear 수준으로(서버 GearDefaults.PmcChanceLo와 같은 값). */
+const PMC_CH_LO={armorVest:75,earpiece:50};
 const MODCH=[['scope',T('조준경','Scope'),40,95],['muzzle',T('머즐','Muzzle'),20,80],['tactical',T('전술 장치','Tactical'),10,70],['foregrip',T('손잡이','Foregrip'),20,75],['stock',T('개머리판','Stock'),70,100],['mount',T('마운트','Mount'),30,90]];
 function tierDataDefaults(){const out={};TBOTS.forEach(([b])=>{out[b]=[];for(let t=1;t<=7;t++){const eff=b==='scavs'?Math.max(1,t-2):b==='boss'?Math.min(7,t+1):t,d={},lerp=(a,z)=>Math.round(a+(z-a)*(eff-1)/6);
   ['weapons','armor','ammo','meds','look'].forEach(sec=>{d[sec]={};SLOTS[sec].forEach(([slot])=>{d[sec][slot]={};});});
   d.gen={};GEN.forEach(([k,,lo,hi])=>{d.gen[k]={min:lerp(lo[0],hi[0]),max:lerp(lo[1],hi[1])};});
-  d.chance={};CHSLOTS.forEach(([k,,lo,hi])=>d.chance[k]=lerp(lo,hi));d.mods={};MODCH.forEach(([k,,lo,hi])=>d.mods[k]=lerp(lo,hi));
+  d.chance={};CHSLOTS.forEach(([k,,lo,hi])=>d.chance[k]=lerp(b==='pmc'&&k in PMC_CH_LO?PMC_CH_LO[k]:lo,hi));d.mods={};MODCH.forEach(([k,,lo,hi])=>d.mods[k]=lerp(lo,hi));
   out[b].push(d);}});return out;}
 
 /* ================= defaults ================= */
 function roleDefaults(id){
   const pmc=id==='usec'||id==='bear',boss=id.startsWith('boss_'),fol=id.startsWith('f_'),fac=['ruaf','untar','blackdiv','wedge'].includes(id);
   return {on:pmc,mode:pmc?'follow':boss||fol?'fixed':'fixed',tier:boss?6:fol?5:fac?5:id==='scav'||id==='marksman'?2:id==='pscav'?3:4,offset:0,
-    frontPlate:pmc?90:boss?100:fol?85:40,sidePlate:pmc?35:boss?60:fol?30:10,skipBack:true,limitClass:true,
+    frontPlate:pmc?100:boss?100:fol?85:40,sidePlate:pmc?35:boss?60:fol?30:10,skipBack:true,limitClass:true,
     topload:{on:pmc||boss||fol,chance:pmc?40:30,pct:30},wDurMin:pmc?75:60,wDurMax:100,aDurMin:pmc?70:50,aDurMax:100,
     loot:true,keys:id==='scav',quest:pmc,poverty:pmc?5:0,reroll:pmc?20:0,meds:true};
 }
@@ -711,7 +713,7 @@ function makeDefaults(){
     maps,bosses,bossCommon:{on:false,chance:35},bossProg:{on:true,step:10,min:20,max:100,regressive:false},bossDiff:{easy:0,normal:60,hard:30,imp:10},weeklyBoss:true,
     specials,factions,
     events:{halloween:{mode:'auto',zombies:30,nightCult:40,summon:true,gear:true},christmas:{mode:'auto',santa:25,gifts:true,snow:true,gear:true},newyears:{mode:'auto',fireworks:true},aprilfools:{mode:'off',gnomes:true},detect:true},
-    gear:{poolVer:2,itemTier:{},thermalAdd:[],thermalRemove:[],tierMode:'mixed',mixPct:15,fixedTier:4,startTier:1,lv:lvDefaults(),splitAmmo:true,thermalsT7:true,seasonal:true,noQuest:true,tiers},
+    gear:{poolVer:2,chanceVer:2,itemTier:{},thermalAdd:[],thermalRemove:[],tierMode:'mixed',mixPct:15,fixedTier:4,startTier:1,lv:lvDefaults(),splitAmmo:true,thermalsT7:true,seasonal:true,noQuest:true,tiers},
     roles,
     weapons:{range:Object.fromEntries(MAPS.map(m=>[m.id,['woods','lighthouse','shoreline'].includes(m.id)?65:m.id.startsWith('factory')||m.id==='laboratory'||m.id==='labyrinth'?15:40])),
       looseAmmo:{on:true,chance:40,limit:2},bigMag:{on:true,count:1},stock:true,dust:true,scope:true,muzzle:{force:false,chance:55},partTiers:true,scopeLimit:2,tacLimit:1,night:{nvg:60,thermal:8,light:40}},
@@ -2539,6 +2541,10 @@ function normalizeMaps(raw={}){MAPS.forEach(m=>normalizeMapOverrides(m.id,raw[m.
 function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
   if(!(raw&&raw.gear&&raw.gear.poolVer>=2)){Object.values(state.tierData||{}).forEach(arr=>(arr||[]).forEach(d=>['weapons','armor','ammo','meds','look'].forEach(sec=>{if(d[sec])Object.keys(d[sec]).forEach(k=>{d[sec][k]={};});})));state.gear.poolVer=2;}
   (state.gear.tiers||[]).forEach(t=>{if(t.sMin==null)t.sMin=Math.max(1,(t.side||2)-2);});
+  // 1.0.5: 1.0.4 이하가 저장한 설정에서 손대지 않은 옛 PMC 기본값(방탄복 40~95·헤드셋 15~85 표, USEC·BEAR 앞뒤판 90)만 새 기본으로.
+  if(!(raw&&raw.gear&&raw.gear.chanceVer>=2)){const pmc=state.tierData&&state.tierData.pmc,nw=tierDataDefaults().pmc;
+    if(Array.isArray(pmc))pmc.forEach((d,t)=>{if(!d||!d.chance||!nw[t])return;[['armorVest',40,95],['earpiece',15,85]].forEach(([k,lo,hi])=>{if(d.chance[k]===Math.round(lo+(hi-lo)*t/6))d.chance[k]=nw[t].chance[k];});});
+    ['usec','bear'].forEach(id=>{const r=state.roles&&state.roles[id];if(r&&r.frontPlate===90)r.frontPlate=100;});state.gear.chanceVer=2;}
   rebuildSlots();
   // 1.0: 공통 상한 + '이 맵만 따로'. 옛 설정에서 맵 값을 기본과 다르게 바꿔 둔 맵은 따로 정한 것으로 이어받는다.
   MAPS.forEach(m=>{const r=raw?.maps?.[m.id];if(r&&r.capOn===undefined&&r.cap!==undefined&&r.cap!==DEFAULTS.maps[m.id].cap)state.maps[m.id].capOn=true;});
