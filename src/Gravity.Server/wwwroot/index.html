@@ -498,7 +498,9 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
 'use strict';
 /* ================= basics ================= */
 const T=(ko,en)=>({ko,en});
-let lang='ko',mode='easy',page='dashboard',mapSel='bigmap',flowMap='bigmap',modTab='weapons',modSearch='',seed=7,qbDemo=false,ioText='',bossSel='reshala',roleSel='usec',tierSel=0,facSel='ruaf',specSel='raiders',blSearch='',blCat='all',devMap='bigmap',simRows=null,devJson='',batch=[],abpsDemo=false,apbsDemo=false,tierIo='',tBot='pmc',tSec='weapons',tCopyTo='scav',iq='',atWeapon='',missingDemo=false,tSlot='',pickOpen='',pq='',pickAll=false,pickTiers=null,pickSrc='all',tFull=false,attSlot='count',tRole='',tCopyScope='all',blOpen=-1,fileKind='',dragTier=null,lastDownload=null,tlEdit=true,tlDrag=null,tlDragged=false,tlDragEnd=0;
+/** 첫 언어: 저장한 선택(gravity.lang) → 없으면 브라우저 언어가 ko로 시작할 때만 한국어, 아니면 영어. */
+function initialLang(){const v=readLocal('gravity.lang');if(v==='ko'||v==='en')return v;return typeof navigator!=='undefined'&&/^ko/i.test(navigator.language||'')?'ko':'en';}
+let lang=initialLang(),mode='easy',page='dashboard',mapSel='bigmap',flowMap='bigmap',modTab='weapons',modSearch='',seed=7,qbDemo=false,ioText='',bossSel='reshala',roleSel='usec',tierSel=0,facSel='ruaf',specSel='raiders',blSearch='',blCat='all',devMap='bigmap',simRows=null,devJson='',batch=[],abpsDemo=false,apbsDemo=false,tierIo='',tBot='pmc',tSec='weapons',tCopyTo='scav',iq='',atWeapon='',missingDemo=false,tSlot='',pickOpen='',pq='',pickAll=false,pickTiers=null,pickSrc='all',tFull=false,attSlot='count',tRole='',tCopyScope='all',blOpen=-1,fileKind='',dragTier=null,lastDownload=null,tlEdit=true,tlDrag=null,tlDragged=false,tlDragEnd=0;
 let spawnTab='all';
 const isSpawnMap=()=>page==='spawn'&&spawnTab!=='all';
 function readLocal(k,fallback=''){try{return localStorage.getItem(k)??fallback;}catch(_){return fallback;}}
@@ -2255,7 +2257,7 @@ document.addEventListener('click',e=>{
   if(d.aslot){attSlot=d.aslot;if(pickOpen)pickOpen=attSlot==='count'?'':'attach|'+attSlot;pq='';rerender();return;}
   if(d.nav){selectPage(d.nav);tFull=false;closePop();$('#drawer').classList.remove('open');render();window.scrollTo(0,0);return;}
   if(d.mode){mode=d.mode;rerender();return;}
-  if(d.lang){lang=d.lang;rerender();return;}
+  if(d.lang){lang=d.lang==='en'?'en':'ko';writeLocal('gravity.lang',lang);rerender();return;}
   if(d.map){mapSel=d.map;spawnTab=mapSel;batch=batch.filter(x=>x!==mapSel);rerender();return;}
   if(d.boss){bossSel=d.boss;if(tlPopKey.startsWith('boss|'))tlPopKey='boss|'+d.boss;rerender();return;}
   if(d.role){roleSel=d.role;rerender();return;}

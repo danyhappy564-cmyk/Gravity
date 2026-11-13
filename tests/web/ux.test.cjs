@@ -7,20 +7,20 @@ const assert = require('node:assert/strict');
 const html = readFileSync(join(__dirname, '../../src/Gravity.Server/wwwroot/index.html'), 'utf8');
 const source = html.match(/<script>([\s\S]*?)<\/script>/)[1].replace(/\bboot\(\);\s*$/, '');
 
-function app({stored = {}, hash = '', denied = false, fetch} = {}) {
+function app({stored = {}, hash = '', denied = false, fetch, navigator} = {}) {
   const listeners = {}, nodes = new Map();
   const node = () => ({innerHTML: '', textContent: '', hidden: true, dataset: {}, style: {setProperty() {}},
     classList: {toggle() {}, remove() {}, add() {}}, querySelectorAll: () => [], addEventListener() {}});
   const document = {addEventListener: (name, fn) => (listeners[name] ||= []).push(fn),
     querySelector: s => {if (!s.startsWith('#')) return null;if (!nodes.has(s)) nodes.set(s, node()); return nodes.get(s);},
     querySelectorAll: () => [], documentElement: {}, body: node()};
-  const storage = {...stored};
+  const storage = {'gravity.lang': 'ko', ...stored}; // 기존 테스트는 한국어 화면을 전제한다
   const location = {hash};
   const context = vm.createContext({document, location, window: {addEventListener() {}, location,
     scrollTo() {}, scrollY: 0, innerWidth: 1200, innerHeight: 900},
     localStorage: {getItem(k) {if (denied) throw Error('denied'); return storage[k] ?? null;},
       setItem(k, v) {if (denied) throw Error('denied'); storage[k] = String(v);}},
-    setTimeout: () => 1, clearTimeout() {}, console, URL, Blob, fetch,
+    setTimeout: () => 1, clearTimeout() {}, console, URL, Blob, fetch, ...(navigator ? {navigator} : {}),
     requestAnimationFrame() {}, cancelAnimationFrame() {}});
   vm.runInContext(source, context);
   return {run: code => vm.runInContext(code, context), listeners, nodes, storage,
@@ -90,7 +90,7 @@ test('스캐브 견적과 타임라인은 PMC 방식과 별개로 바뀝니다',
   assert.match(a.run("timeline(mapById('bigmap'),true)"), /무한 보충/);
 });
 test('접힌 적용 안내와 저장소 차단 환경을 지원합니다', () => {
-  const a = app({denied: true});
+  const a = app({denied: true, navigator: {language: 'ko-KR'}});
   const out = a.run("liveBanner('spawn')");
   assert.match(out, /<details[^>]*data-apply-info/);
   assert.match(out, /Gravity가 지금 바꾸는 것 \d+가지/);
@@ -981,4 +981,18 @@ test('Codex 점검: 미리보기 안내 글의 용어와 위치가 실제 화면
  const a=app();a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap'");
  a.run('tlEdit=false');assert.match(a.run('rosterBox(mapById("bigmap"))'),/각 페이지에서 정합니다/);
  a.run('tlEdit=true');assert.match(a.run('rosterBox(mapById("bigmap"))'),/이 맵에서 바로 수정/);
+});
+
+test('언어: 저장값을 쓰고, 없으면 브라우저 언어(ko*만 한국어)',()=>{
+ assert.equal(app({stored:{'gravity.lang':'en'}}).run('lang'),'en');
+ assert.equal(app({stored:{'gravity.lang':undefined}}).run('lang'),'en','저장값·navigator 없음');
+ assert.equal(app({stored:{'gravity.lang':undefined},navigator:{language:'ko-KR'}}).run('lang'),'ko');
+ assert.equal(app({stored:{'gravity.lang':undefined},navigator:{language:'en-US'}}).run('lang'),'en');
+ assert.equal(app({stored:{'gravity.lang':'xx'},navigator:{language:'ko'}}).run('lang'),'ko','이상한 저장값은 무시');
+ assert.equal(app({denied:true}).run('lang'),'en','저장소 막힘');
+});
+
+test('언어 버튼을 누르면 gravity.lang에 저장',()=>{
+ const a=app();a.click({lang:'en'});assert.equal(a.storage['gravity.lang'],'en');assert.equal(a.run('lang'),'en');
+ a.click({lang:'ko'});assert.equal(a.storage['gravity.lang'],'ko');
 });
