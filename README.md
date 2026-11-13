@@ -66,7 +66,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 
 ## 감사
 
-장비 프리셋 **Realistic and Extended PMC Loadouts**는 1.0.4부터 R_F의 저장된 **Realistic Live-like 1.0.2** 구성(7티어·33개 표)을 사용합니다. APBS를 바탕으로 변환한 커스텀 구성이며, 이전 1.0.3 이하에서 제공한 mip01 프리셋의 감사·출처도 [CREDITS.md](CREDITS.md)에 보존합니다.
+장비 프리셋 **Realistic and Extended PMC Loadouts**는 **mip01**님이 제작한 **APBS Realistic and Extended PMC Loadouts Preset**을 허락을 받아 차용했습니다(1.0.4부터 Realistic Live-like 1.0.2 기준, 7티어·33개 표). 좋은 프리셋을 만들어 주신 mip01님께 감사드립니다. 자세한 출처는 [CREDITS.md](CREDITS.md)에 있습니다.
 
 ## 라이선스
 

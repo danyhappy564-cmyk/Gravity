@@ -2,9 +2,17 @@
 
 ## 현재 기본 프리셋 (1.0.4부터)
 
-**Realistic and Extended PMC Loadouts**는 R_F의 **Realistic Live-like 1.0.2** 저장본을 사용합니다. 7티어·33개 장비 표와 봇별 역할·무기·모드 설정을 함께 옮겼습니다. 기존 카드 이름과 프리셋 ID는 유지합니다. APBS 기반 변환에서 직접 옮기지 못한 기능은 프리셋의 `conversion.approximations`에 적었습니다. 커스텀 원본의 확인되지 않은 제작자 이름은 임의로 붙이지 않습니다.
+- 원작: **APBS Realistic and Extended PMC Loadouts Preset** — 제작 **mip01** (mip01님의 허락을 받아 차용)
+- 바탕: **Acid's Progressive Bot System (APBS)** — 제작 **acidphantasm**
+- 1.0.4부터 **Realistic Live-like 1.0.2** 기준 구성을 씁니다. 7티어·33개 장비 표와 봇별 역할·무기·모드 설정을 함께 옮겼고, 기존 카드 이름과 프리셋 ID는 유지합니다. 직접 옮기지 못한 기능은 프리셋의 `conversion.approximations`에 적었습니다.
 
-From 1.0.4, **Realistic and Extended PMC Loadouts** contains R_F’s saved **Realistic Live-like 1.0.2** setup: 7 tiers, 33 tables, and role, weapon and mod settings. The existing card name and preset ID are retained. APBS conversion limitations are listed in `conversion.approximations`. An unverified author attribution is not assigned to this custom source.
+좋은 프리셋을 만들고 사용을 허락해 주신 mip01님께 감사드립니다.
+
+- Original: **APBS Realistic and Extended PMC Loadouts Preset** by **mip01** (borrowed with mip01’s permission)
+- Based on: **Acid's Progressive Bot System (APBS)** by **acidphantasm**
+- From 1.0.4 the preset follows **Realistic Live-like 1.0.2**: 7 tiers, 33 tables, and role, weapon and mod settings. The card name and preset ID are unchanged. Conversion limits are listed in `conversion.approximations`.
+
+Thank you, mip01, for the great preset and for allowing its use.
 
 ## 이전 기본 프리셋 감사 (1.0.3 이하)
 

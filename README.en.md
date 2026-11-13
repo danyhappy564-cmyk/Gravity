@@ -66,7 +66,7 @@ The **Roll 10 raids** tool uses saved server settings. Entries requiring an even
 
 ## Credits
 
-From 1.0.4, **Realistic and Extended PMC Loadouts** uses R_F’s saved **Realistic Live-like 1.0.2** setup (7 tiers and 33 tables), converted from an APBS-based custom setup. Credits for the mip01 preset bundled with 1.0.3 and earlier remain in [CREDITS.md](CREDITS.md).
+The **Realistic and Extended PMC Loadouts** preset is borrowed with permission from **mip01**’s **APBS Realistic and Extended PMC Loadouts Preset** (Realistic Live-like 1.0.2 from 1.0.4; 7 tiers and 33 tables). Thank you, mip01, for the great preset. Full credits are in [CREDITS.md](CREDITS.md).
 
 ## License
 
