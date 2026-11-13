@@ -1107,3 +1107,10 @@ test('Codex 1.0.5 검토 3번: 맵별 보스 확률 팝업은 공통 확률 안�
  const out=a.nodes.get('#tlpop').innerHTML;assert.doesNotMatch(out,/모든 보스에 적용됩니다/);assert.match(out,/이 맵만 · 보스 확률/);
  assert.match(a.run("P.bosses.render(true,'bigmap')"),/맵별 확률만 현재 맵 설정/);
 });
+
+test('1.0.5: 장비 프리셋 카드 이름이 내용(Realistic Live-like 1.0.2)과 같고 id·원작 표기는 유지',()=>{
+ const a=app();const p=JSON.parse(a.run("JSON.stringify(TIER_PRESETS.find(x=>x.id==='apbs-realistic'))"));
+ assert.equal(p.name.ko,'Realistic Live-like 1.0.2');assert.equal(p.name.en,'Realistic Live-like 1.0.2');
+ assert.match(p.desc.ko,/mip01님의 APBS Realistic and Extended PMC Loadouts Preset/);assert.match(p.credit.en,/by mip01/);
+ assert.ok(!p.chips.some(c=>c.ko===p.name.ko),'이름과 같은 칩 중복 없음');
+});

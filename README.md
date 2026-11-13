@@ -46,7 +46,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 - 부착물도 티어를 따릅니다. 그 총에 맞는 부착물이 전부 티어 위면 가장 낮은 티어 것을 달아 '맨 총'이 나오지 않습니다(무기 구성에서 끌 수 있음).
 - 모드 아이템: 설치된 모드별로 켜고 끄기, 레이드마다 일부만 쓰기, PMC만 쓰기.
 - **의상**(모드 아이템 → 의상 탭): 체크한 모드의 옷만 PMC·스캐브가 입습니다(진영에 맞는 옷만, 모드 단위로 고름). 한 번도 저장하지 않았다면 봇 옷을 바꾸지 않습니다.
-- 장비 프리셋: **Gravity 자동**과 **Realistic and Extended PMC Loadouts**(아래 감사 참고) 두 가지가 들어 있고, 내 프리셋을 저장할 수 있습니다.
+- 장비 프리셋: **Gravity 자동**과 **Realistic Live-like 1.0.2**(아래 감사 참고) 두 가지가 들어 있고, 내 프리셋을 저장할 수 있습니다.
 
 ## 설치
 
@@ -69,7 +69,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 
 ## 감사
 
-장비 프리셋 **Realistic and Extended PMC Loadouts**는 **mip01**님이 제작한 **APBS Realistic and Extended PMC Loadouts Preset**을 허락을 받아 차용했습니다(1.0.4부터 Realistic Live-like 1.0.2 기준, 7티어·33개 표). 좋은 프리셋을 만들어 주신 mip01님께 감사드립니다. 자세한 출처는 [CREDITS.md](CREDITS.md)에 있습니다.
+장비 프리셋 **Realistic Live-like 1.0.2**(1.0.4까지 이름 "Realistic and Extended PMC Loadouts")는 **mip01**님이 제작한 **APBS Realistic and Extended PMC Loadouts Preset**을 허락을 받아 차용했습니다(1.0.4부터 Realistic Live-like 1.0.2 기준, 7티어·33개 표). 좋은 프리셋을 만들어 주신 mip01님께 감사드립니다. 자세한 출처는 [CREDITS.md](CREDITS.md)에 있습니다.
 
 ## 라이선스
 

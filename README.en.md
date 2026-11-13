@@ -46,7 +46,7 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 - Attachments follow tiers too. If every part that fits a gun is above the tier, the lowest-tier one is used, so guns never come out bare (can be turned off in Weapon build).
 - Mod items: on/off per installed mod, use only part of them each raid, PMC-only.
 - **Clothing** (Mod items → Clothing tab): PMCs and scavs wear clothes only from checked mods (matching their side; chosen per mod). Until you save it once, bot outfits are left untouched.
-- Loadout presets: **Gravity auto** and **Realistic and Extended PMC Loadouts** (see Credits) are built in; you can save your own.
+- Loadout presets: **Gravity auto** and **Realistic Live-like 1.0.2** (see Credits) are built in; you can save your own.
 
 ## Install
 
@@ -69,7 +69,7 @@ The **Roll 10 raids** tool uses saved server settings. Entries requiring an even
 
 ## Credits
 
-The **Realistic and Extended PMC Loadouts** preset is borrowed with permission from **mip01**’s **APBS Realistic and Extended PMC Loadouts Preset** (Realistic Live-like 1.0.2 from 1.0.4; 7 tiers and 33 tables). Thank you, mip01, for the great preset. Full credits are in [CREDITS.md](CREDITS.md).
+The **Realistic Live-like 1.0.2** preset (named "Realistic and Extended PMC Loadouts" up to 1.0.4) is borrowed with permission from **mip01**’s **APBS Realistic and Extended PMC Loadouts Preset** (Realistic Live-like 1.0.2 from 1.0.4; 7 tiers and 33 tables). Thank you, mip01, for the great preset. Full credits are in [CREDITS.md](CREDITS.md).
 
 ## License
 
