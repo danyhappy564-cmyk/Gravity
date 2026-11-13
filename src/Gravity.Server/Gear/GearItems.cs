@@ -34,6 +34,8 @@ public sealed class GearItems
     public IReadOnlyList<string> ModWeapons { get; }
     public IReadOnlyList<string> ModEquipment { get; }
     public IReadOnlyList<string> ModAttachments { get; }
+    /// <summary>1.0.5 의상 탭: 모드 옷(Body·Feet) 목록.</summary>
+    public IReadOnlyList<ClothingItem> Clothing { get; init; } = [];
 
     public static readonly string[] WeaponSlots = ["FirstPrimaryWeapon", "SecondPrimaryWeapon", "Holster"];
 

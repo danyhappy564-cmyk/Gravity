@@ -28,8 +28,19 @@ public static class GearItemsBuilder
         return doc.RootElement.EnumerateObject().Select(o => o.Name.ToLowerInvariant()).ToHashSet();
     }
 
+    /// <summary>1.0.5: SPT 원본 customization.json의 외형 id(모드 옷 구분용). 못 읽으면 null(의상 목록 끔).</summary>
+    public static HashSet<string>? VanillaCustomizationIds(string? sptDataDir)
+    {
+        if (sptDataDir == null) return null;
+        var p = System.IO.Path.Combine(sptDataDir, "database", "templates", "customization.json");
+        if (!File.Exists(p)) return null;
+        using var fs = File.OpenRead(p);
+        using var doc = JsonDocument.Parse(fs);
+        return doc.RootElement.EnumerateObject().Select(o => o.Name.ToLowerInvariant()).ToHashSet();
+    }
+
     public static GearItems Build(TemplateTable templates, BotTable bots, HashSet<string>? vanilla, string? modsDir = null,
-        IEnumerable<(string Item, IEnumerable<string> Parts)>? defaultPresets = null)
+        IEnumerable<(string Item, IEnumerable<string> Parts)>? defaultPresets = null, HashSet<string>? vanillaCustomization = null)
     {
         var tpls = templates.Items;
         var prices = templates.Prices;
@@ -56,7 +67,11 @@ public static class GearItemsBuilder
             return false;
         }
         var info = new Dictionary<string, ItemInfo>();
-        var sources = GearItemSource.Scan(modsDir, tpls.Keys.Select(k=>k.ToString()).Where(id=>vanilla != null && !vanilla.Contains(id)).ToHashSet());
+        // 1.0.5 의상: 원본에 없는 상의·하의도 같은 한 번의 폴더 검색에서 출처를 찾는다.
+        var custom = (templates.Customization ?? new()).Where(kv => kv.Value?.Properties?.BodyPart is "Body" or "Feet")
+            .Select(kv => (Id: kv.Key.ToString().ToLowerInvariant(), Part: kv.Value.Properties.BodyPart, Sides: (IEnumerable<string>?)kv.Value.Properties.Side)).ToList();
+        var modCustom = vanillaCustomization == null ? [] : custom.Where(c => !vanillaCustomization.Contains(c.Id)).Select(c => c.Id).ToList();
+        var sources = GearItemSource.Scan(modsDir, tpls.Keys.Select(k=>k.ToString()).Where(id=>vanilla != null && !vanilla.Contains(id)).Concat(modCustom).ToHashSet());
         var positions = new Dictionary<string,HashSet<string>>();
         foreach (var t in tpls.Values)
             if (t.Properties?.Slots != null)
@@ -134,7 +149,7 @@ public static class GearItemsBuilder
             }
             if(slots.Count>0)compatibility[parentId]=slots;
         }
-        return new GearItems(info, pools,compatibility);
+        return new GearItems(info, pools,compatibility) { Clothing = GearClothing.Build(custom, vanillaCustomization, sources) };
     }
 
     /// <summary>필수 부품 칸 이름(소문자). 없으면 null(대부분 아이템).</summary>

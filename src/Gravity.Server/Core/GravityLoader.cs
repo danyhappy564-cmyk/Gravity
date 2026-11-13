@@ -111,8 +111,10 @@ public class GravityLoader(
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var vanilla = Gravity.Gear.GearItemsBuilder.VanillaIds(sptData);
+            var vanillaCustom = Gravity.Gear.GearItemsBuilder.VanillaCustomizationIds(sptData);
             Gravity.Gear.GearRuntime.Builder = () => Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla, GravityBoot.ModsDir,
-                globals.ItemPresets.Values.Where(x => x.Encyclopedia.HasValue && x.Items != null).Select(x => (x.Encyclopedia!.Value.ToString(), x.Items!.Select(i => i.Template.ToString()))));
+                globals.ItemPresets.Values.Where(x => x.Encyclopedia.HasValue && x.Items != null).Select(x => (x.Encyclopedia!.Value.ToString(), x.Items!.Select(i => i.Template.ToString()))),
+                vanillaCustom);
             Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
@@ -134,8 +136,8 @@ public class GravityLoader(
                 new Gravity.Gear.GearUnheardPatch().Enable();
             }
             var gi = Gravity.Gear.GearRuntime.Items;
-            logger.Info($"{GravityInfo.Tag} " + L.T($"장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}",
-                $"Gear data: {gi.Info.Count} items, {gi.SlotTier.Count} gear slots, mod items: {gi.ModWeapons.Count} weapons · {gi.ModEquipment.Count} gear · {gi.ModAttachments.Count} attachments") + $""
+            logger.Info($"{GravityInfo.Tag} " + L.T($"장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}·옷 {gi.Clothing.Count}",
+                $"Gear data: {gi.Info.Count} items, {gi.SlotTier.Count} gear slots, mod items: {gi.ModWeapons.Count} weapons · {gi.ModEquipment.Count} gear · {gi.ModAttachments.Count} attachments · {gi.Clothing.Count} clothes") + $""
                 + (vanilla == null ? L.T(" (SPT 원본 목록 없음: 모드 구분 끔)", " (no SPT original list: mod-item split off)") : "") + $", {sw.ElapsedMilliseconds}ms"
                 + (detect.GearLocked ? L.T(" / APBS 감지로 장비 모듈 잠금", " / gear module locked (APBS detected)") : ""));
         }

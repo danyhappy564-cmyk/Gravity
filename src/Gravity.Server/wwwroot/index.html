@@ -589,9 +589,17 @@ const FACTIONS=[
  {id:'untar',name:T('UNTAR','UNTAR'),mod:'TacticalToasterUNTARGH',color:'#5b9bd5',kinds:['patrol','checkpoint','hunt'],maps:['woods','bigmap','interchange','tarkovstreets','sandbox'],orbit:'TakeOverUntar'},
  {id:'blackdiv',name:T('블랙 디비전 · 웨지','Black Division · Wedge'),mod:'BlackDiv',color:'#9a9a9a',kinds:['blackdiv'],maps:['bigmap','tarkovstreets','shoreline','lighthouse','factory4_day','factory4_night','interchange','sandbox_high','rezervbase','labyrinth'],orbit:'TakeOverBlackDivision'}
 ];
-const MOD_TABS=[['weapons',T('무기','Weapons'),x=>x.section==='weapons'],['equipment',T('장구류','Gear'),x=>x.section==='armor'||x.section==='plates'],['attachments',T('부착물','Attachments'),x=>x.section==='parts'],['other',T('기타','Other'),x=>!['weapons','armor','plates','parts'].includes(x.section)]];
+const MOD_TABS=[['weapons',T('무기','Weapons'),x=>x.section==='weapons'],['equipment',T('장구류','Gear'),x=>x.section==='armor'||x.section==='plates'],['attachments',T('부착물','Attachments'),x=>x.section==='parts'],['other',T('기타','Other'),x=>!['weapons','armor','plates','parts'].includes(x.section)],['clothing',T('의상','Clothing'),()=>false]];
+/** 1.0.5 의상 탭: 모드 단위로만 허용(옷 하나하나는 고르지 않음). 허용 목록 mods.clothingOn — 키가 없으면 봇 외형을 바꾸지 않는다. */
+function clothingSourceList(tabsBar){const on=state.mods.clothingOn,q=modSearch.toLowerCase(),cnt={};
+  (GEAR_CLOTHING||[]).forEach(x=>{const c=cnt[x.source]||(cnt[x.source]={n:0,body:0,feet:0});c.n++;if(x.part==='Body')c.body++;else c.feet++;});
+  const list=Object.entries(cnt).filter(([n])=>n.toLowerCase().includes(q)).sort((a,b)=>b[1].n-a[1].n||a[0].localeCompare(b[0])),has=n=>!!on&&on.includes(n);
+  return `${tabsBar}<p class="small muted" style="margin:0 0 8px">${tr(T('체크한 모드의 옷만 PMC·스캐브가 입습니다(진영에 맞는 옷만). 체크를 푼 모드의 옷은 봇이 입지 않습니다. 한 번도 저장하지 않았다면 봇 옷을 바꾸지 않습니다.','PMCs and scavs wear clothes only from checked mods (matching their side). Unchecked mods’ clothes are not worn. Until you save this once, bot outfits are left untouched.'))}</p>
+    <div class="sw-row" style="margin-bottom:10px"><input type="search" id="modSearch" placeholder="${tr(T('모드 이름 검색','Search mods'))}" value="${esc(modSearch)}"><button class="mini-btn" data-modall="on">${tr(T('보이는 것 모두 켜기','Enable all shown'))}</button><button class="mini-btn" data-modall="off">${tr(T('보이는 것 모두 끄기','Disable all shown'))}</button>${on?pill(fmt(tr(T('켬 {a} / {n}','On {a} / {n}')),{a:list.filter(([n])=>has(n)).length,n:list.length}),'blue'):pill(tr(T('지금: 봇 옷 그대로 (설정 전)','Now: outfits untouched (not set)')))}</div>
+    <div class="modlist">${list.map(([n,c])=>`<button class="modrow modsrc${has(n)?'':' off'}" data-clothsrc="${esc(n)}"><span class="ck">${has(n)?'■':'□'}</span><span>${esc(n)}</span><small class="muted">${fmt(tr(T('상의 {b} · 하의 {f}','Tops {b} · bottoms {f}')),{b:c.body,f:c.feet})}</small><span class="pill" style="margin-left:auto">${c.n}</span></button>`).join('')||`<div class="modrow muted">${tr(T('설치된 의상 모드가 없습니다 (SPT 원본에 없는 상의·하의를 넣은 모드만 보입니다).','No clothing mods installed (only mods that add new tops or bottoms appear).'))}</div>`}</div>`;}
 function modSourceList(){if(!GEAR_CATALOG)return `<p class="muted small">${tr(T('설치된 모드 목록은 서버 연결 뒤 보입니다.','Installed mods appear once the server is connected.'))}</p>`;
   const tab=MOD_TABS.find(x=>x[0]===modTab)||MOD_TABS[0],off=state.mods.disabledSources||[],q=modSearch.toLowerCase();
+  if(tab[0]==='clothing')return clothingSourceList(`<div class="tabs">${MOD_TABS.map(([k,l])=>`<button data-modtab="${k}" class="${k===tab[0]?'on':''}">${tr(l)}</button>`).join('')}</div>`);
   const cnt={};GEAR_CATALOG.forEach(x=>{if(x.mod&&tab[2](x))cnt[x.source]=(cnt[x.source]||0)+1;});
   const srt={count:(a,b)=>b[1]-a[1],name:(a,b)=>a[0].localeCompare(b[0]),on:(a,b)=>off.includes(a[0])-off.includes(b[0])||b[1]-a[1],off:(a,b)=>off.includes(b[0])-off.includes(a[0])||b[1]-a[1]};
   const list=Object.entries(cnt).filter(([n])=>n.toLowerCase().includes(q)).sort(srt[modSort]||srt.count);
@@ -601,8 +609,7 @@ function modSourceList(){if(!GEAR_CATALOG)return `<p class="muted small">${tr(T(
 const MODS={
  weapons:[['wtt-armory','WTT Armory',126],['eco-emporium','Eco Attachment Emporium',58],['epic-guns','Epic Gun Pack',41],['eastern-arms','Eastern Arms Pack',33],['custom-smg','Compact SMGs',12]],
  equipment:[['wtt-gear','WTT Tactical Gear',64],['plates-plus','Plates Plus',22],['helmets','Modern Helmets',18],['rigs','Chest Rig Collection',27]],
- attachments:[['eco-emporium','Eco Attachment Emporium',1204],['wtt-armory','WTT Armory (parts)',866],['optics','Optics Overhaul',212],['rails','Rail & Mount Pack',184]],
- clothing:[['contentbackport','Content Backport',66],['outfits','Operator Outfits',24],['winter','Winter Wear',18]]
+ attachments:[['eco-emporium','Eco Attachment Emporium',1204],['wtt-armory','WTT Armory (parts)',866],['optics','Optics Overhaul',212],['rails','Rail & Mount Pack',184]]
 };
 const TIER_PREVIEW=[['MP-153','PACA'],['AKS-74U','6B23-1'],['AK-74M','Trooper'],['M4A1','Korund'],['MCX','Slick'],['HK 416','Gzhel'],['SR-25','Zabralo']];
 const ROLE_GROUPS=[
@@ -708,7 +715,7 @@ function makeDefaults(){
     roles,
     weapons:{range:Object.fromEntries(MAPS.map(m=>[m.id,['woods','lighthouse','shoreline'].includes(m.id)?65:m.id.startsWith('factory')||m.id==='laboratory'||m.id==='labyrinth'?15:40])),
       looseAmmo:{on:true,chance:40,limit:2},bigMag:{on:true,count:1},stock:true,dust:true,scope:true,muzzle:{force:false,chance:55},partTiers:true,scopeLimit:2,tacLimit:1,night:{nvg:60,thermal:8,light:40}},
-    mods:{disabledSources:[],subset:true,weapons:30,attachments:150,equipment:30,clothing:10,mult:100,pmcOnly:true,allowed},
+    mods:{disabledSources:[],subset:true,weapons:30,attachments:150,equipment:30,mult:100,pmcOnly:true,allowed},
     client:{preload:6,perFrame:1,perf:'balanced',pmcAnywhere:false},
     orbit:{extractRefillMode:'infinite',extractRefillCap:20,refillAfterExtract:true,nearAsGhost:false,respectTakeover:true,ghostCount:true},
     diag:{log:'summary',report:true,botLog:false},
@@ -1616,11 +1623,11 @@ P.items={desc:T('모드로 추가된 무기·장비를 봇이 얼마나 쓸지 �
   const m=state.mods,dis=!m.subset;
   const all=(MODS[modTab]||[]).filter(([,n])=>n.toLowerCase().includes(modSearch.toLowerCase()));
   const sel=(MODS[modTab]||[]).filter(([id])=>(m.allowed[modTab]||{})[id]).reduce((a,[, ,c])=>a+c,0);
-  const save=Math.round(((200-m.weapons)/200*90+(1000-m.attachments)/1000*60+(200-m.equipment)/200*35+(100-m.clothing)/100*10)*(m.subset?1:0));
+  const save=Math.round(((200-m.weapons)/200*90+(1000-m.attachments)/1000*60+(200-m.equipment)/200*35)*(m.subset?1:0));
   return `<div class="stack">${gearOff()}<div class="grid g2">
   ${card(T('레이드마다 일부만 사용','Per-raid subset'),sw('mods.subset',T('켜기 (램 절약)','Enable (save RAM)'),T('레이드 시작 때 이번 판 모드 아이템을 뽑습니다. 무기를 뽑으면 그 무기 전용 부품은 자동 포함.','Rolls this raid’s mod items. A rolled weapon brings its own parts.'))
     +slider('mods.weapons',T('모드 무기','Mod weapons'),'',{min:0,max:200,unit:'',dis})+slider('mods.attachments',T('모드 부착물','Mod attachments'),'',{min:0,max:1000,step:10,unit:'',dis,adv:true})
-    +slider('mods.equipment',T('모드 장비','Mod equipment'),'',{min:0,max:200,unit:'',dis})+slider('mods.clothing',T('모드 옷 (부위별)','Mod clothing (per slot)'),'',{min:0,max:100,unit:'',dis,adv:true})
+    +slider('mods.equipment',T('모드 장비','Mod equipment'),'',{min:0,max:200,unit:'',dis})
     +notice(fmt(tr(T('예상: 사망 1명당 램 증가가 약 {n}% 줄어듭니다 (모두 허용 대비, 대략값).','Estimate: ~{n}% less RAM growth per death (rough).')),{n:Math.min(80,Math.round(save/2))}),m.subset?'':'flat'),{icon:'▤'})}
   ${card(T('등장 비율','Frequency'),slider('mods.mult',T('모드 아이템 등장 배율','Mod item weight'),T('100% = 바닐라와 같은 무게.','100% = same as vanilla.'),{min:0,max:200,step:5})+sw('mods.pmcOnly',T('모드 장비는 PMC만','Mod gear for PMCs only'),'')
     +notice(T('부품 확률은 SPT 기본값을 씁니다. 다른 모드가 바꿔도 되돌립니다(오류·램 누수 방지).','Part chances use SPT defaults and are restored if changed (prevents errors/leaks).'),'flat'),{icon:'⚖'})}</div>
@@ -1776,7 +1783,7 @@ const wDefault=(it,t)=>{const d=t+1-it.t;return d<0?8:Math.max(2,30-6*d);};
 const SECS_ITEMS=['weapons','armor','ammo','meds','parts'];
 const PART_LABELS={scope:T('조준경','Scopes & sights'),muzzle:T('머즐·소음기','Muzzle devices'),foregrip:T('손잡이','Foregrips'),stock:T('개머리판','Stocks'),tactical:T('전술 장치','Tactical devices'),mount:T('마운트','Mounts'),magazine:T('탄창','Magazines'),barrel:T('총열','Barrels'),handguard:T('핸드가드','Handguards'),other:T('기타 부품','Other parts')};
 /* ===== 1.0 장비: 서버 카탈로그(실제 설치 아이템)로 칸 목록을 만든다 ===== */
-let GEAR_CATALOG=null,_catIdx=null,_catIdxOf=null;
+let GEAR_CATALOG=null,GEAR_CLOTHING=[],_catIdx=null,_catIdxOf=null;
 const catIndex=()=>{if(_catIdxOf!==GEAR_CATALOG){_catIdxOf=GEAR_CATALOG;_catIdx=Object.fromEntries((GEAR_CATALOG||[]).map(x=>[x.id,x]));}return _catIdx||{};};
 const GUN_KINDS=[['ar',T('돌격소총 (AR)','Assault rifles (AR)')],['carbine',T('카빈','Carbines')],['smg',T('기관단총 (SMG)','SMGs')],['lmg',T('기관총 (LMG)','Machine guns (LMG)')],['dmr',T('지정사수소총 (DMR)','Marksman rifles (DMR)')],['sniper',T('볼트액션 저격소총','Bolt-action sniper rifles')],['shotgun',T('산탄총','Shotguns')],['launcher',T('유탄·로켓','Launchers')],['special',T('기타 총기','Other guns')],['holster',T('권총','Pistols')],['scabbard',T('근접 무기','Melee')]];
 const ARMOR_LABELS={helmet:T('헬멧','Helmets'),headwear:T('헬멧·머리 장비','Helmets & headwear'),armor:T('방탄복','Body armor'),armorVest:T('방탄복','Body armor'),faceCover:T('얼굴 가리개','Face covers'),armouredRig:T('방탄 리그','Armored rigs'),tacticalVest:T('리그','Tactical rigs'),backpack:T('가방','Backpacks'),earpiece:T('헤드셋','Headsets'),facecover:T('얼굴 가리개','Face covers'),eyewear:T('안경','Eyewear'),armband:T('완장','Armbands')};
@@ -1794,7 +1801,7 @@ function rebuildSlots(){if(!GEAR_CATALOG)return;
   SLOTS.parts=Object.keys(PART_LABELS).map(k=>[k,PART_LABELS[k],by('parts',k)]).filter(x=>x[2].length);
   // 새 칸 키를 만들어 둔다(값이 비면 자동)
   Object.values(state.tierData||{}).forEach(arr=>(arr||[]).forEach(d=>SECS_ITEMS.forEach(sec=>{d[sec]||={};SLOTS[sec].forEach(([k])=>{d[sec][k]||={};});})));}
-async function loadCatalog(){try{const r=await fetch('api/gear/catalog');if(!r.ok)return;GEAR_CATALOG=(await r.json()).items||[];rebuildSlots();render();}catch(_){}}
+async function loadCatalog(){try{const r=await fetch('api/gear/catalog');if(!r.ok)return;const j=await r.json();GEAR_CATALOG=j.items||[];GEAR_CLOTHING=j.clothing||[];rebuildSlots();render();}catch(_){}}
 /* 서버는 봇이 뽑은 티어의 표를 그 티어 그대로 쓴다(역할 보정은 티어 뽑기에서 한 번만, Codex 6차 5번) */
 const effTier=(b,t)=>t+1;
 /** 칸 표: 직접 정한 무게가 있으면 그것, 없으면 자동 목록(이 티어 이하 아이템, 낮을수록 적게). 자동 목록은 저장하지 않는다. */
@@ -2262,6 +2269,9 @@ document.addEventListener('click',e=>{
   if(d.tmore){tShow+=300;rerender();return;}
   if(d.tslot!==undefined)tShow=150;
   if(d.modsort){modSort=d.modsort;rerender();return;}
+  if(d.modall&&modTab==='clothing'){const q=modSearch.toLowerCase(),names=[...new Set((GEAR_CLOTHING||[]).map(x=>x.source))].filter(n=>n.toLowerCase().includes(q)),cur=state.mods.clothingOn||[];
+    writeSetting('mods.clothingOn',d.modall==='on'?[...new Set([...cur,...names])].sort():cur.filter(n=>!names.includes(n)));rerender();return;}
+  if(d.clothsrc){const a=[...(state.mods.clothingOn||[])],i=a.indexOf(d.clothsrc);if(i>=0)a.splice(i,1);else a.push(d.clothsrc);writeSetting('mods.clothingOn',a);rerender();return;}
   if(d.modall){const tab=MOD_TABS.find(x=>x[0]===modTab)||MOD_TABS[0],q=modSearch.toLowerCase(),names=[...new Set((GEAR_CATALOG||[]).filter(x=>x.mod&&tab[2](x)).map(x=>x.source))].filter(n=>n.toLowerCase().includes(q));
     let a=[...(state.mods.disabledSources||[])];if(d.modall==='off')a=[...new Set([...a,...names])];else a=a.filter(n=>!names.includes(n));writeSetting('mods.disabledSources',a);toast(fmt(tr(d.modall==='off'?T('모드 {n}개를 껐습니다','Disabled {n} mods'):T('모드 {n}개를 켰습니다','Enabled {n} mods')),{n:names.length}));rerender();return;}
   if(d.modsrc){const a=[...(state.mods.disabledSources||[])],i=a.indexOf(d.modsrc);if(i>=0)a.splice(i,1);else a.push(d.modsrc);writeSetting('mods.disabledSources',a);rerender();return;}

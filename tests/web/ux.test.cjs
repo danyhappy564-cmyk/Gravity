@@ -1030,3 +1030,21 @@ test('보스 맵별 확률: 칸이 있으면 그 값, 비우면 공통/기본',(
  assert.match(a.nodes.get('#tlpop').innerHTML,/data-p="bosses\.reshala\.mapChance\.bigmap"/);
  assert.match(a.run("timeline(mapById('bigmap'),true)"),/레샬라 55%/);
 });
+
+test('의상 탭: 모드 단위 체크만, 저장 경로는 mods.clothingOn',()=>{
+ const a=app();
+ assert.ok(a.run("MOD_TABS.some(t=>t[0]==='clothing')"));
+ assert.equal(a.run("'clothing' in DEFAULTS.mods"),false,'옛 부위별 일부 사용 값 없음');assert.equal(a.run("'clothingOn' in DEFAULTS.mods"),false,'키 없음 = 외형 그대로');
+ assert.equal(a.run("'clothing' in MODS"),false);
+ a.run("serverMeta={};GEAR_CATALOG=[];GEAR_CLOTHING=[{id:'a1',source:'ModA',part:'Body',sides:['usec']},{id:'a2',source:'ModA',part:'Feet',sides:['usec','bear']},{id:'b1',source:'ModB',part:'Body',sides:['savage']}];page='items';modTab='clothing'");
+ let out=a.run('modSourceList()');
+ assert.equal([...out.matchAll(/data-clothsrc="/g)].length,2,'모드 2개 행');assert.match(out,/ModA[\s\S]*?>2</);
+ assert.doesNotMatch(out,/data-clothsrc="a1"|data-it/,'옷 하나하나 고르는 칸 없음');
+ assert.match(out,/한 번도 저장하지 않았다면 봇 옷을 바꾸지 않습니다/);
+ a.click({clothsrc:'ModA'});assert.equal(a.run('JSON.stringify(state.mods.clothingOn)'),'["ModA"]');
+ a.click({clothsrc:'ModA'});assert.equal(a.run('JSON.stringify(state.mods.clothingOn)'),'[]','다시 누르면 빼고, 빈 목록 = 모드 옷 모두 뺌');
+ a.click({modall:'on'});assert.equal(a.run('JSON.stringify(state.mods.clothingOn)'),'["ModA","ModB"]');
+ a.click({modall:'off'});assert.equal(a.run('JSON.stringify(state.mods.clothingOn)'),'[]');
+ assert.doesNotMatch(a.run('P.items.render()'),/data-p="mods\.clothing"/,'옛 부위별 슬라이더 없음');
+ a.run("GEAR_CLOTHING=[]");assert.match(a.run('modSourceList()'),/의상 모드가 없습니다/);
+});

@@ -240,6 +240,8 @@ public static class GearApply
         if (bot.BotChances?.EquipmentChances != null)
             foreach(var slot in emptySlots)bot.BotChances.EquipmentChances[slot]=0;
         ApplyGeneration(bot, caps, c.Role, table, c);
+        // 1.0.5 의상 탭: 허용한 모드의 옷만 PMC·스캐브 외형 목록에(설정 전이면 그대로).
+        GearClothing.Apply(bot, c, rnd);
         return new Result(removed, restored);
     }
 
