@@ -996,3 +996,19 @@ test('언어 버튼을 누르면 gravity.lang에 저장',()=>{
  const a=app();a.click({lang:'en'});assert.equal(a.storage['gravity.lang'],'en');assert.equal(a.run('lang'),'en');
  a.click({lang:'ko'});assert.equal(a.storage['gravity.lang'],'ko');
 });
+
+test('자동 프리셋 이름은 현재 언어로 보이고 직접 지은 이름은 그대로',()=>{
+ const a=app();const sn=n=>a.run(`showName(${JSON.stringify(n)})`);
+ a.run("lang='en'");
+ assert.equal(sn('커스텀 프리셋 3'),'Custom preset 3');assert.equal(sn('내 레이드 2'),'My raid 2');
+ assert.equal(sn('내 장비 1'),'My loadout 1');assert.equal(sn('내 스폰 4'),'My spawns 4');
+ assert.equal(sn('기본 사본'),'Default copy','기본 제공 프리셋 사본');assert.equal(sn('본섭 느낌 사본 사본'),'Live-like copy copy');
+ assert.equal(sn('Night raid'),'Night raid');assert.equal(sn('야간 레이드 사본'),'야간 레이드 copy');assert.equal(sn('커스텀 프리셋 모음'),'커스텀 프리셋 모음');
+ a.run("lang='ko'");
+ assert.equal(sn('Custom preset 3'),'커스텀 프리셋 3');assert.equal(sn('My raid copy'),'My raid 사본','번호 없는 앞말은 직접 지은 것, 끝의 사본만 번역');
+ assert.equal(sn('My raid 2 copy'),'내 레이드 2 사본');assert.equal(sn('Gravity auto copy'),'Gravity 자동 사본');
+ assert.equal(a.run("customName([{name:'Custom preset 3'},{name:'커스텀 프리셋 1'}])"),'커스텀 프리셋 4');
+ a.run("customPresets=[{id:'c1',name:'커스텀 프리셋 2'}];customTierPresets=[{id:'t1',name:'내 장비 5',tiers:[]}];lang='en'");
+ assert.equal(a.run("presetName('c1')"),'Custom preset 2');assert.equal(a.run("gearPresetName('t1')"),'My loadout 5');
+ assert.equal(a.run("JSON.stringify(customPresets[0].name)"),'"커스텀 프리셋 2"','저장값은 그대로');
+});
