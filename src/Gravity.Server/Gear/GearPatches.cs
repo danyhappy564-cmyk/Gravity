@@ -397,18 +397,28 @@ public class GearBotPatch : AbstractPatch
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }
 
-    /// <summary>장비 기록 한 줄: 역할 티어 레벨 주무기 방탄 최고 등급(조끼·리그·헬멧·판).</summary>
-    internal static string BotLine(GearPick pick, BotBase bot)
+    /// <summary>장비 기록 한 줄: 역할 티어 레벨 주무기 방탄 최고 등급(조끼·리그·헬멧·판), 방탄복(조끼 또는 방탄 리그)·헤드셋·앞뒤판 있음(O/-), 옷 출처(상의/하의, 1.0.5).</summary>
+    internal static string BotLine(GearPick pick, BotBase bot, GearItems? items = null)
     {
+        items ??= GearRuntime.Items;
         string? weapon = null;
         double armor = 0;
-        foreach (var it in bot.Inventory!.Items!)
+        bool vest = false, ear = false, plate = false;
+        foreach (var it in bot.Inventory?.Items ?? [])
         {
             var tpl = it.Template.ToString();
             if (it.SlotId == "FirstPrimaryWeapon") weapon = tpl;
-            if (GearRuntime.Items.Info.TryGetValue(tpl, out var info) && (info.ArmorClass > 0)) armor = Math.Max(armor, info.ArmorClass);
+            var info = items.Info.GetValueOrDefault(tpl);
+            if (info is { ArmorClass: > 0 }) armor = Math.Max(armor, info.ArmorClass);
+            if (it.SlotId == "ArmorVest" || (it.SlotId == "TacticalVest" && info is { ArmorClass: > 0 })) vest = true;
+            if (it.SlotId == "Earpiece") ear = true;
+            if (it.SlotId is "front_plate" or "back_plate") plate = true;
         }
         var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon);
-        return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}";
+        string Src(MongoId? id) => id is { } m ? items.Clothing.FirstOrDefault(c => c.Id == m.ToString())?.Source ?? "vanilla" : "-";
+        string On(bool b) => b ? "O" : "-";
+        return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}"
+            + $"\t{L.T("방탄복", "vest")} {On(vest)}\t{L.T("헤드셋", "ear")} {On(ear)}\t{L.T("앞뒤판", "plate")} {On(plate)}"
+            + $"\t{L.T("옷", "outfit")} {Src(bot.Customization?.Body)}/{Src(bot.Customization?.Feet)}";
     }
 }

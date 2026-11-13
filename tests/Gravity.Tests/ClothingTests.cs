@@ -132,6 +132,29 @@ public class ClothingTests
         Assert.True(bot.BotAppearance.Body.ContainsKey(Id(101)));
     }
 
+    // 봇 장비 기록 줄(diag.botLog): 방탄복·헤드셋·앞뒤판·옷 출처까지 남겨 레이드에서 비율을 셀 수 있게 한다.
+    [Fact]
+    public void 봇_장비_기록에_방탄복_헤드셋_판_옷_출처가_있다()
+    {
+        var items = new GearItems(new Dictionary<string, ItemInfo> { [Id(70)] = new(1, 3, 0, false, false), [Id(71)] = new(1, 4, 0, false, false, Plate: true) }, [])
+        { Clothing = Items().Clothing };
+        Item It(int n, int tpl, string slot) => new() { Id = Id(500 + n), Template = Id(tpl), SlotId = slot };
+        var full = new BotBase
+        {
+            Info = new Info { Level = 7 },
+            Customization = new Customization { Body = Id(101), Feet = Id(3) },
+            Inventory = new BotBaseInventory { Items = [It(1, 70, "ArmorVest"), It(2, 71, "front_plate"), It(3, 72, "Earpiece")] }
+        };
+        var f = GearBotPatch.BotLine(new GearPick("usec", "pmc", 0, true), full, items).Split('\t');
+        Assert.Equal(["usec", "T1", "Lv7"], f[..3]);
+        Assert.EndsWith("O", f[5]); Assert.EndsWith("O", f[6]); Assert.EndsWith("O", f[7]);
+        Assert.EndsWith("A/vanilla", f[8]);
+        var bare = new BotBase { Info = new Info { Level = 2 }, Customization = new Customization { Body = Id(1), Feet = Id(3) }, Inventory = new BotBaseInventory { Items = [] } };
+        var b = GearBotPatch.BotLine(new GearPick("bear", "pmc", 0, true), bare, items).Split('\t');
+        Assert.EndsWith("-", b[5]); Assert.EndsWith("-", b[6]); Assert.EndsWith("-", b[7]);
+        Assert.EndsWith("vanilla/vanilla", b[8]);
+    }
+
     [Fact]
     public void 스캐브는_스캐브_옷만()
     {
