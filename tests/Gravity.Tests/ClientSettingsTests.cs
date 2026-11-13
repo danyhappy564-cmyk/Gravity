@@ -12,6 +12,8 @@ using Path = System.IO.Path;
 
 namespace Gravity.Tests;
 
+// OnReport가 DiagLog.ReportsDir(정적)에 보고서를 쓴다 — 같은 폴더를 바꾸는 V06·ReleaseC 테스트와 동시에 돌지 않게.
+[Collection("DiagLog")]
 public class ClientSettingsTests
 {
     private static readonly MapInfo Factory = new("factory4_day", 6, 10, 1200, ["BotZone"], ["BotZone"]);
