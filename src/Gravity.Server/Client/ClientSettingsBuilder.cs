@@ -57,6 +57,8 @@ public static class ClientSettingsBuilder
 
         // 연구소는 바닐라에 일반 스캐브가 없다: allowScavLab(기본 false)이 꺼져 있으면 클라 스캐브 관리를 끈다(바닐라 그대로).
         var scavManaged = managed && (map.Id != "laboratory" || s.AllowScavLab);
+        // 1.0.6 웨이브 목록: 옛 클라는 Style "start"로 시작 스캐브만(채우기 안 함), 새 클라는 List대로 낸다.
+        var isList = ms.ScavStyle == "list";
 
         return new ClientRaidSettings(
             map.Id, managed, plan.Seed, Math.Max(1, raid - sim), (int)Math.Round(Math.Max(1, pmcSec)), (int)Math.Round(Math.Max(1, scavSec)), plan.BotCap,
@@ -64,9 +66,9 @@ public static class ClientSettingsBuilder
             s.Protect.On, s.Protect.Sec, s.Protect.Radius,
             s.Placement, s.HotspotShare / 100, weights, s.AllowPmcLabyrinth,
             new GroupCapDto(s.GroupCap.On, s.GroupCap.Scope, s.GroupCap.Over, rules),
-            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart, ms.ScavStyle,
+            new ScavDto(scavManaged, sc.ActiveMin, sc.ActiveMax, sc.QuietMin, sc.QuietMax, sc.Refill, sc.Pending, sc.SoftCap, sc.PerPlayer, sc.PscavChance / 100, scavStart, isList ? "start" : ms.ScavStyle,
                 plan.ScavWaves.Any(w => w.IsStart && w.SlotsMax > 0) ? scavStart + Math.Max(2, sc.Refill) : scavStart, plan.ScavWaves.Where(w => w.IsStart).Sum(w => w.SlotsMax),
-                sc.Curve, raid, sim),
+                sc.Curve, raid, sim, isList ? ScavListDto(ms, raid) : null, isList ? ms.ScavListJitterSec : 0),
             // 좁은 맵(공장·미궁)은 ORBIT 수면 거리 밖 지점이 없어 근처 보충이 전부 버려진다(11-09 공장 판 noPoint 5) → 거리 보정 안 함.
             inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
             cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.DiagOrDefault.Log, scavWeights,
@@ -80,6 +82,10 @@ public static class ClientSettingsBuilder
             // 1.0.1: 시작 분대 번호(WaveMark 끝 번호)와 "플레이어 시작 지점만" 스위치
             plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly);
     }
+
+    /// <summary>웨이브 목록 → 클라 자료(원래 레이드 기준 초). 레이드 길이 밖 웨이브는 뺀다.</summary>
+    internal static ScavWaveDto[] ScavListDto(MapSettings ms, double raidSec) =>
+        ms.ScavList.Where(w => w.TMin * 60 < raidSec).Select(w => new ScavWaveDto(w.TMin * 60, w.Min, w.Max)).ToArray();
 
     /// <summary>상한 표 → 클라 자료(1.0).</summary>
     internal static Gravity.Shared.CapTableDto CapsDto(CapTable t, bool ruafInstalled, bool blackDivInstalled) =>

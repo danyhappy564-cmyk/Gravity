@@ -160,7 +160,8 @@ public static class SpawnPlanner
                 var sec = (int)R(startMin * 60);
                 scav.Add(new ScavWave(sec, sec, initial, initial, true));
             }
-            if (ms.ScavStyle != "start" && (ms.Style != "infinite" || ms.ScavStyle != "waves"))
+            // 1.0.6 웨이브 목록: 창 안 웨이브는 만들지 않는다(시작 스캐브만, 목록은 클라가 낸다).
+            if (ms.ScavStyle is not ("start" or "list") && (ms.Style != "infinite" || ms.ScavStyle != "waves"))
                 for (var i = firstWindow; i < times.Count; i++)
                     scav.Add(Wave(times[i], Math.Max(1, (int)R(per * ScavCurveAt(s.Scav.Curve, times[i], raid)))));
         }

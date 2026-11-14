@@ -161,6 +161,12 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
                 $"scav raid: kept {keep.Count} of {plan.Groups.Count} PMC groups ({how})");
             plan = plan with { Groups = keep };
         }
+        if (hasClient && cfg.MapFor(id).ScavStyle == "list" && (id != "laboratory" || cfg.Spawn.AllowScavLab))
+        {
+            var wl = Client.ClientSettingsBuilder.ScavListDto(cfg.MapFor(id), raidSec);
+            scavNote += " / " + L.T($"스캐브 웨이브 목록 {wl.Length}개(총 {wl.Sum(w => w.Min)}~{wl.Sum(w => w.Max)}마리)",
+                $"scav wave list {wl.Length} ({wl.Sum(w => w.Min)}–{wl.Sum(w => w.Max)})");
+        }
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
         // 팩션을 보스보다 먼저: 되살린 연구소 게이트 레이더도 특수 봇 설정을 받게 한다.
         var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
@@ -291,7 +297,12 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         // 클라 스캐브 관리 조건은 ClientSettingsBuilder와 같다(연구소는 allowScavLab일 때만, 방식과 상관없이).
         var scavManaged = hasClient && (id != "laboratory" || cfg.Spawn.AllowScavLab);
         var scav = b.Plan.ScavWaves.Sum(w => w.SlotsMax)
-            + (scavManaged && cfg.MapFor(id).ScavStyle != "start" ? cfg.SpawnFor(id).Scav.SoftCap : 0);
+            + (!scavManaged ? 0 : cfg.MapFor(id).ScavStyle switch
+            {
+                "start" => 0,
+                "list" => Client.ClientSettingsBuilder.ScavListDto(cfg.MapFor(id), b.Plan.RaidSec).Sum(w => (w.Min + w.Max + 1) / 2),
+                _ => cfg.SpawnFor(id).Scav.SoftCap
+            });
         return new SimRow(b.Plan.PmcTotal, scav, bosses.Distinct().ToArray(), specials.Distinct().ToArray(), layout, conditional.Distinct().ToArray());
     }
 
