@@ -587,8 +587,10 @@ test('맵 미리보기 옆 등장 목록은 원본을 켜 두고 보스·팩션�
 test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
   const a=app();
   const svg=a.run("timeline(mapById('bigmap'),true)");
-  assert.match(svg,/특수 봇/);
-  assert.match(svg,/컬티스트 · 나올 확률 10%/);
+  // 1.0.6: 특수 봇은 종류마다 자기 줄(접힘이 기본, 머리를 누르면 펼침)
+  assert.match(svg,/data-tlopen="spec:cultists"/);
+  assert.match(svg,/▸ 컬티스트/);
+  assert.match(svg,/원래 1/);
   assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[3]+':'+x[4]).join()"),'orig:null,extra:0');
   a.run("state.specials.raiders.extra.rezervbase=30");
   assert.equal(a.run("specLane(mapById('rezervbase')).filter(x=>x[2]==='raiders').map(x=>x[3]+':'+x[4]).join()"),'orig:null,extra:30');
@@ -599,6 +601,57 @@ test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
   assert.equal(a.run("JSON.stringify(dragVals('spec','cultists',20,100,mapById('bigmap')))"),JSON.stringify([['specials.cultists.tFrom',20],['specials.cultists.tTo',25]]));
   a.run("state.bosses.reshala.on=false");
   assert.ok(!/레샬라/.test(a.run("timeline(mapById('bigmap'),true)")));
+});
+test('1.0.6 연구소 레이더 줄: 시각 무리 버블·레버 칩·추가 무리, 트리거 조절 팝업', () => {
+  const a=app();
+  a.run(`serverMeta={maps:[{id:'laboratory',roster:{pmcBot:60},entries:[
+    {role:'pmcBot',chance:60,time:300,trigger:'',triggerId:'',zone:'BotZoneFloor2',escort:'1,2',escortType:'pmcBot',delay:0},
+    {role:'pmcBot',chance:60,time:900,trigger:'',triggerId:'',zone:'BotZoneFloor1',escort:'1,2',escortType:'pmcBot',delay:0},
+    {role:'pmcBot',chance:35,time:600,trigger:'interactObject',triggerId:'autoId_00632_EXFIL',zone:'BotZoneFloor1',escort:'1,2',escortType:'pmcBot',delay:0},
+    {role:'pmcBot',chance:45,time:-1,trigger:'interactObject',triggerId:'autoId_00632_EXFIL',zone:'BotZoneGate1',escort:'1,2',escortType:'pmcBot',delay:8},
+    {role:'pmcBot',chance:40,time:-1,trigger:'interactObject',triggerId:'autoId_00007_EXFIL',zone:'BotZoneBasement',escort:'1',escortType:'pmcBot',delay:0}]},
+    {id:'labyrinth',roster:{},entries:[{role:'tagillaHelperAgro',chance:50,time:450,trigger:'botEvent',triggerId:'AGRO_HELPERS_EVENT',zone:'',escort:'0',escortType:'',delay:0}]}]}`);
+  const g=a.run("specGroups(mapById('laboratory')).find(x=>x.id==='raiders')");
+  assert.equal(g.timed.length,2);
+  assert.equal(JSON.stringify(g.timed.map(x=>x.t)),'[5,15]');
+  assert.equal(g.trig.length,2);
+  assert.equal(g.trig[0].n,2);
+  assert.equal(g.trig[0].chance,45);
+  assert.match(g.sum,/원래 2 · 레버 3/);
+  // 펼치면 레버 칩이 보이고, 칩을 누르면 트리거 팝업
+  a.run("tlToggle('spec:raiders');page='spawn';tlEdit=true");
+  const svg=a.run("timeline(mapById('laboratory'),true)");
+  assert.match(svg,/▾ 레이더/);
+  assert.match(svg,/탈출구 스위치 632 ×2 · 45%/);
+  assert.match(svg,/data-pop="trig\|laboratory~autoId_00632_EXFIL~pmcBot"/);
+  const pop=a.run("popSpecs('trig','laboratory~autoId_00632_EXFIL~pmcBot',mapById('laboratory'))");
+  assert.equal(pop.rows[0][1],'triggers.laboratory.autoId_00632_EXFIL.pmcBot.chance');
+  assert.match(pop.extra,/로그/);
+  a.run("writeSetting('triggers.laboratory.autoId_00632_EXFIL.pmcBot.chance',100);writeSetting('triggers.laboratory.autoId_00632_EXFIL.pmcBot.role','exUsec')");
+  const g2=a.run("specGroups(mapById('laboratory')).find(x=>x.id==='raiders')");
+  assert.equal(g2.trig[0].chance,100);
+  assert.equal(g2.trig[0].swap,'exUsec');
+  // 추가 무리 3개 → 보라 버블 3개
+  a.run("state.specials.raiders.extra.laboratory=30;state.specials.raiders.extraCount=3;state.specials.raiders.xFrom=5;state.specials.raiders.xTo=20");
+  assert.equal(a.run("specGroups(mapById('laboratory')).find(x=>x.id==='raiders').extra.count"),3);
+  // 특수 봇이 아닌 트리거(미궁 타길라 부하)는 "트리거 스폰" 줄
+  assert.match(a.run("timeline(mapById('labyrinth'),true)"),/트리거 스폰/);
+  assert.equal(a.run("trigOther(mapById('labyrinth'))[0].role"),'tagillaHelperAgro');
+});
+test('1.0.6 스캐브 곡선: 팝업 버튼으로 PMC 반대로, 타임라인 배수 표시', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='all';flowMap='bigmap'");
+  const sp=a.run("popSpecs('scavcurve','',mapById('bigmap'))");
+  assert.equal(sp.rows.length,3);
+  assert.equal(sp.rows[0][1],'spawn.scav.curve.early');
+  assert.match(sp.extra,/PMC 반대로/);
+  a.run("tlPopAnchor={mid:'bigmap',x:0,y:0};tlPopKey='scavcurve'");
+  a.click({act:'scavCurve',v:'0.5,1,1.5'});
+  assert.equal(a.run("state.spawn.scav.curve.early"),0.5);
+  assert.equal(a.run("state.spawn.scav.curve.late"),1.5);
+  assert.match(a.run("timeline(mapById('bigmap'),false)"),/스캐브 ×0\.50/);
+  a.click({act:'scavCurve',v:'9,1,1'});   // 범위 밖은 무시
+  assert.equal(a.run("state.spawn.scav.curve.early"),0.5);
 });
 test('1.0 기본 프리셋은 잠기고 값을 바꾸면 커스텀 프리셋 N이 생깁니다', () => {
   const a = app();

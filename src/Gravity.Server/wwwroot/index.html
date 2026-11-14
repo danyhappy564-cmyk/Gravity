@@ -696,9 +696,9 @@ function makeDefaults(){
     bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'normal',maps:mm,zones:zz,mapChance:{}};});
   const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],tFrom:0,tTo:0,xFrom:0,xTo:0};
     // 레이더·로그(ABPS식): 원래 스폰(레버·탈출구 이벤트 포함)은 그대로 두고, 맵 확률·인원은 따로 넣는 "추가 스폰"에만(기본 0% = 원래 스폰만)
-    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,vanillaMax:0,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1]});});
+    if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,vanillaMax:0,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1],extraCount:1,extraCurve:{early:1,mid:1,late:1}});});
   const factions={};FACTIONS.forEach(f=>{factions[f.id]={managed:false,style:'waves',shareCap:false,maps:Object.fromEntries(MAPS.map(m=>[m.id,f.maps.includes(m.id)])),
-    patrol:{on:true,chance:45,count:2,min:3,max:6,tMin:5,tMax:28},checkpoint:{on:true,chance:45,count:2,min:3,max:4,radius:20},hunt:{on:true,chance:20,min:3,max:4},
+    patrol:{on:true,chance:45,count:2,min:3,max:6,tMin:5,tMax:28,curve:{early:1,mid:1,late:1}},checkpoint:{on:true,chance:45,count:2,min:3,max:4,radius:20},hunt:{on:true,chance:20,min:3,max:4},
     bd:{chance:25,tMin:10,tMax:80,huntMin:3,huntMax:5,labsGate:20,labsStart:15,wedge:true,wedgeChance:15}};});
   const roles={};ROLES.forEach(r=>roles[r.id]=roleDefaults(r.id));
   const allowed={};Object.entries(MODS).forEach(([k,list])=>{allowed[k]={};list.forEach(([id],i)=>{allowed[k][id]=i<2;});});
@@ -709,7 +709,7 @@ function makeDefaults(){
       stopBeforeEnd:10,hardStop:{mode:'percent',pmcPct:15,scavPct:5},maxRespawn:{pmc:0,scav:0},ignoreCap:{start:false,waves:false},allowPmcLabyrinth:false,allowScavLab:false,
       raid:{mode:'detect'},intensity:{early:1.2,mid:1,late:.6},protect:{on:true,sec:90,radius:120},spacing:{player:80,bots:25},
       usecPct:50,squad:{s1:40,s2:30,s3:20,s4:10,s5:0},caps:{pmcReserve:0,pmcGroups:0,boss:{mode:'separate',max:0},special:{mode:'separate',max:0},faction:{mode:'separate',max:0},event:{mode:'separate',max:0}},groupCap:{on:false,scope:'raid',over:'split',rules:[{size:5,cmp:'eq',count:1},{size:3,cmp:'eq',count:1}]},diff:{easy:10,normal:50,hard:30,imp:10},levelMode:'relative',lvRelMin:-10,lvRelMax:15,lvFixMin:15,lvFixMax:45,
-      scav:{startOn:true,startPct:20,startMode:'pct',startMin:3,startMax:6,remainMode:'pct',remainMin:2,remainMax:4,separateStart:true,delay:4,activeMin:3,activeMax:7,quietMin:1,quietMax:3,refill:45,pending:3,softCap:18,perPlayer:20,pscavChance:10,playerScavRemain:60,startMarksman:true,lateRaiders:true}},
+      scav:{curve:{early:1,mid:1,late:1},startOn:true,startPct:20,startMode:'pct',startMin:3,startMax:6,remainMode:'pct',remainMin:2,remainMax:4,separateStart:true,delay:4,activeMin:3,activeMax:7,quietMin:1,quietMax:3,refill:45,pending:3,softCap:18,perPlayer:20,pscavChance:10,playerScavRemain:60,startMarksman:true,lateRaiders:true}},
     near:{on:false,firstDelay:15,interval:180,botDelay:5,minDist:200,maxDist:300,spacing:15,waveMin:3,waveMax:8,slotChance:50,useDefault:true,pmcChance:30,
       custom:{on:false,t1:'raider',cap1:5,t2:'rogue',cap2:5,ratio2:50,diff:'normal'},group:{scavOff:false,chance:25,min:2,max:5},attempts:3,sight:false,sightPriority:70,stopAtCap:true},
     maps,bosses,bossCommon:{on:false,chance:35},bossProg:{on:true,step:10,min:20,max:100,regressive:false},bossDiff:{easy:0,normal:60,hard:30,imp:10},weeklyBoss:true,
@@ -723,7 +723,7 @@ function makeDefaults(){
     client:{preload:6,perFrame:1,perf:'balanced',pmcAnywhere:false},
     orbit:{extractRefillMode:'infinite',extractRefillCap:20,refillAfterExtract:true,nearAsGhost:false,respectTakeover:true,ghostCount:true},
     diag:{log:'summary',report:true,botLog:false},
-    eventsOwner:'auto',svmOwn:{boss:'gravity'},lab:{blackoutLink:'boost',blackoutMult:3},compat:{otherPmc:'keep',lockWithQuestingBots:false,variantMods:[]},
+    eventsOwner:'auto',svmOwn:{boss:'gravity'},triggers:{},lab:{blackoutLink:'boost',blackoutMult:3},compat:{otherPmc:'keep',lockWithQuestingBots:false,variantMods:[]},
     blacklist:{entries:[{id:'59e690b686f7746c9f75e848',bots:['scavs']},{id:'5c110624d174af029e69734c',bots:['all']},{id:'5c1d0efb86f7744baf2e7b7b',bots:['all']}],scavPenCap:40,blockDev:true,blockQuest:true},
     dev:{markers:false,zones:false,overlay:false,verbose:false},tierPreset:'auto',tierOwn:{},tierData:tierDataDefaults()};
 }
@@ -910,6 +910,56 @@ function rosterToggle(key){const[type,id,mid]=key.split('|');
 function specLane(m){const r=mapRoster(m).items;return SPECIALS.flatMap(([id,n])=>{const sp=state.specials[id];if(!sp.on||id==='infected')return [];const out=[],has=r.some(x=>x.type==='spec'&&x.id===id),c=specChance(id,m.id);
   if(SPEC_EXTRA.includes(id)){if(!has)return [];const kept=sp.vanilla!==false&&(sp.keep||{})[m.id]!==false;if(kept)out.push([n,T('원래 스폰(맵 기본)','Original (map default)'),id,'orig',null]);if(kept||c>0)out.push([n,T('추가 스폰(Gravity)','Extra (Gravity)'),id,'extra',c]);}
   else if(has||c>0)out.push([n,T('나올 확률','Chance'),id,'orig',c]);return out;});}
+// 1.0.6 특수 봇·트리거 원래 항목(서버 맵 자료 entries: role·chance·time·trigger·triggerId·zone·escort). 서버가 없으면 null.
+function mapEntries(m){const meta=serverMeta&&(serverMeta.maps||[]).find(x=>x.id===m.id);return meta&&Array.isArray(meta.entries)?meta.entries:null;}
+const TL_OPEN_KEY='gravity.tlOpen';let tlOpen={};try{tlOpen=JSON.parse(localStorage.getItem(TL_OPEN_KEY)||'{}')||{};}catch(e){tlOpen={};}
+function tlToggle(id){tlOpen[id]=!tlOpen[id];try{localStorage.setItem(TL_OPEN_KEY,JSON.stringify(tlOpen));}catch(e){}}
+const ROLE_NAME={pmcBot:T('레이더','Raiders'),exUsec:T('로그','Rogues'),blackDivAssault:T('블랙 디비전','Black Division'),sectantPriest:T('컬티스트','Cultists'),arenaFighterEvent:T('블러드하운드','Bloodhounds'),
+  bossPartisan:T('파르티잔','Partisan'),bossBoarSniper:T('카반 저격수','Kaban snipers'),bossKillaAgro:T('킬라(미궁)','Killa (Labyrinth)'),tagillaHelperAgro:T('타길라 부하','Tagilla helpers')};
+const spawnRoleName=r=>ROLE_NAME[r]?tr(ROLE_NAME[r]):r;
+function trigLabel(id){const x=/^autoId_0*(\d+)_EXFIL$/.exec(id||'');if(x)return fmt(tr(T('탈출구 스위치 {n}','Exfil switch {n}')),{n:x[1]});if(/D2_LEVER/i.test(id))return tr(T('D2 레버','D2 lever'));
+  const ev={raider_simple_patroling:T('순찰 트리거','Patrol trigger'),PARTISAN_TRIGGER:T('파르티잔 등장','Partisan event'),BossBoarBorn:T('카반 등장 때','When Kaban spawns'),EVENT_FOR_KILLA:T('킬라 이벤트','Killa event'),AGRO_HELPERS_EVENT:T('타길라 부하 이벤트','Tagilla helper event'),MASS_HELPERS_EVENT:T('타길라 부하 대거','Mass helper event')}[id];return ev?tr(ev):id;}
+function trigRule(mid,trig,role){const r=((state.triggers||{})[mid]||{})[trig];return (r&&r[role])||{};}
+function trigChance(mid,e){const r=trigRule(mid,e.triggerId,e.role);return typeof r.chance==='number'?r.chance:e.chance;}
+/** 트리거 항목을 트리거·역할로 묶는다. [{key, mid, trig, role, kind, n, chance, orig, zones}] */
+function trigGroups(m,list){const out=[];(list||[]).forEach(e=>{if(!e.trigger)return;let g=out.find(x=>x.trig===e.triggerId&&x.role===e.role);
+  if(!g){g={key:m.id+'~'+e.triggerId+'~'+e.role,mid:m.id,trig:e.triggerId,role:e.role,kind:e.trigger,n:0,orig:e.chance,zones:[]};out.push(g);}g.n++;g.orig=Math.max(g.orig,e.chance);if(e.zone)g.zones.push(e.zone);});
+  out.forEach(g=>{const r=trigRule(m.id,g.trig,g.role);g.chance=typeof r.chance==='number'?r.chance:g.orig;g.swap=r.role||'';});return out;}
+/** 타임라인 특수 봇 줄(1.0.6 종류마다 한 줄): 시각 무리·레버 무리·추가 무리. */
+function specGroups(m){const ents=mapEntries(m),lane=specLane(m),ids=[...new Set(lane.map(x=>x[2]))];
+  return ids.map(id=>{const def=SPECIALS.find(x=>x[0]===id),sp=state.specials[id],ex=SPEC_EXTRA.includes(id),role=SPEC_ROLE[id],c=specChance(id,m.id);
+    const kept=!ex||(sp.vanilla!==false&&(sp.keep||{})[m.id]!==false),mine=(ents||[]).filter(e=>e.role===role);
+    const win=sp.tTo>0?[sp.tFrom||0,sp.tTo]:null;let timed=[];
+    if(ents){timed=mine.filter(e=>!e.trigger).map(e=>({t:win?win[0]:e.time<0?0:e.time/60,t1:win?win[1]:null,chance:ex?e.chance:c,size:escSize(e.escort)+1,dim:!kept||(ex?e.chance:c)<=0}));
+      if(!ex&&!mine.some(e=>!e.trigger)&&c>0)timed=[{t:win?win[0]:0,t1:win?win[1]:null,chance:c,size:sp.max||1,dim:false,fresh:true}];}
+    else if(lane.some(x=>x[2]===id&&x[3]==='orig'))timed=[{t:win?win[0]:0,t1:win?win[1]:null,chance:ex?null:c,size:ex?3:(sp.max||1),dim:!kept}];
+    const trig=ex?trigGroups(m,mine).map(g=>({...g,dim:!kept})):[];
+    const xl=lane.find(x=>x[2]===id&&x[3]==='extra'),extra=ex&&xl&&c>0?{chance:c,count:Math.max(1,sp.extraCount||1),t0:sp.xFrom||0,t1:Math.max(sp.xFrom||0,sp.xTo||0),fresh:ents?!mine.length:false}:null;
+    const sum=[timed.length?fmt(tr(T('원래 {n}','orig {n}')),{n:timed.length}):'',trig.length?fmt(tr(T('레버 {n}','trigger {n}')),{n:trig.reduce((a,g)=>a+g.n,0)}):'',extra?fmt(tr(T('추가 {n} · {p}%','extra {n} · {p}%')),{n:extra.count,p:extra.chance}):''].filter(Boolean).join(' · ');
+    return {id,name:def[1],col:ex?'#c4a7ff':'#9fc3ff',ex,open:!!tlOpen['spec:'+id],timed,trig,extra,sum,fresh:(ents&&!mine.length&&(c>0))||false};});}
+const escSize=s=>{const a=String(s||'0').split(',').map(x=>parseInt(x,10)).filter(x=>x>=0);return a.length?Math.round(a.reduce((p,q)=>p+q,0)/a.length):0;};
+/** 특수 봇이 아닌 역할의 트리거 스폰(미궁 킬라·타길라 부하, 카반 저격수, 파르티잔). */
+function trigOther(m){const ents=mapEntries(m);if(!ents)return [];const sr=Object.values(SPEC_ROLE);return trigGroups(m,ents.filter(e=>e.trigger&&!sr.includes(e.role)));}
+const TL_CHIP=158;
+function tlChipRows(n,W,L,R){return Math.max(1,Math.ceil(n/Math.max(1,Math.floor((W-L-R)/TL_CHIP))));}
+function specLaneH(g,W,L,R){if(!g.open)return 50;return 34+((g.timed.length?1:0)+(g.trig.length?tlChipRows(g.trig.length,W,L,R):0)+(g.extra?1:0))*24+8;}
+function trigLaneH(tg,W,L,R){return tlOpen.trig?34+tlChipRows(tg.length,W,L,R)*24+8:50;}
+function tlChips(list,x0,y,W,L,R,ed,col){const per=Math.max(1,Math.floor((W-L-R)/TL_CHIP));return list.map((g,i)=>{const cx=x0+(i%per)*TL_CHIP,cy=y+Math.floor(i/per)*24,boss=g.role==='bossPartisan',pop=boss?'boss|partisan':'trig|'+g.key,
+  txt=`${trigLabel(g.trig)}${g.n>1?' ×'+g.n:''} · ${boss?tr(T('보스 설정','boss setting')):g.chance+'%'}${g.swap?' → '+spawnRoleName(g.swap):''}`;
+  return `<g${ed?` data-pop="${pop}" class="tlc"`:''} opacity="${g.dim?.4:1}"><rect x="${cx}" y="${cy-10}" width="${TL_CHIP-6}" height="20" rx="6" fill="${col}" fill-opacity=".16" stroke="${col}" stroke-opacity=".55"/><text x="${cx+7}" y="${cy+4}" fill="#e8eefa" font-size="11">${esc(txt.length>26?txt.slice(0,25)+'…':txt)}<title>${esc(spawnRoleName(g.role)+' · '+trigLabel(g.trig)+' · '+g.n+' · '+g.chance+'%')}</title></text></g>`;}).join('');}
+function specLaneSvg(g,x,y0,h,ed,L,W,R){const sp=state.specials[g.id];let s='',row=0;const bubble=(t,yy,ch,size,dim,col,drag,label)=>{const r=5+Math.min(7,size);
+    return `<g opacity="${dim?.38:1}"><circle cx="${x(t)}" cy="${yy}" r="${r}" fill="${col}" fill-opacity=".85" stroke="#e3edff" stroke-opacity=".5"${drag&&ed?` data-drag="${drag}" class="tlc tld"`:ed?` data-pop="spec|${g.id}" class="tlc"`:''}><title>${esc(label)}</title></circle>${ch!=null?`<text x="${x(t)+r+3}" y="${yy+4}" fill="#cfdcf5" font-size="11">${ch}%</text>`:''}</g>`;};
+  const timedRow=yy=>g.timed.map((b,i)=>(b.t1!=null&&b.t1>b.t?`<line x1="${x(b.t)}" x2="${x(b.t1)}" y1="${yy}" y2="${yy}" stroke="${g.col}" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/>`:'')
+    +bubble(b.t,yy,b.chance,b.size,b.dim,b.fresh?'#7fd1b9':g.col,i===0?'spec|'+g.id:'',fmt(tr(T('{n} · {t}분 · {p}%','{n} · {t} min · {p}%')),{n:tr(g.name),t:(+b.t).toFixed(1),p:b.chance??'?'}))).join('');
+  const extraRow=yy=>{const e=g.extra;if(!e)return '';const xs=[];for(let i=0;i<e.count;i++)xs.push(e.t1>e.t0?e.t0+(e.t1-e.t0)*(e.count===1?0:i/(e.count-1)):e.t0);
+    return (e.t1>e.t0?`<line x1="${x(e.t0)}" x2="${x(e.t1)}" y1="${yy}" y2="${yy}" stroke="#c4a7ff" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/>`:'')+xs.map((t,i)=>bubble(t,yy,i===0?e.chance:null,Math.max(1,sp.extraMax||1),false,'#c4a7ff',i===0?'specx|'+g.id:'',fmt(tr(T('추가 무리 {i}/{n} · {p}%','Extra group {i}/{n} · {p}%')),{i:i+1,n:e.count,p:e.chance}))).join('');};
+  const sub=(yy,txt)=>`<text x="${L-8}" y="${yy+4}" fill="#8f9bb0" font-size="11" text-anchor="end">${tr(txt)}</text>`;
+  if(!g.open){const yy=y0+h/2;s+=timedRow(yy)+extraRow(yy);if(g.sum)s+=`<text x="${W-R-6}" y="${y0+15}" fill="#9fb0cc" font-size="11" text-anchor="end"${ed?` data-pop="spec|${g.id}" class="tlc"`:''}>${esc(g.sum)}${g.fresh?' · '+tr(T('새로 넣음','added')):''}</text>`;return s;}
+  if(g.timed.length){const yy=y0+34+row*24;s+=sub(yy,T('시각','Timed'))+timedRow(yy);row++;}
+  if(g.trig.length){const yy=y0+34+row*24;s+=sub(yy,T('레버','Trigger'))+tlChips(g.trig,L,yy,W,L,R,ed,g.col);row+=tlChipRows(g.trig.length,W,L,R);}
+  if(g.extra){const yy=y0+34+row*24;s+=sub(yy,T('추가','Extra'))+extraRow(yy);row++;}
+  if(g.sum)s+=`<text x="${W-R-6}" y="${y0+15}" fill="#9fb0cc" font-size="11" text-anchor="end">${esc(g.sum)}${g.fresh?' · '+tr(T('새로 넣음','added')):''}</text>`;
+  return s;}
 /** 분대 크기 분포(spawn.squad s1~s5)로 뽑은 크기 목록(서버 PlanRefill처럼 시드가 같으면 같은 목록). */
 function squadList(c,n,sd){const w=[1,2,3,4,5].map(k=>Math.max(0,+(c.squad?.['s'+k]??0))),tot=w.reduce((a,b)=>a+b,0),r=rng(sd),res=[];
   for(let i=0;i<n;i++){let x=r()*(tot||1),k=0;if(tot>0){for(;k<4;k++){x-=w[k];if(x<0)break;}}res.push(k+1);}return res;}
@@ -970,12 +1020,13 @@ function timeline(m,big=false){
   if(fac.length)lanes.push(['fac',T('팩션','Factions'),'#c9a2ff']);
   if(c.near.on)lanes.push(['near',T('근처 보충','Near'),'#a78bfa']);
   if(bs.length)lanes.push(['boss',T('보스','Bosses'),'#e8b04b']);
-  const sps=specLane(m);if(sps.length)lanes.push(['spec',T('특수 봇','Specials'),'#9fc3ff']);
-  const LH=50,top=46,BH=bs.length?Math.max(LH,bs.length*20+14):LH,FH=fac.length>1?Math.max(LH,fac.length*22+12):LH,SH=sps.length?Math.max(LH,sps.length*20+14):LH,LS=lanes.map(([id])=>id==='boss'?BH:id==='fac'?FH:id==='spec'?SH:LH),TH=LS.reduce((a,b)=>a+b,0),H=top+TH+40,Y={},Y0={};let acc=top;lanes.forEach(([id],i)=>{Y0[id]=acc;Y[id]=acc+LS[i]/2;acc+=LS[i];});
+  const sg=specGroups(m);sg.forEach(g=>lanes.push(['spec:'+g.id,g.name,g.col]));
+  const tg=trigOther(m);if(tg.length)lanes.push(['trig',T('트리거 스폰','Trigger spawns'),'#f0a6c8']);
+  const LH=50,top=46,BH=bs.length?Math.max(LH,bs.length*20+14):LH,FH=fac.length>1?Math.max(LH,fac.length*22+12):LH,LS=lanes.map(([id])=>id==='boss'?BH:id==='fac'?FH:id.startsWith('spec:')?specLaneH(sg.find(g=>'spec:'+g.id===id),W,L,R):id==='trig'?trigLaneH(tg,W,L,R):LH),TH=LS.reduce((a,b)=>a+b,0),H=top+TH+40,Y={},Y0={};let acc=top;lanes.forEach(([id],i)=>{Y0[id]=acc;Y[id]=acc+LS[i]/2;acc+=LS[i];});
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" data-l="${L}" data-r="${R}" data-w="${W}" data-raid="${p.raid}" data-map="${m.id}"${ed?' class="tl-ed"':''}><defs><pattern id="hatch${m.id}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#f0c070" stroke-opacity=".45" stroke-width="2.4"/></pattern></defs>`;
   ['early','mid','late'].forEach((k,i)=>{const x0=x(p.raid*i/3),x1=x(p.raid*(i+1)/3);
     s+=`<rect x="${x0}" y="${top-4}" width="${x1-x0}" height="${TH+8}" fill="#6ea8ff" opacity="${Math.min(.16,c[k]*.07)}"/><line x1="${x0}" x2="${x0}" y1="${top-24}" y2="${top+TH}" stroke="#2b3647" stroke-dasharray="2 4"/><text x="${(x0+x1)/2}" y="${top-14}" fill="#c3cede" font-size="14" text-anchor="middle"${pp('phase|'+k)}>${tr([T('초반','Early'),T('중반','Mid'),T('후반','Late')][i])} ×${(+c[k]).toFixed(2)}</text>`;});
-  lanes.forEach(([id,l,col],i)=>{const y=Y0[id];s+=`<rect x="6" y="${y+5}" width="${W-12}" height="${LS[i]-10}" rx="9" fill="#ffffff" opacity="${i%2?0.025:0.045}"/><circle cx="20" cy="${Y[id]}" r="5" fill="${col}"/><text x="32" y="${Y[id]+5.5}" fill="#eef2f8" font-size="15" font-weight="600">${tr(l)}</text>`;});
+  lanes.forEach(([id,l,col],i)=>{const y=Y0[id],tog=id.startsWith('spec:')||id==='trig',open=tog&&!!tlOpen[id],ly=open?y+22:Y[id]+5.5;s+=`<rect x="6" y="${y+5}" width="${W-12}" height="${LS[i]-10}" rx="9" fill="#ffffff" opacity="${i%2?0.025:0.045}"/><circle cx="20" cy="${ly-5.5}" r="5" fill="${col}"/><text x="32" y="${ly}" fill="#eef2f8" font-size="${tog?13.5:15}" font-weight="600"${tog?` data-tlopen="${id}" class="tlc" style="cursor:pointer"`:''}>${tog?(open?'▾ ':'▸ '):''}${tr(l)}</text>`;});
   if(c.protect.on)s+=`<rect x="${x(0)}" y="${top+5}" width="${x(c.protect.sec/60)-x(0)}" height="${TH-10}" fill="url(#hatch${m.id})"/>`+hv('protect',x(c.protect.sec/60),top+5,TH-10,'#f0c070');
   const yp=Y.pmc;
   s+=`<rect x="${x(0)-6}" y="${yp-14}" width="12" height="28" rx="5" fill="#6ea8ff"/><text x="${x(0)+12}" y="${yp-10}" fill="#d8e6ff" font-size="13" font-weight="600"${pp('start')}>${tr(T('시작','Start'))} ${p.start}</text>`;
@@ -994,6 +1045,8 @@ function timeline(m,big=false){
     if(c.scavStyle==='waves'){const active=(c.scav.activeMin+c.scav.activeMax)/2,quiet=(c.scav.quietMin+c.scav.quietMax)/2,cycle=Math.max(1,active+quiet);for(let t=s0+active,n=0;t<scEnd&&n<400;t+=cycle,n++)s+=`<rect x="${x(t)}" y="${ys-8}" width="${Math.max(0,x(Math.min(scEnd,t+quiet))-x(t))}" height="16" fill="#0b0f1a" fill-opacity=".8" pointer-events="none"/>`;}
     s+=`<text x="${x(Math.max(s0,scEnd-1))}" y="${ys-13}" fill="#bff3df" font-size="12" text-anchor="end"${pp('scav')}>${tr(c.scavStyle==='infinite'?T('무한 보충','Endless refill'):T('활동 / 휴식','Active / quiet'))}</text>`;
     if(s0>0)s+=`<text x="${x(s0)-6}" y="${ys+5}" fill="#bff3df" font-size="12.5" text-anchor="end">+${s0}${u('min_')}</text>`;s+=hv('scavEnd',x(scEnd),ys-15,30,'#5fd4a6')+(c.scav.separateStart?hv('scavStart',x(s0),ys-15,30,'#5fd4a6'):'');}
+  if((m.scav||(m.id==='laboratory'&&c.allowScavLab))&&c.scavStyle!=='start'){const cv=c.scav.curve||{},flat=['early','mid','late'].every(k=>(cv[k]??1)===1);
+    if(!flat||ed)['early','mid','late'].forEach((k,i)=>{s+=`<text x="${x(p.raid*(i+.5)/3)}" y="${ys+21}" fill="${flat?'#5f7a70':'#bff3df'}" font-size="11" text-anchor="middle"${pp('scavcurve')}>${tr(T('스캐브','Scavs'))} ×${(+(cv[k]??1)).toFixed(2)}</text>`;});}
   if(Y.fac)fac.forEach((f,i)=>{const F=state.factions[f.id],man=F.managed,bd=f.id==='blackdiv',start=man&&F.style==='start',yy=Y.fac+(fac.length>1?(i-(fac.length-1)/2)*22:0);const t0=start?0:bd?p.raid*F.bd.tMin/100:Math.min(p.raid,F.patrol.tMin),t1=start?0:bd?p.raid*F.bd.tMax/100:Math.min(p.raid,F.patrol.tMax);
     s+=`<line x1="${x(t0)}" x2="${x(t1)}" y1="${yy}" y2="${yy}" stroke="${f.color}" stroke-width="6" stroke-opacity="${man?.85:.5}" stroke-linecap="round"${man?'':' stroke-dasharray="1 8"'}${pp('fac|'+f.id)}/><text x="${x(t1)+12}" y="${yy+4.5}" fill="${f.color}" font-size="12.5" font-weight="600"${pp('fac|'+f.id)}>${tr(f.name).replace(/ ·.*/,'')}${man?'':' · '+tr(T('모드 설정','mod config'))}</text>`+hf('facA|'+f.id,x(t0),yy,f.color)+hf('facB|'+f.id,x(t1),yy,f.color);});
   if(Y.near)for(let t=c.near.firstDelay/60,n=0;t<p.raid-1&&n<1000;t+=Math.max(5,c.near.interval)/60,n++)s+=`<path d="M${x(t)} ${Y.near-8} l7 8 -7 8 -7 -8z" fill="#a78bfa"><title>${c.near.waveMin}–${c.near.waveMax}</title></path>`;
@@ -1001,9 +1054,8 @@ function timeline(m,big=false){
     if(t1>t0)s+=`<line x1="${x(t0)}" x2="${x(t1)}" y1="${yy}" y2="${yy}" stroke="#e8b04b" stroke-opacity=".5" stroke-width="4" stroke-linecap="round"/>`;
     const lx=x(t0)+12+pos.filter(v=>Math.abs(v-x(t0))<4).length*0;pos.push(x(t0));
     s+=`<text x="${x(t0)}" y="${yy+6}" fill="#e8b04b" font-size="17" text-anchor="middle" opacity="${ch?1:.35}"${ed?` data-drag="boss|${b.id}" class="tlc tld"`:''}>★</text><text x="${lx}" y="${yy+5}" fill="#f0d08a" font-size="12.5" opacity="${ch?1:.45}"${pp('boss|'+b.id)}>${tr(b.name)} ${ch}%</text>`;});}
-  if(Y.spec)sps.forEach(([n,lab,id,kind,c],i)=>{const sp=state.specials[id],ex=kind==='extra',t0=ex?sp.xFrom||0:sp.tFrom||0,t1=Math.max(ex?sp.xTo||0:sp.tTo||0,t0),yy=Y.spec-(sps.length-1)*10+i*20,col=ex?'#c4a7ff':'#9fc3ff',dim=c===0?' opacity=".4"':'',when=t1>0?`${t0===t1?t0:t0+'–'+t1}${u('min_')}`:tr(ex?T('판 시작','raid start'):T('원래 시각','original time'));
-    if(t1>t0)s+=`<line x1="${x(t0)}" x2="${x(t1)}" y1="${yy}" y2="${yy}" stroke="${col}" stroke-opacity=".5" stroke-width="4" stroke-linecap="round"/>`;
-    s+=`<g${dim}><text x="${x(t0)}" y="${yy+5}" fill="${col}" font-size="15" text-anchor="middle"${ed?` data-drag="${ex?'specx':'spec'}|${id}" class="tlc tld"`:''}>✦</text><text x="${x(Math.max(t1,t0))+12}" y="${yy+4}" fill="#cfdcf5" font-size="12"${pp('spec|'+id)}>${esc(tr(n)+' · '+tr(lab)+(c!=null?' '+c+'%':'')+' · '+when)}</text></g>`;});
+  sg.forEach(g=>{const id='spec:'+g.id;s+=specLaneSvg(g,x,Y0[id],LS[lanes.findIndex(l=>l[0]===id)],ed,L,W,R);});
+  if(Y.trig){const h=LS[lanes.findIndex(l=>l[0]==='trig')],y0=Y0.trig;if(tlOpen.trig)s+=tlChips(tg,L,y0+34,W,L,R,ed,'#f0a6c8');else s+=`<text x="${L}" y="${Y.trig+5}" fill="#f6c6dc" font-size="12">${esc(tg.map(g=>spawnRoleName(g.role)+' '+(g.role==='bossPartisan'?'':g.chance+'%')).join(' · '))}</text>`;}
   const step=p.raid>90?15:p.raid>30?10:5;for(let t=0;t<=p.raid;t+=step)s+=`<text x="${x(t)}" y="${H-10}" fill="#8f9bb0" font-size="13" text-anchor="middle">${t}${t===0?'':''}</text><line x1="${x(t)}" x2="${x(t)}" y1="${H-36}" y2="${H-30}" stroke="#46526a"/>`;
   s+=`<text x="${W-R}" y="${H-10}" fill="#647089" font-size="12" text-anchor="end">${tr(T('분','min'))}</text>`;
   const notes=[];bs.forEach(b=>{const bb=state.bosses[b.id];notes.push(ed?`<span class="pill gold tlc" data-pop="boss|${b.id}">★ ${tr(b.name)} ${bossChance(b,m.id)}% · ${bb.zones[m.id].map(z=>zname(m.id,z)).join(', ')}</span>`:pill('★ '+tr(b.name)+' '+bossChance(b,m.id)+'% · '+bb.zones[m.id].map(z=>zname(m.id,z)).join(', '),'gold'));});
@@ -1061,18 +1113,29 @@ function popSpecs(kind,arg,m){const c=cfgFor(m),mid=m.id,raid=Math.round(raidOf(
       [T('추가 스폰 인원 · 최소','Extra group · min'),P0+'extraMin',sp.extraMin??1,0,10,1,UI.ppl,''],
       [T('추가 스폰 인원 · 최대 (0 = 끔)','Extra group · max (0 = off)'),P0+'extraMax',sp.extraMax??1,0,10,1,UI.ppl,''],
       [T('추가 스폰 시각 · 처음','Extra spawn · from'),P0+'xFrom',sp.xFrom||0,0,raid,1,UI.min_,''],
-      [T('추가 스폰 시각 · 끝 (0 = 판 시작)','Extra spawn · to (0 = raid start)'),P0+'xTo',sp.xTo||0,0,raid,1,UI.min_,'']]
+      [T('추가 스폰 시각 · 끝 (0 = 판 시작)','Extra spawn · to (0 = raid start)'),P0+'xTo',sp.xTo||0,0,raid,1,UI.min_,''],
+      [T('추가 무리 수','Extra groups'),P0+'extraCount',sp.extraCount||1,1,6,1,'',''],
+      ...['early','mid','late'].map((k,i)=>[[T('추가 무리 · 초반 비중','Extra groups · early weight'),T('추가 무리 · 중반 비중','Extra groups · mid weight'),T('추가 무리 · 후반 비중','Extra groups · late weight')][i],P0+'extraCurve.'+k,(sp.extraCurve||{})[k]??1,0,3,0.1,UI.x,''])]
      :[[fmt(tr(T('{m}에서 나올 확률 (0 = 안 나옴)','Chance on {m} (0 = never)')),{m:mn}),P0+'chance.'+mid,specChance(arg,mid),0,100,1,UI.pct,''],
       [T('무리 인원 · 최소','Group size · min'),P0+'min',sp.min,1,10,1,UI.ppl,''],
       [T('무리 인원 · 최대','Group size · max'),P0+'max',sp.max,1,10,1,UI.ppl,''],
       [T('나오는 시각 · 처음 (끝이 0이면 원래 시각)','Spawn time · from (0 end = original time)'),P0+'tFrom',sp.tFrom||0,0,raid,1,UI.min_,''],
       [T('나오는 시각 · 끝 (0 = 원래 시각)','Spawn time · to (0 = original time)'),P0+'tTo',sp.tTo||0,0,raid,1,UI.min_,'']];
     return {title:tr(def[1]),note:tr(ex?T('원래 스폰(레버·탈출구 같은 이벤트 무리)은 확률·인원이 맵 기본 그대로이고 시각만 바꿀 수 있습니다(이벤트 무리는 시각도 그대로). 추가 스폰은 Gravity가 따로 넣는 무리입니다. 이 종류를 아예 끄려면 자세한 수정의 "켜기"를 끄십시오.','Original groups keep the map’s chance and size; only their time can change (event groups keep their time). Extra is a separate Gravity group. To turn this type off entirely, switch off "Enable" under Details.'):T('시각·인원은 이 종류가 나오는 모든 맵에, 확률은 이 맵에만 적용됩니다. 0%면 이 맵에 안 나옵니다.','Time and size apply on every map; chance only on this map. 0% = never here.')),rows};}
+  if(kind==='trig'){const [tm,trig,role]=String(arg||'').split('~');const g=trigGroups(mapById(tm)||m,(mapEntries(mapById(tm)||m)||[]).filter(e=>e.trigger)).find(x=>x.trig===trig&&x.role===role);if(!g)return null;
+    const r=trigRule(tm,trig,role),P1=`triggers.${tm}.${trig}.${role}.`,swap=g.kind==='interactObject'&&role==='pmcBot';
+    const extra=swap?`<div class="tp-startmode">${seg(P1+'role',T('레버가 부르는 무리','Group the trigger calls'),'',[['',T('레이더 (원래)','Raiders (original)')],['exUsec',T('로그','Rogues')],...(facInst('blackdiv')?[['blackDivAssault',T('블랙 디비전','Black Division')]]:[])],{val:r.role||''}).replace(/data-segp=/g,'data-pop-mode=')}</div>`:'';
+    return {title:`${trigLabel(trig)} · ${spawnRoleName(role)}`,extra,note:tr(T('게임은 판 시작 때 이 확률을 굴리고, 레버·스위치·이벤트가 일어나면 그때 내보냅니다. 그래서 "작동했을 때 나올 확률"과 같습니다. 트리거·구역·지연은 바꾸지 않습니다. 인원 0~0 = 원래 인원.','The game rolls this chance at raid start and releases the group when the lever/switch/event fires, so it equals "chance to appear when triggered". Trigger, zone and delay stay unchanged. Size 0–0 = original.'))+(g.n>1?' '+fmt(tr(T('이 트리거에 묶인 무리 {n}개에 모두 적용합니다.','Applies to all {n} groups on this trigger.')),{n:g.n}):''),
+      rows:[[T('작동했을 때 나올 확률','Chance when triggered'),P1+'chance',g.chance,0,100,1,UI.pct,''],[T('무리 인원 · 최소 (0 = 원래)','Group size · min (0 = original)'),P1+'min',r.min||0,0,10,1,UI.ppl,''],[T('무리 인원 · 최대 (0 = 원래)','Group size · max (0 = original)'),P1+'max',r.max||0,0,10,1,UI.ppl,'']]};}
+  if(kind==='scavcurve'){const rows=['early','mid','late'].map((k,i)=>{const [p,o]=F('scav.curve.'+k);return [[T('초반 스캐브 강도','Early scav intensity'),T('중반 스캐브 강도','Mid scav intensity'),T('후반 스캐브 강도','Late scav intensity')][i],p,(c.scav.curve||{})[k]??1,0.2,3,0.05,UI.x,o];});
+    const btn=(v,l)=>`<button class="mini-btn" data-act="scavCurve" data-v="${v}">${tr(l)}</button>`;
+    return {title:tr(T('스캐브 시간대별 강도','Scav intensity over the raid')),extra:`<div class="chips" style="margin:6px 0">${btn('0.5,1,1.5',T('PMC 반대로 (갈수록 많게)','Reverse of PMCs (more later)'))}${btn('1,1,1',T('고르게','Even'))}</div>`,
+      note:tr(T('레이드를 셋으로 나눠 살아 있는 스캐브 상한과 보충 속도에 이 배수를 곱합니다. 시작 스캐브에는 곱하지 않고, 맵 동시 상한은 넘지 않습니다(상한이 낮으면 차이가 작음).','Splits the raid in thirds and multiplies the live scav limit and refill speed. Starting scavs are not scaled and the map cap is never exceeded (a low cap means a smaller effect).')),rows};}
   if(kind==='fac'){const f=FACTIONS.find(x=>x.id===arg),F=state.factions[arg],o=F.managed?'':'fac:'+arg,pre='factions.'+arg+'.',note=F.managed?'':tr(T('지금은 "모드 설정 그대로"입니다. 값을 바꾸면 "Gravity가 관리"로 바뀌고 이 값이 적용됩니다.','Currently "use the mod’s own config". Changing a value switches to Gravity-managed.'));
     if(arg==='blackdiv')return {title:tr(f.name),note:note+' '+tr(T('연구소 게이트·웨지·다른 모드의 조건부 이벤트는 별도 등장 경로입니다. 이 확률은 일반 사냥조에만 적용됩니다.','Lab gates, Wedge and other mods’ conditional events are separate spawn paths. This chance applies only to ordinary hunt teams.')),rows:[[T('맵마다 등장 확률','Chance per map'),pre+'bd.chance',F.bd.chance,0,100,1,UI.pct,o],[T('등장 시작 (레이드 %)','Appears from (% of raid)'),pre+'bd.tMin',F.bd.tMin,0,100,1,UI.pct,o],[T('등장 끝 (레이드 %)','Appears until (% of raid)'),pre+'bd.tMax',F.bd.tMax,0,100,1,UI.pct,o]]};
-    return {title:tr(f.name),note:note+' '+tr(T('순찰조마다 이 확률을 따로 굴립니다. 검문소·사냥조는 자세한 수정의 별도 확률을 사용합니다. 따라서 이 수치가 이 팩션 전체의 레이드당 등장 확률은 아닙니다.','Each patrol rolls this chance separately. Checkpoints and hunters use their own chances under Details. This is not the faction’s overall chance per raid.')),rows:[[T('순찰 확률','Patrol chance'),pre+'patrol.chance',F.patrol.chance,0,100,1,UI.pct,o],[T('맵당 순찰조 수','Patrols per map'),pre+'patrol.count',F.patrol.count,1,5,1,'',o],[T('등장 시작','Appears from'),pre+'patrol.tMin',F.patrol.tMin,0,raid,1,UI.min_,o],[T('등장 끝','Appears until'),pre+'patrol.tMax',F.patrol.tMax,0,raid,1,UI.min_,o]]};}
+    return {title:tr(f.name),note:note+' '+tr(T('순찰조마다 이 확률을 따로 굴립니다. 검문소·사냥조는 자세한 수정의 별도 확률을 사용합니다. 따라서 이 수치가 이 팩션 전체의 레이드당 등장 확률은 아닙니다.','Each patrol rolls this chance separately. Checkpoints and hunters use their own chances under Details. This is not the faction’s overall chance per raid.')),rows:[[T('순찰 확률','Patrol chance'),pre+'patrol.chance',F.patrol.chance,0,100,1,UI.pct,o],[T('맵당 순찰조 수','Patrols per map'),pre+'patrol.count',F.patrol.count,1,5,1,'',o],[T('등장 시작','Appears from'),pre+'patrol.tMin',F.patrol.tMin,0,raid,1,UI.min_,o],[T('등장 끝','Appears until'),pre+'patrol.tMax',F.patrol.tMax,0,raid,1,UI.min_,o],...['early','mid','late'].map((k,i)=>[[T('순찰 · 초반 비중','Patrols · early weight'),T('순찰 · 중반 비중','Patrols · mid weight'),T('순찰 · 후반 비중','Patrols · late weight')][i],pre+'patrol.curve.'+k,(F.patrol.curve||{})[k]??1,0,3,0.1,UI.x,o])]};}
   return null;}
-const scopeOf=p=>p.startsWith('factions.')?T('팩션 모드 설정 (이 팩션이 나오는 모든 맵)','Faction mod setting (every map it uses)'):p.startsWith('maps.')?T('이 맵만'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):''),'This map only'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):'')):(p.startsWith('spawn.')||p.startsWith('near.'))?T('모든 맵 공통','All maps'):/^bosses\.[^.]+\.mapChance\./.test(p)?T('이 맵만 · 보스 확률','This map only · boss chance'):p.startsWith('bosses.')||p.startsWith('bossCommon')?T('보스 설정 (이 보스가 나오는 모든 맵)','Boss setting (every map it uses)'):p.startsWith('specials.')&&!/^specials\.[^.]+\.(chance|extra|keep)\./.test(p)?T('특수 봇 공통 · 이 종류가 나오는 모든 맵','Special bot setting · every map of this type'):T('이 맵의 특수 봇 확률','Special bot chance on this map');
+const scopeOf=p=>p.startsWith('triggers.')?T('이 맵 · 이 트리거만','This map · this trigger only'):p.startsWith('factions.')?T('팩션 모드 설정 (이 팩션이 나오는 모든 맵)','Faction mod setting (every map it uses)'):p.startsWith('maps.')?T('이 맵만'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):''),'This map only'+(mapFieldCard(p)?' · '+tr(CARD_NAMES[mapFieldCard(p)]):'')):(p.startsWith('spawn.')||p.startsWith('near.'))?T('모든 맵 공통','All maps'):/^bosses\.[^.]+\.mapChance\./.test(p)?T('이 맵만 · 보스 확률','This map only · boss chance'):p.startsWith('bosses.')||p.startsWith('bossCommon')?T('보스 설정 (이 보스가 나오는 모든 맵)','Boss setting (every map it uses)'):p.startsWith('specials.')&&!/^specials\.[^.]+\.(chance|extra|keep)\./.test(p)?T('특수 봇 공통 · 이 종류가 나오는 모든 맵','Special bot setting · every map of this type'):T('이 맵의 특수 봇 확률','Special bot chance on this map');
 let tlPopKey='',tlPopTab='basic',tlPopAnchor=null,previewRendering=false,previewGroup='';
 function spawnStyleButtons(kind,arg,mid){
   const faction=kind==='fac',pmc=['wave','start','inf'].includes(kind);
@@ -1145,7 +1208,7 @@ function openPop(key,ev,keep=false){
   const box=$('#tlpop');box.innerHTML=`<div class="tp-h"><b>${esc(pmc?'PMC · '+sp.title:sp.title)}</b><span class="small muted">${esc(mname(mid))}</span><button class="mini-btn" data-act="tlpopClose" aria-label="${tr(T('닫기','Close'))}">✕</button></div>
     ${spawnStyleButtons(kind,arg,mid)}${split?`<div class="tp-tabs" role="tablist">${[['basic',T('기본 수정','Basic')],['details',T('자세한 수정','Details')]].map(([k,l])=>`<button role="tab" aria-selected="${tlPopTab===k}" class="${tlPopTab===k?'on':''}" data-pop-tab="${k}">${tr(l)}</button>`).join('')}</div>`:''}
     <div class="tp-context"><b>${esc(targets)}</b><span>${esc(panelScope)}</span>${e&&(pmc||kind==='scav')?`<span data-pop-estimate>${tr(kind==='scav'?T('예상 스캐브','Expected scavs'):T('예상 PMC','Expected PMCs'))}: ${kind==='scav'?e.smin+'–'+e.smax:e.pmin+'–'+e.pmax} · ${tr(T('레이드 전체 예상치','estimate for the entire raid'))}</span>`:''}</div>
-    ${sp.note?`<details class="tp-help"><summary>${tr(T('적용 방식 안내','How this applies'))}</summary><p class="small muted">${esc(sp.note)}</p></details>`:''}${tlPopTab==='details'?`<div class="tp-full" ${isSpawnMap()?'data-preview-map="'+mid+'"':''}>${previewDetails(kind,arg,m)}</div>`:startMode+popRows(rows,mid)}
+    ${sp.note?`<details class="tp-help"><summary>${tr(T('적용 방식 안내','How this applies'))}</summary><p class="small muted">${esc(sp.note)}</p></details>`:''}${tlPopTab==='details'?`<div class="tp-full" ${isSpawnMap()?'data-preview-map="'+mid+'"':''}>${previewDetails(kind,arg,m)}</div>`:startMode+(sp.extra||'')+popRows(rows,mid)}
     <p class="tp-footer">${tr(T('수정값은 미리보기에 바로 반영됩니다. 아래 저장 바에서 저장하면 다음 레이드부터 적용됩니다.','Preview updates immediately. Save with the bottom save bar to apply from the next raid.'))}</p>`;
   box.classList.toggle('tp-expanded',tlPopTab==='details');box.hidden=false;
   const bw=box.offsetWidth||340,x=clampN(tlPopAnchor.x,8,Math.max(8,window.innerWidth-bw-8)),y=clampN(tlPopAnchor.y,8,Math.max(8,window.innerHeight-680));
@@ -2261,6 +2324,7 @@ function libSync(){if(!serverMeta||!libReady||libBusy)return;const j=JSON.string
   fetch('api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({library:JSON.parse(j)})}).then(r=>r.json()).then(x=>{if(x.login)needLogin(x.login);done(!!x.ok,x.error||'');}).catch(e=>done(false,e.message));}
 document.addEventListener('click',e=>{
   if(!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
+  const to=e.target.closest&&e.target.closest('[data-tlopen]');if(to){tlToggle(to.dataset.tlopen);rerender();return;}
   const pe=e.target.closest('[data-pop]');if(pe){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
   const b=e.target.closest('button');if(!b){const g=e.target.closest('[data-gomap]');if(g){mapSel=g.dataset.gomap;page='spawn';spawnTab=mapSel;render();window.scrollTo(0,0);}return;}if(b.disabled)return;const d=b.dataset;
   if(d.rst){d.rst.split('|').forEach(q=>{const dv=defOf(q);if(typeof dv==='number')writeSetting(q,dv,true);});updateSavebar();refreshLive();rerender();return;}
@@ -2348,6 +2412,8 @@ document.addEventListener('click',e=>{
   else if(a==='tUnown'){markEdited();delete state.tierData[tRole];delete state.tierOwn[tRole];tBot=grpOf(tRole);if(tCopyTo===tRole)tCopyTo=tableKeys().find(x=>x!==tBot);toast(tr(T('그룹 표로 되돌렸습니다','Back to group table')));rerender();}
   else if(a==='tlEdit'){tlEdit=!tlEdit;closePop();rerender();}
   else if(a==='tlpopClose'){closePop();}
+  else if(a==='scavCurve'){const mid=tlPopAnchor?.mid;if(!mid)return;const v=String(d.v||'').split(',').map(Number);if(v.length!==3||v.some(x=>!(x>=0.2&&x<=3)))return;
+    ['early','mid','late'].forEach((k,i)=>writeSetting(tlField('scav.curve.'+k,mid)[0],v[i],true));updateSavebar();refreshLive();rerender();openPop(tlPopKey,null,true);}
   else if(a==='tFull'){tFull=!tFull;document.body.classList.toggle('noscroll',tFull);render();if(!tFull){const el=document.querySelector('.card .tlay,.card .ttabs');if(el)el.scrollIntoView({block:'start'});}}
   else if(a==='toAdv'){mode='adv';rerender();}
   else if(a==='foldAll'||a==='foldNone'){document.querySelectorAll('#main details[data-fold]').forEach(d=>{d.open=a==='foldAll';writeLocal('gravity.fold.'+d.dataset.fold,d.open?'1':'0');});}
