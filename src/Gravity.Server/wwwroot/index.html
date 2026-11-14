@@ -784,7 +784,7 @@ const presetName=id=>{const p=PRESETS.find(x=>x.id===id);if(p)return tr(p.name);
 /* ================= labels ================= */
 const REG={};
 const reg=(p,l)=>{REG[p]=l;return p;};
-const MAPF={override:T('이 맵만 따로','Override'),style:T('PMC 스폰 방식','PMC spawn style'),scavStyle:T('스캐브 스폰 방식','Scav spawn style'),startPmcPct:T('시작 PMC 비율','Starting PMC share'),interval:T('웨이브 간격','Wave interval'),waveMin:T('웨이브당 최소','Min per wave'),waveMax:T('웨이브당 최대','Max per wave'),early:T('초반 강도','Early'),mid:T('중반 강도','Mid'),late:T('후반 강도','Late'),original:T('원본 맵 적용','Original map'),variant:T('변형 맵 적용','Variant map'),cap:T('동시 봇 상한','Max bots'),pmcDist:T('PMC 거리 제한','PMC distance'),scavDist:T('스캐브 거리 제한','Scav distance'),raidSet:T('레이드 시간','Raid time')};
+const MAPF={override:T('이 맵만 따로','Override'),style:T('PMC 스폰 방식','PMC spawn style'),scavStyle:T('스캐브 스폰 방식','Scav spawn style'),startPmcPct:T('시작 PMC 비율','Starting PMC share'),interval:T('웨이브 간격','Wave interval'),waveMin:T('웨이브당 최소','Min per wave'),waveMax:T('웨이브당 최대','Max per wave'),early:T('초반 강도','Early'),mid:T('중반 강도','Mid'),late:T('후반 강도','Late'),original:T('원본 맵 적용','Original map'),variant:T('변형 맵 적용','Variant map'),cap:T('동시 봇 상한','Max bots'),scavList:T('스캐브 웨이브 목록','Scav wave list'),scavListJitter:T('웨이브 목록 · 판마다 시각 흔들기','Wave list · per-raid time jitter'),capAuto:T('상한 자동 맞춤','Auto-fit the bot cap'),pmcDist:T('PMC 거리 제한','PMC distance'),scavDist:T('스캐브 거리 제한','Scav distance'),raidSet:T('레이드 시간','Raid time')};
 const BOSSF={on:T('켜기','On'),chance:T('확률','Chance'),escMin:T('호위 최소','Escort min'),escMax:T('호위 최대','Escort max'),tFrom:T('등장 시작','From'),tTo:T('등장 끝','Until'),noVanilla:T('바닐라 끄기','No vanilla'),followers:T('호위 데려오기','Followers'),extra:T('추가 스폰','Extra spawns'),diff:T('난이도','Difficulty')};
 const TIERF={min:T('시작 레벨','From level'),max:T('끝 레벨','To level'),pen:T('장전 탄 관통 상한','Loaded ammo pen cap'),spare:T('예비 탄 관통 상한','Spare ammo pen cap'),fMin:T('앞뒤판 최소 등급','Front plate min'),fMax:T('앞뒤판 최대 등급','Front plate max'),sMin:T('옆판 최소 등급','Side plate min'),side:T('옆판 최대 등급','Side plate max'),aMin:T('방탄 내구도 최소','Armor dur. min'),aMax:T('방탄 내구도 최대','Armor dur. max'),wMin:T('무기 내구도 최소','Weapon dur. min'),wMax:T('무기 내구도 최대','Weapon dur. max'),mags:T('탄창 수','Magazines'),longScope:T('원거리 조준경 비율','Long-range scope share'),helmetAcc:T('헬멧 부착물','Helmet attachments'),meds:T('의료품','Meds'),nades:T('수류탄','Grenades'),valuables:T('귀중품','Valuables'),keycard:T('열쇠·카드','Keys & cards')};
 function labelFor(p){
@@ -793,6 +793,7 @@ function labelFor(p){
   if(k[0]==='maps'){const mn=mname(k[1]);
     if(k[2]==='zones'){return `${mn} · ${zname(k[1],k[3])} · ${k[4]==='on'?tr(T('켜기','on')):k[4]==='wPmc'?'PMC '+tr(T('비중','weight')):k[4]==='wScav'?tr(T('스캐브 비중','Scav weight')):tr(T('비중','weight'))}`;}
     if(k[2]==='inf')return `${mn} · ${tr(T('무한 보충','Endless'))} · ${k[3]}`;
+    if(k[2]==='scavGen')return `${mn} · ${tr(T('웨이브 생성기','Wave generator'))} · ${tr(({first:T('첫 웨이브','First wave'),interval:T('웨이브 간격','Wave interval'),min:T('웨이브당 최소','Min per wave'),max:T('웨이브당 최대','Max per wave')})[k[3]]||k[3])}`;
     return `${mn} · ${tr(MAPF[k[2]]||k[2])}`;}
   if(k[0]==='bosses'){const b=BOSSES.find(b=>b.id===k[1]);const bn=tr(b.name);
     if(k[2]==='maps')return `${bn} · ${mname(k[3])}`;if(k[2]==='zones')return `${bn} · ${mname(k[3])} · ${tr(T('스폰 구역','zones'))}`;return `${bn} · ${tr(BOSSF[k[2]]||k[2])}`;}
@@ -1007,7 +1008,7 @@ function estimate(m){
   if(p.inf){pmin=Math.round(pmin*c.inf.pmcShare/100);pmax=Math.round(pmax*c.inf.pmcShare/100);}
   const sd=c.scav.separateStart?c.scav.delay:0,hasScavs=m.scav||(m.id==='laboratory'&&c.allowScavLab),stop=raid*(1-c.hardStop.scavPct/100);
   const initial=c.scav.startOn&&sd<stop?startScavOf(m,c):0;
-  if(c.scavStyle==='list'){const SL=hasScavs?scavListOf(m.id).filter(w=>w.t<stop&&w.t<raid):[];return{pmin,pmax,smin:hasScavs?initial+SL.reduce((a,w)=>a+w.min,0):0,smax:hasScavs?initial+SL.reduce((a,w)=>a+w.max,0):0,bosses:bossesOn(m),p,c,cap};}
+  if(c.scavStyle==='list'){const SL=hasScavs?scavListOf(m.id).filter(w=>w.t<stop&&w.t<raid):[];return{sn:SL.length,pmin,pmax,smin:hasScavs?initial+SL.reduce((a,w)=>a+w.min,0):0,smax:hasScavs?initial+SL.reduce((a,w)=>a+w.max,0):0,bosses:bossesOn(m),p,c,cap};}
   const duration=Math.max(0,stop-sd),active=(c.scav.activeMin+c.scav.activeMax)/2,quiet=(c.scav.quietMin+c.scav.quietMax)/2;
   // 클라 ScavSchedule과 같은 차단·시계(Codex 검토 5번): softCap·플레이어당 한도가 0이면 보충은 늘 막힌다.
   // 웨이브 방식+PMC 무한은 무한 차례 간격(inf.delay)·묶음(inf.batch)·스캐브 차례 비율(1-pmcShare)을 쓰고, 그 밖은 스캐브 시계(scav.refill)에 1명씩.
@@ -1071,8 +1072,10 @@ function timeline(m,big=false){
   else if(c.scavStyle==='list'){const s0=c.scav.separateStart?c.scav.delay:0,SL=scavListOf(m.id),show=SL.length<=30,sum=k=>SL.filter(w=>w.t<scEnd).reduce((a,w)=>a+w[k],0);
     if(c.scav.startOn)s+=`<rect x="${x(s0)-5}" y="${ys-10}" width="10" height="20" rx="4" fill="#5fd4a6" fill-opacity=".55"${pp('scav')}><title>${tr(T('시작 스캐브','Starting scavs'))}</title></rect>`;
     if(!SL.length)s+=`<text x="${x(p.raid*.3)}" y="${ys+5}" fill="#bff3df" font-size="13"${pp('scavgen')}>${tr(T('웨이브 목록이 비어 있음 — 눌러서 채우기','Wave list is empty — tap to fill'))}</text>`;
-    SL.forEach(w=>{const r=6+Math.min(9,(w.min+w.max)/2*1.4),cx=x(w.t),off=w.t>=scEnd;s+=`<g${ed?` data-drag="scavw|${w.i}" data-pop="scavw|${w.i}" class="tlc tlb"`:''}><circle cx="${cx}" cy="${ys}" r="${r}" fill="#5fd4a6" fill-opacity="${off?.3:.9}" stroke="#e6fff6" stroke-opacity=".55"><title>${mmss(w.t)} · ${scavPpl(w)}</title></circle>${show?`<text x="${cx}" y="${ys-r-3}" fill="#bff3df" font-size="11" text-anchor="middle">${scavPpl(w)}</text>`:''}</g>`;});
-    s+=`<text x="${x(p.raid)}" y="${ys+22}" fill="#bff3df" font-size="11.5" text-anchor="end"${pp('scavgen')}>${fmt(tr(T('웨이브 목록 {n}개 · 총 {a}~{b}마리','Wave list {n} · {a}–{b} scavs')),{n:SL.length,a:sum('min'),b:sum('max')})}${ed?' ✎':''}</text>`+hv('scavEnd',x(scEnd),ys-15,30,'#5fd4a6');}
+    const lastEnd=[-1e9,-1e9];SL.forEach(w=>{const r=6+Math.min(9,(w.min+w.max)/2*1.4),cx=x(w.t),off=w.t>=scEnd,lab=scavPpl(w),half=lab.length*3.3+2;
+      const lv=!show?-1:cx-half>lastEnd[0]?0:cx-half>lastEnd[1]?1:-1;if(lv>=0)lastEnd[lv]=cx+half;
+      s+=`<g${ed?` data-drag="scavw|${w.i}" data-pop="scavw|${w.i}" class="tlc tlb"`:''}><circle cx="${cx}" cy="${ys}" r="${r}" fill="#5fd4a6" fill-opacity="${off?.3:.9}" stroke="#e6fff6" stroke-opacity=".55"><title>${mmss(w.t)} · ${lab}</title></circle>${lv>=0?`<text x="${cx}" y="${lv?ys+r+11:ys-r-3}" fill="#bff3df" font-size="11" text-anchor="middle">${lab}</text>`:''}</g>`;});
+    s+=`<text x="${x(p.raid)}" y="${ys+22}" fill="#bff3df" font-size="11.5" text-anchor="end"${pp('scavgen')}>${fmt(tr(T('웨이브 목록 {n}개 · 총 {a}~{b}마리','Wave list {n} · {a}–{b} scavs')),{n:SL.filter(w=>w.t<scEnd).length,a:sum('min'),b:sum('max')})}${ed?' ✎':''}</text>`+hv('scavEnd',x(scEnd),ys-15,30,'#5fd4a6');}
   else if(c.scavStyle==='start'){const s0=c.scav.separateStart?c.scav.delay:0;s+=`<rect x="${x(s0)-6}" y="${ys-12}" width="12" height="24" rx="5" fill="#5fd4a6"${pp('scav')}/><text x="${x(s0)+12}" y="${ys+5}" fill="#bff3df" font-size="13"${pp('scav')}>${tr(c.scav.startOn?T('시작 스캐브만','Starting scavs only'):T('시작 스캐브 꺼짐','Starting scavs off'))}</text>`;}
   else{const s0=c.scav.separateStart?c.scav.delay:0;s+=`<rect x="${x(s0)}" y="${ys-8}" width="${Math.max(0,x(scEnd)-x(s0))}" height="16" rx="8" fill="#5fd4a6" fill-opacity=".3" stroke="#5fd4a6" stroke-opacity=".75"${pp('scav')}/>`;
     const refillStep=Math.max(2,c.scav.refill)/60;
@@ -1244,7 +1247,7 @@ function previewDetails(kind,arg,m){
     return '';
   }finally{previewRendering=false;FOLD=fold;}
 }
-function previewOverview(m){const e=estimate(m);if(!e)return '';const c=e.c,st=state.maps[m.id],tips=capTips(m);return `<div class="preview-overview"><button data-pop="start"><b>PMC</b><span>${tr(T('시작','Start'))} ${startPmcOf(m,c)} · ${tr(T('상한','Cap'))} ${capOf(m.id)}</span><small>${tr(st.style==='start'?T('시작만','Start only'):st.style==='infinite'?T('무한 보충','Endless refill'):T('웨이브','Waves'))} · ${c.waveMin}–${c.waveMax} / ${c.interval}${u('min_')}</small></button>${m.scav>0||(m.id==='laboratory'&&state.spawn.allowScavLab)?`<button data-pop="scav"><b>${tr(T('스캐브','Scavs'))}</b><span>${tr(T('시작','Start'))} ${c.scav.startOn?startScavOf(m,c):0} · +${c.scav.delay}${u('min_')}</span><small>${c.scavStyle==='list'?fmt(tr(T('웨이브 목록 {n}개 · 총 {a}~{b}마리','Wave list {n} · {a}–{b} scavs')),{n:scavListOf(m.id).length,a:e.smin-(c.scav.startOn?startScavOf(m,c):0),b:e.smax-(c.scav.startOn?startScavOf(m,c):0)}):tr(T('동시 소프트 캡','Soft cap'))+' '+c.scav.softCap+' · '+tr(T('보충 확인','Check'))+' '+c.scav.refill+u('sec')}</small></button>`:''}<button data-pop="panel|limits" class="${tips.length?'warn':''}"><b>${tr(T('맵 동시 상한','Map bot cap'))}${st.capAuto?` <i class="capauto">${tr(T('자동','auto'))}</i>`:''}</b><span>${capOf(m.id)}${u('ppl')}</span><small>${tips.length?fmt(tr(T('걸릴 수 있음 {n}건 · 눌러서 확인','{n} possible issue(s) · tap to review')),{n:tips.length}):tr(T('시작·보충·종류별 상한·그룹 제한','Start, refill, per-kind & group limits'))}</small></button></div>${capTipBox(m,true)}`;}
+function previewOverview(m){const e=estimate(m);if(!e)return '';const c=e.c,st=state.maps[m.id],tips=capTips(m);return `<div class="preview-overview"><button data-pop="start"><b>PMC</b><span>${tr(T('시작','Start'))} ${startPmcOf(m,c)} · ${tr(T('상한','Cap'))} ${capOf(m.id)}</span><small>${tr(st.style==='start'?T('시작만','Start only'):st.style==='infinite'?T('무한 보충','Endless refill'):T('웨이브','Waves'))} · ${c.waveMin}–${c.waveMax} / ${c.interval}${u('min_')}</small></button>${m.scav>0||(m.id==='laboratory'&&state.spawn.allowScavLab)?`<button data-pop="scav"><b>${tr(T('스캐브','Scavs'))}</b><span>${tr(T('시작','Start'))} ${c.scav.startOn?startScavOf(m,c):0} · +${c.scav.delay}${u('min_')}</span><small>${c.scavStyle==='list'?fmt(tr(T('웨이브 목록 {n}개 · 총 {a}~{b}마리','Wave list {n} · {a}–{b} scavs')),{n:e.sn??scavListOf(m.id).length,a:e.smin-(c.scav.startOn?startScavOf(m,c):0),b:e.smax-(c.scav.startOn?startScavOf(m,c):0)}):tr(T('동시 소프트 캡','Soft cap'))+' '+c.scav.softCap+' · '+tr(T('보충 확인','Check'))+' '+c.scav.refill+u('sec')}</small></button>`:''}<button data-pop="panel|limits" class="${tips.length?'warn':''}"><b>${tr(T('맵 동시 상한','Map bot cap'))}${st.capAuto?` <i class="capauto">${tr(T('자동','auto'))}</i>`:''}</b><span>${capOf(m.id)}${u('ppl')}</span><small>${tips.length?fmt(tr(T('걸릴 수 있음 {n}건 · 눌러서 확인','{n} possible issue(s) · tap to review')),{n:tips.length}):tr(T('시작·보충·종류별 상한·그룹 제한','Start, refill, per-kind & group limits'))}</small></button></div>${capTipBox(m,true)}`;}
 function previewTools(m){
   const button=(k,label)=>`<button class="mini-btn" data-pop="panel|${k}">${tr(label||PREVIEW_PANELS[k])}</button>`;
   if(!isSpawnMap()){
@@ -1565,7 +1568,9 @@ function itemOverrideCard(list,title){
 }
 
 let batchLastChange=null,batchCopyPlan=null;
-function batchValue(id,suffix){const p='maps.'+id+'.'+suffix,card=mapFieldCard(p);return clone(card?fieldValue(id,commonPath(suffix)):get(p));}
+/** 동시 선택에서 다른 맵에 퍼뜨리지 않는 맵 칸(맵마다 다른 구역·웨이브 목록·생성기 값). */
+const BATCH_SKIP=['zones','zonesAlt','scavList','scavGen'];
+function batchValue(id,suffix){const p='maps.'+id+'.'+suffix,card=mapFieldCard(p),v=card?fieldValue(id,commonPath(suffix)):get(p);return v===undefined?undefined:clone(v);}
 function batchCapture(p){const suffix=p.split('.').slice(2).join('.'),ids=[mapSel,...batch];return {p,suffix,before:ids.map(id=>({id,value:batchValue(id,suffix),initialized:!!mapFieldCard(p)&&!cardOn(id,mapFieldCard(p))}))};}
 function batchShow(v){if(v===true)return tr(T('켜짐','On'));if(v===false)return tr(T('꺼짐','Off'));if(v==null)return '—';return typeof v==='object'?JSON.stringify(v):String(v);}
 function batchSummary(){
@@ -2376,8 +2381,12 @@ function render(){
   updateSavebar();
 }
 function flatten(o,pre='',out={}){for(const[k,v]of Object.entries(o)){const p=pre?pre+'.'+k:k;if(Array.isArray(v)){if(v.length&&typeof v[0]==='object')v.forEach((x,i)=>flatten(x,p+'.'+i,out));else out[p]=v.join(',');}else if(v&&typeof v==='object')flatten(v,p,out);else out[p]=v;}return out;}
-function changes(){const a=flatten(state),b=flatten(saved),nt=k=>{const x=k.split('.');return x[0]==='tierData'&&!(state.tierData[x[1]]&&saved.tierData[x[1]])?'tierOwn.'+x[1]:k;};return [...new Set([...Object.keys(a),...Object.keys(b)].filter(k=>a[k]!==b[k]).map(nt))];}
-function updateSavebar(){const ch=changes(),a=flatten(state),b=flatten(saved);$('#savebar').hidden=!ch.length;$('#dirty').textContent=fmt(u('unsaved'),{n:ch.length});
+function changes(){const a=flatten(state),b=flatten(saved),nt=k=>{const x=k.split('.');if(x[0]==='maps'&&x[2]==='scavList')return x.slice(0,3).join('.');return x[0]==='tierData'&&!(state.tierData[x[1]]&&saved.tierData[x[1]])?'tierOwn.'+x[1]:k;};return [...new Set([...Object.keys(a),...Object.keys(b)].filter(k=>a[k]!==b[k]).map(nt))];}
+/** 바뀐 항목 목록에 쓸 웨이브 목록 요약: "5개 · 2·6·6.5·12·18분 · 12~21마리". */
+function scavListText(src,mid){const L=(src.maps?.[mid]?.scavList||[]).filter(w=>w&&typeof w.t==='number').slice().sort((x,y)=>x.t-y.t);if(!L.length)return undefined;
+  const ts=L.map(w=>+(+w.t).toFixed(1)),n=k=>L.reduce((a,w)=>a+(w[k]??(k==='max'?w.min??1:1)),0);
+  return fmt(tr(T('{n}개 · {t}분 · {a}~{b}마리','{n} waves · {t} min · {a}–{b} scavs')),{n:L.length,t:ts.slice(0,8).join('·')+(ts.length>8?'…':''),a:n('min'),b:n('max')});}
+function updateSavebar(){const ch=changes(),a=flatten(state),b=flatten(saved);ch.forEach(p=>{const m=/^maps\.([^.]+)\.scavList$/.exec(p);if(m){a[p]=scavListText(state,m[1]);b[p]=scavListText(saved,m[1]);}});$('#savebar').hidden=!ch.length;$('#dirty').textContent=fmt(u('unsaved'),{n:ch.length});
   $('#changes').innerHTML=ch.slice(0,40).map(p=>`<li>${esc(labelFor(p))}: <span class="mono">${esc(String(b[p]??'—'))}</span> → <b class="mono" style="color:#cfe0ff">${esc(String(a[p]??'—'))}</b></li>`).join('')+(ch.length>40?`<li>… +${ch.length-40}</li>`:'');}
 const LIVE={timeline:a=>timeline(mapById(a),true),stat:a=>statBox(mapById(a)),lvprev:()=>lvPreview(),gcprev:()=>gcPreview()};
 function refreshLive(){document.querySelectorAll('[data-live]').forEach(el=>{el.innerHTML=LIVE[el.dataset.live](el.dataset.arg);});}
@@ -2412,11 +2421,11 @@ function presetTouched(p){
 }
 function schedulePresetSync(){clearTimeout(presetTimer);presetTimer=setTimeout(()=>{const c=customPresets.find(x=>x.id===state.preset);if(c)c.snap=pickKeys(state,RAID_KEYS);const t=customTierPresets.find(x=>x.id===state.tierPreset);if(t){t.tiers=clone(state.gear.tiers);t.data=clone(state.tierData);t.gearSnap=pickKeys(state,GEAR_KEYS);}if(typeof libSync==='function')libSync();renderShell();},300);}
 function writeSettingRaw(p,v,auto=false){
-  const impact=isSpawnMap()&&batch.length&&p.startsWith('maps.'+mapSel+'.')&&!/^maps\.[^.]+\.zones/.test(p)?batchCapture(p):null;
+  const impact=isSpawnMap()&&batch.length&&p.startsWith('maps.'+mapSel+'.')&&!BATCH_SKIP.includes(p.split('.')[2])?batchCapture(p):null;
   {const m=/^tierData\.([^.]+)\.(\d+)\.(weapons|armor|ammo|meds|parts)\.([^.]+)\.[0-9a-f]{24}$/.exec(p);if(m)materialize(m[1],+m[2],m[3],m[4]);}
   const k=p.split('.');
   if(k[0]!=='maps'){putPath(state,p,v);if(k[0]==='roles'&&k[2]==='mode'&&v==='spread'&&state.roles[k[1]]&&!state.roles[k[1]].spread)state.roles[k[1]].spread=spreadDefault(state.roles[k[1]].tier);return true;}
-  const mid=k[1],suffix=k.slice(2).join('.'),targets=[mid,...(isSpawnMap()&&mid===mapSel&&!['zones','zonesAlt','scavList','scavGen'].includes(k[2])?batch:[])];
+  const mid=k[1],suffix=k.slice(2).join('.'),targets=[mid,...(isSpawnMap()&&mid===mapSel&&!BATCH_SKIP.includes(k[2])?batch:[])];
   const flag=k[2]==='ovr'?k[3]:k[2]==='override'?'flow':'';
   if(flag){if(!CARD_FIELDS[flag])return false;targets.forEach(id=>{if(v)ensureOverride(id,flag);else putPath(state,`maps.${id}.ovr.${flag}`,false);if(flag==='flow')state.maps[id].override=!!v;});return true;}
   const card=mapFieldCard(p);if(card&&!cardOn(mid,card)&&!auto)return false;

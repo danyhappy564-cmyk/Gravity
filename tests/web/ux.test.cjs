@@ -1482,3 +1482,40 @@ test('1.0.6 봇 체력·스킬: 따로 페이지, 티어별 규칙, 따를 봇 �
   a.run("serverMeta={detect:{realism:true}}");
   assert.match(a.run("P.botstats.render()"),/Realism/);
 });
+test('여러 맵 동시 선택 중에도 웨이브 목록·생성기·흔들기를 고칠 수 있고 다른 맵 목록은 그대로입니다', () => {
+  const a = app();
+  a.run("page='spawn';spawnTab='rezervbase';mapSel='rezervbase';batch=['bigmap','woods'];state.maps.rezervbase.scavStyle='list';state.maps.rezervbase.scavList=[{t:2,min:2,max:3},{t:6,min:2,max:3},{t:11,min:3,max:4}];state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:3,min:1,max:2}]");
+  for (const [p, v] of [['maps.rezervbase.scavList.2.t', 13], ['maps.rezervbase.scavList.1.min', 3], ['maps.rezervbase.scavGen.first', 3], ['maps.rezervbase.scavListJitter', 30]])
+    assert.equal(a.run(`writeSetting(${JSON.stringify(p)},${v},true)`), true, p);
+  assert.equal(a.run("state.maps.rezervbase.scavList[2].t"), 13);
+  assert.equal(a.run("state.maps.rezervbase.scavList[1].min"), 3);
+  assert.equal(a.run("JSON.stringify(state.maps.bigmap.scavList)"), '[{"t":3,"min":1,"max":2}]');
+  assert.equal(a.run("state.maps.woods.scavList"), undefined);
+  assert.equal(a.run("state.maps.woods.scavGen"), undefined);
+  assert.equal(a.run("state.maps.woods.scavListJitter"), 30); // 흔들기는 다른 맵 설정이라 같이 바뀜
+});
+test('바뀐 항목 목록은 웨이브 목록을 맵마다 한 줄 요약으로 보여 줍니다', () => {
+  const a = app();
+  a.run("state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:2,min:2,max:4},{t:6,min:3,max:5},{t:6.5,min:2,max:3}];updateSavebar()");
+  const ch = JSON.parse(a.run("JSON.stringify(changes())"));
+  assert.deepEqual(ch.filter(p => p.includes('scavList')), ['maps.bigmap.scavList']);
+  const html = a.nodes.get('#changes').innerHTML;
+  assert.match(html, /세관 · 스캐브 웨이브 목록/);
+  assert.match(html, /3개 · 2·6·6\.5분 · 7~12마리/);
+  assert.doesNotMatch(html, /scavList/);
+});
+test('시각이 가까운 웨이브 인원 글자는 위아래로 나눠 겹치지 않습니다', () => {
+  const a = app();
+  a.run("page='spawn';mapSel='bigmap';state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:6,min:3,max:5},{t:6.5,min:2,max:3},{t:6.8,min:1,max:2},{t:20,min:2,max:4}]");
+  const svg = a.run("timeline(mapById('bigmap'),true)");
+  const labs = [...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" fill="#bff3df" font-size="11" text-anchor="middle">([^<]+)<\/text>/g)].map(m => ({x: +m[1], y: +m[2], t: m[3]}));
+  assert.deepEqual(labs.map(l => l.t), ['3~5', '2~3', '2~4']); // 세 번째 가까운 웨이브는 글자 생략
+  assert.ok(labs[1].y > labs[0].y, '두 번째는 버블 아래');
+  assert.ok(labs[2].y < labs[1].y, '먼 웨이브는 다시 위');
+});
+test('웨이브 개수는 마릿수 합과 같은 기준(판 길이·스캐브 중단 전)으로 셉니다', () => {
+  const a = app();
+  a.run("page='spawn';mapSel='rezervbase';state.maps.rezervbase.scavStyle='list';state.maps.rezervbase.scavList=[{t:2,min:2,max:3},{t:20,min:15,max:20},{t:999,min:30,max:30}]");
+  assert.match(a.run("previewOverview(mapById('rezervbase'))"), /웨이브 목록 2개 · 총 17~23마리/);
+  assert.match(a.run("timeline(mapById('rezervbase'),true)"), /웨이브 목록 2개 · 총 17~23마리/);
+});
