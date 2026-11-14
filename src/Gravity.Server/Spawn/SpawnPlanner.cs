@@ -161,7 +161,8 @@ public static class SpawnPlanner
                 scav.Add(new ScavWave(sec, sec, initial, initial, true));
             }
             if (ms.ScavStyle != "start" && (ms.Style != "infinite" || ms.ScavStyle != "waves"))
-                for (var i = firstWindow; i < times.Count; i++) scav.Add(Wave(times[i], Math.Max(1, (int)R(per))));
+                for (var i = firstWindow; i < times.Count; i++)
+                    scav.Add(Wave(times[i], Math.Max(1, (int)R(per * ScavCurveAt(s.Scav.Curve, times[i], raid)))));
         }
 
         double Between(double a, double b) => a >= b ? a : a + rnd.NextDouble() * (b - a);
@@ -182,6 +183,14 @@ public static class SpawnPlanner
     {
         var sec = (int)R(tMin * 60);
         return new ScavWave(sec, sec + 30, Math.Max(1, (int)Math.Floor(n * .7)), Math.Max(1, n));
+    }
+
+    /// <summary>1.0.6 스캐브 강도(분 단위 t, 레이드 3등분). 없으면 1.</summary>
+    internal static double ScavCurveAt(double[]? c, double t, double raid)
+    {
+        if (c is not { Length: >= 3 } || raid <= 0) return 1;
+        var f = t / raid;
+        return Math.Clamp(f < 1.0 / 3 ? c[0] : f < 2.0 / 3 ? c[1] : c[2], 0.2, 3);
     }
 
     internal static double IntensityAt(Intensity c, double t, double raid)

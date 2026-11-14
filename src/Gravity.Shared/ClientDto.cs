@@ -13,7 +13,10 @@ namespace Gravity.Shared
 
     public sealed record ScavDto(
         bool Managed, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
-        double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0, string Style = "waves", double? FirstRefillSec = null, int InitialCount = 0);
+        double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0, string Style = "waves", double? FirstRefillSec = null, int InitialCount = 0,
+        double[]? Curve = null, double CurveRaidSec = 0, double CurveOffsetSec = 0);
+    // 1.0.6: Curve = 레이드 초반·중반·후반 스캐브 강도(null = 옛 동작). 3등분 기준은 원래 레이드 길이 CurveRaidSec,
+    // 클라 경과 초 + CurveOffsetSec(스캐브 레이드 지연)으로 지금 칸을 정한다. 옛 클라는 이 칸을 모르고 무시한다.
 
     /// <summary>FirstDelaySec(1.0): PMC 첫 보충 시각(클라 경과 초, 스캐브 레이드 지연을 뺀 값). 옛 서버는 null — 이때는 예전 동작.</summary>
     public sealed record InfDto(double DelaySec, int Batch, double PmcShare, double Jitter, double? FirstDelaySec = null);

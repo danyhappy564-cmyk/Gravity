@@ -33,6 +33,21 @@ namespace Gravity.Shared
         private readonly double _scavStart;
         private bool _pmcOpened;
 
+        /// <summary>
+        /// 1.0.6 스캐브 강도: 원래 레이드를 3등분한 칸의 배수(0.2~3으로 자름). Curve가 없으면 1(옛 동작).
+        /// 살아 있는 스캐브 상한(softCap)에 곱하고, 보충 간격은 나눈다(최소 2초). 맵 상한(cap)은 그대로다.
+        /// </summary>
+        public static double CurveAt(ScavDto s, double elapsed)
+        {
+            if (s.Curve is not { Length: >= 3 } c || s.CurveRaidSec <= 0) return 1;
+            var f = (elapsed + Math.Max(0, s.CurveOffsetSec)) / s.CurveRaidSec;
+            var k = f < 1.0 / 3 ? c[0] : f < 2.0 / 3 ? c[1] : c[2];
+            return double.IsNaN(k) ? 1 : Math.Clamp(k, 0.2, 3);
+        }
+
+        private int SoftCapAt(double elapsed) => _s.Curve == null ? _s.SoftCap : (int)Math.Round(_s.SoftCap * CurveAt(_s, elapsed));
+        private double RefillAt(double elapsed) => _s.Curve == null ? _s.RefillSec : _s.RefillSec / CurveAt(_s, elapsed);
+
         /// <summary>마지막 Tick에서 스캐브가 0마리였던 이유. 맵 상한(Cap) 때문에 막힌 차례를 셀 때 쓴다.</summary>
         public ScavBlock LastBlock { get; private set; }
 
@@ -105,7 +120,7 @@ namespace Gravity.Shared
             ScavBlock why = ScavGate(raidElapsed, pending, spawnedPerPlayer, aliveScavs);
             // 스캐브 몫 빈자리: PMC 예약 자리(상한 표, 1.0) 중 아직 안 찬 몫은 쓰지 않는다
             int scavRoom = room - scavReserve;
-            int count = why == ScavBlock.None ? Math.Max(0, Math.Min(want, Math.Min(scavRoom, _s.SoftCap - aliveScavs))) : 0;
+            int count = why == ScavBlock.None ? Math.Max(0, Math.Min(want, Math.Min(scavRoom, SoftCapAt(raidElapsed) - aliveScavs))) : 0;
 
             if (pmcTurn)
             {
@@ -144,9 +159,9 @@ namespace Gravity.Shared
             var why = ScavGate(elapsed, pending, perPlayer, scavs);
             if (why != ScavBlock.None) return Block(why);
             if (cap - alive - scavReserve <= 0) return Block(ScavBlock.Cap); // PMC 예약 자리만 남음
-            _nextScavAttempt = elapsed + Math.Max(2, _s.RefillSec);
+            _nextScavAttempt = elapsed + Math.Max(2, RefillAt(elapsed));
             LastBlock = ScavBlock.None;
-            return Math.Min(1, Math.Min(cap - alive - scavReserve, _s.SoftCap - scavs));
+            return Math.Min(1, Math.Min(cap - alive - scavReserve, SoftCapAt(elapsed) - scavs));
         }
 
         /// <summary>스캐브에만 걸리는 판정. 순서: 휴식 창, 스캐브 하드 스톱, 대기 수, 플레이어당 한도, softCap.</summary>
@@ -159,14 +174,15 @@ namespace Gravity.Shared
             if (raidElapsed >= _hardStop) return ScavBlock.HardStop;
             if (pending > _s.Pending) return ScavBlock.Pending;
             if (spawnedPerPlayer >= _s.PerPlayer) return ScavBlock.PerPlayer;
-            if (aliveScavs >= _s.SoftCap) return ScavBlock.SoftCap;
+            if (aliveScavs >= SoftCapAt(raidElapsed)) return ScavBlock.SoftCap;
             return ScavBlock.None;
         }
 
         /// <summary>차례를 쓴다: 다음 시도 시각을 정한다(무한 방식은 delay ± jitter).</summary>
         private void Consume(float raidElapsed)
         {
-            double interval = _s.RefillSec;
+            // 웨이브 방식의 스캐브 차례 간격만 강도로 줄이거나 늘린다. 무한 방식은 PMC와 같은 시계라 그대로(상한만 곡선).
+            double interval = _inf == null ? Math.Max(_s.Curve == null ? 0 : 2, RefillAt(raidElapsed)) : _s.RefillSec;
             if (_inf != null)
             {
                 double j = _inf.Jitter;

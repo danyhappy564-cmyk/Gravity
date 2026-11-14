@@ -39,6 +39,8 @@ namespace Gravity.Client.Directors
             public int RefillIndex;
             public int ScavSpawned;
             public bool CapEpisode;
+            /// <summary>1.0.6 스캐브 강도 진단 줄(2분마다) 다음 시각.</summary>
+            public float NextCurveLog;
             public bool ZonesBuilt;
             /// <summary>PMC만 보충할 때(스캐브 관리 꺼짐) 다음 차례 시각.</summary>
             public float PmcOnlyNext;
@@ -88,6 +90,12 @@ namespace Gravity.Client.Directors
 
             int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
+            if (c.S.Scav.Curve != null && now >= st.NextCurveLog)
+            {
+                st.NextCurveLog = now + 120f;
+                double k = ScavSchedule.CurveAt(c.S.Scav, now);
+                Log.Verbose($"{c.S.MapId} 스캐브 강도 ×{k:0.##}: 살아 있는 스캐브 {aliveScavs}/{(int)Math.Round(c.S.Scav.SoftCap * k)} (경과 {now / 60f:0.0}분)");
+            }
             // 맵 상한 판정용 점유: 게임 집계(생존·로딩·대기) − 상한 제외 팩션 + 아직 집계에 안 잡힌 Gravity 예약(Codex 검토 1번).
             int alive = Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(Time.time);
             int pending = spawner.SpawnDelaysService?.WaitCount ?? 0;

@@ -151,6 +151,6 @@ public class PatrolCurveTests
         var cfg = ConfigModel.FromState(JsonNode.Parse("""{"factions":{"ruaf":{"patrol":{"curve":{"early":1,"mid":1,"late":1}}}}}"""), []);
         Assert.Null(cfg.Ruaf!.Patrol.Curve);
         var cfg2 = ConfigModel.FromState(JsonNode.Parse("""{"factions":{"ruaf":{"patrol":{"curve":{"late":2}}}}}"""), []);
-        Assert.Equal([1, 1, 2], cfg2.Ruaf!.Patrol.Curve);
+        Assert.Equal([1, 1, 2], cfg2.Ruaf!.Patrol.Curve!);
     }
 }
