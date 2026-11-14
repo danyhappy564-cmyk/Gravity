@@ -176,3 +176,24 @@ public class ExtraWaveTests
         Assert.Equal(1, cfg.Specials!["raiders"].ExtraCount);
     }
 }
+
+public class SpawnEntryMetaTests
+{
+    [Fact]
+    public void Entries_SpecialsAndTriggers_NoPmcNoPlainBoss()
+    {
+        var list = MapCatalog.EntriesOf(
+        [
+            new BossLocationSpawn { BossName = "pmcBot", BossChance = 60, Time = 300, BossZone = "BotZoneFloor2", BossEscortAmount = "1,2" },
+            new BossLocationSpawn { BossName = "pmcBot", BossChance = 35, Time = -1, TriggerName = "interactObject", TriggerId = "autoId_00632_EXFIL", Delay = 8 },
+            new BossLocationSpawn { BossName = "tagillaHelperAgro", BossChance = 50, TriggerName = "botEvent", TriggerId = "AGRO_HELPERS_EVENT" },
+            new BossLocationSpawn { BossName = "bossKilla", BossChance = 38 },
+            new BossLocationSpawn { BossName = "pmcUSEC", BossChance = 100 }
+        ]);
+        Assert.Equal(3, list.Count);
+        Assert.Equal(300, list[0].Time);
+        Assert.Equal("interactObject", list[1].Trigger);
+        Assert.Equal(8, list[1].Delay);
+        Assert.Equal("botEvent", list[2].Trigger);
+    }
+}

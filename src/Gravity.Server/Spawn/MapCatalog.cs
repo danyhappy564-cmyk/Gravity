@@ -10,7 +10,14 @@ namespace Gravity.Spawn;
 public sealed record MapMeta(string Id, int RaidMin, int BotMax, int BasePmc, int BaseScav,
     string[] PmcZones, string[] ScavZones, Dictionary<string, double> Bosses, string[]? BossZones = null,
     bool HasVariant = false, string[]? OriginalPmcZones = null, string[]? OriginalScavZones = null,
-    Dictionary<string, double>? Roster = null, int SvmAddMin = 0);
+    Dictionary<string, double>? Roster = null, int SvmAddMin = 0, IReadOnlyList<SpawnEntry>? Entries = null);
+
+/// <summary>
+/// 1.0.6 웹 타임라인·트리거 카드용 원래 항목 하나(서버 시작 때 DB 값, 다른 모드가 넣은 것 포함).
+/// 특수 봇 역할 항목 전부 + 모든 역할의 트리거 항목. Trigger = TriggerName(빈 값 = 시각 무리, interactObject = 플레이어 조작, botEvent = 게임 이벤트).
+/// </summary>
+public sealed record SpawnEntry(string Role, double Chance, double Time, string Trigger, string TriggerId, string Zone,
+    string Escort, string EscortType, double Delay);
 
 /// <summary>서버 로드 뒤 DB에서 맵별 기본 정보를 한 번 모은다(원본은 읽기만).</summary>
 public sealed class MapCatalog
@@ -103,6 +110,15 @@ public sealed class MapCatalog
     public IReadOnlyDictionary<string, BossLocationSpawn> BossTemplates => _bossTemplates;
     internal void AddTemplateForTest(BossLocationSpawn e) => _bossTemplates[e.BossName!] = e;
 
+    /// <summary>웹에 보낼 원래 항목 목록(특수 봇 + 트리거 항목, 최대 200개).</summary>
+    internal static List<SpawnEntry> EntriesOf(IEnumerable<BossLocationSpawn>? list) =>
+        (list ?? []).Where(e => e.BossName is { Length: > 0 } n && !IsPmc(e)
+                && (!string.IsNullOrEmpty(e.TriggerName) || ConfigModel.SpecialRoles.Values.Contains(n, StringComparer.OrdinalIgnoreCase)))
+            .Take(200)
+            .Select(e => new SpawnEntry(e.BossName!, e.BossChance ?? 0, e.Time ?? -1, e.TriggerName ?? "", e.TriggerId ?? "", e.BossZone ?? "",
+                e.BossEscortAmount ?? "0", e.BossEscortType ?? "", e.Delay ?? 0))
+            .ToList();
+
     /// <summary>
     /// 본보기로 모을 항목: 보스 역할 전부, 특수 봇 역할(레이더·로그·컬티스트·블러드하운드, 1.0.6 #39)은 트리거 없는 항목만
     /// (레버·탈출구 항목을 본떠 다른 맵에 넣으면 트리거를 떼도 구역·대기가 그 맵에 맞지 않는다).
@@ -141,7 +157,8 @@ public sealed class MapCatalog
                 .GroupBy(e => e.BossName!, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Max(e => e.BossChance ?? 0), StringComparer.OrdinalIgnoreCase);
             if (b.Waves?.Any(w => w.WildSpawnType == WildSpawnType.marksman) == true) roster["marksman"] = 100;
-            _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses, bossZones, Roster: roster));
+            _meta.Add(new MapMeta(id, raidSec / 60, cap, basePmc, baseScav, pmcZones, scavZones, bosses, bossZones, Roster: roster,
+                Entries: EntriesOf(b.BossLocationSpawn)));
         }
     }
 
