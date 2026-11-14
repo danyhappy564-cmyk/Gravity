@@ -322,7 +322,11 @@ test('맵 탭의 여섯 카드가 꺼져 있으면 공통 값을 비활성으로
   const a=app();
   a.run("page='spawn';spawnTab='bigmap';state.spawn.scav.refill=75");
   const out=a.run('P.spawn.render()');
-  for(const card of ['flow','scav','near','dist','hotspot','limits']) assert.ok(out.includes(`data-p="maps.bigmap.ovr.${card}"`),card);
+  for(const card of ['flow','scav','near','dist','hotspot']) assert.ok(out.includes(`data-p="maps.bigmap.ovr.${card}"`),card);
+  // 1.0.6: 미리보기 편집이 켜져 있으면 상한 칸은 위 "맵 동시 상한" 버튼 창에만 있다(아래 카드 없음)
+  assert.ok(!out.includes('data-p="maps.bigmap.ovr.limits"'));
+  assert.ok(a.run("spawnCommon.render('bigmap',true,'limits')").includes('data-p="maps.bigmap.ovr.limits"'));
+  a.run('tlEdit=false');assert.ok(a.run('P.spawn.render()').includes('data-p="maps.bigmap.ovr.limits"'));
   assert.match(out,/value="75" data-p="maps.bigmap.scav.refill"[^>]*disabled/);
   assert.ok(!out.includes('data-p="maps.bigmap.override"'));
 });
@@ -378,7 +382,7 @@ test('맵별 그룹 규칙 추가·삭제·막대·세그먼트는 같은 카드
   a.click({gcdel:'0',gcMid:'bigmap'});
   assert.equal(a.run('state.maps.bigmap.groupCap.rules.length'),2);
   assert.equal(a.run('state.spawn.groupCap.on'),false);
-  assert.match(a.run('P.spawn.render()'),/data-p="maps.bigmap.groupCap.rules.0.size"/);
+  assert.match(a.run("spawnCommon.render('bigmap',true,'limits')"),/data-p="maps.bigmap.groupCap.rules.0.size"/);
   a.run("apply({dataset:{p:'maps.bigmap.groupCap.rules.0.count',t:'n'},type:'number',value:'0'},true)");
   assert.equal(a.run('cfgFor(mapById(\'bigmap\')).groupCap.rules[0].count'),0);
   assert.equal(a.run('state.maps.woods.groupCap.rules[0].count'),0);
@@ -538,7 +542,7 @@ test('상한 표는 공통·맵별 상한 카드에 있고 옛 팩션 상한 공
     assert.ok(common.includes(`data-p="${p}"`), p);
   assert.match(common,/data-segp="spawn.caps.special.mode" data-v="respect"/);
   a.run("spawnTab='bigmap';mapSel='bigmap';state.maps.bigmap.ovr.limits=true");
-  assert.match(a.run('P.spawn.render()'),/data-p="maps.bigmap.caps.pmcReserve"/);
+  assert.match(a.run("spawnCommon.render('bigmap',true,'limits')"),/data-p="maps.bigmap.caps.pmcReserve"/);
   const b=app();
   b.run("normalizeState({factions:{ruaf:{shareCap:true}}})");
   assert.equal(b.run("state.spawn.caps.faction.mode"),'respect');
@@ -1217,4 +1221,99 @@ test('1.0.5: 다른 PC에서 열어 저장이 막히면 SPT 로그인 안내 막
  const b=app();b.run(`applyServerWrite({ok:false,login:'${login}'})`);assert.equal(b.nodes.get('#loginbar').hidden,false);
  const c=app();c.run("applyServerWrite({ok:true})");assert.notEqual(c.nodes.get('#loginbar')?.hidden,false,'저장 가능하면 막대 없음');
  assert.match(html,/id="loginbar"/);
+});
+test('1.0.6 상한 팁: 기본값은 조용하고, 걸리는 설정은 노란 팁·고치기·모두 맞추기', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap'");
+  assert.equal(a.run("capTips(mapById('bigmap')).length"),0);
+  assert.ok(!/captips"/.test(a.run("previewOverview(mapById('bigmap'))")));
+  a.run("state.specials.raiders.on=true;state.specials.raiders.extra.bigmap=50;state.spawn.caps.special.max=3;state.spawn.scav.curve={early:.5,mid:1,late:1.6};state.spawn.groupCap.on=true");
+  const t=a.run("capTips(mapById('bigmap')).map(x=>x.t.ko)");
+  assert.equal(t.length,3);
+  assert.match(t[0],/스캐브 동시 목표 29명/);
+  assert.match(t[1],/레이더 무리가 최대 5명/);
+  assert.match(t[2],/3인 분대/);
+  const ov=a.run("previewOverview(mapById('bigmap'))");
+  assert.match(ov,/class="warn"/);
+  assert.match(ov,/걸릴 수 있음 3건/);
+  assert.match(ov,/data-act="capFixAll" data-v="bigmap"/);
+  // 하나만 고치기: 특수 봇 최대 인원(공통 칸)
+  a.click({act:'capFix',v:'bigmap|1'});
+  assert.equal(a.run("state.spawn.caps.special.max"),5);
+  a.click({act:'capFixAll',v:'bigmap'});
+  assert.equal(a.run("capTips(mapById('bigmap')).length"),0);
+  assert.equal(a.run("state.maps.bigmap.capOn"),true);
+  assert.equal(a.run("state.maps.bigmap.cap"),29);
+  // 시작 인원이 상한보다 많을 때
+  const b=app();
+  b.run("state.maps.factory4_day.capOn=true;state.maps.factory4_day.cap=6;state.maps.factory4_day.ovr={flow:true};state.maps.factory4_day.startMode='count';state.maps.factory4_day.startPmcMin=6;state.maps.factory4_day.startPmcMax=6");
+  assert.ok(b.run("capTips(mapById('factory4_day')).some(x=>/시작 PMC 6/.test(x.t.ko))"));
+});
+test('1.0.6 상한 자동 맞춤: 설정 따라 늘고 줄며, 저장 직전 이 맵 상한에 쓴다', () => {
+  const a=app();
+  a.run("state.maps.bigmap.capAuto=true");
+  assert.equal(a.run("capOf('bigmap')"),26);
+  a.run("state.spawn.scav.softCap=30");
+  assert.equal(a.run("capOf('bigmap')"),38);
+  a.run("state.spawn.scav.softCap=4;state.spawn.waveMax=2");
+  assert.equal(a.run("capOf('bigmap')"),10);
+  a.run("state.spawn.scav.softCap=0;state.spawn.waveMax=1;state.spawn.scav.startOn=false");
+  assert.equal(a.run("capOf('bigmap')"),8); // 아래 한계 8
+  a.run("state.spawn.scav.softCap=18;state.spawn.waveMax=4;state.spawn.scav.startOn=true;syncAutoCaps()");
+  assert.equal(a.run("state.maps.bigmap.cap"),26);
+  assert.equal(a.run("state.maps.bigmap.capOn"),true);
+  // 자동이면 팁의 상한 고치기는 상한을 덮어쓰지 않는다
+  a.run("capFixApply('bigmap',[['cap',40]])");
+  assert.equal(a.run("capOf('bigmap')"),26);
+  // 모든 맵 탭 버튼
+  a.click({act:'capAutoAll',v:'1'});
+  assert.equal(a.run("MAPS.every(m=>state.maps[m.id].capAuto)"),true);
+  a.run("page='spawn';spawnTab='all'");
+  assert.match(a.run('P.spawn.render()'),/13\/13개 맵이 자동/);
+  a.click({act:'capAutoAll',v:'0'});
+  assert.equal(a.run("MAPS.some(m=>state.maps[m.id].capAuto)"),false);
+});
+test('1.0.6 레버 무리: 작동 뒤 지연·바꾼 역할 비율, 시각 비중 프리셋', () => {
+  const a=app();
+  a.run(`serverMeta={maps:[{id:'laboratory',roster:{pmcBot:60},entries:[
+    {role:'pmcBot',chance:45,time:-1,trigger:'interactObject',triggerId:'autoId_00632_EXFIL',zone:'BotZoneGate1',escort:'1,2',escortType:'pmcBot',delay:8}]}]}`);
+  let pop=a.run("popSpecs('trig','laboratory~autoId_00632_EXFIL~pmcBot',mapById('laboratory'))");
+  assert.equal(pop.rows[3][1],'triggers.laboratory.autoId_00632_EXFIL.pmcBot.delay');
+  assert.equal(pop.rows[3][2],8);
+  assert.match(pop.rows[3][0],/원래 8초/);
+  assert.equal(pop.rows.length,4); // 역할을 안 바꿨으면 비율 칸 없음
+  a.run("writeSetting('triggers.laboratory.autoId_00632_EXFIL.pmcBot.role','exUsec');writeSetting('triggers.laboratory.autoId_00632_EXFIL.pmcBot.delay',30)");
+  pop=a.run("popSpecs('trig','laboratory~autoId_00632_EXFIL~pmcBot',mapById('laboratory'))");
+  assert.equal(pop.rows[3][2],30);
+  assert.equal(pop.rows[4][1],'triggers.laboratory.autoId_00632_EXFIL.pmcBot.rolePct');
+  assert.equal(pop.rows[4][2],100);
+  a.run("page='specials';specSel='raiders'");
+  assert.match(a.run('P.specials.render()'),/data-p="triggers.laboratory.autoId_00632_EXFIL.pmcBot.rolePct"/);
+  // 시각 비중 프리셋
+  a.click({act:'curvePreset',p:'specials.raiders.extraCurve.',v:'0.3,1,2'});
+  assert.equal(a.run("JSON.stringify(state.specials.raiders.extraCurve)"),'{"early":0.3,"mid":1,"late":2}');
+  a.click({act:'curvePreset',p:'factions.ruaf.patrol.curve.',v:'2,1,0.3'});
+  assert.equal(a.run("state.factions.ruaf.patrol.curve.early"),2);
+  a.click({act:'curvePreset',p:'maps.bigmap.cap',v:'1,1,1'}); // 허용 밖 경로는 무시
+  assert.equal(a.run("state.maps.bigmap.cap"),24);
+  assert.match(a.run('P.specials.render()'),/data-act="curvePreset" data-p="specials.raiders.extraCurve." data-v="0.3,1,2"/);
+});
+test('1.0.6 #demo 시연 모드: 서버 없이 예시 자료로 뜨고 저장하지 않음', async () => {
+  const a=app({hash:'#demo'});
+  assert.equal(a.run('DEMO'),true);
+  await a.run('boot()'); // 테스트 소스는 마지막 boot() 호출을 빼고 읽는다
+  assert.equal(a.run('serverErr'),'');
+  assert.equal(a.run("serverMeta.maps.length"),3);
+  assert.equal(a.run("state.specials.raiders.extra.bigmap"),100);
+  assert.equal(a.run("page+'/'+spawnTab"),'spawn/bigmap');
+  assert.match(a.run('serverWarn'),/시연 화면/);
+  assert.ok(a.run("specGroups(mapById('bigmap'))").some(x=>x.id==='raiders'&&x.fresh));
+  await a.run('saveToServer()');
+  assert.equal(app().run('DEMO'),false);
+});
+test('1.0.6 원래 무리가 없는 맵의 레이더 창엔 원래 스폰 시각 칸이 없음', () => {
+  const a=app();
+  a.run("serverMeta={maps:[{id:'bigmap',roster:{bossBully:38},entries:[]},{id:'laboratory',roster:{pmcBot:60},entries:[]}]};state.specials.raiders.on=true;state.specials.raiders.extra.bigmap=50");
+  assert.ok(!a.run("popSpecs('spec','raiders',mapById('bigmap')).rows").some(r=>/\.tFrom$/.test(r[1])));
+  assert.ok(a.run("popSpecs('spec','raiders',mapById('laboratory')).rows").some(r=>/\.tFrom$/.test(r[1])));
 });

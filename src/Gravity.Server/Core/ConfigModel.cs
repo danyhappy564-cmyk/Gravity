@@ -115,7 +115,8 @@ public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double
 /// Role 빈 값 = 원래 역할(플레이어 조작 트리거의 레이더만 exUsec·blackDivAssault로 바꿀 수 있음).
 /// 트리거·구역·Delay·Time은 바꾸지 않는다.
 /// </summary>
-public sealed record TriggerRule(double? Chance, int Min, int Max, string Role);
+/// <summary>1.0.6 트리거 규칙. Delay = 작동 뒤 나오기까지 초(null = 원래 값), RolePct = Role로 바꿀 확률(무리마다 판 시작 때 굴림, 100 = 늘 바꿈).</summary>
+public sealed record TriggerRule(double? Chance, int Min, int Max, string Role, double? Delay = null, double RolePct = 100);
 
 /// <summary>팩션 무리 종류 하나(순찰·검문소·사냥조, 0.4). TMin·TMax는 분(검문소·사냥조는 안 씀).</summary>
 public sealed record FactionKind(bool On, double Chance, int Count, int Min, int Max, double TMin, double TMax, double[]? Curve = null);
@@ -413,8 +414,10 @@ public static partial class ConfigModel
                     double? chance = r.Node(p + "chance") is JsonValue cv && cv.GetValueKind() == JsonValueKind.Number ? r.Num(p + "chance", 0, 0, 100) : null;
                     var min = (int)r.Num(p + "min", 0, 0, 10);
                     var max = (int)Math.Max(min, r.Num(p + "max", 0, 0, 10));
-                    var rule = new TriggerRule(chance, min, max, r.Str(p + "role", "", "", "pmcBot", "exUsec", "blackDivAssault"));
-                    if (rule.Chance != null || rule.Max > 0 || rule.Role.Length > 0) rules[$"{trig}|{role}"] = rule;
+                    double? delay = r.Node(p + "delay") is JsonValue dv && dv.GetValueKind() == JsonValueKind.Number ? r.Num(p + "delay", 0, 0, 600) : null;
+                    var rule = new TriggerRule(chance, min, max, r.Str(p + "role", "", "", "pmcBot", "exUsec", "blackDivAssault"),
+                        delay, r.Num(p + "rolePct", 100, 0, 100));
+                    if (rule.Chance != null || rule.Max > 0 || rule.Role.Length > 0 || rule.Delay != null) rules[$"{trig}|{role}"] = rule;
                 }
             }
             if (rules.Count > 0) maps[map] = rules;

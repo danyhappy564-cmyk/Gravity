@@ -38,6 +38,41 @@ public class TriggerSpawnTests
     }
 
     [Fact]
+    public void Delay_SetOnlyWhenRuleHasIt()
+    {
+        var l = Lab();
+        Assert.Equal(2, RaidSpawnApplier.ApplyTriggers(l, Cfg(Rule("""{"delay":30}""")), "laboratory", false));
+        Assert.All(l.BossLocationSpawn.Where(e => e.TriggerId == Exfil632), e => Assert.Equal(30, e.Delay));
+        Assert.Equal(35, l.BossLocationSpawn[1].BossChance);       // 확률은 그대로
+        var c = Cfg(Rule("""{"delay":9999}"""));
+        Assert.Equal(600, c.Triggers!["laboratory"][Exfil632 + "|pmcBot"].Delay); // 0~600초로 자름
+        Assert.Null(Cfg(Rule("""{"chance":50}""")).Triggers!["laboratory"][Exfil632 + "|pmcBot"].Delay);
+    }
+
+    [Fact]
+    public void RoleMix_RollsPerGroup_DefaultAlways()
+    {
+        // rolePct 없으면 늘 바꿈(1.0.6 처음 동작)
+        var l = Lab();
+        RaidSpawnApplier.ApplyTriggers(l, Cfg(Rule("""{"role":"exUsec"}""")), "laboratory", false, new Random(1));
+        Assert.All(l.BossLocationSpawn.Where(e => e.TriggerId == Exfil632), e => Assert.Equal("exUsec", e.BossName));
+        // 0% = 안 바꿈
+        l = Lab();
+        Assert.Equal(0, RaidSpawnApplier.ApplyTriggers(l, Cfg(Rule("""{"role":"exUsec","rolePct":0}""")), "laboratory", false, new Random(1)));
+        // 50%: 여러 판이면 두 역할이 섞이고 비율은 절반 근처
+        int rogue = 0, total = 0;
+        var cfg = Cfg(Rule("""{"role":"exUsec","rolePct":50}"""));
+        var rnd = new Random(7);
+        for (var i = 0; i < 400; i++)
+        {
+            l = Lab();
+            RaidSpawnApplier.ApplyTriggers(l, cfg, "laboratory", false, rnd);
+            foreach (var e in l.BossLocationSpawn.Where(e => e.TriggerId == Exfil632)) { total++; if (e.BossName == "exUsec") { rogue++; Assert.Equal("exUsec", e.BossEscortType); } }
+        }
+        Assert.InRange(rogue / (double)total, 0.42, 0.58);
+    }
+
+    [Fact]
     public void ChanceAndSize_OnlyThatTrigger_KeepsTriggerZoneDelayTime()
     {
         var l = Lab();
@@ -152,5 +187,21 @@ public class PatrolCurveTests
         Assert.Null(cfg.Ruaf!.Patrol.Curve);
         var cfg2 = ConfigModel.FromState(JsonNode.Parse("""{"factions":{"ruaf":{"patrol":{"curve":{"late":2}}}}}"""), []);
         Assert.Equal([1, 1, 2], cfg2.Ruaf!.Patrol.Curve!);
+    }
+}
+
+public class ScavCurvePerMapTests
+{
+    [Fact]
+    public void MapScavCard_OwnCurve_OverridesShared()
+    {
+        var cfg = ConfigModel.FromState(JsonNode.Parse("""
+            {"spawn":{"scav":{"curve":{"early":0.5,"mid":1,"late":1.5}}},
+             "maps":{"factory4_day":{"ovr":{"scav":true},"scav":{"curve":{"early":1,"mid":1,"late":1}}},
+                     "woods":{"ovr":{"scav":true},"scav":{"curve":{"early":2,"mid":1,"late":0.5}}}}}
+            """), []);
+        Assert.Equal(new[] { 0.5, 1, 1.5 }, cfg.SpawnFor("bigmap").Scav.Curve);
+        Assert.Null(cfg.SpawnFor("factory4_day").Scav.Curve);          // 맵이 고르게(1·1·1)로 따로 정함
+        Assert.Equal(new[] { 2, 1, 0.5 }, cfg.SpawnFor("woods").Scav.Curve);
     }
 }

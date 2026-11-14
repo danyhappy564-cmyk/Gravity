@@ -260,11 +260,12 @@ public static class RaidSpawnApplier
     /// <summary>
     /// 1.0.6 트리거 스폰 조절(레버·스위치·탈출구·게임 이벤트). 보스·특수 봇·팩션 처리가 끝난 뒤 마지막에 부른다.
     /// 규칙(맵 → "트리거id|원래 역할")이 있는 트리거 항목의 확률·호위 인원·(플레이어 조작 트리거의 레이더만) 역할을 바꾼다.
-    /// 트리거·구역·Delay·Time은 그대로 둔다. 이미 0%인 항목(원래 스폰 유지 끔·보스 끔)은 0%로 둔다.
+    /// 트리거·구역·Time은 그대로 둔다(Delay는 규칙에 값이 있을 때만). 이미 0%인 항목(원래 스폰 유지 끔·보스 끔)은 0%로 둔다.
+    /// 역할 바꾸기는 RolePct 확률로 무리마다 굴린다(100 = 늘 바꿈, 1.0.6 처음과 같음).
     /// 파르티잔처럼 보스 설정이 확률을 정하는 역할(BossRoleToId)과 Gravity가 바꿔 넣은 항목(BlackDiv 게이트 등)은 건드리지 않는다.
     /// </summary>
     /// <returns>바꾼 항목 수(로그용).</returns>
-    public static int ApplyTriggers(LocationBase loc, GravityConfig cfg, string mapId, bool blackDivInstalled)
+    public static int ApplyTriggers(LocationBase loc, GravityConfig cfg, string mapId, bool blackDivInstalled, Random? rnd = null)
     {
         if (cfg.Triggers == null || !cfg.Triggers.TryGetValue(mapId, out var rules) || loc.BossLocationSpawn == null) return 0;
         var changed = 0;
@@ -278,8 +279,10 @@ public static class RaidSpawnApplier
             var n = e;
             if ((e.BossChance ?? 0) > 0 && rule.Chance is { } c) n = n with { BossChance = c };
             if (rule.Max > 0) n = n with { BossEscortAmount = Range(Math.Max(0, rule.Min - 1), Math.Max(0, rule.Max - 1)) };
+            if (rule.Delay is { } d) n = n with { Delay = d };
             if (rule.Role.Length > 0 && !string.Equals(rule.Role, role, StringComparison.OrdinalIgnoreCase)
-                && CanSwapRole(e, role, rule.Role, blackDivInstalled))
+                && CanSwapRole(e, role, rule.Role, blackDivInstalled)
+                && (rule.RolePct >= 100 || (rule.RolePct > 0 && (rnd ?? Random.Shared).NextDouble() * 100 < rule.RolePct)))
                 n = n with { BossName = rule.Role, BossEscortType = rule.Role };
             if (n == e) continue;
             list[i] = n;

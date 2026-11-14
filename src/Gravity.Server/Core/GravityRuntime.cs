@@ -166,7 +166,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
         RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
         // 1.0.6: 트리거 스폰(레버·탈출구·게임 이벤트) 조절은 BlackDiv 게이트·특수 봇 처리 뒤에 남은 항목에만.
-        var trigChanged = RaidSpawnApplier.ApplyTriggers(loc, cfg, id, Detect.BlackDiv);
+        var trigChanged = RaidSpawnApplier.ApplyTriggers(loc, cfg, id, Detect.BlackDiv, new Random(s ^ 0x7A19));
         var (hw, xm) = ActiveEvents();
         var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
         if (trigChanged > 0)

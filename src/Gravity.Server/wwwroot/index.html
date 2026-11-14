@@ -253,7 +253,9 @@ body.easy .adv{display:none!important}
 .mapch{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;margin:6px 0}.mapch-row{display:flex;align-items:center;gap:6px;font-size:13px}.mapch-row>span:first-child{flex:1;min-width:0}.mapch-row input{width:64px;padding:4px 6px}
 .tl-shortcuts{margin:12px 0 6px}.tl-shortcuts .btn{padding:6px 12px}.batch-summary{font-size:12px;line-height:1.7;margin-top:12px}.batch-summary ul{padding-left:20px}.batch-last,.batch-review{padding:12px;border:1px solid #526c91;border-radius:9px;margin-top:10px;background:#111b2b}.batch-last small{display:block;color:#d3b779}.batch-diff{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:5px}.batch-diff span{overflow-wrap:anywhere}.batch-review details{margin:10px 0}.batch-review summary{cursor:pointer;color:#a9caff}
 
-.preview-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}.preview-overview button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;border:1px solid var(--line-2);border-radius:9px;background:#111b2c;color:var(--text);padding:10px;text-align:left;cursor:pointer}.preview-overview span{color:#b7d1fa;font-size:13px}.preview-overview small{color:var(--muted);font-size:11px}.preview-tools{border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}.preview-tools>b{font-size:13px}.preview-tools .chips{margin-top:8px}.tlpop.tp-expanded{width:520px}.tp-full .grid,.tp-full .split{grid-template-columns:minmax(0,1fr)}.tp-full .list{display:flex;flex-wrap:wrap;max-height:140px;overflow:auto}.tp-full .list button{width:auto;flex:1 0 100px}.tp-full .card{margin-bottom:12px;padding:12px}.tp-full .card-h{margin-bottom:8px}.tp-full .card h2{font-size:15px}.tp-full .adv{display:revert!important}.tp-full .spawn-scope{font-size:11px}.tp-full .grid{gap:10px}.tp-full .notice{font-size:11px}.tp-full .choice{grid-template-columns:minmax(0,1fr)}
+.preview-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}.preview-overview button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;border:1px solid var(--line-2);border-radius:9px;background:#111b2c;color:var(--text);padding:10px;text-align:left;cursor:pointer}.preview-overview span{color:#b7d1fa;font-size:13px}.preview-overview small{color:var(--muted);font-size:11px}
+.preview-overview button.warn{border-color:#f0c07066;background:#f0c07012}.preview-overview button.warn small{color:var(--amber)}.capauto{font-style:normal;font-size:10px;color:#9fe0c0;border:1px solid #5fd4a655;border-radius:6px;padding:0 4px;margin-left:4px}
+.captips{display:flex;flex-direction:column;gap:6px;border:1px solid #f0c07040;background:#f0c0700d;color:var(--amber);border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:12.5px;line-height:1.6}.captips.ok{border-color:#5fd4a640;background:#5fd4a60a;color:#9fe0c0}.captips small{color:var(--muted);font-size:11px}.captip{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}.captip span{min-width:0}.captip .mini-btn{flex:none}.preview-tools{border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}.preview-tools>b{font-size:13px}.preview-tools .chips{margin-top:8px}.tlpop.tp-expanded{width:520px}.tp-full .grid,.tp-full .split{grid-template-columns:minmax(0,1fr)}.tp-full .list{display:flex;flex-wrap:wrap;max-height:140px;overflow:auto}.tp-full .list button{width:auto;flex:1 0 100px}.tp-full .card{margin-bottom:12px;padding:12px}.tp-full .card-h{margin-bottom:8px}.tp-full .card h2{font-size:15px}.tp-full .adv{display:revert!important}.tp-full .spawn-scope{font-size:11px}.tp-full .grid{gap:10px}.tp-full .notice{font-size:11px}.tp-full .choice{grid-template-columns:minmax(0,1fr)}
 @media(max-width:600px){.preview-overview{grid-template-columns:minmax(0,1fr)}.preview-overview button{padding:9px}.preview-tools .chips{gap:5px}.tp-full .ratio-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .tp-full[data-preview-map] .preview-common-only{display:none}
 </style>
@@ -457,6 +459,10 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
 .spawn-scope summary{cursor:pointer}.shared-card .gcrow{opacity:.45}
 .tp-style{margin:12px 0}.tp-style .seg{display:flex}.tp-style button{flex:1;white-space:normal}
 .tlpop{max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto}
+.tl-hint{display:none}
+/* 1.0.6 폰(사용자 11-14 "타임라인 클릭이 폰에서 잘 안 됨"): 폭이 좁으면 타임라인을 실제 크기에 가깝게 그리고 옆으로 밀어 본다. 손가락이면 점·글자 누르는 영역을 넓힌다. */
+@media(max-width:700px){.tl{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}.tl svg{width:880px;max-width:none}.tl-hint{display:block;font-size:11px;color:var(--muted);margin:0 0 6px}}
+@media(pointer:coarse){.tl circle.tlc,.tl .tlc circle,.tl text.tlc,.tl .tlc text,.tl [data-tlopen] text,.tl text[data-tlopen]{stroke:#0000;stroke-width:14px}}
 @media(max-width:600px){.apply-info th{width:90px}.zone-weight{grid-template-columns:56px minmax(60px,1fr) 44px}}
 </style>
 </head>
@@ -693,7 +699,7 @@ function makeDefaults(){
   MAPS.forEach(m=>{const z={};ZONES[m.id].forEach(x=>z[x.id]={on:true,w:x.w});
     maps[m.id]={ovr:{flow:false,scav:false,near:false,dist:false,hotspot:false,limits:false},override:false,style:['labyrinth'].includes(m.id)?'infinite':'waves',scavStyle:'waves',inf:{delay:45,batch:2,pmcShare:50,jitter:30},start:{scav:true},raidSet:m.base,
       startPmcPct:35,interval:6,waveMin:2,waveMax:4,early:1.2,mid:1,late:.6,original:true,variant:m.id!=='lighthouse',
-      cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,capOn:false,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,zones:z,zonesAlt:{}};});
+      cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,capOn:false,capAuto:false,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,zones:z,zonesAlt:{}};});
   const bosses={};BOSSES.forEach(b=>{const mm={},zz={};MAPS.forEach(m=>{mm[m.id]=b.maps.includes(m.id);zz[m.id]=b.zones[m.id]?[...b.zones[m.id]]:['default'];});
     bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'normal',maps:mm,zones:zz,mapChance:{}};});
   const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],tFrom:0,tTo:0,xFrom:0,xTo:0};
@@ -837,7 +843,7 @@ const pill=(t,cls='')=>`<span class="pill ${cls}">${t}</span>`;
 
 /* ================= spawn model ================= */
 /** 이 맵에 실제로 쓰는 동시 봇 상한: 이 맵만 따로 정했으면 그 값, 아니면 공통 값, 공통이 0이면 맵 기본값. */
-const capOf=mid=>{const o=state.maps[mid];return o.capOn?o.cap:state.spawn.botCap>0?state.spawn.botCap:DEFAULTS.maps[mid].cap;};
+const capOf=mid=>{const o=state.maps[mid];if(o.capAuto)return capNeed(mapById(mid)).auto;return o.capOn?o.cap:state.spawn.botCap>0?state.spawn.botCap:DEFAULTS.maps[mid].cap;};
 const raidOf=m=>state.spawn.raid.mode==='detect'?m.det:state.maps[m.id].raidSet;
 const CARD_FIELDS={
   flow:['startPmcPct','startMode','startPmcMin','startPmcMax','startPlayerOnly','firstDelay','interval','waveMin','waveMax','randomPct','minGap','dist.wave','dist.bots','dist.smooth','intensity.early','intensity.mid','intensity.late','hardStop.mode','hardStop.pmcPct','stopBeforeEnd','ignoreCap.start','ignoreCap.waves'],
@@ -927,8 +933,8 @@ function trigRule(mid,trig,role){const r=((state.triggers||{})[mid]||{})[trig];r
 function trigChance(mid,e){const r=trigRule(mid,e.triggerId,e.role);return typeof r.chance==='number'?r.chance:e.chance;}
 /** 트리거 항목을 트리거·역할로 묶는다. [{key, mid, trig, role, kind, n, chance, orig, zones}] */
 function trigGroups(m,list){const out=[];(list||[]).forEach(e=>{if(!e.trigger)return;let g=out.find(x=>x.trig===e.triggerId&&x.role===e.role);
-  if(!g){g={key:m.id+'~'+e.triggerId+'~'+e.role,mid:m.id,trig:e.triggerId,role:e.role,kind:e.trigger,n:0,orig:e.chance,zones:[]};out.push(g);}g.n++;g.orig=Math.max(g.orig,e.chance);if(e.zone)g.zones.push(e.zone);});
-  out.forEach(g=>{const r=trigRule(m.id,g.trig,g.role);g.chance=typeof r.chance==='number'?r.chance:g.orig;g.swap=r.role||'';});return out;}
+  if(!g){g={key:m.id+'~'+e.triggerId+'~'+e.role,mid:m.id,trig:e.triggerId,role:e.role,kind:e.trigger,n:0,orig:e.chance,zones:[],delay0:+e.delay||0};out.push(g);}g.n++;g.orig=Math.max(g.orig,e.chance);g.delay0=Math.max(g.delay0,+e.delay||0);if(e.zone)g.zones.push(e.zone);});
+  out.forEach(g=>{const r=trigRule(m.id,g.trig,g.role);g.chance=typeof r.chance==='number'?r.chance:g.orig;g.swap=r.role||'';g.delay=typeof r.delay==='number'?r.delay:g.delay0;g.rolePct=typeof r.rolePct==='number'?r.rolePct:100;});return out;}
 /** 타임라인 특수 봇 줄(1.0.6 종류마다 한 줄): 시각 무리·레버 무리·추가 무리. */
 function specGroups(m){const ents=mapEntries(m),lane=specLane(m),ids=[...new Set(lane.map(x=>x[2]))];
   return ids.map(id=>{const def=SPECIALS.find(x=>x[0]===id),sp=state.specials[id],ex=SPEC_EXTRA.includes(id),role=SPEC_ROLE[id],c=specChance(id,m.id);
@@ -1015,9 +1021,9 @@ function timeline(m,big=false){
   const ed=big&&tlEdit&&page==='spawn';
   const e=estimate(m);if(!e)return spawnLocked()?conflictNotice():notice(T('스폰 모듈이 꺼져 있어 SPT 기본 스폰을 씁니다.','Spawn module is off — SPT default spawns are used.'),'warn');
   const {p,c}=e,W=960,L=118,R=22,x=t=>L+(W-L-R)*Math.min(t,p.raid)/p.raid;
-  const hv=(k,xx,y0,h,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-9}" y="${y0}" width="18" height="${h}" fill="transparent"/><rect x="${xx-3.5}" y="${y0+h/2-12}" width="7" height="24" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
+  const hv=(k,xx,y0,h,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-13}" y="${y0}" width="26" height="${h}" fill="transparent"/><rect x="${xx-3.5}" y="${y0+h/2-12}" width="7" height="24" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
   const pp=k=>ed?` data-pop="${k}" class="tlc"`:'';
-  const hf=(k,xx,yy,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-9}" y="${yy-11}" width="18" height="22" fill="transparent"/><rect x="${xx-3.5}" y="${yy-9}" width="7" height="18" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
+  const hf=(k,xx,yy,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-13}" y="${yy-14}" width="26" height="28" fill="transparent"/><rect x="${xx-3.5}" y="${yy-9}" width="7" height="18" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
   const bs=BOSSES.filter(b=>state.bosses[b.id].on&&state.bosses[b.id].maps[m.id]);
   const fac=FACTIONS.filter(f=>state.factions[f.id].maps[m.id]);
   const lanes=[['pmc',T('PMC','PMC'),'#6ea8ff'],['scav',T('스캐브','Scavs'),'#5fd4a6']];
@@ -1064,7 +1070,7 @@ function timeline(m,big=false){
   s+=`<text x="${W-R}" y="${H-10}" fill="#647089" font-size="12" text-anchor="end">${tr(T('분','min'))}</text>`;
   const notes=[];bs.forEach(b=>{const bb=state.bosses[b.id];notes.push(ed?`<span class="pill gold tlc" data-pop="boss|${b.id}">★ ${tr(b.name)} ${bossChance(b,m.id)}% · ${bb.zones[m.id].map(z=>zname(m.id,z)).join(', ')}</span>`:pill('★ '+tr(b.name)+' '+bossChance(b,m.id)+'% · '+bb.zones[m.id].map(z=>zname(m.id,z)).join(', '),'gold'));});
   if(m.id==='laboratory'&&state.lab.blackoutLink!=='always')notes.push(pill(tr(T('블랙아웃 연동','Blackout link'))+': '+tr(state.lab.blackoutLink==='only'?T('정전 판에만 블디','BlackDiv on blackout only'):T('정전 판 확률 ×','Blackout ×'))+(state.lab.blackoutLink==='boost'?state.lab.blackoutMult:''),'warn'));
-  return `${ed?previewOverview(m):''}<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-shortcuts chips"><button class="btn" data-pop="wave">${tr(T('PMC 설정','PMC settings'))}</button>${m.id!=='laboratory'||state.spawn.allowScavLab?`<button class="btn" data-pop="scav">${tr(T('스캐브 설정','Scav settings'))}</button>`:''}<span class="small muted">${tr(T('이름이나 점을 누르기 어려우면 여기서 엽니다.','Use these buttons when a timeline target is hard to click.'))}</span></div>${previewTools(m)}<div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
+  return `${ed?previewOverview(m):''}${ed?`<p class="tl-hint">${tr(T('타임라인은 옆으로 밀어 볼 수 있습니다. 점·이름을 누르면 고치는 창이 열립니다.','Swipe the timeline sideways. Tap a dot or name to edit.'))}</p>`:''}<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-shortcuts chips"><button class="btn" data-pop="wave">${tr(T('PMC 설정','PMC settings'))}</button>${m.id!=='laboratory'||state.spawn.allowScavLab?`<button class="btn" data-pop="scav">${tr(T('스캐브 설정','Scav settings'))}</button>`:''}<span class="small muted">${tr(T('이름이나 점을 누르기 어려우면 여기서 엽니다.','Use these buttons when a timeline target is hard to click.'))}</span></div>${previewTools(m)}<div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
 }
 const legend=()=>`<div class="legend"><span><i style="background:#6ea8ff;border-radius:50%"></i>${tr(T('웨이브 (숫자 = 최대 인원)','Wave (number = max size)'))}</span><span><i style="background:#6ea8ff55;border:1px solid #6ea8ff"></i>${tr(T('계속 보충','Continuous refill'))}</span><span><i style="background:#bff3df;width:2px"></i>${tr(T('보충 확인 시점','Refill check'))}</span><span><i style="background:repeating-linear-gradient(45deg,#f0c07088 0 2px,transparent 2px 5px)"></i>${tr(T('시작 보호','Start protection'))}</span><span><i style="background:#f27f8c;height:2px"></i>${tr(T('PMC 중단','PMC stop'))}</span></div>`;
 const MAPFIELDS=['startPmcPct','interval','waveMin','waveMax','early','mid','late'];
@@ -1125,16 +1131,18 @@ function popSpecs(kind,arg,m){const c=cfgFor(m),mid=m.id,raid=Math.round(raidOf(
       [T('무리 인원 · 최대','Group size · max'),P0+'max',sp.max,1,10,1,UI.ppl,''],
       [T('나오는 시각 · 처음 (끝이 0이면 원래 시각)','Spawn time · from (0 end = original time)'),P0+'tFrom',sp.tFrom||0,0,raid,1,UI.min_,''],
       [T('나오는 시각 · 끝 (0 = 원래 시각)','Spawn time · to (0 = original time)'),P0+'tTo',sp.tTo||0,0,raid,1,UI.min_,'']];
-    return {title:tr(def[1]),note:tr(ex?T('원래 스폰(레버·탈출구 같은 이벤트 무리)은 확률·인원이 맵 기본 그대로이고 시각만 바꿀 수 있습니다(이벤트 무리는 시각도 그대로). 추가 스폰은 Gravity가 따로 넣는 무리입니다. 이 종류를 아예 끄려면 자세한 수정의 "켜기"를 끄십시오.','Original groups keep the map’s chance and size; only their time can change (event groups keep their time). Extra is a separate Gravity group. To turn this type off entirely, switch off "Enable" under Details.'):T('시각·인원은 이 종류가 나오는 모든 맵에, 확률은 이 맵에만 적용됩니다. 0%면 이 맵에 안 나옵니다.','Time and size apply on every map; chance only on this map. 0% = never here.')),rows};}
+    // 원래 무리가 없는 맵(1.0.6 #39)은 원래 스폰 칸(시각)을 숨긴다.
+    if(ex&&!mapRoster(m).items.some(x=>x.type==='spec'&&x.id===arg&&x.tag==='van'))for(let i=rows.length-1;i>=0;i--)if(/\.(tFrom|tTo|vanillaMax)$/.test(rows[i][1]))rows.splice(i,1);
+    return {title:tr(def[1]),extra:ex?`<div class="small muted" style="margin-top:6px">${tr(T('추가 무리 시각 비중','Extra group timing'))}</div>`+curvePresetBtns(P0+'extraCurve.',sp.extraCurve,!sp.on):'',note:tr(ex?T('원래 스폰(레버·탈출구 같은 이벤트 무리)은 확률·인원이 맵 기본 그대로이고 시각만 바꿀 수 있습니다(이벤트 무리는 시각도 그대로). 추가 스폰은 Gravity가 따로 넣는 무리입니다. 이 종류를 아예 끄려면 자세한 수정의 "켜기"를 끄십시오.','Original groups keep the map’s chance and size; only their time can change (event groups keep their time). Extra is a separate Gravity group. To turn this type off entirely, switch off "Enable" under Details.'):T('시각·인원은 이 종류가 나오는 모든 맵에, 확률은 이 맵에만 적용됩니다. 0%면 이 맵에 안 나옵니다.','Time and size apply on every map; chance only on this map. 0% = never here.')),rows};}
   if(kind==='trig'){const [tm,trig,role]=String(arg||'').split('~');const g=trigGroups(mapById(tm)||m,(mapEntries(mapById(tm)||m)||[]).filter(e=>e.trigger)).find(x=>x.trig===trig&&x.role===role);if(!g)return null;
     const r=trigRule(tm,trig,role),P1=`triggers.${tm}.${trig}.${role}.`,swap=g.kind==='interactObject'&&role==='pmcBot';
     const extra=swap?`<div class="tp-startmode">${seg(P1+'role',T('레버가 부르는 무리','Group the trigger calls'),'',[['',T('레이더 (원래)','Raiders (original)')],['exUsec',T('로그','Rogues')],...(facInst('blackdiv')?[['blackDivAssault',T('블랙 디비전','Black Division')]]:[])],{val:r.role||''}).replace(/data-segp=/g,'data-pop-mode=')}</div>`:'';
     return {title:`${trigLabel(trig)} · ${spawnRoleName(role)}`,extra,note:tr(T('게임은 판 시작 때 이 확률을 굴리고, 레버·스위치·이벤트가 일어나면 그때 내보냅니다. 그래서 "작동했을 때 나올 확률"과 같습니다. 트리거·구역·지연은 바꾸지 않습니다. 인원 0~0 = 원래 인원.','The game rolls this chance at raid start and releases the group when the lever/switch/event fires, so it equals "chance to appear when triggered". Trigger, zone and delay stay unchanged. Size 0–0 = original.'))+(g.n>1?' '+fmt(tr(T('이 트리거에 묶인 무리 {n}개에 모두 적용합니다.','Applies to all {n} groups on this trigger.')),{n:g.n}):''),
-      rows:[[T('작동했을 때 나올 확률','Chance when triggered'),P1+'chance',g.chance,0,100,1,UI.pct,''],[T('무리 인원 · 최소 (0 = 원래)','Group size · min (0 = original)'),P1+'min',r.min||0,0,10,1,UI.ppl,''],[T('무리 인원 · 최대 (0 = 원래)','Group size · max (0 = original)'),P1+'max',r.max||0,0,10,1,UI.ppl,'']]};}
+      rows:[[T('작동했을 때 나올 확률','Chance when triggered'),P1+'chance',g.chance,0,100,1,UI.pct,''],[T('무리 인원 · 최소 (0 = 원래)','Group size · min (0 = original)'),P1+'min',r.min||0,0,10,1,UI.ppl,''],[T('무리 인원 · 최대 (0 = 원래)','Group size · max (0 = original)'),P1+'max',r.max||0,0,10,1,UI.ppl,''],[fmt(tr(T('작동 뒤 나오기까지 (원래 {d}초)','Delay after trigger (original {d}s)')),{d:g.delay0}),P1+'delay',g.delay,0,600,1,UI.sec,''],...(swap&&r.role?[[T('바꾼 무리로 나올 비율','Share as the swapped group'),P1+'rolePct',g.rolePct,0,100,5,UI.pct,'']]:[])]};}
   if(kind==='scavcurve'){const rows=['early','mid','late'].map((k,i)=>{const [p,o]=F('scav.curve.'+k);return [[T('초반 스캐브 강도','Early scav intensity'),T('중반 스캐브 강도','Mid scav intensity'),T('후반 스캐브 강도','Late scav intensity')][i],p,(c.scav.curve||{})[k]??1,0.2,3,0.05,UI.x,o];});
     const btn=(v,l)=>`<button class="mini-btn" data-act="scavCurve" data-v="${v}">${tr(l)}</button>`;
     return {title:tr(T('스캐브 시간대별 강도','Scav intensity over the raid')),extra:`<div class="chips" style="margin:6px 0">${btn('0.5,1,1.5',T('PMC 반대로 (갈수록 많게)','Reverse of PMCs (more later)'))}${btn('1,1,1',T('고르게','Even'))}</div>`,
-      note:tr(T('레이드를 셋으로 나눠 살아 있는 스캐브 상한과 보충 속도에 이 배수를 곱합니다. 시작 스캐브에는 곱하지 않고, 맵 동시 상한은 넘지 않습니다(상한이 낮으면 차이가 작음).','Splits the raid in thirds and multiplies the live scav limit and refill speed. Starting scavs are not scaled and the map cap is never exceeded (a low cap means a smaller effect).')),rows};}
+      note:tr(T('레이드를 셋으로 나눠 살아 있는 스캐브 상한과 보충 속도에 이 배수를 곱합니다. 시작 스캐브에는 곱하지 않고, 맵 동시 상한은 넘지 않습니다(상한이 낮으면 차이가 작음). 아래에서 "이 맵만"을 고르면 이 맵만 따로 정합니다.','Splits the raid in thirds and multiplies the live scav limit and refill speed. Starting scavs are not scaled and the map cap is never exceeded (a low cap means a smaller effect). Pick "This map only" below to set it for this map alone.')),rows};}
   if(kind==='fac'){const f=FACTIONS.find(x=>x.id===arg),F=state.factions[arg],o=F.managed?'':'fac:'+arg,pre='factions.'+arg+'.',note=F.managed?'':tr(T('지금은 "모드 설정 그대로"입니다. 값을 바꾸면 "Gravity가 관리"로 바뀌고 이 값이 적용됩니다.','Currently "use the mod’s own config". Changing a value switches to Gravity-managed.'));
     if(arg==='blackdiv')return {title:tr(f.name),note:note+' '+tr(T('연구소 게이트·웨지·다른 모드의 조건부 이벤트는 별도 등장 경로입니다. 이 확률은 일반 사냥조에만 적용됩니다.','Lab gates, Wedge and other mods’ conditional events are separate spawn paths. This chance applies only to ordinary hunt teams.')),rows:[[T('맵마다 등장 확률','Chance per map'),pre+'bd.chance',F.bd.chance,0,100,1,UI.pct,o],[T('등장 시작 (레이드 %)','Appears from (% of raid)'),pre+'bd.tMin',F.bd.tMin,0,100,1,UI.pct,o],[T('등장 끝 (레이드 %)','Appears until (% of raid)'),pre+'bd.tMax',F.bd.tMax,0,100,1,UI.pct,o]]};
     return {title:tr(f.name),note:note+' '+tr(T('순찰조마다 이 확률을 따로 굴립니다. 검문소·사냥조는 자세한 수정의 별도 확률을 사용합니다. 따라서 이 수치가 이 팩션 전체의 레이드당 등장 확률은 아닙니다.','Each patrol rolls this chance separately. Checkpoints and hunters use their own chances under Details. This is not the faction’s overall chance per raid.')),rows:[[T('순찰 확률','Patrol chance'),pre+'patrol.chance',F.patrol.chance,0,100,1,UI.pct,o],[T('맵당 순찰조 수','Patrols per map'),pre+'patrol.count',F.patrol.count,1,5,1,'',o],[T('등장 시작','Appears from'),pre+'patrol.tMin',F.patrol.tMin,0,raid,1,UI.min_,o],[T('등장 끝','Appears until'),pre+'patrol.tMax',F.patrol.tMax,0,raid,1,UI.min_,o],...['early','mid','late'].map((k,i)=>[[T('순찰 · 초반 비중','Patrols · early weight'),T('순찰 · 중반 비중','Patrols · mid weight'),T('순찰 · 후반 비중','Patrols · late weight')][i],pre+'patrol.curve.'+k,(F.patrol.curve||{})[k]??1,0,3,0.1,UI.x,o])]};}
@@ -1182,7 +1190,7 @@ function previewDetails(kind,arg,m){
     return '';
   }finally{previewRendering=false;FOLD=fold;}
 }
-function previewOverview(m){const e=estimate(m);if(!e)return '';const c=e.c,st=state.maps[m.id];return `<div class="preview-overview"><button data-pop="start"><b>PMC</b><span>${tr(T('시작','Start'))} ${startPmcOf(m,c)} · ${tr(T('상한','Cap'))} ${capOf(m.id)}</span><small>${tr(st.style==='start'?T('시작만','Start only'):st.style==='infinite'?T('무한 보충','Endless refill'):T('웨이브','Waves'))} · ${c.waveMin}–${c.waveMax} / ${c.interval}${u('min_')}</small></button>${m.scav>0||(m.id==='laboratory'&&state.spawn.allowScavLab)?`<button data-pop="scav"><b>${tr(T('스캐브','Scavs'))}</b><span>${tr(T('시작','Start'))} ${c.scav.startOn?startScavOf(m,c):0} · +${c.scav.delay}${u('min_')}</span><small>${tr(T('동시 소프트 캡','Soft cap'))} ${c.scav.softCap} · ${tr(T('보충 확인','Check'))} ${c.scav.refill}${u('sec')}</small></button>`:''}<button data-pop="panel|limits"><b>${tr(T('맵 동시 상한','Map bot cap'))}</b><span>${capOf(m.id)}${u('ppl')}</span><small>${tr(T('시작·보충·종류별 상한 확인','Review start, refill & per-kind limits'))}</small></button></div>`;}
+function previewOverview(m){const e=estimate(m);if(!e)return '';const c=e.c,st=state.maps[m.id],tips=capTips(m);return `<div class="preview-overview"><button data-pop="start"><b>PMC</b><span>${tr(T('시작','Start'))} ${startPmcOf(m,c)} · ${tr(T('상한','Cap'))} ${capOf(m.id)}</span><small>${tr(st.style==='start'?T('시작만','Start only'):st.style==='infinite'?T('무한 보충','Endless refill'):T('웨이브','Waves'))} · ${c.waveMin}–${c.waveMax} / ${c.interval}${u('min_')}</small></button>${m.scav>0||(m.id==='laboratory'&&state.spawn.allowScavLab)?`<button data-pop="scav"><b>${tr(T('스캐브','Scavs'))}</b><span>${tr(T('시작','Start'))} ${c.scav.startOn?startScavOf(m,c):0} · +${c.scav.delay}${u('min_')}</span><small>${tr(T('동시 소프트 캡','Soft cap'))} ${c.scav.softCap} · ${tr(T('보충 확인','Check'))} ${c.scav.refill}${u('sec')}</small></button>`:''}<button data-pop="panel|limits" class="${tips.length?'warn':''}"><b>${tr(T('맵 동시 상한','Map bot cap'))}${st.capAuto?` <i class="capauto">${tr(T('자동','auto'))}</i>`:''}</b><span>${capOf(m.id)}${u('ppl')}</span><small>${tips.length?fmt(tr(T('걸릴 수 있음 {n}건 · 눌러서 확인','{n} possible issue(s) · tap to review')),{n:tips.length}):tr(T('시작·보충·종류별 상한·그룹 제한','Start, refill, per-kind & group limits'))}</small></button></div>${capTipBox(m,true)}`;}
 function previewTools(m){
   const button=(k,label)=>`<button class="mini-btn" data-pop="panel|${k}">${tr(label||PREVIEW_PANELS[k])}</button>`;
   if(!isSpawnMap()){
@@ -1215,7 +1223,8 @@ function openPop(key,ev,keep=false){
     ${sp.note?`<details class="tp-help"><summary>${tr(T('적용 방식 안내','How this applies'))}</summary><p class="small muted">${esc(sp.note)}</p></details>`:''}${tlPopTab==='details'?`<div class="tp-full" ${isSpawnMap()?'data-preview-map="'+mid+'"':''}>${previewDetails(kind,arg,m)}</div>`:startMode+(sp.extra||'')+popRows(rows,mid)}
     <p class="tp-footer">${tr(T('수정값은 미리보기에 바로 반영됩니다. 아래 저장 바에서 저장하면 다음 레이드부터 적용됩니다.','Preview updates immediately. Save with the bottom save bar to apply from the next raid.'))}</p>`;
   box.classList.toggle('tp-expanded',tlPopTab==='details');box.hidden=false;
-  const bw=box.offsetWidth||340,x=clampN(tlPopAnchor.x,8,Math.max(8,window.innerWidth-bw-8)),y=clampN(tlPopAnchor.y,8,Math.max(8,window.innerHeight-680));
+  const bw=box.offsetWidth||340,narrow=window.innerWidth<700,x=narrow?8:clampN(tlPopAnchor.x,8,Math.max(8,window.innerWidth-bw-8)),y=narrow?Math.round(window.innerHeight*0.3):clampN(tlPopAnchor.y,8,Math.max(8,window.innerHeight-680));
+  // 폰은 누른 자리와 상관없이 화면 아래쪽 70%에 창을 띄운다(아래쪽을 누르면 창이 너무 작아지던 것).
   box.style.left=x+'px';box.style.top=y+'px';box.style.maxHeight=Math.max(180,window.innerHeight-y-8)+'px';
 }
 function closePop(){const b=$('#tlpop');if(b&&!b.hidden){b.hidden=true;b.innerHTML='';tlPopKey='';tlPopAnchor=null;}}
@@ -1289,6 +1298,7 @@ function selectPage(id,tab){
   if(page==='spawn'&&spawnTab!=='all')mapSel=spawnTab;
 }
 function restoreNavigation(){
+  if(DEMO){tlOpen={'spec:raiders':true,'spec:rogues':true};selectPage('spawn','bigmap');return;}
   const raw=location.hash.replace(/^#\/?/,'')||readLocal('gravity.page','dashboard'),[id,tab]=raw.split('/');
   const savedTab=readLocal('gravity.spawnTab','all');
   if(mapById(savedTab))mapSel=savedTab;
@@ -1378,7 +1388,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +slider(s+'scav.refill',T('보충 확인 주기','Refill check'),'',{max:3600,step:5,unit:UI.sec})
     +slider(s+'scav.pending',T('대기 봇이 이 수를 넘으면 보충 대기','Wait if more bots than this are pending'),'',{max:20,unit:UI.ppl})
     +slider(s+'scav.softCap',T('스캐브 동시 소프트 캡','Scav soft cap'),'',{max:60,unit:UI.ppl})
-    +`<div class="sub" style="margin-top:8px">${tr(T('시간대별 스캐브 강도 (1 = 그대로)','Scav intensity over the raid (1 = unchanged)'))}${tip(T('레이드를 셋으로 나눠 살아 있는 스캐브 소프트 캡과 보충 속도에 곱합니다. 0.5 · 1 · 1.5면 PMC와 반대로 초반엔 적고 후반으로 갈수록 많아집니다. 시작 스캐브에는 곱하지 않고 맵 동시 상한은 넘지 않습니다.','Splits the raid in thirds and multiplies the live scav soft cap and refill speed. 0.5 · 1 · 1.5 is the reverse of PMCs: few early, more later. Starting scavs are not scaled and the map cap is never exceeded.'))}</div><div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(s+'scav.curve.'+k,[T('초반','Early'),T('중반','Mid'),T('후반','Late')][i],'',{min:0.2,max:3,step:0.05,unit:UI.x})).join('')}</div>`
+    +`<div class="sub" style="margin-top:8px">${tr(T('시간대별 스캐브 강도 (1 = 그대로)','Scav intensity over the raid (1 = unchanged)'))}${tip(T('레이드를 셋으로 나눠 살아 있는 스캐브 소프트 캡과 보충 속도에 곱합니다. 0.5 · 1 · 1.5면 PMC와 반대로 초반엔 적고 후반으로 갈수록 많아집니다. 시작 스캐브에는 곱하지 않고 맵 동시 상한은 넘지 않습니다. 맵마다 다르게 하려면 그 맵 탭의 스캐브 칸에서 "이 맵만"을 켜고 바꿉니다(예: 세관만 PMC 반대로).','Splits the raid in thirds and multiplies the live scav soft cap and refill speed. 0.5 · 1 · 1.5 is the reverse of PMCs: few early, more later. Starting scavs are not scaled and the map cap is never exceeded. For a per-map curve, turn on "This map only" in that map tab’s scav card (e.g. reverse only on Customs).'))}</div><div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(s+'scav.curve.'+k,[T('초반','Early'),T('중반','Mid'),T('후반','Late')][i],'',{min:0.2,max:3,step:0.05,unit:UI.x})).join('')}</div>`
     +slider(s+'scav.perPlayer',T('플레이어당 스캐브 한도','Scavs per player'),'',{max:100,unit:UI.ppl})
     +slider(s+'hardStop.scavPct',T('남은 레이드가 이 비율 이하면 스캐브 중단','Stop scavs below this % left'),'',{max:90})
     +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),'')
@@ -1397,7 +1407,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +slider(s+'hotspotShare',T('핫스팟 비중','Hotspot share'),'',{dis:c.placement!=='mixed'})
     +sw(s+'hotspotBoost',T('핫스팟 부스트','Hotspot boost'),T('아직 효과가 없습니다.','Not applied yet.'),{adv:true,dis:c.placement==='vanilla'})
     +sw(s+'hotspotIgnoreCap',T('핫스팟은 동시 상한 무시','Hotspots ignore cap'),T('아직 효과가 없습니다.','Not applied yet.'),{adv:true,dis:c.placement==='vanilla'});
-  const limits=(mid?mapCapControl(mid):slider(s+'botCap',T('모든 맵 동시 봇 상한','Bot cap for every map'),T('맵 탭에서 "이 맵만 따로"를 켠 맵은 그 값이 우선합니다. 0 = 맵마다 게임 기본값.','Maps with "set separately" on use their own value. 0 = each map’s default.'),{min:0,max:60,unit:UI.ppl}))+capTableBox(mid)+groupCapBox(mid);
+  const limits=(mid?capTipBox(mapById(mid))+mapCapControl(mid):capAutoAllBox()+slider(s+'botCap',T('모든 맵 동시 봇 상한','Bot cap for every map'),T('맵 탭에서 "이 맵만 따로"를 켠 맵은 그 값이 우선합니다. 0 = 맵마다 게임 기본값.','Maps with "set separately" on use their own value. 0 = each map’s default.'),{min:0,max:60,unit:UI.ppl}))+capTableBox(mid)+groupCapBox(mid);
   const shared=card(T('레이드 시간 (공통)','Raid length (shared)'),choice(s+'raid.mode',T('레이드 시간 기준','Raid time source'),'',[['detect','⟲',T('감지 (권장)','Detect'),T('실제 시간을 읽습니다.','Reads actual raid time.')],['set','⏱',T('Gravity가 정함','Set by Gravity'),T('맵별 시간을 씁니다.','Uses per-map raid time.')]])+raidTimeBox(det))
     +card(T('PMC 구성 (모든 맵 공통)','PMC makeup (all maps)'),slider(s+'usecPct',T('USEC 비율','USEC share'),'')
       +ratio(s+'squad',[['s1',T('솔로','Solo'),'#6ea8ff'],['s2',T('2인','Duo'),'#8fb8ff'],['s3',T('3인','Trio'),'#a78bfa'],['s4',T('4인','Squad 4'),'#e8b04b'],['s5',T('5인','Squad 5'),'#f08a5d']],T('분대 크기','Squad size'),'')
@@ -1412,12 +1422,67 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
   const labPmc=mid==='labyrinth'?card(T('미궁 PMC','Labyrinth PMCs'),sw('spawn.allowPmcLabyrinth',T('미궁에도 PMC 스폰','PMCs on the Labyrinth'),T('게임 기본은 미궁에 PMC가 없습니다. 켜면 시작 PMC·보충 PMC가 다른 맵처럼 나옵니다(미궁은 PMC 구역이 없어 게임 스폰 지점을 씁니다).','The game has no PMCs on the Labyrinth by default. On = starting and refill PMCs like other maps (uses game spawn points, since the Labyrinth has no PMC zones).'))
       +`<p class="small muted" style="margin:4px 0 0">${tr(state.spawn.allowPmcLabyrinth?T('지금: 미궁에 PMC가 나옵니다.','Now: PMCs spawn on the Labyrinth.'):T('지금: 미궁에 PMC가 나오지 않습니다(스캐브·보스만).','Now: no PMCs on the Labyrinth (scavs and bosses only).'))}</p>`):'';
   if(section){if(section==='shared')return shared;const bodies={flow,scav,dist,hotspot,limits,near:P.near.render(mid,true)};return spawnCard(mid,section,bodies[section]||'');}
-  const controls=`<div class="grid g2">${labPmc}${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}</div>`;
+  const controls=`<div class="grid g2">${labPmc}${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${mid&&tlEdit?'':spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}</div>`;
   return controlsOnly?controls:header+controls+'</div>';
 }};
-function mapCapControl(mid){const o=state.maps[mid],src=o.capOn?T('이 맵 값','this map'):state.spawn.botCap>0?T('모든 맵 공통 값','shared value'):T('맵 기본값','map default');
+
+// 1.0.6 동시 상한 팁·자동 맞춤(사용자 11-14): 설정이 맵 동시 상한·종류별 최대·그룹 제한에 걸리는지 웹에서 미리 계산해 노란 팁과 고칠 값을 낸다.
+// 웹 추정(판마다 굴림·죽음·탈출은 모름)이라 "걸릴 가능성"으로 안내한다. capNeed는 capOf·estimate를 부르지 않는다(capOf가 이것을 부르므로 재귀 방지).
+function squadMix(c){const w=[1,2,3,4,5].map(i=>Math.max(0,+((c.squad||{})['s'+i])||0)),sum=w.reduce((a,b)=>a+b,0);return sum>0?w.map(x=>x/sum):[0,0,1,0,0];}
+const squadAvg=c=>squadMix(c).reduce((a,x,i)=>a+x*(i+1),0)||3;
+function specGroupMax(m){let best={n:0,name:null};SPECIALS.forEach(([id,n])=>{const sp=state.specials[id];if(!sp.on||id==='infected')return;
+  const ex=SPEC_EXTRA.includes(id),here=specChance(id,m.id)>0||(ex&&mapRoster(m).items.some(x=>x.type==='spec'&&x.id===id&&x.on));if(!here)return;
+  const k=ex?Math.max(sp.max||0,specChance(id,m.id)>0?(sp.extraMax||0):0):(sp.max||0);if(k>best.n)best={n:k,name:n};});return best;}
+// 1.0.6 시각 비중 프리셋(제안 1): 초반·중반·후반 비중 세 칸을 한 번에. prefix는 '...extraCurve.' 처럼 점으로 끝난다.
+const CURVE_PRESETS=[['2,1,0.3',T('초반 몰림','Front-loaded')],['1,1,1',T('고르게','Even')],['0.3,1,2',T('후반 몰림','Back-loaded')]];
+function curvePresetBtns(prefix,cur,dis=false){const now=['early','mid','late'].map(k=>+((cur||{})[k]??1)).join(',');
+  return `<div class="chips curve-presets" style="margin:4px 0 8px">${CURVE_PRESETS.map(([v,l])=>`<button class="mini-btn ${v.split(',').map(Number).join(',')===now?'on':''}" data-act="curvePreset" data-p="${prefix}" data-v="${v}" ${dis?'disabled':''}>${tr(l)}</button>`).join('')}</div>`;}
+const CAP_LOAD_GUESS={boss:4,faction:4,event:4};
+function kindLoad(m,k){const caps=cfgFor(m).caps||{},mx=(caps[k]||{}).max||0;
+  const here=k==='boss'?bossesOn(m).length>0:k==='special'?specGroupMax(m).n>0:k==='faction'?FACTIONS.some(f=>state.factions[f.id].maps[m.id]&&facInst(f.id)):false;
+  if(!here)return 0;const g=k==='special'?specGroupMax(m).n:CAP_LOAD_GUESS[k]||4;return mx>0?Math.min(mx,g):g;}
+function capNeed(m){const c=cfgFor(m),sp=startPmcOf(m,c),hs=m.scav>0||(m.id==='laboratory'&&c.allowScavLab),ss=hs&&c.scav.startOn?startScavOf(m,c):0;
+  const cv=c.scav.curve||{},k=Math.min(3,Math.max(cv.early??1,cv.mid??1,cv.late??1)),scav=hs&&c.scavStyle!=='start'?Math.round((c.scav.softCap||0)*k):0;
+  const pmc=c.style==='start'?sp:Math.max(sp,Math.round((c.waveMax||0)*2)),caps=c.caps||{},resv=caps.pmcReserve||0;
+  const resp=CAP_KINDS.map(x=>x[0]).filter(x=>['respect','vanilla'].includes((caps[x]||{}).mode)).reduce((a,x)=>a+kindLoad(m,x),0);
+  const start=c.ignoreCap&&c.ignoreCap.start?0:sp+ss,base=Math.max(start,pmc+scav,scav+resv),need=base+resp;
+  return {c,sp,ss,scav,pmc,resv,resp,start,need,auto:Math.max(8,Math.min(60,need))};}
+/** 팁 목록: {t:T(ko,en), fix:[[필드,값],...]}. 필드 'cap'은 이 맵 상한, 나머지는 limits 칸 필드(맵 따로면 그 맵, 아니면 공통). */
+function capTips(m){if(!spawnOn())return [];const n=capNeed(m),c=n.c,cap=capOf(m.id),caps=c.caps||{},out=[],tip=(ko,en,fix)=>out.push({t:T(ko,en),fix});
+  if(n.start>cap)tip(`시작 PMC ${n.sp} + 시작 스캐브 ${n.ss} = ${n.start}명이 동시 상한 ${cap}명보다 많습니다. 넘는 ${n.start-cap}명은 자리가 날 때까지 늦게 나옵니다.`,
+    `Starting PMCs ${n.sp} + starting scavs ${n.ss} = ${n.start}, above the bot cap of ${cap}. The extra ${n.start-cap} wait for a free slot.`,[['cap',n.start]]);
+  if(n.resv>=cap&&cap>0)tip(`PMC 예약 자리 ${n.resv}명이 상한 ${cap}명 이상이라 스캐브·근처 보충이 거의 나오지 않습니다.`,`PMC reserved slots (${n.resv}) are at or above the cap (${cap}), so scavs and near refills barely spawn.`,[['caps.pmcReserve',Math.floor(cap/2)]]);
+  else if(n.scav>0&&n.scav+n.resv>cap)tip(`스캐브 동시 목표 ${n.scav}명(소프트 캡 × 가장 센 강도)${n.resv?` + PMC 예약 ${n.resv}명`:''}이 상한 ${cap}명을 넘어, 스캐브가 목표만큼 차지 않습니다.`,
+    `The scav target of ${n.scav} (soft cap × peak intensity)${n.resv?` + ${n.resv} PMC reserved`:''} exceeds the cap of ${cap}, so scavs never reach the target.`,[['cap',n.scav+n.resv]]);
+  const groups=Math.ceil(n.sp/squadAvg(c));
+  if(caps.pmcGroups>0&&groups>caps.pmcGroups)tip(`시작 PMC가 약 ${groups}무리인데 PMC 동시 무리 최대가 ${caps.pmcGroups}개라 나머지 무리는 자리가 날 때까지 기다립니다.`,
+    `About ${groups} starting PMC groups, but max PMC groups at once is ${caps.pmcGroups}; the rest wait.`,[['caps.pmcGroups',Math.min(12,groups)]]);
+  const sg=specGroupMax(m),sm=(caps.special||{}).max||0;
+  if(sg.n>0&&sm>0&&sg.n>sm)tip(`${sg.name.ko} 무리가 최대 ${sg.n}명인데 특수 봇 최대 인원이 ${sm}명이라 호위가 줄거나 무리가 빠집니다.`,
+    `${sg.name.en} groups go up to ${sg.n}, but the special-bot max alive is ${sm}; escorts are trimmed or groups skipped.`,[['caps.special.max',Math.min(30,sg.n)]]);
+  CAP_KINDS.forEach(([k,l])=>{if((caps[k]||{}).mode==='respect'&&kindLoad(m,k)>0&&n.start+kindLoad(m,k)>cap)tip(`${l.ko}가 "상한 지킴"이라, 시작 무렵처럼 상한이 차 있으면 자리가 날 때까지 늦게 나옵니다.`,
+    `${l.en} use "Respect cap", so they wait while the map is full (e.g. right after the start).`,[['caps.'+k+'.mode','separate']]);});
+  const gc=c.groupCap;
+  if(gc&&gc.on&&gc.scope==='raid'){const e=estimate(m),total=e?(e.pmin+e.pmax)/2:n.sp,mix=squadMix(c),all=total/squadAvg(c);
+    (gc.rules||[]).forEach((r,i)=>{const sz=Math.max(1,Math.min(5,r.size|0)),share=r.cmp==='ge'?mix.slice(sz-1).reduce((a,b)=>a+b,0):mix[sz-1],exp=Math.round(all*share);
+      if(exp>r.count)tip(`${sz}인${r.cmp==='ge'?' 이상':''} 분대가 판 동안 약 ${exp}개 나올 설정인데 그룹 제한은 최대 ${r.count}개라, 나머지는 ${gc.over==='drop'?'빠집니다':'작은 분대로 나뉩니다'}.`,
+        `About ${exp} ${sz}${r.cmp==='ge'?'+':''}-person squads per raid, but the group limit is ${r.count}; the rest are ${gc.over==='drop'?'skipped':'split'}.`,[['groupCap.rules.'+i+'.count',Math.min(10,exp)]]);});}
+  return out;}
+function capFixApply(mid,fix){const lim=cardOn(mid,'limits');fix.forEach(([f,v])=>{
+  if(f==='cap'){if(!state.maps[mid].capAuto){writeSetting(`maps.${mid}.capOn`,true);writeSetting(`maps.${mid}.cap`,Math.max(1,Math.min(60,v)));}return;}
+  writeSetting(lim?`maps.${mid}.${f}`:'spawn.'+f,v);});}
+function capAutoAllBox(){const n=MAPS.filter(m=>state.maps[m.id].capAuto).length;return `<div class="setting"><div class="lab"><b>${tr(T('맵마다 상한 자동 맞춤','Auto-fit each map’s cap'))}</b><small>${fmt(tr(T('지금 {n}/{t}개 맵이 자동입니다. 자동인 맵은 그 맵 설정(시작·웨이브·스캐브·상한 지킴 봇)에 맞춰 상한을 정하고, 아래 공통 상한을 쓰지 않습니다.','{n}/{t} maps on auto. Auto maps size their own cap from their settings and ignore the shared cap below.')),{n,t:MAPS.length})}</small></div><div class="chips"><button class="mini-btn ${n===MAPS.length?'on':''}" data-act="capAutoAll" data-v="1">${tr(T('모두 자동','All auto'))}</button><button class="mini-btn" data-act="capAutoAll" data-v="0" ${n?'':'disabled'}>${tr(T('모두 끄기','All off'))}</button></div></div>`;}
+function capFixAll(mid){const m=mapById(mid);for(let pass=0;pass<4;pass++){const t=capTips(m);if(!t.length)break;t.forEach(x=>capFixApply(mid,x.fix));}}
+function capTipBox(m,compact=false){const t=capTips(m);if(!t.length)return compact?'':`<div class="captips ok"><b>${tr(T('상한 확인','Cap check'))}</b><span>${tr(T('지금 설정은 동시 상한·종류별 최대·그룹 제한에 걸리지 않을 것으로 보입니다(웹 추정).','These settings should stay within the bot cap, per-kind max and group limits (web estimate).'))}</span></div>`;
+  const lim=cardOn(m.id,'limits'),scope=tr(lim?T('이 맵','this map'):T('모든 맵 공통','all maps'));
+  if(compact)return `<div class="captips"><b>${fmt(tr(T('상한에 걸릴 수 있음 {n}건','{n} possible cap issue(s)')),{n:t.length})}</b><span>${tr(t[0].t)}</span><div class="chips"><button class="mini-btn" data-pop="panel|limits">${tr(T('자세히','Details'))}</button><button class="mini-btn on" data-act="capFixAll" data-v="${m.id}">${tr(T('모두 맞추기','Fix all'))}</button></div></div>`;
+  return `<div class="captips"><b>${tr(T('상한에 걸릴 수 있음','Possible cap issues'))}</b>${t.map((x,i)=>`<div class="captip"><span>${tr(x.t)}</span><button class="mini-btn" data-act="capFix" data-v="${m.id}|${i}">${tr(T('고치기','Fix'))}${x.fix.some(([f])=>f!=='cap')?` (${scope})`:''}</button></div>`).join('')}
+    <div class="chips"><button class="mini-btn on" data-act="capFixAll" data-v="${m.id}">${tr(T('모두 맞추기','Fix all'))}</button></div><small>${tr(T('웹 추정입니다. 판마다 굴림·죽음·탈출에 따라 실제와 다를 수 있습니다.','Web estimate: rolls, deaths and extracts change the real numbers.'))}</small></div>`;}
+function mapCapControl(mid){const o=state.maps[mid],src=o.capAuto?T('자동','auto'):o.capOn?T('이 맵 값','this map'):state.spawn.botCap>0?T('모든 맵 공통 값','shared value'):T('맵 기본값','map default');
   return sw(`maps.${mid}.capOn`,T('동시 봇 상한을 이 맵만 따로 정하기','Set this map’s bot cap separately'),T('끄면 "모든 맵(공통)" 탭의 상한을 씁니다(공통이 0이면 맵 기본값).','Off = use the cap from the "All maps" tab (0 there = map default).'))
-   +slider(`maps.${mid}.cap`,MAPF.cap,'',{min:1,max:60,unit:UI.ppl,dis:!o.capOn})
+   +sw(`maps.${mid}.capAuto`,T('상한 자동 맞춤','Auto-fit the bot cap'),T('켜면 시작 인원·웨이브·스캐브 소프트 캡×강도·"상한 지킴" 봇을 보고 상한을 정합니다(8~60명, 설정을 바꾸면 따라 늘거나 줄어듭니다). 저장할 때 그 값이 이 맵 상한으로 들어갑니다. 끄면 마지막 값이 남습니다.','On = the cap follows starting counts, waves, scav soft cap × intensity and "Respect cap" bots (8–60, grows or shrinks as you change settings). Saved as this map’s cap; turning it off keeps the last value.'))
+   +(o.capAuto?(()=>{const n=capNeed(mapById(mid));return `<p class="small muted" style="margin:2px 0 8px">${fmt(tr(T('자동 {a}명 = 가장 큰 쪽(시작 {s} · PMC 약 {p} + 스캐브 약 {c} · 스캐브 + 예약 {r}){x}','Auto {a} = largest of (start {s} · PMCs ~{p} + scavs ~{c} · scavs + reserved {r}){x}')),{a:n.auto,s:n.start,p:n.pmc,c:n.scav,r:n.scav+n.resv,x:n.resp?tr(T(' + 상한 지킴 봇 약 ',' + respect-cap bots ~'))+n.resp:''})}</p>`;})():'')
+   +slider(`maps.${mid}.cap`,MAPF.cap,'',{min:1,max:60,unit:UI.ppl,dis:!o.capOn||!!o.capAuto})
    +`<p class="small muted" style="margin:4px 0 10px">${fmt(tr(T('지금 이 맵에 적용: {n}명 ({s})','Applied on this map: {n} ({s})')),{n:capOf(mid),s:tr(src)})}</p>`;}
 
 const originalZones={},zoneLayouts={};
@@ -1554,7 +1619,9 @@ function trigRow(g){const P1=`triggers.${g.mid}.${g.trig}.${g.role}.`,r=trigRule
   return `<div class="sub" style="margin-top:10px">${esc(mname(g.mid))} · ${esc(trigLabel(g.trig))}${g.n>1?' ×'+g.n:''} <span class="small muted">${tr(T('원래','original'))} ${g.orig}%${g.zones.length?' · '+esc([...new Set(g.zones)].join(', ')):''}</span></div>`
     +slider(P1+'chance',T('작동했을 때 나올 확률','Chance when triggered'),'',{min:0,max:100,unit:UI.pct,val:g.chance})
     +range(P1+'min',P1+'max',T('무리 인원 (0~0 = 원래)','Group size (0–0 = original)'),'',{min:0,max:10,unit:UI.ppl,values:[r.min||0,r.max||0]})
-    +(swap?seg(P1+'role',T('레버가 부르는 무리','Group the trigger calls'),'',[['',T('레이더 (원래)','Raiders (original)')],['exUsec',T('로그','Rogues')],...(facInst('blackdiv')?[['blackDivAssault',T('블랙 디비전','Black Division')]]:[])],{val:r.role||''}):'');}
+    +slider(P1+'delay',T('작동 뒤 나오기까지','Delay after trigger'),fmt(tr(T('원래 {d}초. 레버를 당긴 뒤 이만큼 기다렸다 나옵니다.','Original {d}s. The group appears this long after the trigger.')),{d:g.delay0}),{min:0,max:600,step:1,unit:UI.sec,val:g.delay})
+    +(swap?seg(P1+'role',T('레버가 부르는 무리','Group the trigger calls'),'',[['',T('레이더 (원래)','Raiders (original)')],['exUsec',T('로그','Rogues')],...(facInst('blackdiv')?[['blackDivAssault',T('블랙 디비전','Black Division')]]:[])],{val:r.role||''})
+      +(r.role?slider(P1+'rolePct',T('바꾼 무리로 나올 비율','Share as the swapped group'),T('무리마다 판 시작 때 굴립니다. 100% = 늘 바꿈, 50% = 절반은 원래 레이더.','Rolled per group at raid start. 100% = always, 50% = half stay raiders.'),{min:0,max:100,step:5,unit:UI.pct,val:g.rolePct}):''):'');}
 function specTrigCard(id,previewMid){const ms=MAPS.filter(m=>!previewMid||m.id===previewMid),rows=[];let any=false;
   ms.forEach(m=>{const e=mapEntries(m);if(e)any=true;trigGroups(m,(e||[]).filter(x=>x.trigger&&x.role===SPEC_ROLE[id])).forEach(g=>rows.push(trigRow(g)));});
   const body=rows.length?rows.join(''):notice(any?T('이 맵에는 레버·스위치로 나오는 무리가 없습니다.','No lever/switch groups on this map.'):T('서버에 연결하면 맵마다 레버·스위치 무리가 보입니다.','Connect to the server to list lever/switch groups per map.'),'flat');
@@ -1577,7 +1644,7 @@ P.specials={desc:T('특수 봇마다 탭을 골라 맵별 등장 확률과 무�
        +slider(p+'vanillaMax',T('원래 무리 한 판 최대 인원 (0 = 그대로)','Original groups · max bots per raid (0 = unchanged)'),T('맵에 원래 있는 무리(우두머리+호위)를 한 판에 모두 합쳐 이 인원까지만 내보냅니다. 넘치면 마지막 무리의 호위를 줄이거나 그 무리를 뺍니다. 레버·탈출구 같은 이벤트 무리와 추가 스폰은 세지 않습니다.','Caps the map’s own groups (leader + escorts) to this many bots in total per raid. Extra groups lose escorts or are skipped. Event groups (lever/exfil) and extra spawns are not counted.'),{min:0,max:30,unit:UI.ppl,dis:!sp.on||!sp.vanilla})
        +range(p+'tFrom',p+'tTo',T('원래 스폰 시각 (0~0 = 원래 시각, 레버 같은 이벤트 무리는 그대로)','Original spawn time (0–0 = original; event groups unchanged)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})+range(p+'extraMin',p+'extraMax',T('추가 스폰 인원 (최대 0 = 추가 끔)','Extra group size (max 0 = no extra)'),'',{min:0,max:8,unit:UI.ppl,dis:!sp.on})+range(p+'xFrom',p+'xTo',T('추가 스폰 시각 (0~0 = 판 시작)','Extra spawn time (0–0 = raid start)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})
        +slider(p+'extraCount',T('추가 무리 수','Extra groups'),T('추가 스폰을 이 수만큼 따로 굴립니다. 시각 창 안에서 아래 비중대로 나눠 넣습니다.','Rolls this many extra groups separately, spread over the time window by the weights below.'),{min:1,max:6,unit:'',dis:!sp.on})
-       +`<div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(p+'extraCurve.'+k,[T('초반 비중','Early weight'),T('중반 비중','Mid weight'),T('후반 비중','Late weight')][i],'',{min:0,max:3,step:0.1,unit:UI.x,dis:!sp.on})).join('')}</div>`
+       +curvePresetBtns(p+'extraCurve.',sp.extraCurve,!sp.on)+`<div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(p+'extraCurve.'+k,[T('초반 비중','Early weight'),T('중반 비중','Mid weight'),T('후반 비중','Late weight')][i],'',{min:0,max:3,step:0.1,unit:UI.x,dis:!sp.on})).join('')}</div>`
        :range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})+(id==='infected'?'':range(p+'tFrom',p+'tTo',T('나오는 시각 (0~0 = 원래 시각)','Spawn time (0–0 = original time)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn preview-common-only" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn preview-common-only" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id]})}
    ${card(ex?T('맵별 추가 스폰 확률','Extra spawn chance per map'):T('맵별 등장 확률','Chance per map'),`<div class="grid g2" style="gap:0 26px">${maps}</div>`,{desc:ex?T('원래 스폰과 별도로 추가 무리를 이 확률로 더 넣습니다(맵 상한을 지킴). 원래 무리가 없는 맵은 다른 맵의 무리를 본떠 그 맵 보스 구역에 넣습니다("Gravity가 새로 넣음"). 0% = 추가 없음.','Adds extra groups with this chance on top of the original spawns (respects the map cap). On maps without this group, Gravity copies one from another map into that map’s boss zones ("Added by Gravity"). 0% = no extra.'):T('0% = 그 맵에 안 나옴. 원래 없는 맵은 다른 맵의 무리를 본떠 그 맵 보스 구역에 넣습니다.','0% = never on that map. On maps without this group, Gravity copies one from another map into that map’s boss zones.')})}
    ${trigCard}${otherCard}
@@ -1592,7 +1659,7 @@ P.factions={desc:T('RUAF·UNTAR·블랙 디비전처럼 봇을 추가하는 모�
   if(f.id==='blackdiv'){const d=p+'bd.';body=`<div class="grid g2">${card(T('사냥조 (블랙 디비전)','Hunt teams'),slider(d+'chance',T('맵마다 등장 확률','Chance per map'),'',{dis:!man})+range(d+'tMin',d+'tMax',T('등장 시점 (레이드 진행 %)','Appears at (% of raid)'),T('레이드 비율이라 레이드가 길어지면 같이 늘어납니다. 타임라인의 보라 선 양 끝을 끌어도 바뀝니다.','Scales with raid length. Also drag the line ends on the timeline.'),{dis:!man})+range(d+'huntMin',d+'huntMax',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man}))}
     ${!previewMid||previewMid==='laboratory'?card(T('연구소 · 웨지','Lab · Wedge'),`<div class="chips" style="margin-bottom:8px">${FACMETA&&!(FACMETA.blackout&&FACMETA.blackout.installed)?pill('✕ Blackout '+tr(T('없음 · 연동 안 함','not found · no link'))):pill('✓ Blackout '+fmt(tr(T('감지 · 정전 확률 {p}%','detected · {p}% blackout')),{p:FACMETA&&FACMETA.blackout&&FACMETA.blackout.chance!=null?FACMETA.blackout.chance:25}),'good')}</div>`+seg('lab.blackoutLink',T('블랙아웃(정전) 판과 연동','Link to Blackout raids'),T('Blackout 모드가 연구소를 정전시키는 판에 블디·웨지를 맞춥니다.','Tie BlackDiv/Wedge to Lab blackout raids.'),[['always',T('상관없이','Always')],['only',T('정전 판에만','Blackout only')],['boost',T('정전 판 확률 ×','Blackout ×')]],{dis:!man})+slider('lab.blackoutMult',T('정전 판 확률 배율','Blackout multiplier'),'',{min:1,max:5,step:.5,unit:UI.x,dis:!man||state.lab.blackoutLink!=='boost'})+slider(d+'labsGate',T('연구소 게이트 진입 확률','Lab gate entry chance'),T('게이트마다 따로 굴립니다. 되면 그 게이트의 레이더 대신 블랙 디비전이 들어옵니다.','Rolled per gate; on success Black Division replaces that gate’s raiders.'),{dis:!man})+sw(d+'wedge',T('웨지 (보스) 켜기','Enable Wedge (boss)'),'',{dis:!man})+slider(d+'wedgeChance',T('웨지 무리 확률 (연구소 시작)','Wedge squad chance (Lab start)'),T('웨지와 호위가 레이드 시작부터 연구소에 있을 확률입니다(모드의 "연구소 시작" 확률과 같은 값).','Chance that Wedge and escorts are in the Lab from raid start (same as the mod’s Lab start chance).'),{dis:!man||!F.bd.wedge})):''}</div>`;}
   else body=`<div class="grid g3">${kind('patrol',T('순찰','Patrols'),slider(p+'patrol.chance',T('확률','Chance'),'',{dis:!man})+slider(p+'patrol.count',T('맵당 순찰조 수','Patrols per map'),'',{min:1,max:5,unit:'',dis:!man})+range(p+'patrol.min',p+'patrol.max',T('인원','Size'),'',{min:1,max:10,unit:UI.ppl,dis:!man})+range(p+'patrol.tMin',p+'patrol.tMax',T('등장 시각','Appears at'),T('스폰 흐름·맵별 설정 타임라인의 보라 선 양 끝을 끌어도 바뀝니다.','Also drag the purple line ends on the spawn timeline.'),{min:0,max:180,unit:UI.min_,dis:!man})
-      +`<div class="grid g3" style="gap:0 12px">${['early','mid','late'].map((k,i)=>slider(p+'patrol.curve.'+k,[T('초반 비중','Early weight'),T('중반 비중','Mid weight'),T('후반 비중','Late weight')][i],i?'':T('등장 시각 창을 셋으로 나눠 순찰조 시각을 이 비중대로 뽑습니다. 모두 1이면 고르게(예전과 같음).','Splits the time window in thirds and picks patrol times by these weights. All 1 = even (as before).'),{min:0,max:3,step:0.1,unit:UI.x,dis:!man})).join('')}</div>`)}
+      +curvePresetBtns(p+'patrol.curve.',F.patrol.curve,!man)+`<div class="grid g3" style="gap:0 12px">${['early','mid','late'].map((k,i)=>slider(p+'patrol.curve.'+k,[T('초반 비중','Early weight'),T('중반 비중','Mid weight'),T('후반 비중','Late weight')][i],i?'':T('등장 시각 창을 셋으로 나눠 순찰조 시각을 이 비중대로 뽑습니다. 모두 1이면 고르게(예전과 같음).','Splits the time window in thirds and picks patrol times by these weights. All 1 = even (as before).'),{min:0,max:3,step:0.1,unit:UI.x,dis:!man})).join('')}</div>`)}
     ${kind('checkpoint',T('검문소','Checkpoints'),slider(p+'checkpoint.chance',T('확률','Chance'),T('레이드 시작 때 나옵니다. RUAF 설정에서 검문소를 켠 맵, 좌표가 있는 구역에만 세웁니다.','Spawn at raid start, only on maps where RUAF enables checkpoints and only in zones with coordinates.'),{dis:!man})+slider(p+'checkpoint.count',T('맵당 검문소 수','Checkpoints per map'),'',{min:1,max:4,unit:'',dis:!man})+range(p+'checkpoint.min',p+'checkpoint.max',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man})+slider(p+'checkpoint.radius',T('지키는 반경','Guard radius'),T('RUAF 클라가 자기 설정 값을 씁니다(Gravity는 적용하지 않음).','The RUAF client uses its own value (not applied by Gravity).'),{min:5,max:60,unit:UI.m,adv:true,dis:true}))}
     ${kind('hunt',T('사냥조','Hunts'),slider(p+'hunt.chance',T('확률','Chance'),T('레이드 10~90% 사이에 들어옵니다. 레넌트·전 USEC 사냥조는 모드 설정 그대로입니다.','Enters between 10–90% of the raid. Remnant and ex-USEC hunts keep the mod’s own config.'),{dis:!man})+range(p+'hunt.min',p+'hunt.max',T('인원','Size'),'',{min:1,max:8,unit:UI.ppl,dis:!man}))}</div>`;
   const detail=`<div class="stack">${card(T(f.name.ko,f.name.en),`<div class="ctl"><div class="seg"><button data-segp="${p}managed" data-v="false" class="${!man?'on':''}">${tr(T('모드 설정 그대로','Use the mod’s own config'))}</button><button data-segp="${p}managed" data-v="true" class="${man?'on':''}">${tr(T('Gravity가 관리','Managed by Gravity'))}</button></div></div>`
@@ -2451,6 +2518,11 @@ document.addEventListener('click',e=>{
   else if(a==='tiersReset'){state.gear.tiers=clone(DEFAULTS.gear.tiers);rerender();}
   else if(a==='resetRole'){state.roles[roleSel]=roleDefaults(roleSel);rerender();}
   else if(a==='copyRole'){const grp=ROLE_GROUPS.find(([,l])=>l.some(x=>x[0]===roleSel))[1];grp.forEach(([id])=>{if(id!==roleSel)state.roles[id]=clone(state.roles[roleSel]);});toast(fmt(tr(T('{n}개 봇에 복사했습니다','Copied to {n} bots')),{n:grp.length-1}));rerender();}
+  else if(a==='curvePreset'){const pre=String(d.p||''),v=String(d.v||'').split(',').map(Number);if(!/^(specials\.(raiders|rogues)\.extraCurve|factions\.(ruaf|untar)\.patrol\.curve)\.$/.test(pre)||v.length!==3||v.some(x=>!(x>=0&&x<=3)))return;
+    ['early','mid','late'].forEach((k,i)=>writeSetting(pre+k,v[i]));rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
+  else if(a==='capFix'){const [mid,i]=String(d.v||'').split('|'),m=mapById(mid),t=m&&capTips(m)[+i];if(t)capFixApply(mid,t.fix);rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
+  else if(a==='capFixAll'){if(mapById(d.v))capFixAll(d.v);rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
+  else if(a==='capAutoAll'){const on=d.v==='1';MAPS.forEach(m=>writeSetting(`maps.${m.id}.capAuto`,on));rerender();}
   else if(a==='refreshRaid'){Promise.all([fetch('api/meta').then(r=>r.json()),fetch('api/lastraid').then(r=>r.json())]).then(([m,l])=>{serverMeta=m;if(m&&m.version){UI.mock=T(m.version,m.version);const vb=document.querySelector('[data-k="mock"]');if(vb)vb.textContent=m.version;}lastRaid=l;rerender();}).catch(e=>toast(tr(T('새로고침 실패: ','Refresh failed: '))+e.message));}
   else if(a==='orbitRecommend'){const O=serverMeta&&serverMeta.orbit,w=Math.round(O&&O.installed?Math.max(O.sleepDistance||0,O.wakeDistance||0)+10:260);state.orbit.extractRefillMode='infinite';state.orbit.refillAfterExtract=state.orbit.extractRefillCap>0;state.orbit.nearAsGhost=true;state.near.minDist=Math.max(state.near.minDist,w);state.near.maxDist=Math.max(state.near.maxDist,state.near.minDist+80);toast(fmt(tr(T('ORBIT 권장값을 적용했습니다 (근처 보충 거리 {w}m 이상). 저장을 눌러야 적용됩니다.','Applied ORBIT-friendly values (near-player ≥ {w} m). Save to apply.')),{w}));rerender();}
   else if(a==='attCopyAll'){const D=state.tierData[tBot][tierSel],src=clone(attFor(tBot,tierSel,atWeapon));[...Object.keys(D.weapons.primaryShort||{}),...Object.keys(D.weapons.primaryLong||{}),...Object.keys(D.weapons.holster||{})].forEach(w=>{if(w!==atWeapon)D.attach[w]=clone(src);});toast(tr(T('이 티어의 모든 무기에 적용했습니다','Applied to every weapon in this tier')));rerender();}
@@ -2655,9 +2727,21 @@ function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeM
   if(!(raw&&raw.spawn&&raw.spawn.caps&&raw.spawn.caps.faction)&&raw&&raw.factions&&Object.values(raw.factions).some(f=>f&&f.shareCap))state.spawn.caps.faction.mode='respect';const o=raw&&raw.orbit;state.orbit.extractRefillMode=o&&['off','infinite','all'].includes(o.extractRefillMode)?o.extractRefillMode:o&&o.refillAfterExtract===false?'off':'infinite';state.orbit.refillAfterExtract=state.orbit.extractRefillMode!=='off'&&state.orbit.extractRefillCap>0;}
 function mergeInto(base,over){if(!over||typeof over!=='object'||Array.isArray(over))return over===undefined?base:over;
   const out=Array.isArray(base)?[...base]:{...base};for(const[k,v]of Object.entries(over))out[k]=(base&&typeof base[k]==='object'&&!Array.isArray(base[k])&&v&&typeof v==='object'&&!Array.isArray(v))?mergeInto(base[k],v):v;return out;}
+// 1.0.6 시연 모드(제안 5): 주소 끝이 #demo면 서버 없이 예시 맵 자료·설정으로 화면을 띄운다(Forge 스크린샷·폰 미리보기용). 저장하지 않는다.
+const DEMO=(()=>{try{return /(^|[#&?/])demo($|[&/])/.test(String(location.hash||'')+'&'+String(location.search||''));}catch(_){return false;}})();
+function demoFetch(u,o){u=String(u);const J=v=>Promise.resolve({ok:true,status:200,json:()=>Promise.resolve(JSON.parse(JSON.stringify(v)))});
+  const M=(id,raidMin,botMax,basePmc,baseScav,bosses,roster,entries)=>({id,raidMin,botMax,basePmc,baseScav,pmcZones:[],scavZones:[],bosses,bossZones:[],hasVariant:false,roster,svmAddMin:0,entries});
+  const E=(chance,time,trig,tid,zone,escort,delay)=>({role:'pmcBot',chance,time,trigger:trig,triggerId:tid,zone,escort,escortType:'pmcBot',delay});
+  const lab=[E(60,300,'','','BotZoneFloor2','1,2',0),E(60,900,'','','BotZoneFloor1','1,2',0),...['00008','00010','00007','00632','00012','00014','00009'].flatMap(n=>[E(35,-1,'interactObject','autoId_'+n+'_EXFIL','BotZoneFloor1','1,2',0),E(45,-1,'interactObject','autoId_'+n+'_EXFIL','BotZoneFloor2','1,2',8)])];
+  const rsv=[E(50,-1,'interactObject','autoId_00000_D2_LEVER','ZoneRailStrorage','2,3',0),E(50,-1,'interactObject','autoId_00000_D2_LEVER','ZonePTOR1','2,3',0)];
+  const meta={version:UI.mock.ko,client:{version:UI.mock.ko,compatible:true},maps:[M('bigmap',40,24,10,16,{bossBully:38},{bossBully:38,sectantPriest:10,arenaFighterEvent:5,marksman:65},[]),
+    M('laboratory',35,14,8,0,{},{pmcBot:60},lab),M('rezervbase',40,22,10,14,{bossGluhar:43},{bossGluhar:43,pmcBot:50},rsv)]};
+  const st={state:{specials:{raiders:{on:true,extra:{bigmap:100},extraCount:3,xFrom:5,xTo:30},rogues:{on:true,extra:{bigmap:50},extraCount:2,xFrom:10,xTo:35,extraCurve:{early:0.3,mid:1,late:2}}},spawn:{scav:{curve:{early:0.5,mid:1,late:1.5}}}},
+    loadWarning:'시연 화면입니다(#demo). 서버 없이 예시 값(세관 레이더 100%·로그 50%, 스캐브 PMC 반대로)으로 띄웠고 저장하지 않습니다. / Demo view (#demo): example values, nothing is saved.'};
+  if(u.startsWith('api/meta'))return J(meta);if(u.startsWith('api/state'))return J(st);if(u.startsWith('api/library'))return J({library:{raid:[],gear:[],spawn:[]}});return J(null);}
 async function boot(){
   try{
-    const [mr,sr,lr,lb]=await Promise.all([fetch('api/meta'),fetch('api/state'),fetch('api/lastraid').catch(()=>null),fetch('api/library').catch(()=>null)]);
+    const F=DEMO?demoFetch:fetch,[mr,sr,lr,lb]=await Promise.all([F('api/meta'),F('api/state'),F('api/lastraid').catch(()=>null),F('api/library').catch(()=>null)]);
     try{const L=lb&&lb.ok?(await lb.json()).library:null;if(L){customPresets=(L.raid||[]).filter(p=>p&&p.snap);customTierPresets=(L.gear||[]).filter(p=>p&&Array.isArray(p.tiers)&&p.tiers.length===7);customSpawnPresets=(L.spawn||[]).filter(p=>p&&p.data);libReady=true;}else libLoadErr=lb?'HTTP '+lb.status:'no response';}catch(e){libLoadErr=String(e.message||e);}
     try{lastRaid=lr&&lr.ok?await lr.json():null;}catch(_){lastRaid=null;}
     if(!mr.ok||!sr.ok)throw new Error('HTTP '+mr.status+'/'+sr.status);
@@ -2667,8 +2751,8 @@ async function boot(){
     saved=clone(state);serverWarn=st.loadWarning||'';libSaved=JSON.stringify(libObj());
   }catch(e){serverErr=String(e.message||e);}
   render();
-  if(serverMeta)loadCatalog();
-  if(serverMeta&&typeof setInterval==='function')setInterval(pollClientLink,10000);
+  if(serverMeta&&!DEMO)loadCatalog();
+  if(serverMeta&&!DEMO&&typeof setInterval==='function')setInterval(pollClientLink,10000);
 }
 /** 클라가 아직 안 붙었을 때만 api/meta의 client 칸을 다시 읽는다. 연결 상태가 바뀐 때만 화면을 다시 그린다(편집 중 값은 건드리지 않음). */
 let clientPolling=false;
@@ -2676,10 +2760,14 @@ async function pollClientLink(){
   if(clientPolling||!serverMeta||clientLink()==='ok'||document.hidden)return;clientPolling=true;
   try{const r=await fetch('api/meta');if(r.ok){const m=await r.json(),before=clientLink();if(m&&m.client){serverMeta.client=m.client;if(clientLink()!==before)rerender();}}}catch(_){}finally{clientPolling=false;}
 }
+/** 상한 자동 맞춤 맵: 서버는 maps.<id>.cap만 읽으므로 저장 직전에 자동값을 그 칸에 써 둔다. */
+function syncAutoCaps(){MAPS.forEach(m=>{const o=state.maps[m.id];if(o&&o.capAuto){const v=capNeed(m).auto;o.capOn=true;o.cap=v;}});}
 async function saveToServer(){
+  if(DEMO){toast(tr(T('시연 화면(#demo)이라 저장하지 않았습니다.','Demo view (#demo): nothing was saved.')));return;}
   // 서버 없이 열린 화면은 실제 설정이 아니라 기본값을 들고 있다: 이 상태로 저장하면 서버 설정을 기본값으로 덮어쓴다.
   if(!serverMeta){toast(tr(T('서버에 연결되지 않은 채 열린 화면이라 저장하지 않았습니다. 서버를 켠 뒤 새로고침(F5)하고 다시 바꿔 주세요.','Not saved: this page was opened without a server connection. Start the server, reload (F5), then edit again.')));return;}
   state.orbit.refillAfterExtract=state.orbit.extractRefillMode!=='off'&&state.orbit.extractRefillCap>0;
+  syncAutoCaps();
   try{
     const r=await fetch('api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state})});
     const j=await r.json();
