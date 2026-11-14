@@ -582,7 +582,8 @@ test('맵 미리보기 옆 등장 목록은 원본을 켜 두고 보스·팩션�
   assert.equal(w.items.find(x=>x.id==='shturman').tag,'van');
   assert.equal(w.items.find(x=>x.id==='goons').tag,'add'); // 웹에서 켜 둔 맵이지만 서버 자료에는 없음
   assert.ok(w.add.some(x=>x.id==='killa'));
-  assert.equal(w.items.find(x=>x.id==='bloodhounds'),undefined);
+  // 1.0.6(#39): 서버 자료에 없어도 확률이 있으면 서버가 본떠 넣으므로 "추가"로 보인다
+  assert.equal(w.items.find(x=>x.id==='bloodhounds').tag,'add');
 });
 test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
   const a=app();
@@ -601,6 +602,25 @@ test('타임라인에 특수 봇 줄이 따로 있습니다', () => {
   assert.equal(a.run("JSON.stringify(dragVals('spec','cultists',20,100,mapById('bigmap')))"),JSON.stringify([['specials.cultists.tFrom',20],['specials.cultists.tTo',25]]));
   a.run("state.bosses.reshala.on=false");
   assert.ok(!/레샬라/.test(a.run("timeline(mapById('bigmap'),true)")));
+});
+test('1.0.6 #39 원래 무리가 없는 맵(세관): 레이더 추가 확률이 있으면 타임라인 줄·등장 목록에 "추가"로 보임', () => {
+  const a=app();
+  a.run("serverMeta={maps:[{id:'bigmap',roster:{bossBully:38},entries:[]}]};state.specials.raiders.on=true;state.specials.cultists.on=true");
+  // 확률 0이면 줄 없음, 등장 목록 "다른 봇 추가"에 후보로만
+  assert.ok(!a.run("specGroups(mapById('bigmap'))").some(x=>x.id==='raiders'));
+  assert.ok(a.run("mapRoster(mapById('bigmap')).add").some(x=>x.type==='specx'&&x.id==='raiders'));
+  assert.ok(!a.run("mapRoster(mapById('bigmap')).add").some(x=>x.id==='snipers'));
+  // 추가 버튼 = 추가 확률 25%
+  a.run("rosterToggle('specx|raiders|bigmap')");
+  assert.equal(a.run("state.specials.raiders.extra.bigmap"),25);
+  const g=a.run("specGroups(mapById('bigmap')).find(x=>x.id==='raiders')");
+  assert.ok(g&&g.fresh);
+  const it=a.run("mapRoster(mapById('bigmap')).items.find(x=>x.id==='raiders')");
+  assert.equal(it.tag,'add');assert.equal(it.on,true);
+  // 원래 스폰 줄은 없고 추가 스폰만
+  assert.equal(JSON.stringify(a.run("specLane(mapById('bigmap'))").filter(x=>x[2]==='raiders').map(x=>x[3])),'["extra"]');
+  a.run("rosterToggle('specx|raiders|bigmap')");
+  assert.equal(a.run("state.specials.raiders.extra.bigmap"),0);
 });
 test('1.0.6 연구소 레이더 줄: 시각 무리 버블·레버 칩·추가 무리, 트리거 조절 팝업', () => {
   const a=app();

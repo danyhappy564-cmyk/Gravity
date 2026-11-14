@@ -571,6 +571,8 @@ const BOSSES=[
  B('partisan','파르티잔','Partisan',['bigmap','woods','shoreline','lighthouse'],25,[0,0],[3,30])
 ];
 const SPEC_EXTRA=['raiders','rogues'];
+// 1.0.6(#39): 원래 무리가 없는 맵에도 서버가 다른 맵 무리를 본떠 넣을 수 있는 특수 봇(저격 스캐브는 저격 자리가 있어야 해서 제외).
+const SPEC_NEW=['raiders','rogues','cultists','bloodhounds'];
 // 특수 봇 웹 id → SPT 역할(맵별 등장 목록이 서버 맵 자료(roster)와 맞춰 볼 때)
 const SPEC_ROLE={raiders:'pmcBot',rogues:'exUsec',cultists:'sectantPriest',bloodhounds:'arenaFighterEvent',snipers:'marksman',infected:'infectedAssault'};
 // 상한 표(1.0): 종류 줄과 방식
@@ -887,7 +889,8 @@ function mapRoster(m){const meta=serverMeta&&(serverMeta.maps||[]).find(x=>x.id=
   BOSSES.forEach(b=>{const bb=state.bosses[b.id],van=rs?has(BOSS_ROLE[b.id]):b.maps.includes(m.id),on=!!bb.maps[m.id];
     if(!van&&!on){if(b.id!=='zryachiy')add.push({type:'boss',id:b.id,name:b.name});return;}
     items.push({type:'boss',id:b.id,name:b.name,on:bb.on&&on,tag:van?'van':'add',off:!bb.on});});
-  SPECIALS.forEach(([id,n,ch])=>{const sp=state.specials[id],ex=SPEC_EXTRA.includes(id),van=rs?has(SPEC_ROLE[id]):(ch[m.id]||0)>0;if(!van)return;
+  SPECIALS.forEach(([id,n,ch])=>{const sp=state.specials[id],ex=SPEC_EXTRA.includes(id),van=rs?has(SPEC_ROLE[id]):(ch[m.id]||0)>0;
+    if(!van){if(!SPEC_NEW.includes(id))return;const c=specChance(id,m.id);if(c>0)items.push({type:ex?'specx':'spec',id,name:n,on:sp.on,tag:'add',off:!sp.on});else if(sp.on)add.push({type:ex?'specx':'spec',id,name:n});return;}
     const on=ex?sp.on&&sp.vanilla&&(sp.keep||{})[m.id]!==false:sp.on&&(sp.chance[m.id]||0)>0;
     items.push({type:'spec',id,name:n,on,tag:'van',off:!sp.on||(ex&&!sp.vanilla)});});
   FACTIONS.forEach(f=>{const F=state.factions[f.id],on=!!F.maps[m.id],inst=facInst(f.id),van=f.maps.includes(m.id);
@@ -903,12 +906,13 @@ function rosterBox(m){const {items,add}=mapRoster(m),tag={van:[T('원본','Origi
 function rosterToggle(key){const[type,id,mid]=key.split('|');
   if(type==='boss'){writeSetting(`bosses.${id}.maps.${mid}`,!state.bosses[id].maps[mid]);return;}
   if(type==='fac'){facManage(id);writeSetting(`factions.${id}.maps.${mid}`,!state.factions[id].maps[mid]);return;}
+  if(type==='specx'){const c=state.specials[id].extra?.[mid]||0;writeSetting(`specials.${id}.extra.${mid}`,c>0?0:25);return;}
   if(type==='spec'){const sp=state.specials[id];
     if(SPEC_EXTRA.includes(id)){sp.keep||={};writeSetting(`specials.${id}.keep.${mid}`,sp.keep[mid]===false);return;}
     const def=(SPECIALS.find(x=>x[0]===id)[2][mid])||10;writeSetting(`specials.${id}.chance.${mid}`,(sp.chance[mid]||0)>0?0:def);}}
 // 타임라인 특수 봇 줄: [이름, 표시, 웹 id]. 레이더·로그는 원래 스폰(원본)과 추가 스폰(+%)을 따로.
 function specLane(m){const r=mapRoster(m).items;return SPECIALS.flatMap(([id,n])=>{const sp=state.specials[id];if(!sp.on||id==='infected')return [];const out=[],has=r.some(x=>x.type==='spec'&&x.id===id),c=specChance(id,m.id);
-  if(SPEC_EXTRA.includes(id)){if(!has)return [];const kept=sp.vanilla!==false&&(sp.keep||{})[m.id]!==false;if(kept)out.push([n,T('원래 스폰(맵 기본)','Original (map default)'),id,'orig',null]);if(kept||c>0)out.push([n,T('추가 스폰(Gravity)','Extra (Gravity)'),id,'extra',c]);}
+  if(SPEC_EXTRA.includes(id)){if(!has&&!(c>0))return [];const kept=has&&sp.vanilla!==false&&(sp.keep||{})[m.id]!==false;if(kept)out.push([n,T('원래 스폰(맵 기본)','Original (map default)'),id,'orig',null]);if(kept||c>0)out.push([n,T('추가 스폰(Gravity)','Extra (Gravity)'),id,'extra',c]);}
   else if(has||c>0)out.push([n,T('나올 확률','Chance'),id,'orig',c]);return out;});}
 // 1.0.6 특수 봇·트리거 원래 항목(서버 맵 자료 entries: role·chance·time·trigger·triggerId·zone·escort). 서버가 없으면 null.
 function mapEntries(m){const meta=serverMeta&&(serverMeta.maps||[]).find(x=>x.id===m.id);return meta&&Array.isArray(meta.entries)?meta.entries:null;}
