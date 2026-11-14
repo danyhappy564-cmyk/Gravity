@@ -151,6 +151,19 @@
 - [ ] Step 4: 통과 + 전체 테스트.
 - [ ] Step 5: 커밋 `feat(gear): 봇 종류별 티어 분포(고정 퍼짐) — Forge 피드백`.
 
+### Task 7b: 주간 보스 토글 고침 (Forge #1·아카 제보 11-14, INBOX #46)
+
+원인: SPT `PostDbLoadService.FlagMapAsGuaranteedBoss`가 서버 시작 때 이번 주 보스 항목을 `BossChance=100`·`ShowOnTarkovMap(PvE)=true`로 바꾼다. Gravity는 `weeklyBoss`를 읽지 않고, `ApplyBosses`가 판마다 확률을 자기 값으로 덮어 100%도 사라진다.
+
+**Files:** `ConfigModel.cs`(`WeeklyBoss` bool, 기본 true) · 새 `src/Gravity.Server/Spawn/WeeklyBoss.cs`(SPT 공식 그대로 이번 주 보스·맵 계산, 순수) · `RaidSpawnApplier.ApplyBosses`(weekly 인자) · `GravityRuntime`(시작·저장 때 DB 항목 해골 켜고 끄기, 맵 정보에 이번 주 보스) · 웹 보스 공통 카드 안내 줄 · Test `tests/Gravity.Tests/WeeklyBossTests.cs`.
+
+- [ ] 테스트: `Pick_SameAsSptFormula`(초기화 요일·날짜 → 같은 보스), `On_WeeklyBossMap_Chance100`, `On_BossOff_StaysZero`(보스·맵 끔은 존중), `Off_UsesGravityChance_AndHidesSkull`, `SptWeeklyDisabled_NoChange`(SPT 봇 설정에서 꺼져 있으면 아무것도 안 함).
+- [ ] 구현 → 통과 → 커밋 `fix(boss): 주간 보스 토글이 실제로 적용되게(켜면 100%, 끄면 해골 표시도 끔)`.
+
+### Task 7c: 봇 체력·스킬 맞추기 (Forge #2, INBOX #47 — 방향 사용자 선택 대기)
+
+생성 직후 결과만 고침(장비 티어와 같은 자리, DB 원본 안 바꿈). 기본 꺼짐 = 1.0.5 결과. 안 A(스위치 둘)·B(봇 묶음별, 추천)·C(봇 종류별) 중 사용자 선택대로 세부를 여기 채운다.
+
 ### Task 8: 문서·버전 기록·시연
 
 **Files:**
