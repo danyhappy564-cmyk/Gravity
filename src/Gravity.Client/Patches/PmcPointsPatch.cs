@@ -49,7 +49,11 @@ namespace Gravity.Client.Patches
                     return false;
                 }
 
-                var picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, StartPlayerOnly(c, ctx.Wave));
+                bool only = StartPlayerOnly(c, ctx.Wave);
+                var picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, only);
+                // 1.0.6 로컬 판(세관): 플레이어 시작 지점은 몇 구역에 몰려 있어 PMC 간 거리(80m)에 걸리면 시작 분대 8개 중 3개만 나왔다.
+                // 플레이어 지점에서 못 고르면 같은 구역의 PMC 지점으로 한 번 더 고른다(시작 PMC가 늦게·안 나오는 것보다 낫다).
+                if (!picked && only) picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, false);
                 ctx.PickedAny |= picked;
                 return false;
             }
