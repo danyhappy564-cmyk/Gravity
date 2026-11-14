@@ -1324,3 +1324,102 @@ test('1.0.6 설치 안 된 팩션 모드는 타임라인에 안 보임', () => {
   assert.match(svg,/RUAF/);
   assert.ok(!/UNTAR/.test(svg));
 });
+test('1.0.6 스캐브 웨이브 목록: 처음 고르면 생성기로 채우고, 기본(채우기)은 그대로', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap'");
+  const before=a.run("timeline(mapById('bigmap'),true)");
+  assert.match(before,/활동 \/ 휴식/);
+  assert.ok(!/scavw\|/.test(before));
+  assert.match(a.run("spawnStyleButtons('scav','', 'bigmap')"),/활동·휴식 채우기/);
+  assert.match(a.run("spawnStyleButtons('scav','', 'bigmap')"),/data-v="list"/);
+  assert.ok(!/data-v="list"/.test(a.run("spawnStyleButtons('wave','', 'bigmap')")));
+  a.click({spawnStyle:'maps.bigmap.scavStyle',v:'list'});
+  assert.equal(a.run("state.maps.bigmap.scavStyle"),'list');
+  const n=a.run("state.maps.bigmap.scavList.length");
+  assert.ok(n>=4&&n<=60,String(n));
+  assert.equal(a.run("scavListOf('bigmap')[0].t"),a.run("state.maps.bigmap.scavGen?.first??2"));
+  // 이미 목록이 있으면 다시 고를 때 덮지 않는다
+  a.run("state.maps.bigmap.scavList=[{t:7,min:1,max:1}];writeSetting('maps.bigmap.scavStyle','waves',true);writeSetting('maps.bigmap.scavStyle','list',true)");
+  assert.equal(a.run("state.maps.bigmap.scavList.length"),1);
+});
+test('1.0.6 스캐브 웨이브 목록: 버블·인원·드래그 30초 맞춤·말풍선', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:12,min:3,max:5},{t:4,min:2,max:2}]");
+  const svg=a.run("timeline(mapById('bigmap'),true)");
+  assert.match(svg,/data-pop="scavw\|0"/);
+  assert.match(svg,/data-drag="scavw\|1"/);
+  assert.match(svg,/>3~5</);
+  assert.ok(!/활동 \/ 휴식/.test(svg));
+  assert.deepEqual(JSON.parse(a.run("JSON.stringify(dragVals('scavw','0',12.26,40,mapById('bigmap')))")),[['maps.bigmap.scavList.0.t',12.5]]);
+  assert.deepEqual(JSON.parse(a.run("JSON.stringify(dragVals('scavw','0',-3,40,mapById('bigmap')))")),[['maps.bigmap.scavList.0.t',0]]);
+  assert.deepEqual(JSON.parse(a.run("JSON.stringify(dragVals('scavw','0',99,40,mapById('bigmap')))")),[['maps.bigmap.scavList.0.t',40]]);
+  a.run("applyTimeline('scavw','0',12.26,40,mapById('bigmap'))");
+  assert.equal(a.run("dragLabel('scavw','0',40)"),'12:30 · 3~5마리');
+  assert.equal(a.run("dragLabel('scavw','1',40)"),'04:00 · 2마리');
+});
+test('1.0.6 스캐브 웨이브 창: 시각·인원 칸, 뒤에 추가·삭제, 정렬', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:10,min:2,max:4},{t:3,min:1,max:1}]");
+  const rows=a.run("JSON.stringify(popSpecs('scavw','0',mapById('bigmap')).rows.map(r=>r[1]))");
+  assert.deepEqual(JSON.parse(rows),['maps.bigmap.scavList.0.t','maps.bigmap.scavList.0.min','maps.bigmap.scavList.0.max']);
+  assert.match(a.run("popSpecs('scavw','0',mapById('bigmap')).extra"),/data-act="scavwAdd" data-v="bigmap\|0"/);
+  a.click({act:'scavwAdd',v:'bigmap|0'});
+  assert.equal(a.run("JSON.stringify(state.maps.bigmap.scavList.map(w=>w.t))"),'[3,10,15]');
+  assert.equal(a.run("state.maps.bigmap.scavList[2].max"),4);
+  a.click({act:'scavwDel',v:'bigmap|0'});
+  assert.equal(a.run("JSON.stringify(state.maps.bigmap.scavList.map(w=>w.t))"),'[10,15]');
+});
+test('1.0.6 스캐브 생성기: 시간대 강도(PMC 반대로)를 인원에 곱하고 하드 스톱 전까지', () => {
+  const a=app();
+  a.run("state.spawn.scav.curve={early:.5,mid:1,late:1.5};state.maps.bigmap.scavGen={first:2,interval:5,min:2,max:4}");
+  const g=JSON.parse(a.run("JSON.stringify(scavGen('bigmap'))"));
+  assert.equal(g[0].t,2);
+  assert.equal(g[1].t,7);
+  assert.ok(g[g.length-1].max>g[0].max);
+  const stop=a.run("raidOf(mapById('bigmap'))*(1-cfgFor(mapById('bigmap')).hardStop.scavPct/100)");
+  assert.ok(g.every(w=>w.t<stop&&w.min<=w.max&&w.max<=20));
+});
+test('1.0.6 예상 인원·상한 팁이 웨이브 목록을 센다', () => {
+  const a=app();
+  a.run("state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:5,min:2,max:4},{t:15,min:3,max:6}];state.spawn.scav.startOn=false");
+  const e=JSON.parse(a.run("JSON.stringify((({smin,smax})=>({smin,smax}))(estimate(mapById('bigmap'))))"));
+  assert.deepEqual(e,{smin:5,smax:10});
+  assert.equal(a.run("capNeed(mapById('bigmap')).scav"),6);
+});
+test('1.0.6 스캐브 목록 다른 맵에 복사: 짧은 맵은 길이 밖 웨이브를 빼고 방식도 목록으로', () => {
+  const a=app();
+  a.run("state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:5,min:2,max:3},{t:18,min:1,max:2},{t:35,min:4,max:4}];state.maps.bigmap.scavListJitter=40;state.spawn.raid.mode='set';state.maps.factory4_day.raidSet=20;state.maps.woods.raidSet=45;state.maps.interchange.raidSet=45");
+  const fr=a.run("raidOf(mapById('factory4_day'))");
+  assert.ok(fr>18&&fr<=35,String(fr));
+  const r=JSON.parse(a.run("JSON.stringify(copyScavList('bigmap',['factory4_day','woods']))"));
+  assert.equal(r.copied,2);
+  assert.deepEqual(r.dropped,{factory4_day:1});
+  assert.equal(a.run("state.maps.factory4_day.scavStyle"),'list');
+  assert.equal(a.run("state.maps.factory4_day.scavList.length"),2);
+  assert.equal(a.run("state.maps.woods.scavList.length"),3);
+  assert.equal(a.run("state.maps.woods.scavListJitter"),40);
+  // 원본과 따로 고쳐진다
+  a.run("state.maps.woods.scavList[0].t=9");
+  assert.equal(a.run("state.maps.bigmap.scavList[0].t"),5);
+  // 창의 복사 버튼
+  a.run("scavCopySel=[]");
+  a.click({act:'scavCopyPick',v:'interchange'});
+  assert.equal(a.run("scavCopySel.join()"),'interchange');
+  a.click({act:'scavCopy',v:'bigmap'});
+  assert.equal(a.run("state.maps.interchange.scavList.length"),3);
+  assert.equal(a.run("scavCopySel.length"),0);
+});
+test('1.0.6 타임라인 확대: 배수를 기억하고 SVG 폭·드래그 맞춤(4×면 10초)이 바뀜', () => {
+  const a=app();
+  a.run("page='spawn';spawnTab='bigmap';mapSel='bigmap';state.maps.bigmap.scavStyle='list';state.maps.bigmap.scavList=[{t:12,min:3,max:5}]");
+  assert.match(a.run("timeline(mapById('bigmap'),true)"),/data-act="tlZoom" data-v="4"/);
+  a.click({act:'tlZoom',v:'2'});
+  assert.equal(a.storage['gravity.tlZoom'],'2');
+  assert.match(a.run("timeline(mapById('bigmap'),true)"),/style="width:200%/);
+  a.click({act:'tlZoom',v:'4'});
+  assert.deepEqual(JSON.parse(a.run("JSON.stringify(dragVals('scavw','0',12.26,40,mapById('bigmap')))")),[['maps.bigmap.scavList.0.t',12.333]]);
+  a.click({act:'tlZoom',v:'3'});
+  assert.equal(a.run("tlZoom"),4);
+  const b=app({stored:{'gravity.tlZoom':'4'}});
+  assert.equal(b.run("tlZoom"),4);
+});
