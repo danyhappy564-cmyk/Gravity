@@ -14,7 +14,13 @@ namespace Gravity.Shared
     public sealed record ScavDto(
         bool Managed, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
         double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0, string Style = "waves", double? FirstRefillSec = null, int InitialCount = 0,
-        double[]? Curve = null, double CurveRaidSec = 0, double CurveOffsetSec = 0);
+        double[]? Curve = null, double CurveRaidSec = 0, double CurveOffsetSec = 0,
+        ScavWaveDto[]? List = null, double ListJitterSec = 0);
+    // 1.0.6 스캐브 웨이브 목록: List = 원래 레이드 기준 초·인원 범위. 있으면 새 클라는 목록대로만 낸다(채우기 안 함).
+    // 서버는 이때 Style을 "start"로 보내 옛 클라는 시작 스캐브만 내고 채우지 않는다.
+
+    /// <summary>스캐브 웨이브 목록 한 칸(원래 레이드 시작 뒤 초, 인원 최소~최대).</summary>
+    public sealed record ScavWaveDto(double TimeSec, int Min, int Max);
     // 1.0.6: Curve = 레이드 초반·중반·후반 스캐브 강도(null = 옛 동작). 3등분 기준은 원래 레이드 길이 CurveRaidSec,
     // 클라 경과 초 + CurveOffsetSec(스캐브 레이드 지연)으로 지금 칸을 정한다. 옛 클라는 이 칸을 모르고 무시한다.
 
