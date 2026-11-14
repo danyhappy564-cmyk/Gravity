@@ -171,6 +171,11 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
         if (trigChanged > 0)
             evNote = (evNote != null ? evNote + " / " : "") + L.T($"트리거 스폰 {trigChanged}개 조절", $"adjusted {trigChanged} trigger spawns");
+        // 1.0.6 진단: Gravity가 넣은 특수 봇 무리(추가 스폰·원래 없는 맵 복제) 수
+        var specAdded = loc.BossLocationSpawn.Count(e => e.SptId == "gravity" && e.BossName is { } bn
+            && ConfigModel.SpecialRoles.Values.Contains(bn, StringComparer.OrdinalIgnoreCase));
+        if (specAdded > 0)
+            evNote = (evNote != null ? evNote + " / " : "") + L.T($"특수 봇 무리 {specAdded}개 넣음", $"added {specAdded} special-bot groups");
         // 상한 표(1.0): 모든 항목을 다 고친 뒤 종류별 상한 무시 표시를 맞춘다(팩션·이벤트·다른 모드 항목 포함)
         Gravity.Spawn.CapApplier.Apply(loc, cfg.SpawnFor(id).CapsOrDefault, Gravity.Factions.FactionRaid.FactionRoleSet(Detect.Ruaf, Detect.BlackDiv));
         return new RaidBuild(plan, info, pmcWhy, scavNote, otherPmc, facNote, evNote);

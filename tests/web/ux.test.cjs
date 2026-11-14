@@ -638,6 +638,26 @@ test('1.0.6 연구소 레이더 줄: 시각 무리 버블·레버 칩·추가 �
   assert.match(a.run("timeline(mapById('labyrinth'),true)"),/트리거 스폰/);
   assert.equal(a.run("trigOther(mapById('labyrinth'))[0].role"),'tagillaHelperAgro');
 });
+test('1.0.6 특수 봇 화면: 원래 있음/새로 넣음, 레버 카드, 저격 자리 없는 맵, 다른 트리거', () => {
+  const a=app();
+  a.run(`serverMeta={maps:[{id:'laboratory',roster:{pmcBot:60},entries:[{role:'pmcBot',chance:45,time:-1,trigger:'interactObject',triggerId:'autoId_00632_EXFIL',zone:'BotZoneGate1',escort:'1,2',escortType:'pmcBot',delay:8}]},
+    {id:'interchange',roster:{bossKilla:38},entries:[]},{id:'bigmap',roster:{marksman:100,sectantPriest:10},entries:[]},
+    {id:'labyrinth',roster:{},entries:[{role:'tagillaHelperAgro',chance:50,time:450,trigger:'botEvent',triggerId:'AGRO_HELPERS_EVENT',zone:'',escort:'0',escortType:'',delay:0}]}]}`);
+  a.run("page='specials';specSel='raiders'");
+  const r=a.run('P.specials.render()');
+  assert.match(r,/레버·스위치·탈출구 무리/);
+  assert.match(r,/탈출구 스위치 632/);
+  assert.match(r,/data-p="triggers\.laboratory\.autoId_00632_EXFIL\.pmcBot\.chance"/);
+  assert.match(r,/Gravity가 새로 넣음/);
+  assert.match(r,/추가 무리 수/);
+  assert.match(r,/그 밖의 트리거 스폰/);
+  a.run("specSel='snipers'");
+  const sn=a.run('P.specials.render()');
+  assert.match(sn,/이 맵엔 저격 자리 없음/);
+  assert.match(sn,/data-p="specials\.snipers\.chance\.bigmap"/);
+  a.run("specSel='cultists'");
+  assert.doesNotMatch(a.run('P.specials.render()'),/레버·스위치·탈출구 무리/);
+});
 test('1.0.6 스캐브 곡선: 팝업 버튼으로 PMC 반대로, 타임라인 배수 표시', () => {
   const a=app();
   a.run("page='spawn';spawnTab='all';flowMap='bigmap'");
