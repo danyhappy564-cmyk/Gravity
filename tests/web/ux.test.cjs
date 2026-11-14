@@ -1317,3 +1317,10 @@ test('1.0.6 원래 무리가 없는 맵의 레이더 창엔 원래 스폰 시각
   assert.ok(!a.run("popSpecs('spec','raiders',mapById('bigmap')).rows").some(r=>/\.tFrom$/.test(r[1])));
   assert.ok(a.run("popSpecs('spec','raiders',mapById('laboratory')).rows").some(r=>/\.tFrom$/.test(r[1])));
 });
+test('1.0.6 설치 안 된 팩션 모드는 타임라인에 안 보임', () => {
+  const a=app();
+  a.run("FACMETA={ruaf:{installed:true},untar:{installed:false},blackdiv:{installed:false}};state.factions.untar.maps.bigmap=true;state.factions.ruaf.maps.bigmap=true");
+  const svg=a.run("timeline(mapById('bigmap'),true)");
+  assert.match(svg,/RUAF/);
+  assert.ok(!/UNTAR/.test(svg));
+});

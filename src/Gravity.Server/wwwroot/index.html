@@ -1025,7 +1025,7 @@ function timeline(m,big=false){
   const pp=k=>ed?` data-pop="${k}" class="tlc"`:'';
   const hf=(k,xx,yy,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-13}" y="${yy-14}" width="26" height="28" fill="transparent"/><rect x="${xx-3.5}" y="${yy-9}" width="7" height="18" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
   const bs=BOSSES.filter(b=>state.bosses[b.id].on&&state.bosses[b.id].maps[m.id]);
-  const fac=FACTIONS.filter(f=>state.factions[f.id].maps[m.id]);
+  const fac=FACTIONS.filter(f=>state.factions[f.id].maps[m.id]&&facInst(f.id)); // 1.0.6: 모드가 없는 팩션(예: UNTAR 미설치)은 타임라인에 그리지 않는다(사용자 11-14)
   const lanes=[['pmc',T('PMC','PMC'),'#6ea8ff'],['scav',T('스캐브','Scavs'),'#5fd4a6']];
   if(fac.length)lanes.push(['fac',T('팩션','Factions'),'#c9a2ff']);
   if(c.near.on)lanes.push(['near',T('근처 보충','Near'),'#a78bfa']);
