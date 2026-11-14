@@ -13,6 +13,7 @@ namespace Gravity.Client.Patches
     /// SpawnSystem.GetPmcSpawnPoints 앞(정적 메서드, SpawnSystem.cs:1179): Gravity 분대의 TrySpawn 안에서 불렸으면
     /// 바닐라("사람 PMC에게서 먼 1등 지점 복제", kb 2.33) 대신 PointPicker.PickSquad로 고른 지점을 filteredPoints에 넣고 원래 함수는 건너뛴다.
     /// 후보는 RaidContext.ZonePoints[zone] 중 재사용 대기(IsValid(time))와 진영(IsValid(side))이 맞는 것(바닐라와 같은 두 필터).
+    /// 단, 플레이어 시작 지점은 진영 검사를 건너뛴다(PmcPointFilter — 게임이 PMC 보스 웨이브를 Savage로 만들어 Sides=Pmc 지점이 늘 걸림, 1.0.6 로컬 판).
     /// 고른 지점은 10초 예약. 고르지 못하면 아무것도 넣지 않는다 → SelectAISpawnPoints가 빈 목록 → TrySpawn이 다음 구역, 끝나면 대기열.
     /// 근처 보충(F8) PMC 웨이브면 NearDirector가 고른 지점(Tag.PointId) 하나만 같은 두 필터를 거쳐 넣는다(맞지 않으면 아무것도 넣지 않음).
     /// TrySpawn 밖에서 불린 경우(ValidateSpawnPosition 등)와 예외는 바닐라.
@@ -104,7 +105,7 @@ namespace Gravity.Client.Patches
             for (int i = 0; i < all.Count; i++)
             {
                 var sp = c.PointById[all[i].Id];
-                if ((!playerOnly || all[i].PlayerPoint) && sp.IsValid(now) && sp.IsValid(side)) cands.Add(all[i]);
+                if (PmcPointFilter.Usable(sp.IsValid(now), sp.IsValid(side), all[i].PlayerPoint, playerOnly)) cands.Add(all[i]);
             }
             if (cands.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, null, now); return false; }
 
