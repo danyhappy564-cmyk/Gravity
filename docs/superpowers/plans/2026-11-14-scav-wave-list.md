@@ -1,8 +1,8 @@
-# 스캐브 웨이브 목록 + 1.0.6 마무리 Implementation Plan
+# 스캐브 웨이브 목록 + 봇 티어 분포 + 1.0.6 마무리 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (사용자 규칙: 멀티 에이전트는 허락 없이 안 씀 → 이 세션에서 직접). Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 스캐브 방식에 "웨이브 목록 (PMC처럼)"을 넣어 버블로 보고 끌어 고치게 하고, 1.0.5→1.0.6 전체를 한 번에 시험·빌드할 수 있게 마무리한다.
+**Goal:** 스캐브 방식에 "웨이브 목록 (PMC처럼)"을 넣어 버블로 보고 끌어 고치게 하고, 봇 종류별 티어에 "티어 분포"(Forge 피드백: 고정 티어 하나 대신 고정된 퍼짐)를 더하고, 1.0.5→1.0.6 전체를 한 번에 시험·빌드할 수 있게 마무리한다.
 
 **Architecture:** 웹 state `maps.<id>.scavStyle="list"`·`scavList`를 서버가 읽어 `ScavDto.List`로 클라에 보낸다. 판마다의 시각·인원은 공용 `ScavWaveList`(순수 로직)가 시드로 정하고, 클라 `ScavDirector`가 2초 틱마다 낼 수를 받아 기존 `SpawnScavs`로 넣는다. 웹은 타임라인 스캐브 줄에 버블·드래그·생성기·복사·확대를 그린다.
 
@@ -26,6 +26,7 @@
 - 스캐브 레이드(늦게 들어온 판, sim>0) → 이미 지난 웨이브는 내지 않고, 시각은 원래 레이드 기준(Task 2·4 테스트).
 - 상한이 계속 차 있는 판 → 웨이브 인원이 60초 뒤 버려지고 다음 웨이브와 합쳐 한꺼번에 몰리지 않는다(Task 2 테스트).
 - 목록 방식인데 목록이 비어 있음(사용자가 다 지움) → 시작 스캐브만, 오류 없음(Task 3·4 테스트).
+- 티어 분포를 모두 0으로 둠 → 고정 티어로 돌아가고 오류 없음(Task 7 테스트).
 - 하드 스톱 뒤 웨이브·인원 0~0 웨이브 → 건너뜀(Task 2 테스트).
 
 ---
@@ -129,7 +130,28 @@
 - [ ] Step 2~4: 실패 확인 → 구현 → 통과.
 - [ ] Step 5: 커밋 `feat(web): 스캐브 웨이브 목록 다른 맵에 복사, 타임라인 확대 1·2·4배`.
 
-### Task 7: 문서·버전 기록·시연
+### Task 7: 봇 종류별 "티어 분포" (Forge 피드백 11-14)
+
+피드백 원문: "Only suggestion I have is to have another option for setting the tier of the various bot types to be a fixed spread rather than a single fixed tier." 사용자: 계획에 추가(11-14).
+지금: 장비 → 봇별 장비의 티어 방식 `roles.<id>.mode` = `follow`(레벨 따라가기) · `fixed`(고정, `tier`) · `offset`(레벨 ± `offset`). `GearTier.Pick`(src/Gravity.Server/Gear/GearTier.cs:53)이 판정.
+
+**Files:**
+- Modify: `src/Gravity.Server/Core/GearConfig.cs` (`RoleGear` 끝 칸, 읽기), `src/Gravity.Server/Gear/GearTier.cs` (`Pick`), `src/Gravity.Server/wwwroot/index.html` (봇별 장비 카드 ~1705줄, 기본값, 요약 표시)
+- Test: `tests/Gravity.Tests/GearTests.cs` (클래스 `TierSpreadTests` 추가), `tests/web/ux.test.cjs`
+
+**Interfaces:**
+- Produces:
+  - `RoleGear` 끝 칸 `double[]? Spread = null` (T1~T7 비중 7칸, 0~100). `roles.<id>.mode` 허용값에 `"spread"`. 읽기: `roles.<id>.spread.t1..t7`, 합 0이면 null.
+  - `GearTier.Pick`: `role.Mode=="spread" && role.Spread!=null`이면 레벨과 상관없이 비중대로 티어를 굴린다(새 `static int Weighted(double[] w, Random rnd)` — `Mix`와 같은 누적 방식, 반복은 7칸). 그 뒤 시작 티어(`StartTier`) 하한·`Poverty`는 지금처럼 적용. `Spread==null`이면 `fixed`처럼 `Tier`.
+  - 웹: 모드 seg 넷째 `['spread',T('티어 분포','Tier spread')]`. 고르면 `ratio(p+'spread',[['t1','T1',…]…['t7','T7',…]],T('티어별 비중','Share per tier'),T('봇마다 이 비중으로 티어를 굴립니다. 레벨과 상관없이 늘 같은 퍼짐입니다.','Each bot rolls its tier from these shares, regardless of level.'))`. 기본값 `spread` = 그 봇 기본 티어 50, 위아래 한 칸씩 25(T1·T7 끝은 안쪽으로 몰아 합 100). 봇별 장비 목록 요약: `분포 T3 25·T4 50·T5 25`.
+
+- [ ] Step 1: 테스트 `Spread_Rolls_ByWeights`(T2 30·T4 70, 시드 고정 2000번 → T2 비율 0.25~0.35, 다른 티어 0), `Spread_ZeroSum_FallsBackToFixedTier`, `Spread_StartTierFloor_StillApplies`(시작 티어 3 → T2는 T3으로), `Defaults_Unchanged`(기본 설정의 모든 봇 `Mode`가 지금과 같고 `Spread==null`), 웹 `티어 분포: 고르면 비중 막대, 요약 글자, 기본 비중 합 100`.
+- [ ] Step 2: 실패 확인.
+- [ ] Step 3: 구현.
+- [ ] Step 4: 통과 + 전체 테스트.
+- [ ] Step 5: 커밋 `feat(gear): 봇 종류별 티어 분포(고정 퍼짐) — Forge 피드백`.
+
+### Task 8: 문서·버전 기록·시연
 
 **Files:**
 - Modify: `README.md`, `README.en.md` (1.0.6 문단에 한 줄), `changelog/` (KB `tools/changelog.py add`), `docs/reports/2026-11-14-1.0.6-validation.md`, `#demo` 예시 자료(세관 `scavStyle:'list'` 대신 리저브에 예시 목록 — 세관 예시는 그대로)
@@ -138,14 +160,14 @@
 - [ ] Step 1: 문서 갱신, 웹 테스트(시연 자료) 통과.
 - [ ] Step 2: 커밋·푸시, 아티팩트 시연 페이지 재게시(같은 파일 경로).
 
-### Task 8: 1.0.6 전체 점검 (클라우드)
+### Task 9: 1.0.6 전체 점검 (클라우드)
 
 - [ ] Step 1: `LANG=ko_KR.UTF-8 LC_ALL=ko_KR.UTF-8 dotnet test tests/Gravity.Tests -c Release` 전부 통과, `node --test tests/web/` 전부 통과, `dotnet build src/Gravity.Server -c Release` 경고 0.
 - [ ] Step 2: 1.0.5 태그 대비 바뀐 것 목록 `git log v1.0.5..HEAD --oneline`을 검증 보고서 "커밋" 표에 맞춤.
 - [ ] Step 3: Playwright 폰·데스크톱 캡처 1장씩(세관 목록 방식 펼친 타임라인) 눈으로 확인.
 
-### Task 9: 로컬 (사용자 PC — 집)
+### Task 10: 로컬 (사용자 PC — 집)
 
 - [ ] Step 1: `git pull` → `dotnet build Gravity.sln -c Release`(TarkovDir) 클라 포함 경고·오류 0 → zip·SHA256.
-- [ ] Step 2: 실제 판(사용자): 1.0.6 검증 보고서 "남은 것" 전부 + 세관 목록 방식 긴 판(로그 웨이브별 시각·인원 = 버블, 웨이브 사이 채우기 없음, 상한 막힘 60초 뒤 버림), 기존 채우기 방식 한 판(예전과 같은지).
+- [ ] Step 2: 실제 판(사용자): 1.0.6 검증 보고서 "남은 것" 전부 + 세관 목록 방식 긴 판(로그 웨이브별 시각·인원 = 버블, 웨이브 사이 채우기 없음, 상한 막힘 60초 뒤 버림), 기존 채우기 방식 한 판(예전과 같은지), 티어 분포를 준 봇 종류의 실제 장비(F12 진단·로그 티어)가 비중대로 섞이는지.
 - [ ] Step 3: 통과 뒤 R-1: 노트 4종(GitHub·아카·디코·Forge) 묻기.
