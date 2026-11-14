@@ -116,7 +116,8 @@ public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double
 public sealed record TriggerRule(double? Chance, int Min, int Max, string Role);
 
 /// <summary>팩션 무리 종류 하나(순찰·검문소·사냥조, 0.4). TMin·TMax는 분(검문소·사냥조는 안 씀).</summary>
-public sealed record FactionKind(bool On, double Chance, int Count, int Min, int Max, double TMin, double TMax);
+public sealed record FactionKind(bool On, double Chance, int Count, int Min, int Max, double TMin, double TMax, double[]? Curve = null);
+// Curve(1.0.6, 순찰만): 등장 시각 창 초반·중반·후반 가중치. null = 고르게(1.0.5와 같은 난수 순서).
 
 /// <summary>RUAF·UNTAR 같은 순찰형 팩션(0.4). Maps에는 웹에서 정한 맵만 있다(없는 맵 = 모드 설정 기본).</summary>
 public sealed record FactionSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
@@ -339,7 +340,7 @@ public static partial class ConfigModel
             var kMin = (int)r.Num(p + "min", min, 1, 10);
             var t0 = r.Num(p + "tMin", tMin, 0, 180);
             return new FactionKind(r.Bool(p + "on", true), r.Num(p + "chance", chance, 0, 100), (int)r.Num(p + "count", count, 0, 10),
-                kMin, (int)Math.Max(kMin, r.Num(p + "max", max, 1, 10)), t0, Math.Max(t0, r.Num(p + "tMax", tMax, 0, 180)));
+                kMin, (int)Math.Max(kMin, r.Num(p + "max", max, 1, 10)), t0, Math.Max(t0, r.Num(p + "tMax", tMax, 0, 180)), Curve(r, p + "curve."));
         }
         Dictionary<string, bool> FacMaps(string p)
         {

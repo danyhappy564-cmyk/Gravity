@@ -128,3 +128,29 @@ public class TriggerSpawnTests
         Assert.Equal(100, rules["autoId_2|pmcBot"].Chance);   // 0~100으로 자름
     }
 }
+
+/// <summary>1.0.6 RUAF 순찰 시각 곡선.</summary>
+public class PatrolCurveTests
+{
+    [Fact]
+    public void CurveSec_LateWeighted_StaysInWindow()
+    {
+        int late = 0, early = 0;
+        for (var seed = 1; seed <= 200; seed++)
+        {
+            var t = FactionRaid.CurveSec(new Random(seed), 60, 1800, [0.2, 1, 3]);
+            Assert.InRange(t, 60, 1800);
+            if (t >= 1220) late++; else if (t < 640) early++;
+        }
+        Assert.True(late > early * 5, $"late {late} early {early}");
+    }
+
+    [Fact]
+    public void Config_NoCurve_IsNull_SoOldRandomOrderKept()
+    {
+        var cfg = ConfigModel.FromState(JsonNode.Parse("""{"factions":{"ruaf":{"patrol":{"curve":{"early":1,"mid":1,"late":1}}}}}"""), []);
+        Assert.Null(cfg.Ruaf!.Patrol.Curve);
+        var cfg2 = ConfigModel.FromState(JsonNode.Parse("""{"factions":{"ruaf":{"patrol":{"curve":{"late":2}}}}}"""), []);
+        Assert.Equal([1, 1, 2], cfg2.Ruaf!.Patrol.Curve);
+    }
+}

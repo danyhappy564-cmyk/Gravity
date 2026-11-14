@@ -71,6 +71,19 @@ public static class FactionRaid
 
     private static int Between(Random rnd, int min, int max) => rnd.Next(min, Math.Max(min, max) + 1);
 
+    /// <summary>초 단위 창 [min, max]를 3등분해 가중치(초반·중반·후반)로 한 칸을 고르고 그 안에서 고르게.</summary>
+    internal static int CurveSec(Random rnd, int min, int max, double[] curve)
+    {
+        max = Math.Max(min, max);
+        var w = curve.Length >= 3 ? curve.Take(3).Select(x => Math.Max(0, x)).ToArray() : [1, 1, 1];
+        var total = w.Sum();
+        var part = 0;
+        if (total > 0) { var x = rnd.NextDouble() * total; while (part < 2 && (x -= w[part]) >= 0) part++; }
+        else part = rnd.Next(3);
+        var span = max - min;
+        return (int)Math.Round(min + span * (part + rnd.NextDouble()) / 3);
+    }
+
     private static bool MapOn(IReadOnlyDictionary<string, bool> maps, string mapId, bool modDefault) =>
         maps.TryGetValue(mapId, out var on) ? on : modDefault;
 
@@ -118,7 +131,9 @@ public static class FactionRaid
             for (var i = 0; i < r.Patrol.Count; i++)
             {
                 var lo = (int)Math.Min(r.Patrol.TMin * 60, tMax);
-                var t = r.Style == "start" ? -1 : Between(rnd, Math.Max(1, lo), (int)Math.Min(r.Patrol.TMax * 60, tMax));
+                var hi = (int)Math.Min(r.Patrol.TMax * 60, tMax);
+                // 1.0.6: 곡선이 있으면 창을 3등분한 가중치로(없으면 1.0.5와 같은 난수 순서).
+                var t = r.Style == "start" ? -1 : r.Patrol.Curve is { } cv ? CurveSec(rnd, Math.Max(1, lo), hi, cv) : Between(rnd, Math.Max(1, lo), hi);
                 list.Add(RuafGroup(Between(rnd, r.Patrol.Min, r.Patrol.Max), r.Patrol.Chance, bag.Next(), t, rnd, ignoreCap));
                 patrols++;
             }
