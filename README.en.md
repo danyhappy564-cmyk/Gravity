@@ -17,9 +17,9 @@
 
 ## Changelog
 
-The full changelog (11 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-002.md`](changelog/CHANGELOG-002.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (12 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-002.md`](changelog/CHANGELOG-002.md)). Per-release summaries: [Releases](../../releases).
 
-# Gravity 1.0.5
+# Gravity 1.0.6
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -32,8 +32,10 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 **Spawn module**
 
 - PMCs: starting squads plus waves or continuous refills, squad-size mix, faction mix, difficulty and level range, stop near the end of the raid.
-- Scavs: starting count, active/quiet cycles, map caps (one shared value or per map), protection radius around the player for refills.
+- Scavs: starting count, active/quiet cycles, map caps (one shared value or per map), protection radius around the player for refills, **intensity over the raid** (early/mid/late multipliers, e.g. the reverse of PMCs: more scavs later).
 - Bosses and special bots (sniper scavs, Raiders, Rogues, Cultists, …): chance, count and timing on a timeline; 0 means they never appear. Bosses can have a **chance per map** (empty = the boss's default/shared chance).
+- Special bots can be added to maps that don't have them (e.g. Raiders or Rogues on Customs). Extra Raider/Rogue groups get a group count and early/mid/late weights.
+- **Trigger spawns**: chance and size for groups released by levers, switches and exfils (Labs and Reserve Raiders) and by game events (Labyrinth Tagilla helpers, Kaban snipers). Raider lever groups can be switched to Rogues or Black Division (the trigger stays the same).
 - Faction mods (RUAF, BlackDiv, …) and events (Halloween, Christmas, …): detected, each can be turned on or off.
 - Per-map spawn zones, raid-wide group limits, SVM extra raid time detection, raid presets you can save and import.
 - Each map shows an estimate of how many PMCs and scavs to expect.
@@ -57,6 +59,8 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 If you open the page from another PC or a Fika/LAN address (anything other than 127.0.0.1 on the server PC), log in with an SPT web admin account using the **SPT login** button at the top before saving — the same SPT login used by SAIN and other mod web pages. Opened on the server PC at 127.0.0.1, no login is needed.
 
 Use **1.0.3 or later within the 1.0.x series** for both server and client. Mixing with 1.0.2 or older is unsupported. Starting scavs are prepared together at the configured delay: 0 min prepares them during loading; the default delay is 4 min. Starting PMC squads prepare their members during loading, with up to 60 seconds of additional waiting. Map capacity, group limits, or unavailable spawn points can leave some bots in the existing queue and delay activation.
+
+**1.0.6:** Raiders, Rogues, Cultists and Bloodhounds can be added to maps that don’t have them (the Special bots page marks "Original / Added by Gravity"). Labs/Reserve lever and exfil groups and Labyrinth/Streets event groups get their own chance and size, and Raider lever groups can be switched to Rogues or Black Division. Extra Raider/Rogue groups: 1–6 groups with early/mid/late weights. Scavs get early/mid/late intensity, so they can ramp up late in the raid (starting scavs excluded, map cap respected). The timeline splits special bots into one collapsible lane per type. With every new field at its default, results match 1.0.5.
 
 **1.0.5:** The web page can save from another PC or a Fika address after an SPT web admin login. The web UI remembers your language (first visit follows the browser). Auto-generated preset names (Custom preset N, etc.) show in the current language. PMC armor-vest/earpiece chances at low tiers and front/back plate chances were raised to SPT's original level (settings still on the old defaults from 1.0.4 or earlier switch automatically). The built-in "Lightweight" raid preset now really lowers map caps, and "Start spawns only" also limits scavs to the raid start.
 
