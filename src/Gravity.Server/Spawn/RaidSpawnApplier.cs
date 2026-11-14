@@ -190,7 +190,24 @@ public static class RaidSpawnApplier
                 if (b.Extra) result.Add(n with { });
             }
         result.AddRange(extra);
-        AddExtraSpecials(loc.BossLocationSpawn, result, cfg, mapId, rnd, raidSec);
+        // 1.0.6 #39: 원래 무리가 없는 맵에 켠 특수 봇은 다른 맵 항목을 본보기로 넣는다(구역 = 이 맵 보스 구역, 저격 구역 제외).
+        var newZones = valid.Where(z => !z.StartsWith("ZoneSniper", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (newZones.Length == 0) newZones = valid.ToArray();
+        if (templates != null)
+            foreach (var (sr, sp) in specialByRole)
+            {
+                if (extraRoles.Contains(sr) || !sp.On || !sp.Chance.TryGetValue(mapId, out var c) || c <= 0) continue;
+                if (result.Any(x => string.Equals(x.BossName, sr, StringComparison.OrdinalIgnoreCase))) continue;
+                if (!templates.TryGetValue(sr, out var tpl)) continue;
+                var n = tpl with
+                {
+                    BossChance = c, BossZone = string.Join(",", newZones), TriggerId = "", TriggerName = "", Delay = 0,
+                    Time = SpecialTime(sp.TFrom, sp.TTo, rnd, raidSec, tpl.Time ?? -1), IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
+                };
+                if (sp.Max > 0) n = n with { BossEscortAmount = Range(Math.Max(0, sp.Min - 1), Math.Max(0, sp.Max - 1)) };
+                result.Add(n);
+            }
+        AddExtraSpecials(loc.BossLocationSpawn, result, cfg, mapId, rnd, raidSec, templates, newZones);
         loc.BossLocationSpawn = result;
 
         // 0.4: 저격 스캐브(바닐라 marksman 웨이브). 끄면 지우고, 맵 확률이 있으면 웨이브마다 그 확률로 남기며, 인원 칸이 있으면 바꾼다.
@@ -240,11 +257,6 @@ public static class RaidSpawnApplier
     }
 
     /// <summary>바닐라 호위 수 형식: 가능한 수를 쉼표로(클라가 하나를 고름). 예: 2~4 → "2,3,4".</summary>
-    /// <summary>
-    /// 레이더·로그 "추가 스폰"(ABPS식, 사용자 결정 11-10): 원래 항목과 별개로 판 시작 때 한 무리를 이 맵 확률로 더 넣는다.
-    /// 본보기·구역은 이 맵의 원래 항목(이벤트 항목 포함)에서 가져오고, 원래 항목이 없는 맵에는 넣지 않는다(구역을 모름).
-    /// 추가분은 맵 상한을 지킨다(IgnoreMaxBots=false). 트리거는 비운다(타이머 웨이브).
-    /// </summary>
     /// <summary>특수 봇 시각 창(분) → 게임 Time(초). 끝이 0이면 원래대로(-1 = 판 시작).</summary>
     internal static double SpecialTime(double from, double to, Random rnd, double raidSec, double original = -1)
     {
@@ -254,8 +266,14 @@ public static class RaidSpawnApplier
         return Math.Max(1, Math.Round(t));
     }
 
+    /// <summary>
+    /// 레이더·로그 "추가 스폰"(ABPS식, 사용자 결정 11-10): 원래 항목과 별개로 한 무리를 이 맵 확률로 더 넣는다.
+    /// 본보기·구역은 이 맵의 원래 항목(이벤트 항목 포함)에서 가져온다. 원래 항목이 없는 맵(1.0.6 #39)은 다른 맵의
+    /// 트리거 없는 항목(templates)을 본보기로, 구역은 이 맵 보스 구역(newZones)으로 넣는다.
+    /// 추가분은 맵 상한을 지킨다(IgnoreMaxBots=false). 트리거는 비운다(타이머 웨이브).
+    /// </summary>
     internal static void AddExtraSpecials(IReadOnlyList<BossLocationSpawn> original, List<BossLocationSpawn> result, GravityConfig cfg, string mapId,
-        Random? random = null, double raidSec = 0)
+        Random? random = null, double raidSec = 0, IReadOnlyDictionary<string, BossLocationSpawn>? templates = null, string[]? newZones = null)
     {
         var rnd = random ?? new Random(1);
         if (cfg.Specials == null) return;
@@ -264,11 +282,17 @@ public static class RaidSpawnApplier
             if (!SpecialSettings.ExtraModel(id) || !sp.On || sp.Extra == null || sp.ExtraMax <= 0) continue;
             if (!sp.Extra.TryGetValue(mapId, out var chance) || chance <= 0) continue;
             var role = ConfigModel.SpecialRoles[id];
-            var own = original.Where(e => string.Equals(e.BossName, role, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (own.Count == 0) continue;
-            var tpl = own.FirstOrDefault(e => string.IsNullOrEmpty(e.TriggerName)) ?? own[0];
-            var zones = own.SelectMany(e => (e.BossZone ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                .Distinct(StringComparer.Ordinal).ToArray();
+            var own = original.Where(e => string.Equals(e.BossName, role, StringComparison.OrdinalIgnoreCase) && e.SptId != "gravity").ToList();
+            BossLocationSpawn tpl;
+            string[] zones;
+            if (own.Count > 0)
+            {
+                tpl = own.FirstOrDefault(e => string.IsNullOrEmpty(e.TriggerName)) ?? own[0];
+                zones = own.SelectMany(e => (e.BossZone ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                    .Distinct(StringComparer.Ordinal).ToArray();
+            }
+            else if (templates != null && templates.TryGetValue(role, out var t)) { tpl = t; zones = newZones ?? []; }
+            else continue;
             result.Add(tpl with
             {
                 BossChance = chance, BossZone = string.Join(",", zones),

@@ -99,9 +99,17 @@ public sealed class MapCatalog
     internal void AddForTest(MapInfo info) => _info[info.Id] = info;
 
     private readonly Dictionary<string, BossLocationSpawn> _bossTemplates = new(StringComparer.OrdinalIgnoreCase);
-    /// <summary>보스 역할 → DB에서 확률이 가장 높은 항목(원래 없던 맵에 보스를 넣을 때 본보기, 0.4). 읽기 전용으로만 쓴다(복제해서 씀).</summary>
+    /// <summary>보스·특수 봇 역할 → DB에서 확률이 가장 높은 항목(원래 없던 맵에 넣을 때 본보기, 보스 0.4·특수 봇 1.0.6). 읽기 전용으로만 쓴다(복제해서 씀).</summary>
     public IReadOnlyDictionary<string, BossLocationSpawn> BossTemplates => _bossTemplates;
     internal void AddTemplateForTest(BossLocationSpawn e) => _bossTemplates[e.BossName!] = e;
+
+    /// <summary>
+    /// 본보기로 모을 항목: 보스 역할 전부, 특수 봇 역할(레이더·로그·컬티스트·블러드하운드, 1.0.6 #39)은 트리거 없는 항목만
+    /// (레버·탈출구 항목을 본떠 다른 맵에 넣으면 트리거를 떼도 구역·대기가 그 맵에 맞지 않는다).
+    /// </summary>
+    internal static bool IsTemplateRole(BossLocationSpawn e, string role) =>
+        RaidSpawnApplier.BossRoleToId.ContainsKey(role)
+        || (ConfigModel.SpecialRoles.Values.Contains(role, StringComparer.OrdinalIgnoreCase) && string.IsNullOrEmpty(e.TriggerName));
 
     public void Build(LocationTable locations, PmcConfig pmcConfig, BotConfig botConfig)
     {
@@ -117,7 +125,7 @@ public sealed class MapCatalog
             var (info, basePmc, baseScav, raidSec, pmcZones, scavZones) = Compute(id, b, pmcConfig);
             _info[id] = info;
             foreach (var e in b.BossLocationSpawn)
-                if (e.BossName is { } bn && RaidSpawnApplier.BossRoleToId.ContainsKey(bn)
+                if (e.BossName is { } bn && IsTemplateRole(e, bn)
                     && (!_bossTemplates.TryGetValue(bn, out var cur) || (e.BossChance ?? 0) > (cur.BossChance ?? 0)))
                     _bossTemplates[bn] = e;
             var bosses = b.BossLocationSpawn
