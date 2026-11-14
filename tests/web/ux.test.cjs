@@ -1450,3 +1450,10 @@ test('1.0.6 주간 보스: 이번 주 보스와 켜고 끈 결과를 보스 공�
   a.run("serverMeta={}");
   assert.match(a.run("P.bosses.render()"),/SPT 주간 보스가 꺼져 있거나/);
 });
+test('1.0.6 #demo: 리저브 스캐브 웨이브 목록 예시가 버블로 보임', async () => {
+  const a=app({hash:'#demo'});
+  await a.run('boot()');
+  assert.equal(a.run("state.maps.rezervbase.scavStyle"),'list');
+  a.run("page='spawn';spawnTab='rezervbase';mapSel='rezervbase'");
+  assert.match(a.run("timeline(mapById('rezervbase'),true)"),/data-drag="scavw\|5"/);
+});
