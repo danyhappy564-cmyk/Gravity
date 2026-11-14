@@ -314,3 +314,57 @@ public class GearTests
         Assert.Equal([0.0], GearApply.Uniform(3, 0).Keys); // 상한 0
     }
 }
+
+/// <summary>1.0.6 봇 종류별 "티어 분포"(Forge 피드백: 고정 티어 하나 대신 정한 비율로 퍼짐).</summary>
+public class TierSpreadTests
+{
+    private static GearSettings Cfg(string json) => ConfigModel.FromState(JsonNode.Parse(json), []).Gear!;
+
+    [Fact]
+    public void Spread_Read_AndRolls_ByWeights()
+    {
+        var g = Cfg("""{"gear":{"startTier":1},"roles":{"scav":{"mode":"spread","poverty":0,"spread":{"t1":0,"t2":30,"t3":0,"t4":70,"t5":0,"t6":0,"t7":0}}}}""");
+        var r = g.RoleFor("scav");
+        Assert.Equal("spread", r.Mode);
+        Assert.Equal(new double[] { 0, 30, 0, 70, 0, 0, 0 }, r.Spread);
+        var rnd = new Random(42);
+        var n = new int[7];
+        for (var i = 0; i < 2000; i++) n[GearTier.Pick(g, r, "scavs", 30, null, rnd)]++;
+        Assert.InRange(n[1] / 2000.0, 0.25, 0.35);
+        Assert.Equal(2000, n[1] + n[3]);
+    }
+
+    [Fact]
+    public void Spread_ZeroSum_FallsBackToFixedTier()
+    {
+        var g = Cfg("""{"roles":{"scav":{"mode":"spread","tier":3,"poverty":0,"spread":{"t1":0,"t2":0}}}}""");
+        var r = g.RoleFor("scav");
+        Assert.Null(r.Spread);
+        Assert.Equal(2, GearTier.Pick(g, r, "scavs", 30, null, new Random(1)));
+    }
+
+    [Fact]
+    public void Spread_StartTierFloor_StillApplies()
+    {
+        var g = Cfg("""{"gear":{"startTier":3},"roles":{"scav":{"mode":"spread","poverty":0,"spread":{"t2":100}}}}""");
+        Assert.Equal(2, GearTier.Pick(g, g.RoleFor("scav"), "scavs", 30, null, new Random(1)));
+    }
+
+    [Fact]
+    public void Defaults_Unchanged()
+    {
+        var g = ConfigModel.Default().Gear!;
+        foreach (var id in ConfigModel.GearRoleIds)
+        {
+            Assert.Null(g.RoleFor(id).Spread);
+            Assert.Equal(GearDefaults.Role(id).Mode, g.RoleFor(id).Mode);
+        }
+    }
+
+    [Fact]
+    public void Weighted_EmptyOrZero_ReturnsMinusOne()
+    {
+        Assert.Equal(-1, GearTier.Weighted([0, 0, 0, 0, 0, 0, 0], new Random(1)));
+        Assert.Equal(6, GearTier.Weighted([0, 0, 0, 0, 0, 0, 5], new Random(1)));
+    }
+}

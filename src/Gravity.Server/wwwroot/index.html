@@ -688,6 +688,10 @@ function tierDataDefaults(){const out={};TBOTS.forEach(([b])=>{out[b]=[];for(let
   out[b].push(d);}});return out;}
 
 /* ================= defaults ================= */
+// 1.0.6 티어 분포: 그 봇 기본 티어 50, 위아래 한 칸씩 25. 끝(T1·T7)은 없는 쪽 몫을 안쪽 칸으로 몰아 합 100.
+function spreadDefault(tier){const t=clampN(Math.round(tier)||1,1,7),o={t1:0,t2:0,t3:0,t4:0,t5:0,t6:0,t7:0};o['t'+t]=50;
+  if(t===1)o.t2=50;else if(t===7)o.t6=50;else{o['t'+(t-1)]=25;o['t'+(t+1)]=25;}return o;}
+const spreadText=r=>r&&r.mode==='spread'&&r.spread?tr(T('분포','Spread'))+' '+[1,2,3,4,5,6,7].filter(i=>r.spread['t'+i]>0).map(i=>'T'+i+' '+r.spread['t'+i]).join('·'):'';
 function roleDefaults(id){
   const pmc=id==='usec'||id==='bear',boss=id.startsWith('boss_'),fol=id.startsWith('f_'),fac=['ruaf','untar','blackdiv','wedge'].includes(id);
   return {on:pmc,mode:pmc?'follow':boss||fol?'fixed':'fixed',tier:boss?6:fol?5:fac?5:id==='scav'||id==='marksman'?2:id==='pscav'?3:4,offset:0,
@@ -1734,9 +1738,10 @@ P.tiers={desc:T('플레이어 레벨에 따라 7단계로 나눈 장비 수준�
 
 P.roles={desc:T('봇 종류마다 장비 적용 여부와 티어, 방탄판·탄약·내구도 규칙을 따로 정합니다.','Per bot type: whether Gravity dresses it, its tier, plates, ammo and durability rules.'),render(){
   const r=state.roles[roleSel],p='roles.'+roleSel+'.',off=!r.on;
-  const list=`<div class="list">${ROLE_GROUPS.map(([cap,items])=>`<div class="cap">${tr(cap)}</div>`+items.map(([id,ko,en])=>`<button data-role="${id}" class="${id===roleSel?'on':''}">${tr(T(ko,en))}<span class="st ${state.roles[id].on?'on':''}"></span></button>`).join('')).join('')}</div>`;
+  const list=`<div class="list">${ROLE_GROUPS.map(([cap,items])=>`<div class="cap">${tr(cap)}</div>`+items.map(([id,ko,en])=>`<button data-role="${id}" class="${id===roleSel?'on':''}">${tr(T(ko,en))}${spreadText(state.roles[id])?`<small class="muted"> · ${esc(spreadText(state.roles[id]))}</small>`:''}<span class="st ${state.roles[id].on?'on':''}"></span></button>`).join('')).join('')}</div>`;
   const detail=`<div class="stack">${card(T(roleName(roleSel),roleName(roleSel)),sw(p+'on',T('Gravity 장비 적용','Use Gravity loadouts'),T('끄면 SPT(또는 그 봇을 추가한 모드)의 기본 장비를 씁니다.','Off = SPT / source mod default gear.'))
-     +seg(p+'mode',T('티어','Tier'),'',[['follow',T('레벨 따라가기','Follow level')],['fixed',T('고정','Fixed')],['offset',T('레벨 ± 오프셋','Level ± offset')]],{dis:off})
+     +seg(p+'mode',T('티어','Tier'),'',[['follow',T('레벨 따라가기','Follow level')],['fixed',T('고정','Fixed')],['offset',T('레벨 ± 오프셋','Level ± offset')],['spread',T('티어 분포','Tier spread')]],{dis:off})
+     +(r.mode==='spread'&&r.spread?ratio(p+'spread',[1,2,3,4,5,6,7].map(i=>['t'+i,T('T'+i,'T'+i),['#5f6b7f','#5fd4a6','#6ea8ff','#a78bfa','#f0c070','#f2a65a','#f27f8c'][i-1]]),T('티어별 비중','Share per tier'),T('봇마다 이 비중으로 티어를 굴립니다. 레벨과 상관없이 늘 같은 퍼짐입니다. 시작 티어 하한과 가난한 봇 확률은 그대로 적용됩니다.','Each bot rolls its tier from these shares, regardless of level. The starting-tier floor and poor-bot chance still apply.'))+`<p class="small muted">${esc(spreadText(r))}</p>`:'')
      +(r.mode==='fixed'?slider(p+'tier',T('고정 티어','Fixed tier'),'',{min:1,max:7,unit:'',dis:off}):r.mode==='offset'?slider(p+'offset',T('티어 오프셋','Tier offset'),'',{min:-3,max:3,unit:'',dis:off}):'')
      +`<div class="chips" style="margin-top:6px"><button class="mini-btn" data-act="copyRole">${tr(T('이 설정을 같은 묶음에 복사','Copy to the same group'))}</button><button class="mini-btn" data-act="resetRole">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'☰',right:pill(r.on?u('on'):u('off'),r.on?'good':'')})}
    <div class="grid g2">
@@ -2376,7 +2381,7 @@ function writeSettingRaw(p,v,auto=false){
   const impact=isSpawnMap()&&batch.length&&p.startsWith('maps.'+mapSel+'.')&&!/^maps\.[^.]+\.zones/.test(p)?batchCapture(p):null;
   {const m=/^tierData\.([^.]+)\.(\d+)\.(weapons|armor|ammo|meds|parts)\.([^.]+)\.[0-9a-f]{24}$/.exec(p);if(m)materialize(m[1],+m[2],m[3],m[4]);}
   const k=p.split('.');
-  if(k[0]!=='maps'){putPath(state,p,v);return true;}
+  if(k[0]!=='maps'){putPath(state,p,v);if(k[0]==='roles'&&k[2]==='mode'&&v==='spread'&&state.roles[k[1]]&&!state.roles[k[1]].spread)state.roles[k[1]].spread=spreadDefault(state.roles[k[1]].tier);return true;}
   const mid=k[1],suffix=k.slice(2).join('.'),targets=[mid,...(isSpawnMap()&&mid===mapSel&&!['zones','zonesAlt','scavList','scavGen'].includes(k[2])?batch:[])];
   const flag=k[2]==='ovr'?k[3]:k[2]==='override'?'flow':'';
   if(flag){if(!CARD_FIELDS[flag])return false;targets.forEach(id=>{if(v)ensureOverride(id,flag);else putPath(state,`maps.${id}.ovr.${flag}`,false);if(flag==='flow')state.maps[id].override=!!v;});return true;}

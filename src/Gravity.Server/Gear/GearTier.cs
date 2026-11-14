@@ -48,6 +48,24 @@ public static class GearTier
         return t;
     }
 
+    /// <summary>1.0.6 티어 분포: 비중대로 티어 번호(0~)를 뽑는다. 합이 0이면 -1. 반복은 칸 수(7)로 끝.</summary>
+    public static int Weighted(double[] w, Random rnd)
+    {
+        double sum = 0;
+        foreach (var x in w) if (x > 0) sum += x;
+        if (sum <= 0) return -1;
+        double v = rnd.NextDouble() * sum;
+        int last = -1;
+        for (int j = 0; j < w.Length; j++)
+        {
+            if (w[j] <= 0) continue;
+            last = j;
+            v -= w[j];
+            if (v < 0) return j;
+        }
+        return last;
+    }
+
     /// <summary>
     /// 봇 티어(0~6). level은 PMC면 실제 레벨, 아니면 null(내 레벨 구간에서 가상 레벨을 뽑음).
     /// </summary>
@@ -55,7 +73,8 @@ public static class GearTier
     {
         int st = Math.Clamp(g.StartTier - 1, 0, 6);
         int t;
-        if (role.Mode == "fixed") t = role.Tier - 1;
+        if (role.Mode == "spread") t = role.Spread is { } sw && Weighted(sw, rnd) is var k && k >= 0 ? k : role.Tier - 1;
+        else if (role.Mode == "fixed") t = role.Tier - 1;
         else if (g.TierMode == "fixed") t = g.FixedTier - 1;
         else
         {

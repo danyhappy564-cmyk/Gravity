@@ -18,7 +18,8 @@ public sealed record LvRules(string Pick, int Below, int Above, int FixMin, int 
 
 /// <summary>봇 종류 하나(웹 roles.&lt;id&gt;).</summary>
 public sealed record RoleGear(bool On, string Mode, int Tier, int Offset, double FrontPlate, double SidePlate,
-    double WDurMin, double WDurMax, double ADurMin, double ADurMax, bool Loot, double Poverty);
+    double WDurMin, double WDurMax, double ADurMin, double ADurMax, bool Loot, double Poverty, double[]? Spread = null);
+// 1.0.6 Spread = 티어 분포(mode "spread"): T1~T7 비중 7칸. 합이 0이면 null(고정 티어로).
 
 /// <summary>티어 편집기 "개수·확률" 표 한 칸(웹 tierData.&lt;키&gt;[티어]의 gen·chance·mods).</summary>
 public sealed record GearTable(IReadOnlyDictionary<string, (int Min, int Max)> Gen,
@@ -164,6 +165,15 @@ public static partial class ConfigModel
         "cultist", "raider", "rogue", "bloodhound", "infected", "ruaf", "untar", "blackdiv", "wedge"
     ];
 
+    /// <summary>roles.&lt;id&gt;.spread.t1..t7(0~100). 칸이 없거나 합이 0이면 null.</summary>
+    private static double[]? ReadSpread(Reader r, string p)
+    {
+        if (r.Node(p + "spread") is not JsonObject) return null;
+        var w = new double[7];
+        for (var i = 0; i < 7; i++) w[i] = r.Num($"{p}spread.t{i + 1}", 0, 0, 100);
+        return w.Sum() > 0 ? w : null;
+    }
+
     internal static GearSettings ParseGear(Reader r)
     {
         const string g = "gear.";
@@ -202,11 +212,11 @@ public static partial class ConfigModel
             var d = GearDefaults.Role(id);
             var p = $"roles.{id}.";
             double wd = r.Num(p + "wDurMin", d.WDurMin, 1, 100), ad = r.Num(p + "aDurMin", d.ADurMin, 1, 100);
-            roles[id] = new RoleGear(r.Bool(p + "on", d.On), r.Str(p + "mode", d.Mode, "follow", "fixed", "offset"),
+            roles[id] = new RoleGear(r.Bool(p + "on", d.On), r.Str(p + "mode", d.Mode, "follow", "fixed", "offset", "spread"),
                 (int)r.Num(p + "tier", d.Tier, 1, 7), (int)r.Num(p + "offset", 0, -3, 3),
                 r.Num(p + "frontPlate", d.FrontPlate, 0, 100) is var fp && legacyChance && d.On && fp == 90 ? d.FrontPlate : fp, r.Num(p + "sidePlate", d.SidePlate, 0, 100),
                 wd, Math.Max(wd, r.Num(p + "wDurMax", d.WDurMax, 1, 100)), ad, Math.Max(ad, r.Num(p + "aDurMax", d.ADurMax, 1, 100)),
-                r.Bool(p + "loot", true), r.Num(p + "poverty", d.Poverty, 0, 100));
+                r.Bool(p + "loot", true), r.Num(p + "poverty", d.Poverty, 0, 100), ReadSpread(r, p));
         }
 
         // 티어 편집기 개수·확률 표: 묶음 표는 늘, 봇 전용 표는 tierOwn.<봇>이 켜졌을 때만.

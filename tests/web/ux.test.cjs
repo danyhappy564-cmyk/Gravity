@@ -1423,3 +1423,19 @@ test('1.0.6 타임라인 확대: 배수를 기억하고 SVG 폭·드래그 맞�
   const b=app({stored:{'gravity.tlZoom':'4'}});
   assert.equal(b.run("tlZoom"),4);
 });
+test('1.0.6 티어 분포: 고르면 기본 비중(합 100)·비중 막대·목록 요약', () => {
+  const a=app();
+  a.run("page='roles';roleSel='scav';state.roles.scav.on=true");
+  assert.ok(!/data-ratiohost="roles.scav.spread"/.test(a.run("P.roles.render()")));
+  assert.match(a.run("P.roles.render()"),/data-v="spread"|data-segv="spread"|"spread"/);
+  a.run("writeSetting('roles.scav.mode','spread')");
+  assert.equal(a.run("JSON.stringify(state.roles.scav.spread)"),JSON.stringify({t1:25,t2:50,t3:25,t4:0,t5:0,t6:0,t7:0}));
+  const html=a.run("P.roles.render()");
+  assert.match(html,/data-ratiohost="roles.scav.spread"/);
+  assert.match(html,/분포 T1 25·T2 50·T3 25/);
+  // 끝 티어는 안쪽으로 몰아 합 100
+  assert.equal(a.run("JSON.stringify(spreadDefault(7))"),JSON.stringify({t1:0,t2:0,t3:0,t4:0,t5:0,t6:50,t7:50}));
+  // 이미 비중이 있으면 다시 골라도 그대로
+  a.run("state.roles.scav.spread.t4=10;writeSetting('roles.scav.mode','fixed');writeSetting('roles.scav.mode','spread')");
+  assert.equal(a.run("state.roles.scav.spread.t4"),10);
+});
