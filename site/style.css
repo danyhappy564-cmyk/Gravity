@@ -152,7 +152,7 @@ tr:last-child td { border-bottom: 0; }
 .feature-row { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 40px; align-items: start; padding: 34px 0; border-top: 1px dashed var(--line); }
 .feature-row:first-of-type { border-top: 0; padding-top: 6px; }
 .feature-row.flip > .copy { order: 2; }
-@media (max-width: 960px) { .feature-row { grid-template-columns: 1fr; gap: 18px; } .feature-row.flip > .copy { order: 0; } }
+@media (max-width: 960px) { .feature-row { grid-template-columns: minmax(0, 1fr); gap: 18px; } .feature-row.flip > .copy { order: 0; } .orbit-art { inset: -40px 0 auto auto; width: min(300px, 80vw); } }
 .copy h3 { font-size: 22px; margin-bottom: 10px; }
 .copy h3 small { display: block; font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
 .copy p { color: var(--muted); margin: 0 0 12px; }

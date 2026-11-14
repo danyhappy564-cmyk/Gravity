@@ -35,6 +35,7 @@
       <span>Gravity<small>SPT 4.1 · MOD</small></span>
     </a>
     <nav class="main-nav" aria-label="주요 메뉴" data-label-ko="주요 메뉴" data-label-en="Main navigation">
+      <a href="#new"><span class="ko">1.0.6</span><span class="en" lang="en">1.0.6</span></a>
       <a href="#flow"><span class="ko">흐름</span><span class="en" lang="en">Flow</span></a>
       <a href="#spawn"><span class="ko">스폰</span><span class="en" lang="en">Spawns</span></a>
       <a href="#bosses"><span class="ko">보스·특수 봇</span><span class="en" lang="en">Bosses</span></a>
@@ -55,7 +56,7 @@
   <section class="hero wrap" id="top" aria-labelledby="hero-title">
     <div class="hero-grid">
       <div>
-        <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.0.5 · SPT 4.1</span></p>
+        <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.0.6 · SPT 4.1</span></p>
         <h1 id="hero-title">Gravity<span>.</span></h1>
         <p class="hero-lead"><span class="ko">레이드에 <b>누가, 언제, 어디서, 무엇을 들고</b> 나오는지 한 곳에서 정합니다.</span><span class="en" lang="en">Decide <b>who</b> shows up in your raids, <b>when, where, and with what gear</b>, all in one place.</span></p>
         <p class="hero-context"><span class="ko">서버와 클라이언트로 이루어진 모드입니다. 게임 서버가 켜져 있을 때 브라우저로 여는 웹 화면에서 모든 설정을 하고, 저장하면 다음 레이드부터 적용됩니다. 설정 파일을 직접 열어 고칠 필요가 없습니다.</span><span class="en" lang="en">A server and client mod. Everything is set on a web page you open in your browser while the game server runs; save, and it applies from the next raid. No config files to edit by hand.</span></p>
@@ -83,6 +84,60 @@
       <div class="stat"><b>T1–T7</b><span class="ko">봇 레벨로 정하는 장비 티어</span><span class="en" lang="en">gear tiers, picked by bot level</span></div>
       <div class="stat"><b>2</b><span class="ko">모듈 — 스폰·장비, 따로 켜고 끔</span><span class="en" lang="en">modules, spawn and loadout, on/off each</span></div>
       <div class="stat"><b>KO · EN</b><span class="ko">웹 화면 언어</span><span class="en" lang="en">web page languages</span></div>
+    </div>
+  </section>
+
+  <!-- 1.0.6 새 기능 -->
+  <section class="section wrap" id="new" aria-labelledby="new-title">
+    <div class="section-heading">
+      <div><p class="kicker"><span class="ko">1.0.6에서 달라진 점</span><span class="en" lang="en">New in 1.0.6</span></p>
+        <h2 id="new-title"><span class="ko">스캐브 웨이브, 특수 봇,<br>봇 체력까지.</span><span class="en" lang="en">Scav waves, special bots,<br>and bot health.</span></h2></div>
+      <p><span class="ko">새 칸은 모두 기본값이면 1.0.5와 같은 결과입니다. 1.0.5 설정 파일은 그대로 읽힙니다.</span><span class="en" lang="en">Every new option gives the same result as 1.0.5 at its default. Your 1.0.5 settings load as they are.</span></p>
+    </div>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">스캐브 웨이브 목록</span><span class="en" lang="en">Scav wave list</span></small><span class="ko">스캐브도 PMC처럼 정한 시각에 들어옵니다</span><span class="en" lang="en">Scavs can arrive on a schedule, like PMCs</span></h3>
+        <p><span class="ko">맵의 스캐브 방식을 <b>웨이브 목록 (PMC처럼)</b>으로 고르면 타임라인에 웨이브 버블이 생깁니다. 버블을 끌어 시각을 옮기고(30초 단위, 끄는 동안 <code>18:00 · 2~4마리</code>처럼 표시), 누르면 시각·최소·최대 인원을 고치는 창이 열립니다. 생성기로 한 번에 채우고, 다른 맵에 복사할 수도 있습니다(짧은 맵은 길이 밖 웨이브를 빼고 알려 줌).</span><span class="en" lang="en">Pick <b>Wave list (like PMCs)</b> as a map's scav style and wave bubbles appear on the timeline. Drag a bubble to move it (30-second steps, with a <code>18:00 · 2–4 scavs</code> tip while dragging); click it to edit its time and min/max size. Fill a whole list with the generator, or copy it to other maps (short maps drop the waves past their length and tell you).</span></p>
+        <p><span class="ko">채우기 방식에는 <b>스캐브 강도</b>(초반·중반·후반 배수)가 생겼습니다. PMC와 반대로 후반에 스캐브를 더 많이 둘 수 있습니다. 늦게 들어간 스캐브 판도 원래 레이드 길이를 기준으로 맞춰 셉니다.</span><span class="en" lang="en">The fill style gains <b>scav intensity</b> (early, mid and late multipliers), so you can have more scavs late in the raid, the opposite of PMCs. Late scav raids are counted against the original raid length.</span></p>
+      </div>
+      <div><a class="zoom" href="../img/scavlist-ko.webp" data-href-ko="../img/scavlist-ko.webp" data-href-en="../img/scavlist-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="../img/scavlist-ko.webp" data-src-ko="../img/scavlist-ko.webp" data-src-en="../img/scavlist-en.webp" width="1124" height="499" loading="lazy" alt="스캐브 웨이브 목록 타임라인" data-alt-ko="스캐브 웨이브 목록 타임라인" data-alt-en="Scav wave list on the timeline"></figure></a>
+        <p class="zoom-hint"><span class="ko">사진을 누르면 크게 봅니다</span><span class="en" lang="en">Click to enlarge</span></p></div>
+    </div>
+
+    <div class="feature-row flip">
+      <div class="copy">
+        <h3><small><span class="ko">특수 봇 · 레버 무리</span><span class="en" lang="en">Special bots · lever groups</span></small><span class="ko">원래 없는 맵에도, 레버 뒤에도</span><span class="en" lang="en">On new maps, and behind levers</span></h3>
+        <p><span class="ko">레이더·로그·컬티스트·블러드하운드를 원래 없는 맵에도 넣을 수 있습니다. 특수 봇 페이지에 맵마다 <b>원래 있음 / Gravity가 새로 넣음</b>이 표시되고, 레이더·로그는 추가 무리 수(1~6)와 시간대별 비중을 정합니다.</span><span class="en" lang="en">Raiders, Rogues, Cultists and Bloodhounds can be added to maps that don't have them. The Special bots page marks each map <b>Original / Added by Gravity</b>, and Raiders and Rogues get an extra group count (1–6) with early/mid/late weights.</span></p>
+        <p><span class="ko">연구소·리저브의 레버·스위치·탈출구 무리는 타임라인 레이더 줄을 펼치면 칩으로 보입니다. 칩을 누르면 작동했을 때 나올 확률, 무리 인원, 작동 뒤 나오기까지의 지연, 부르는 무리(레이더·로그)를 바꿉니다. 게임 안에서 스위치 신호를 직접 보내 지연 30초가 정확히 30초에 나오는 것까지 확인했습니다.</span><span class="en" lang="en">Labs and Reserve lever, switch and exfil groups show up as chips when you unfold the Raiders row. Click a chip to set the chance when triggered, the group size, the delay after the trigger, and which group it calls (Raiders or Rogues). Checked in-game by firing the switch signal directly: a 30-second delay spawned the group at exactly 30 seconds.</span></p>
+      </div>
+      <div><a class="zoom" href="../img/triggers-ko.webp" data-href-ko="../img/triggers-ko.webp" data-href-en="../img/triggers-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="../img/triggers-ko.webp" data-src-ko="../img/triggers-ko.webp" data-src-en="../img/triggers-en.webp" width="1124" height="454" loading="lazy" alt="연구소 레버·스위치 무리 칩" data-alt-ko="연구소 레버·스위치 무리 칩" data-alt-en="Labs lever and switch group chips"></figure></a>
+        <p class="zoom-hint"><span class="ko">사진을 누르면 크게 봅니다</span><span class="en" lang="en">Click to enlarge</span></p></div>
+    </div>
+
+    <div class="feature-row">
+      <div class="copy">
+        <h3><small><span class="ko">봇 체력 · 스킬</span><span class="en" lang="en">Bot health · skills</span></small><span class="ko">티어마다 체력과 스킬을 정합니다</span><span class="en" lang="en">Health and skills per tier</span></h3>
+        <p><span class="ko">새 페이지에서 봇 티어(T1~T7)마다 체력(원래대로 · PMC 기준 440 · 배율)과 일반 스킬(원래대로 · 레벨 고정 · 원래의 %)을 고릅니다. 스캐브·PMC·특수 봇·보스·호위 중 따를 봇을 켜고 끄며, 버튼 하나로 모든 티어를 한 번에 맞춥니다. 내 스캐브와 게임 자료 원본은 그대로입니다.</span><span class="en" lang="en">A new page sets health (Original · PMC 440 · Multiplier) and common skills (Original · Fixed level · % of original) for each bot tier, T1–T7. Choose which bots follow it (Scavs, PMCs, specials, bosses, guards), or set every tier at once with one button. Your own player scav and the game data stay untouched.</span></p>
+        <p><span class="ko">스킬은 게임 원본에 있는 일반 스킬만 바꿉니다. 스캐브·저격 스캐브, 레샬라·콜론타이와 그 호위처럼 원본에 일반 스킬이 없는 봇은 체력만 바뀝니다.</span><span class="en" lang="en">Skills only change the common skills a bot already has. Bots with none in the game data, such as Scavs, Marksmen, Reshala, Kollontay and their guards, only get the health change.</span></p>
+      </div>
+      <div><a class="zoom" href="../img/botstats-ko.webp" data-href-ko="../img/botstats-ko.webp" data-href-en="../img/botstats-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
+        <img src="../img/botstats-ko.webp" data-src-ko="../img/botstats-ko.webp" data-src-en="../img/botstats-en.webp" width="1172" height="919" loading="lazy" alt="봇 체력 · 스킬 페이지" data-alt-ko="봇 체력 · 스킬 페이지" data-alt-en="Bot health · skills page"></figure></a>
+        <p class="zoom-hint"><span class="ko">사진을 누르면 크게 봅니다</span><span class="en" lang="en">Click to enlarge</span></p></div>
+    </div>
+
+    <div class="cards" style="margin-top:20px">
+      <article class="card gold"><div class="icon">★</div>
+        <h3><span class="ko">주간 보스 스위치</span><span class="en" lang="en">Weekly boss switch</span></h3>
+        <p><span class="ko">이제 실제로 적용됩니다. 켜면 이번 주 보스가 그 맵에서 100%, 끄면 다른 보스처럼 Gravity 확률을 쓰고 맵 선택 화면의 해골 표시도 끕니다. 확률은 저장하면 다음 판부터, 해골 표시는 게임을 다시 켜면 바뀝니다.</span><span class="en" lang="en">Now actually applies. On, this week's boss is 100% on its map; off, it uses the Gravity chance like other bosses and hides the map-select skull. The chance applies from the next raid after saving; the skull changes after restarting the game.</span></p></article>
+      <article class="card"><div class="icon">◇</div>
+        <h3><span class="ko">티어 분포</span><span class="en" lang="en">Tier distribution</span></h3>
+        <p><span class="ko">봇별 장비에서 한 봇 종류를 여러 티어에 비율로 나눠 입힙니다. 고르면 그 봇 티어 50%, 위아래 25%로 시작하고 합계 100%를 맞춥니다.</span><span class="en" lang="en">In per-bot loadouts, spread one bot type across several tiers by weight. It starts at 50% for the bot's tier and 25% above and below, and keeps the total at 100%.</span></p></article>
+      <article class="card green"><div class="icon">⚑</div>
+        <h3><span class="ko">맵 상한 팁 · 고친 것</span><span class="en" lang="en">Cap tips · fixes</span></h3>
+        <p><span class="ko">레이더를 넣거나 스캐브 강도를 올려 맵 동시 상한에 걸릴 수 있으면 미리보기에 노란 팁과 "모두 맞추기"가 뜹니다. "시작 PMC는 플레이어 시작 지점에서만"을 켜면 시작 PMC가 나오지 않던 문제(1.0.1부터)를 고쳤습니다.</span><span class="en" lang="en">If raiders or a higher scav intensity could hit the map cap, the preview shows a yellow tip with "Fix all". Fixed starting PMCs not spawning when "Starting PMCs only at player spawn points" was on (since 1.0.1).</span></p></article>
     </div>
   </section>
 
@@ -139,6 +194,7 @@
           <li><i style="background:#59c48b"></i>초록 막대 — 스캐브 시작·끝</li>
           <li><i style="background:#e8b04b"></i>노란 막대 — 시작 보호, 별 — 보스 등장 시각</li>
           <li><i style="background:#b79bff"></i>보라 선 양 끝 — 팩션 봇 등장 구간</li>
+          <li><i style="background:#9b8cff"></i>아래 줄 — 특수 봇 종류별 줄(▸를 누르면 시각·레버 무리를 펼침)</li>
         </ul>
         <ul class="legend en" lang="en">
           <li><i style="background:#e06c6c"></i>Red line — PMC stop time</li>
@@ -146,11 +202,12 @@
           <li><i style="background:#59c48b"></i>Green bar — scav start and end</li>
           <li><i style="background:#e8b04b"></i>Yellow bar — start protection; stars — boss times</li>
           <li><i style="background:#b79bff"></i>Purple line ends — faction bot window</li>
+          <li><i style="background:#9b8cff"></i>Lower rows — one row per special bot (click ▸ to unfold timed and lever groups)</li>
         </ul>
         <p><span class="ko"><b>편집</b>을 켜면 선·막대·별을 끌거나 이름·점을 눌러 바로 고칠 수 있습니다. SVM이 레이드 시간을 늘리면 Gravity가 실제 시간을 읽어 타임라인을 비율대로 늘립니다(예: 세관 40분 + SVM 60분 → 100분에 맞춰 웨이브 18개). 스캐브로 들어가 "이미 지난 시간"부터 시작하면 지난 구간의 웨이브는 건너뜁니다.</span><span class="en" lang="en">Turn on <b>Edit</b> to drag lines, bars and stars, or click a name or dot to change it. If SVM adds raid time, Gravity reads the real length and stretches the timeline to match (for example Customs 40 + SVM 60 = 100 minutes, 18 waves). When a scav raid starts part-way through, waves from the elapsed part are skipped.</span></p>
       </div>
       <div><a class="zoom" href="../img/timeline-ko.webp" data-href-ko="../img/timeline-ko.webp" data-href-en="../img/timeline-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
-        <img src="../img/timeline-ko.webp" data-src-ko="../img/timeline-ko.webp" data-src-en="../img/timeline-en.webp" width="1156" height="885" loading="lazy" alt="레이드 타임라인" data-alt-ko="레이드 타임라인" data-alt-en="Raid timeline"></figure></a>
+        <img src="../img/timeline-ko.webp" data-src-ko="../img/timeline-ko.webp" data-src-en="../img/timeline-en.webp" width="1124" height="825" loading="lazy" alt="레이드 타임라인" data-alt-ko="레이드 타임라인" data-alt-en="Raid timeline"></figure></a>
         <p class="zoom-hint"><span class="ko">사진을 누르면 크게 봅니다</span><span class="en" lang="en">Click to enlarge</span></p></div>
     </div>
 
@@ -246,7 +303,7 @@
         <p class="tip"><span class="ko"><b>팩션 모드</b>(RUAF·UNTAR·블랙 디비전 등)는 "모드 설정 그대로" 두거나 "Gravity가 관리"로 바꿔 확률·시각을 정합니다. <b>시즌 이벤트</b>(할로윈·크리스마스 등)는 담당 모드(Gravity·SVM 등) 하나만 켜고 끄게 하고, Gravity는 이벤트 봇 수와 확률을 정합니다.</span><span class="en" lang="en"><b>Faction mods</b> (RUAF, UNTAR, Black Division…) can stay on "mod settings" or switch to "managed by Gravity" for chance and time. For <b>seasonal events</b> (Halloween, Christmas…), let one owner mod (Gravity, SVM…) switch them; Gravity sets the event bot count and chance.</span></p>
       </div>
       <div><a class="zoom" href="../img/specials-ko.webp" data-href-ko="../img/specials-ko.webp" data-href-en="../img/specials-en.webp" target="_blank" rel="noopener"><figure class="shot-frame">
-        <img src="../img/specials-ko.webp" data-src-ko="../img/specials-ko.webp" data-src-en="../img/specials-en.webp" width="1156" height="521" loading="lazy" alt="특수 봇 설정(레이더)" data-alt-ko="특수 봇 설정(레이더)" data-alt-en="Special bot settings (Raiders)"></figure></a></div>
+        <img src="../img/specials-ko.webp" data-src-ko="../img/specials-ko.webp" data-src-en="../img/specials-en.webp" width="1156" height="560" loading="lazy" alt="맵별 추가 스폰 확률(원래 있음 / Gravity가 새로 넣음)" data-alt-ko="맵별 추가 스폰 확률(원래 있음 / Gravity가 새로 넣음)" data-alt-en="Extra spawn chance per map (Original / Added by Gravity)"></figure></a></div>
     </div>
   </section>
 
@@ -487,6 +544,8 @@
         <p><span class="ko">게임의 할로윈 모드가 스캐브 무리와 컬티스트로 맵 상한을 먼저 채워, PMC가 늦게 나오거나 안 나올 수 있습니다. 공장처럼 상한이 작은 맵에서 특히 그렇습니다. 기본값 <code>auto</code>로 두는 것을 권합니다.</span><span class="en" lang="en">The game's Halloween mode fills the map cap with scav groups and cultists first, so PMCs may come late or not at all, especially on small-cap maps like Factory. We suggest the default, <code>auto</code>.</span></p></div></div>
       <div class="notice info"><span class="mark">i</span><div><b><span class="ko">변형 맵</span><span class="en" lang="en">Variant maps</span></b>
         <p><span class="ko">기본값으로 변형 맵(예: Manimal 등대)에서는 Gravity 스폰을 쓰지 않고 게임 기본 스폰을 씁니다. 맵 설정의 "변형 맵 적용"으로 바꿀 수 있습니다.</span><span class="en" lang="en">By default Gravity doesn't spawn on variant maps (for example Manimal's Lighthouse) and leaves the game's own spawns. Change it with "Variant map" in the map settings.</span></p></div></div>
+      <div class="notice info"><span class="mark">i</span><div><b><span class="ko">ManimalHalloween2026과 함께 쓸 때</span><span class="en" lang="en">With ManimalHalloween2026</span></b>
+        <p><span class="ko">이 모드는 이벤트 변형 맵(감염 연구소, 할로윈 공장 낮·밤)에서만 레이더·타길라·감염자·스캐브 웨이브를 자기 설정으로 바꿉니다. Gravity보다 나중에 적용되므로 그 세 판에서는 할로윈 모드의 스폰이 우선하고, 다른 맵과 평소 연구소·공장은 Gravity 설정대로 나옵니다. Gravity 쪽에서 막는 것은 없습니다.</span><span class="en" lang="en">That mod replaces raiders, Tagilla, infected and scav waves only on its event map variants (infected Labs, Halloween Factory day and night). It applies after Gravity, so on those three its spawns win; every other map, and the normal Labs and Factory, follow your Gravity settings. Gravity does not block it.</span></p></div></div>
       <div class="notice info"><span class="mark">i</span><div><b><span class="ko">ABPS·APBS와 함께 쓸 때</span><span class="en" lang="en">With ABPS or APBS installed</span></b>
         <p><span class="ko">해당 모듈은 잠기고 그 모드가 맡습니다. Gravity의 스폰·장비를 쓰려면 그 모드를 빼야 합니다.</span><span class="en" lang="en">The matching module is locked and that mod takes over. To use Gravity's spawns or loadouts, remove that mod.</span></p></div></div>
       <div class="notice info"><span class="mark">i</span><div><b><span class="ko">문제가 있을 때</span><span class="en" lang="en">If something looks off</span></b>
