@@ -96,8 +96,10 @@ public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<st
 public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double> Chance, int Min, int Max,
     bool Vanilla = true, IReadOnlyDictionary<string, double>? Extra = null, int ExtraMin = 0, int ExtraMax = 0,
     IReadOnlyDictionary<string, bool>? Keep = null, double TFrom = 0, double TTo = 0, double XFrom = 0, double XTo = 0,
-    int VanillaMax = 0)
+    int VanillaMax = 0, int ExtraCount = 1, double[]? ExtraCurve = null, double[]? ExtraSquad = null)
 {
+    // 1.0.6: ExtraCount = 추가 무리 수(1~6), ExtraCurve = 시각 창 초반·중반·후반 가중치(null = 고르게),
+    // ExtraSquad = 무리 크기 1~8명 비율(null = ExtraMin~ExtraMax 고르게).
     // VanillaMax: 레이더·로그 원래 항목(이벤트 제외)의 한 판 총인원 상한, 0 = 그대로(1.0.1).
     /// <summary>레이더·로그 원래 항목을 이 맵에서 남기는지(맵별 등장 목록, 1.0). 없으면 남긴다.</summary>
     public bool KeepOn(string mapId) => Vanilla && (Keep == null || !Keep.TryGetValue(mapId, out var k) || k);
@@ -317,7 +319,8 @@ public static partial class ConfigModel
                     keep[k] = r.Bool(p + "keep." + k, true);
             specials[id] = new SpecialSettings(r.Bool(p + "on", id != "infected"), chance, sMin, (int)Math.Max(sMin, r.Num(p + "max", 0, 0, 10)),
                 r.Bool(p + "vanilla", true), extra, eMin, (int)Math.Max(eMin, r.Num(p + "extraMax", eMin, 0, 10)), keep,
-                tFrom, Math.Max(tFrom, tTo), xFrom, Math.Max(xFrom, xTo), (int)r.Num(p + "vanillaMax", 0, 0, 40));
+                tFrom, Math.Max(tFrom, tTo), xFrom, Math.Max(xFrom, xTo), (int)r.Num(p + "vanillaMax", 0, 0, 40),
+                (int)r.Num(p + "extraCount", 1, 1, 6), Curve(r, p + "extraCurve."), Squad(r, p + "extraSquad.", 8));
         }
 
         var near = ReadNear(r);
@@ -369,6 +372,22 @@ public static partial class ConfigModel
             new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
             new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")),
             ReadTriggers(r));
+    }
+
+    /// <summary>초반·중반·후반 배수(0~3). 칸이 하나도 없거나 모두 1이면 null(= 1.0.5와 같게 고르게).</summary>
+    internal static double[]? Curve(Reader r, string p)
+    {
+        if (r.Node(p + "early") == null && r.Node(p + "mid") == null && r.Node(p + "late") == null) return null;
+        var c = new[] { r.Num(p + "early", 1, 0, 3), r.Num(p + "mid", 1, 0, 3), r.Num(p + "late", 1, 0, 3) };
+        return c.All(x => Math.Abs(x - 1) < 1e-9) ? null : c;
+    }
+
+    /// <summary>무리 크기 1~n명 비율(s1~sn, 0~100). 칸이 없거나 합이 0이면 null.</summary>
+    internal static double[]? Squad(Reader r, string p, int n)
+    {
+        if (r.Node(p.TrimEnd('.')) is not JsonObject) return null;
+        var w = Enumerable.Range(1, n).Select(k => r.Num(p + "s" + k, 0, 0, 100)).ToArray();
+        return w.Sum() > 0 ? w : null;
     }
 
     /// <summary>웹 triggers.&lt;맵&gt;.&lt;트리거id&gt;.&lt;역할&gt;.{chance,min,max,role}(1.0.6). 이름이 이상한 키는 버린다.</summary>

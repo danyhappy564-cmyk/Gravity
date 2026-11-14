@@ -331,13 +331,56 @@ public static class RaidSpawnApplier
             }
             else if (templates != null && templates.TryGetValue(role, out var t)) { tpl = t; zones = newZones ?? []; }
             else continue;
-            result.Add(tpl with
+            // 1.0.6: 무리 수만큼. 첫 무리 TriggerId는 1.0.5와 같고(클라·상한 표가 접두사로 알아봄), 둘째부터 ":2" 같은 번호를 붙인다.
+            var count = Math.Clamp(sp.ExtraCount, 1, 6);
+            for (var k = 0; k < count; k++)
             {
-                BossChance = chance, BossZone = string.Join(",", zones),
-                BossEscortAmount = Range(Math.Max(0, sp.ExtraMin - 1), Math.Max(0, Math.Max(sp.ExtraMin, sp.ExtraMax) - 1)),
-                TriggerId = Gravity.Shared.WaveMark.ExtraSpecial(mapId, role), TriggerName = "", Time = SpecialTime(sp.XFrom, sp.XTo, rnd, raidSec), Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
-            });
+                var time = sp.ExtraCurve == null ? SpecialTime(sp.XFrom, sp.XTo, rnd, raidSec) : CurveTime(sp.XFrom, sp.XTo, sp.ExtraCurve, rnd, raidSec);
+                var mark = Gravity.Shared.WaveMark.ExtraSpecial(mapId, role) + (k == 0 ? "" : ":" + (k + 1));
+                result.Add(tpl with
+                {
+                    BossChance = chance, BossZone = string.Join(",", zones),
+                    BossEscortAmount = sp.ExtraSquad is { } w ? SquadEscorts(w)
+                        : Range(Math.Max(0, sp.ExtraMin - 1), Math.Max(0, Math.Max(sp.ExtraMin, sp.ExtraMax) - 1)),
+                    TriggerId = mark, TriggerName = "", Time = time, Delay = 0, IgnoreMaxBots = false, ForceSpawn = false, SptId = "gravity"
+                });
+            }
         }
+    }
+
+    /// <summary>시각 창(분)을 3등분해 가중치(초반·중반·후반)로 한 칸을 고르고 그 안에서 고르게. 창 끝이 0이면 판 시작(-1).</summary>
+    internal static double CurveTime(double from, double to, double[] curve, Random rnd, double raidSec)
+    {
+        if (to <= 0) return -1;
+        var lo = Math.Max(0, from);
+        var span = Math.Max(0, to - lo);
+        var w = curve.Length >= 3 ? curve.Take(3).Select(x => Math.Max(0, x)).ToArray() : [1, 1, 1];
+        var total = w.Sum();
+        var part = 0;
+        if (total > 0)
+        {
+            var x = rnd.NextDouble() * total;
+            while (part < 2 && (x -= w[part]) >= 0) part++;
+        }
+        else part = rnd.Next(3);
+        var t = (lo + span * (part + rnd.NextDouble()) / 3) * 60;
+        if (raidSec > 0) t = Math.Min(t, raidSec * 0.9);
+        return Math.Max(1, Math.Round(t));
+    }
+
+    /// <summary>무리 크기 비율(1~n명) → 바닐라 호위 수 목록(값이 여러 번 나오면 그만큼 잘 뽑힘). 최대 20칸.</summary>
+    internal static string SquadEscorts(double[] weights)
+    {
+        var total = weights.Sum();
+        if (total <= 0) return "0";
+        var slots = new List<int>();
+        for (var i = 0; i < weights.Length; i++)
+        {
+            var n = (int)Math.Round(weights[i] / total * 20);
+            if (weights[i] > 0 && n == 0) n = 1;
+            for (var j = 0; j < n; j++) slots.Add(i);
+        }
+        return string.Join(",", slots.Take(20));
     }
 
     /// <summary>

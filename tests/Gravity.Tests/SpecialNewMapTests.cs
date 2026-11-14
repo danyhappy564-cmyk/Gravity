@@ -118,3 +118,61 @@ public class SpecialNewMapTests
         Assert.False(MapCatalog.IsTemplateRole(new BossLocationSpawn { BossName = "pmcUSEC" }, "pmcUSEC"));
     }
 }
+
+/// <summary>1.0.6 추가 무리 웨이브: 무리 수·시각 곡선·무리 크기 비율.</summary>
+public class ExtraWaveTests
+{
+    private static LocationBase Lab() => new()
+    {
+        Id = "laboratory", EscapeTimeLimit = 35, BotMax = 20,
+        BossLocationSpawn = [new BossLocationSpawn { BossName = "pmcBot", BossChance = 60, BossZone = "BotZoneFloor2", BossEscortType = "pmcBot", BossEscortAmount = "1,2", Time = 300 }]
+    };
+    private static GravityConfig Cfg(string json) => ConfigModel.FromState(JsonNode.Parse(json), []);
+    private static List<BossLocationSpawn> Extra(LocationBase l) => l.BossLocationSpawn.Where(e => e.SptId == "gravity").ToList();
+
+    [Fact]
+    public void Default_OneGroup_SameMarkAsBefore()
+    {
+        var l = Lab();
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"specials":{"raiders":{"extra":{"laboratory":30},"extraMin":2,"extraMax":3}}}"""), "laboratory", 5, 2100);
+        var e = Assert.Single(Extra(l));
+        Assert.Equal(Gravity.Shared.WaveMark.ExtraSpecial("laboratory", "pmcBot"), e.TriggerId);
+        Assert.Equal(-1, e.Time);
+        Assert.Equal("1,2", e.BossEscortAmount);
+    }
+
+    [Fact]
+    public void Count3_InWindow_DistinctMarks_AllRecognizedAsExtra()
+    {
+        var l = Lab();
+        RaidSpawnApplier.ApplyBosses(l, Cfg("""{"specials":{"raiders":{"extra":{"laboratory":50},"extraMax":3,"extraCount":3,"xFrom":5,"xTo":20}}}"""), "laboratory", 5, 2100);
+        var e = Extra(l);
+        Assert.Equal(3, e.Count);
+        Assert.Equal(3, e.Select(x => x.TriggerId).Distinct().Count());
+        Assert.All(e, x => { Assert.InRange(x.Time!.Value, 300, 1200); Assert.True(Gravity.Shared.WaveMark.IsExtraSpecial(x.TriggerId, x.TriggerName)); });
+    }
+
+    [Fact]
+    public void Curve_LateWeighted_PutsMoreGroupsLate()
+    {
+        int late = 0, early = 0;
+        for (var seed = 1; seed <= 200; seed++)
+        {
+            var t = RaidSpawnApplier.CurveTime(0, 30, [0.2, 1, 3], new Random(seed), 0) / 60;
+            if (t >= 20) late++; else if (t < 10) early++;
+        }
+        Assert.True(late > early * 5, $"late {late} early {early}");
+        Assert.Equal(-1, RaidSpawnApplier.CurveTime(0, 0, [1, 1, 3], new Random(1), 0));
+    }
+
+    [Fact]
+    public void Squad_Weights_BecomeRepeatedEscortOptions()
+    {
+        Assert.Equal("1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2", RaidSpawnApplier.SquadEscorts([0, 50, 50, 0, 0, 0, 0, 0]));
+        Assert.Equal("0", RaidSpawnApplier.SquadEscorts(new double[8]));
+        var cfg = Cfg("""{"specials":{"rogues":{"extraSquad":{"s3":100}},"raiders":{"extraCurve":{"early":1,"mid":1,"late":1}}}}""");
+        Assert.Equal(100, cfg.Specials!["rogues"].ExtraSquad![2]);
+        Assert.Null(cfg.Specials!["raiders"].ExtraCurve);   // 모두 1이면 고르게(1.0.5와 같음)
+        Assert.Equal(1, cfg.Specials!["raiders"].ExtraCount);
+    }
+}
