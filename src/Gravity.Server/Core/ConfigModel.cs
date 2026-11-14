@@ -72,7 +72,15 @@ public sealed record MapSettings(
     Intensity Intensity, bool Original, int Cap, IReadOnlyDictionary<string, bool> Zones,
     double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights, bool Variant = true,
     string ScavStyle = "waves", IReadOnlyDictionary<string, double>? ScavZoneWeights = null, ZoneLayout? ZonesAlt = null,
-    CardOverrides? Cards = null, SpawnSettings? CardSpawn = null, NearSettings? CardNear = null);
+    CardOverrides? Cards = null, SpawnSettings? CardSpawn = null, NearSettings? CardNear = null,
+    IReadOnlyList<ScavListWave>? ScavWaves = null, double ScavListJitterSec = 20)
+{
+    /// <summary>1.0.6 스캐브 웨이브 목록(scavStyle=list). 시각순, 최대 60개. 없으면 빈 목록.</summary>
+    public IReadOnlyList<ScavListWave> ScavList => ScavWaves ?? [];
+}
+
+/// <summary>스캐브 웨이브 목록 한 칸: 레이드 시작 뒤 분, 인원 최소~최대(0~20).</summary>
+public sealed record ScavListWave(double TMin, int Min, int Max);
 
 /// <summary>ORBIT 연동(0.6). ORBIT 설정은 읽기만 한다.</summary>
 public sealed record OrbitSettings(bool RefillAfterExtract, bool NearAsGhost, bool RespectTakeover,
@@ -269,9 +277,9 @@ public static partial class ConfigModel
                 r.Bool(p + "original", true), EffectiveCap(r, p, d.Cap), zones,
                 mr.Num("spawn.pmcDist", d.PmcDist, 5, 1000), mr.Num("spawn.scavDist", d.ScavDist, 5, 1000),
                 mr.Bool("spawn.scav.startOn", true), zoneW, r.Bool(p + "variant", DefaultVariant(id)),
-                r.Str(p + "scavStyle", "waves", "waves", "infinite", "start"), scavZoneW, new ZoneLayout(altOn, altPmc, altScav),
+                r.Str(p + "scavStyle", "waves", "waves", "infinite", "start", "list"), scavZoneW, new ZoneLayout(altOn, altPmc, altScav),
                 new CardOverrides(mr.CardOn("scav"), mr.CardOn("near"), mr.CardOn("dist"), mr.CardOn("hotspot"), mr.CardOn("limits")),
-                effective, ReadNear(mr));
+                effective, ReadNear(mr), ReadScavList(r, p), r.Num(p + "scavListJitter", 20, 0, 120));
         }
 
         var bosses = new Dictionary<string, BossSettings>();
@@ -539,6 +547,21 @@ public static partial class ConfigModel
     }
 
     /// <summary>JSON 경로를 읽는다. 형식이 틀리면 기본값, 범위를 넘으면 고정하고 경로를 기록.</summary>
+    /// <summary>maps.&lt;id&gt;.scavList — 배열의 {t,min,max}. t가 숫자가 아닌 칸은 건너뜀, 최대 60개, 시각순.</summary>
+    private static IReadOnlyList<ScavListWave> ReadScavList(Reader r, string p)
+    {
+        var list = new List<ScavListWave>();
+        if (r.Node(p + "scavList") is not JsonArray arr) return list;
+        for (var i = 0; i < arr.Count && list.Count < 60; i++)
+        {
+            var q = $"{p}scavList.{i}.";
+            if (arr[i] is not JsonObject || r.Node(q + "t") is not JsonValue tv || tv.GetValueKind() != JsonValueKind.Number) continue;
+            var min = (int)r.Num(q + "min", 1, 0, 20);
+            list.Add(new ScavListWave(r.Num(q + "t", 0, 0, 600), min, (int)Math.Max(min, r.Num(q + "max", min, 0, 20))));
+        }
+        return list.OrderBy(w => w.TMin).ToList();
+    }
+
     internal sealed class Reader(JsonNode? root, List<string> clamped, string? mapId = null)
     {
         public string[] StringList(string path) => Node(path) is JsonArray a
