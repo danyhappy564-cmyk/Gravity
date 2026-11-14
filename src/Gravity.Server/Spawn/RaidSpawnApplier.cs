@@ -123,8 +123,9 @@ public static class RaidSpawnApplier
     }
 
     public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId, int seed = 1, int raidSec = 0,
-        IReadOnlyDictionary<string, BossLocationSpawn>? templates = null)
+        IReadOnlyDictionary<string, BossLocationSpawn>? templates = null, WeeklyBoss.Pick? weekly = null)
     {
+        var weeklyHere = weekly != null && weekly.Map == mapId;
         var rnd = new Random(seed ^ 0x5B055);
         var valid = new HashSet<string>(StringComparer.Ordinal);
         foreach (var e in loc.BossLocationSpawn)
@@ -143,7 +144,12 @@ public static class RaidSpawnApplier
             if (e.BossName is { } role && BossRoleToId.TryGetValue(role, out var id) && cfg.Bosses.TryGetValue(id, out var b))
             {
                 var chance = BossChanceFor(cfg, id, b, mapId);
+                var isWeekly = weeklyHere && role == weekly!.Role;
+                // 1.0.6 주간 보스: SPT가 표시한 첫 항목만. 켜짐 = 100%(보스·맵을 끈 경우는 0 그대로), 꺼짐 = Gravity 확률 + 해골 끔.
+                if (isWeekly) weeklyHere = false;
+                if (isWeekly && cfg.WeeklyBoss && chance > 0) chance = 100;
                 var n = Detail(e with { BossChance = chance }, b);
+                if (isWeekly && !cfg.WeeklyBoss) n = n with { ShowOnTarkovMap = false, ShowOnTarkovMapPvE = false };
                 result.Add(n);
                 if (b.Extra && chance > 0) extra.Add(n with { SptId = "gravity" });
                 continue;

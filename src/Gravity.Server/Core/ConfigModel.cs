@@ -145,7 +145,7 @@ public sealed record GravityConfig(
     IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
     FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null,
     OrbitSettings? Orbit = null, DiagSettings? Diag = null, CompatSettings? Compat = null,
-    IReadOnlyDictionary<string, IReadOnlyDictionary<string, TriggerRule>>? Triggers = null)
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, TriggerRule>>? Triggers = null, bool WeeklyBoss = true)
 {
     public OrbitSettings OrbitOrDefault => Orbit ?? new OrbitSettings(true, false, true);
     public DiagSettings DiagOrDefault => Diag ?? new DiagSettings("summary", true, false);
@@ -383,7 +383,7 @@ public static partial class ConfigModel
                 (int)r.Num("orbit.extractRefillCap", 20, 0, 100)),
             new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
             new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")),
-            ReadTriggers(r));
+            ReadTriggers(r), r.Bool("weeklyBoss", true));
     }
 
     /// <summary>초반·중반·후반 배수(0~3). 칸이 하나도 없거나 모두 1이면 null(= 1.0.5와 같게 고르게).</summary>

@@ -1439,3 +1439,14 @@ test('1.0.6 티어 분포: 고르면 기본 비중(합 100)·비중 막대·목�
   a.run("state.roles.scav.spread.t4=10;writeSetting('roles.scav.mode','fixed');writeSetting('roles.scav.mode','spread')");
   assert.equal(a.run("state.roles.scav.spread.t4"),10);
 });
+test('1.0.6 주간 보스: 이번 주 보스와 켜고 끈 결과를 보스 공통 칸에 알림', () => {
+  const a=app();
+  a.run("page='bosses';serverMeta={weekly:{role:'bossKilla',map:'interchange'}}");
+  const html=a.run("P.bosses.render()");
+  assert.match(html,/이번 주 보스: 킬라 · 인터체인지/);
+  assert.match(html,/100%/);
+  a.run("state.weeklyBoss=false");
+  assert.match(a.run("P.bosses.render()"),/해골 표시도 끕니다/);
+  a.run("serverMeta={}");
+  assert.match(a.run("P.bosses.render()"),/SPT 주간 보스가 꺼져 있거나/);
+});

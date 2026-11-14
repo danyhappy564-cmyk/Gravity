@@ -77,6 +77,7 @@ public class GravityWeb : IHttpListener
                         var state = node?["state"] ?? node;
                         if (state is not JsonObject) { await Send(res, 400, new { ok = false, error = "state 객체가 필요합니다" }); return; }
                         var saved = rt.Store.Save(state);
+                        if (saved.Ok) rt.ApplyWeeklyFlag();
                         await Send(res, saved.Ok ? 200 : 400, new { ok = saved.Ok, error = saved.Error, clamped = saved.Clamped });
                         return;
                     case ("meta", "GET"):
@@ -89,6 +90,7 @@ public class GravityWeb : IHttpListener
                             automaticVariants = rt.Catalog.AutomaticVariants.OrderBy(id => id).ToArray(),
                             activeVariants = rt.ActiveVariants?.OrderBy(id => id).ToArray(),
                             client = ClientBody(rt),
+                            weekly = rt.Weekly == null ? null : new { role = rt.Weekly.Role, map = rt.Weekly.Map },
                             events = new
                             {
                                 owner = Gravity.Events.GravityEventLoader.ResolvedOwner,

@@ -72,6 +72,15 @@ public class GravityLoader(
         // 0.4: 팩션 모드 설정·SPT 원본 PMC 지문(읽기 전용). SPT_Data는 user/mods에서 두 단계 위.
         var sptData = new[] { Path.Combine(GravityBoot.ModsDir!, "..", "..", "SPT_Data"), Path.Combine(AppContext.BaseDirectory, "SPT_Data") }
             .Select(Path.GetFullPath).FirstOrDefault(Directory.Exists);
+        // 1.0.6 주간 보스: SPT(PostDbLoadService, 이 모드보다 먼저 실행)가 고른 보스를 같은 공식으로 알아 두고 해골 표시를 설정에 맞춘다.
+        if (botConfig.WeeklyBoss is { } wb)
+        {
+            GravityRuntime.Instance.Weekly = Gravity.Spawn.WeeklyBoss.Detect(wb.Enabled, wb.BossPool, wb.ResetDay, DateTime.Today, id => locations.GetLocation(id)?.Base);
+            GravityRuntime.Instance.ApplyWeeklyFlag();
+            if (GravityRuntime.Instance.Weekly is { } wk)
+                logger.Info($"{GravityInfo.Tag} " + L.T($"이번 주 보스 {wk.Role} · {wk.Map} — Gravity 주간 보스 {(store.Current.WeeklyBoss ? "켜짐(100%)" : "꺼짐(Gravity 확률, 해골 표시 끔)")}",
+                    $"weekly boss {wk.Role} · {wk.Map} — Gravity weekly boss {(store.Current.WeeklyBoss ? "on (100%)" : "off (Gravity chance, skull hidden)")}"));
+        }
         GravityRuntime.Instance.Factions = Gravity.Factions.FactionData.Load(GravityBoot.ModsDir!, sptData, ConfigModel.KnownMaps,
             t => json.Deserialize<List<SPTarkov.Server.Core.Models.Eft.Common.BossLocationSpawn>>(t), m => logger.Warning($"{GravityInfo.Tag} {m}"));
         var fd = GravityRuntime.Instance.Factions;

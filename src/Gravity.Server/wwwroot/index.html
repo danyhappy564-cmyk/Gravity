@@ -569,6 +569,12 @@ const ZONES={
 };
 const zname=(map,z)=>z==='default'?tr(T('기본 자리','Default spot')):tr((ZONES[map].find(x=>x.id===z)||{name:z}).name);
 const B=(id,ko,en,maps,chance,esc,time,zones={})=>({id,name:T(ko,en),maps,chance,esc,time,zones});
+// 1.0.6 주간 보스 안내: 서버가 meta.weekly로 SPT가 고른 이번 주 보스를 알려 준다.
+const WEEKLY_ROLE={bossBully:'reshala',bossKojaniy:'shturman',bossTagilla:'tagilla',bossGluhar:'glukhar',bossSanitar:'sanitar',bossKilla:'killa',bossKolontay:'kollontay',bossKnight:'goons'};
+function weeklyNote(){const w=serverMeta?.weekly,b=w&&BOSSES.find(x=>x.id===WEEKLY_ROLE[w.role]);
+  if(!w)return `<p class="small muted adv">${tr(T('SPT 주간 보스가 꺼져 있거나 서버 정보를 아직 못 받았습니다. 이 스위치는 SPT가 주간 보스를 고른 주에만 효과가 있습니다.','SPT weekly boss is off or server info is not loaded yet. This switch only matters when SPT picked a weekly boss.'))}</p>`;
+  const who=fmt(tr(T('이번 주 보스: {b} · {m}','This week: {b} · {m}')),{b:b?tr(b.name):w.role,m:mname(w.map)});
+  return `<p class="small muted adv">${esc(who)} — ${tr(state.weeklyBoss!==false?T('켜짐: 그 맵에서 100%로 나옵니다(보스나 맵을 꺼 두었으면 꺼진 대로).','On: 100% on that map (unless you turned the boss or map off).'):T('꺼짐: 다른 보스처럼 Gravity 확률을 쓰고, 맵 선택 화면의 해골 표시도 끕니다(저장하면 바로).','Off: uses the Gravity chance like other bosses and hides the map-select skull (applies on save).'))}</p>`;}
 const BOSSES=[
  B('reshala','레샬라','Reshala',['bigmap'],38,[2,4],[0,0],{bigmap:['dorms','newgas']}),B('shturman','슈투르만','Shturman',['woods'],35,[2,2],[0,0],{woods:['sawmill']}),
  B('tagilla','타길라','Tagilla',['factory4_day','factory4_night'],35,[0,0],[0,0]),B('glukhar','글루하','Glukhar',['rezervbase'],35,[4,6],[0,0],{rezervbase:['wbishop','bbishop','heli']}),
@@ -1644,7 +1650,7 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
   return `<div class="stack">${spawnOff()}<div class="grid g3">
    ${card(T('공통 확률','Shared chance'),sw('bossCommon.on',T('모든 보스에 같은 확률','One chance for all'),T('즈랴치처럼 항상 나오는 보스는 제외.','Excludes always-on bosses.'))+slider('bossCommon.chance',T('공통 확률','Shared chance'),'',{dis:!c.on}),{icon:'★'})}
    ${card(T('점증 · 점감','Progressive · regressive'),sw('bossProg.on',T('안 나오면 다음 판 확률 올리기','Raise after a miss'),'')+sw('bossProg.regressive',T('나오면 다음 판 확률 내리기','Lower after a spawn'),'',{adv:true})+slider('bossProg.step',T('한 판마다','Step per raid'),'',{min:1,max:30,dis:!state.bossProg.on})+range('bossProg.min','bossProg.max',T('확률 범위','Chance range'),'',{adv:true}),{icon:'↗'})}
-   ${card(T('보스 공통','All bosses'),ratio('bossDiff',[['easy',T('쉬움','Easy'),'#5fd4a6'],['normal',T('보통','Normal'),'#6ea8ff'],['hard',T('어려움','Hard'),'#f0c070'],['imp',T('불가능','Imposs.'),'#f27f8c']],T('기본 난이도 분포','Default difficulty'),'')+sw('weeklyBoss',T('주간 보스 (한 맵 100%)','Weekly boss (100% on one map)'),'',{adv:true}),{icon:'⚙'})}</div>
+   ${card(T('보스 공통','All bosses'),ratio('bossDiff',[['easy',T('쉬움','Easy'),'#5fd4a6'],['normal',T('보통','Normal'),'#6ea8ff'],['hard',T('어려움','Hard'),'#f0c070'],['imp',T('불가능','Imposs.'),'#f27f8c']],T('기본 난이도 분포','Default difficulty'),'')+sw('weeklyBoss',T('주간 보스 (한 맵 100%)','Weekly boss (100% on one map)'),'',{adv:true})+weeklyNote(),{icon:'⚙'})}</div>
    <div class="split">${list}${detail}</div></div>`;}};
 
 /** 1.0.5 보스 상세: 나오는 맵마다 확률 칸. 비우면 기본(공통/보스 확률), 0이면 그 맵에서 안 나옴. */

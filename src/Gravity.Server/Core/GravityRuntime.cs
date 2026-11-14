@@ -75,6 +75,18 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     /// <summary>레이드 맵 복제본에 스폰 계획을 적용한다. 적용했으면 true. 예외는 잡아서 원본 유지.</summary>
     /// <summary>SPT 봇 설정(플레이어 스캐브 이름 확률을 판마다 웹 값으로). 시험에서는 null.</summary>
     public SPTarkov.Server.Core.Models.Spt.Config.BotConfig? BotCfg { get; set; }
+    /// <summary>1.0.6 SPT가 서버 시작 때 고른 이번 주 보스(SPT 주간 보스가 꺼져 있으면 null).</summary>
+    public WeeklyBoss.Pick? Weekly { get; set; }
+
+    /// <summary>맵 선택 화면 해골 표시를 웹 weeklyBoss에 맞춘다(서버 시작·저장 때). 판 확률은 ApplyBosses가 맞춘다.</summary>
+    public void ApplyWeeklyFlag()
+    {
+        try
+        {
+            if (Weekly is { } w && CurrentBase?.Invoke(w.Map) is { } b) WeeklyBoss.SetFlag(b, w, Store.Current.WeeklyBoss);
+        }
+        catch (Exception ex) { warn($"{GravityInfo.Tag} weekly boss flag: {ex.Message}"); }
+    }
 
     /// <summary>지금 켜진 SPT 시즌 이벤트(할로윈 계열, 크리스마스 계열). 시험에서는 둘 다 꺼짐.</summary>
     public Func<(bool Halloween, bool Christmas)> ActiveEvents { get; set; } = () => (false, false);
@@ -170,7 +182,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
         // 팩션을 보스보다 먼저: 되살린 연구소 게이트 레이더도 특수 봇 설정을 받게 한다.
         var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
-        RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
+        RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates, Weekly);
         // 1.0.6: 트리거 스폰(레버·탈출구·게임 이벤트) 조절은 BlackDiv 게이트·특수 봇 처리 뒤에 남은 항목에만.
         var trigChanged = RaidSpawnApplier.ApplyTriggers(loc, cfg, id, Detect.BlackDiv, new Random(s ^ 0x7A19));
         var (hw, xm) = ActiveEvents();
