@@ -354,25 +354,6 @@ public class GearUnheardPatch : AbstractPatch
     }
 }
 
-/// <summary>1.0.6 봇 체력·스킬(Forge #2): 봇이 만들어진 뒤 묶음 설정대로 고친다. 플레이어 자신의 스캐브는 건드리지 않는다.</summary>
-public class BotStatsPatch : AbstractPatch
-{
-    protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotGenerator), "GenerateBot");
-
-    [PatchPostfix]
-    public static void Postfix(BotGenerationDetails botGenerationDetails, BotBase __result)
-    {
-        try
-        {
-            var st = Gravity.Core.GravityRuntime.Instance?.Store.Current.Stats;
-            if (st == null || !st.Any || __result == null || botGenerationDetails == null || botGenerationDetails.IsPlayerScav) return;
-            var group = BotStats.GroupOf(botGenerationDetails.Role, botGenerationDetails.IsPmc, botGenerationDetails.Side);
-            if (group != null) BotStats.Apply(__result, st.For(group));
-        }
-        catch (Exception ex) { GearRuntime.LastError = ex.Message; }
-    }
-}
-
 /// <summary>봇 하나 생성 앞뒤: 앞에서 지난 봇 상태를 지우고, 뒤에서 내구도를 티어 범위로 맞춘다.</summary>
 public class GearBotPatch : AbstractPatch
 {
@@ -386,12 +367,13 @@ public class GearBotPatch : AbstractPatch
     }
 
     [PatchPostfix]
-    public static void Postfix(BotBase __result)
+    public static void Postfix(BotGenerationDetails botGenerationDetails, BotBase __result)
     {
         var ctx = GearRuntime.Current;
         GearRuntime.Current = null;
         GearRuntime.PmcLevel = null;
         var pick = ctx?.Pick;
+        ApplyStats(botGenerationDetails, __result, pick?.Tier);
         if (pick == null || __result?.Inventory?.Items == null) return;
         try
         {
@@ -413,6 +395,25 @@ public class GearBotPatch : AbstractPatch
                 rep.Durability = Math.Round(info.MaxDurability * pct / 100.0, 1);
             }
             if (GearRuntime.LogBots) Gravity.Core.DiagLog.GearLine(BotLine(pick, __result));
+        }
+        catch (Exception ex) { GearRuntime.LastError = ex.Message; }
+    }
+
+    /// <summary>
+    /// 1.0.6 봇 체력·스킬(Forge #2): 그 봇 티어(입힌 장비 티어, 없으면 봇별 장비 티어 방식)의 규칙대로 고친다.
+    /// 장비 모듈이 꺼져 있어도 동작한다. 플레이어 자신의 스캐브는 건드리지 않는다.
+    /// </summary>
+    internal static void ApplyStats(BotGenerationDetails? d, BotBase? bot, int? dressedTier)
+    {
+        try
+        {
+            var cfg = Gravity.Core.GravityRuntime.Instance?.Store.Current;
+            var st = cfg?.Stats;
+            if (st == null || !st.Any || bot == null || d == null || d.IsPlayerScav || cfg!.Gear == null) return;
+            var id = GearTier.RoleId(d.Role, d.IsPmc, d.Side);
+            if (id == null) return;
+            var rule = st.RuleFor(BotStats.GroupOfId(id), BotStats.TierOf(cfg.Gear, id, dressedTier, bot.Info?.Level ?? 1));
+            if (rule != null) BotStats.Apply(bot, rule);
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }

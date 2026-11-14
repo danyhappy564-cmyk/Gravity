@@ -34,8 +34,9 @@ public class BotStatsTests
     {
         var st = ConfigModel.Default().Stats;
         Assert.False(st.Any);
+        Assert.Null(st.RuleFor("scav", 1));
         var b = Bot();
-        Assert.False(BotStats.Apply(b, st.For("scav")));
+        Assert.False(BotStats.Apply(b, StatRule.Original));
         Assert.Equal(725, Max(b));
         Assert.Equal(2500, b.Skills!.Common.First().Progress);
     }
@@ -44,7 +45,7 @@ public class BotStatsTests
     public void Pmc440_SetsEveryPart()
     {
         var b = Bot();
-        Assert.True(BotStats.Apply(b, new StatGroup("pmc", 1, "orig", 1, 100)));
+        Assert.True(BotStats.Apply(b, new StatRule("pmc", 1, "orig", 1, 100)));
         Assert.Equal(440, Max(b));
         Assert.Equal(35, b.Health!.BodyParts!["Head"].Health!.Maximum);
         Assert.Equal(85, b.Health.BodyParts["Chest"].Health!.Current);
@@ -55,7 +56,7 @@ public class BotStatsTests
     public void Mult_ScalesMaxAndCurrent()
     {
         var b = Bot();
-        BotStats.Apply(b, new StatGroup("mult", 0.5, "orig", 1, 100));
+        BotStats.Apply(b, new StatRule("mult", 0.5, "orig", 1, 100));
         Assert.Equal(75, b.Health!.BodyParts!["Chest"].Health!.Maximum);
         Assert.Equal(70, b.Health.BodyParts["Chest"].Health!.Current);
         Assert.True(b.Health.BodyParts.Values.All(p => p.Health!.Current >= 1 && p.Health.Current <= p.Health.Maximum));
@@ -65,13 +66,13 @@ public class BotStatsTests
     public void SkillLevel_And_Pct()
     {
         var b = Bot();
-        BotStats.Apply(b, new StatGroup("orig", 1, "level", 1, 100));
+        BotStats.Apply(b, new StatRule("orig", 1, "level", 1, 100));
         Assert.All(b.Skills!.Common, s => Assert.Equal(100, s.Progress));
         var c = Bot();
-        BotStats.Apply(c, new StatGroup("orig", 1, "pct", 1, 200));
+        BotStats.Apply(c, new StatRule("orig", 1, "pct", 1, 200));
         Assert.Equal(5000, c.Skills!.Common.First().Progress);
         var d = Bot();
-        BotStats.Apply(d, new StatGroup("orig", 1, "pct", 1, 300));
+        BotStats.Apply(d, new StatRule("orig", 1, "pct", 1, 300));
         Assert.Equal(5100, d.Skills!.Common.First().Progress); // 최대에서 자름
     }
 
@@ -79,7 +80,7 @@ public class BotStatsTests
     public void Mastering_Untouched()
     {
         var b = Bot();
-        BotStats.Apply(b, new StatGroup("pmc", 1, "level", 1, 100));
+        BotStats.Apply(b, new StatRule("pmc", 1, "level", 1, 100));
         Assert.Equal(400, b.Skills!.Mastering!.First().Progress);
     }
 
@@ -87,7 +88,7 @@ public class BotStatsTests
     public void MissingParts_NoError()
     {
         var b = new BotBase { Health = null, Skills = null };
-        Assert.True(BotStats.Apply(b, new StatGroup("pmc", 1, "level", 1, 100)));
+        Assert.True(BotStats.Apply(b, new StatRule("pmc", 1, "level", 1, 100)));
     }
 
     [Theory]
@@ -104,12 +105,26 @@ public class BotStatsTests
     public void GroupOf_Unknown_Null() => Assert.Null(BotStats.GroupOf("gifter", false, null));
 
     [Fact]
-    public void Config_Read_Clamped()
+    public void Config_Read_PerTier_AndGroups()
     {
-        var st = Cfg("""{"stats":{"scav":{"health":"mult","healthMult":9,"skills":"level","skillLevel":99},"boss":{"health":"weird","skills":"pct","skillPct":-5}}}""").Stats;
+        var st = Cfg("""{"stats":{"tiers":{"1":{"health":"mult","healthMult":9,"skills":"level","skillLevel":99},"7":{"health":"weird","skills":"pct","skillPct":-5}},"groups":{"boss":false}}}""").Stats;
         Assert.True(st.Any);
-        Assert.Equal(new StatGroup("mult", 3, "level", 51, 100), st.For("scav"));
-        Assert.Equal(new StatGroup("orig", 1, "pct", 1, 0), st.For("boss"));
-        Assert.Equal(new StatGroup("orig", 1, "orig", 1, 100), st.For("pmc"));
+        Assert.Equal(new StatRule("mult", 3, "level", 51, 100), st.Tiers[0]);
+        Assert.Equal(new StatRule("orig", 1, "pct", 1, 0), st.Tiers[6]);
+        Assert.Equal(StatRule.Original, st.Tiers[3]);
+        Assert.Null(st.RuleFor("boss", 0));          // 보스 묶음 끔
+        Assert.NotNull(st.RuleFor("scav", 0));
+        Assert.Null(st.RuleFor("scav", 3));          // T4는 원래대로
+        Assert.NotNull(st.RuleFor("follower", 6));   // 묶음 칸이 없으면 켬
+    }
+
+    [Fact]
+    public void TierOf_DressedFixedLevel()
+    {
+        var g = ConfigModel.Default().Gear!;
+        Assert.Equal(4, BotStats.TierOf(g, "scav", 4, 10));                // 입힌 티어 우선
+        Assert.Equal(1, BotStats.TierOf(g, "scav", null, 10));             // 스캐브 고정 T2
+        Assert.Equal(5, BotStats.TierOf(g, "boss_killa", null, 10));       // 보스 고정 T6
+        Assert.Equal(GearTier.TierOfLevel(g.Tiers, 35), BotStats.TierOf(g, "usec", null, 35)); // PMC는 레벨
     }
 }

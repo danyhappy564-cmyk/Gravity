@@ -137,7 +137,6 @@ public class GravityLoader(
                 new Gravity.Gear.GearFilterPatch().Enable();
                 new Gravity.Gear.GearPlatePatch().Enable();
                 new Gravity.Gear.GearBotPatch().Enable();
-                new Gravity.Gear.BotStatsPatch().Enable();
                 new Gravity.Gear.GearDynamicModPatch().Enable();
                 new Gravity.Gear.GearModPoolPatch().Enable();
                 new Gravity.Gear.GearItemDbModPatch().Enable();

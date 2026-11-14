@@ -162,14 +162,14 @@
 
 ### Task 7c: 봇 체력·스킬 맞추기 (Forge #2, INBOX #47 — 방향 사용자 선택 대기)
 
-**사용자 선택 11-14: 안 B(봇 묶음별) + "APBS처럼 모두 440 · 레벨 1" 버튼, 무기 숙련(Mastering)은 그대로.**
+**사용자 선택 11-14: 안 B → 같은 날 변경: 따로 페이지(`botstats`), 규칙은 티어(T1~T7)별, 묶음 5개는 "따를 봇" 스위치. 버튼·설명에 "APBS처럼" 같은 비교 문구 금지. 무기 숙련(Mastering)은 그대로.**
 생성 직후 결과만 고침(DB 원본 안 바꿈), 플레이어 자신의 스캐브(IsPlayerScav)는 안 건드림, APBS가 있으면(장비 잠금) 패치 안 검. 기본 "원래대로" = 1.0.5 결과.
 
 **Files:** 새 `src/Gravity.Server/Gear/BotStats.cs`(순수: 묶음 판정·체력·스킬 고치기), `GearPatches.cs`(새 `BotStatsPatch` — `BotGenerator.GenerateBot` 뒤), `ConfigModel.cs`(`GravityConfig.Stats` 끝 칸), `ModDetector.cs`(`Realism` 감지), `GravityLoader.cs`(패치 걸기), 웹 봇별 장비 페이지 카드 · Test `tests/Gravity.Tests/BotStatsTests.cs`, 웹 테스트.
 
 - 묶음 5개: `scav`(스캐브·저격·AI 플레이어 스캐브) · `pmc` · `special`(레이더·로그·컬티스트·팩션 등) · `boss` · `follower`. `GearTier.RoleId`로 판정, 모르는 역할은 안 건드림.
-- 설정 `stats.<묶음>.health` = `orig`|`pmc`(머리 35·흉부 85·복부 70·팔 60·다리 65 = 440, 현재=최대)|`mult`(`healthMult` 0.5~3, 최대·현재에 곱함), `stats.<묶음>.skills` = `orig`|`level`(`skillLevel` 0~51 → 진행값 ×100)|`pct`(`skillPct` 0~200%, 5100에서 자름).
-- [ ] 테스트: `Default_AllOriginal_NoChange`, `Pmc440_SetsEveryPart`, `Mult_ScalesMaxAndCurrent`, `SkillLevel_And_Pct`, `Mastering_Untouched`, `GroupOf_Roles`(assault→scav, bossKilla→boss, followerBully→follower, pmcBot→special, usec→pmc, 모르는 역할→null), `Config_Read_Clamped`. 웹: `APBS처럼 버튼이 다섯 묶음을 440·레벨 1로`, `배율·레벨 칸은 그 방식일 때만`.
+- 설정 `stats.tiers.<1~7>.health` = `orig`|`pmc`(440)|`mult`(`healthMult` 0.5~3), `.skills` = `orig`|`level`(`skillLevel` 0~51)|`pct`(`skillPct` 0~200%), `stats.groups.<묶음>`(기본 켬). 봇 티어 = 입힌 장비 티어, 아니면 봇별 장비 티어 방식(고정·분포 = 고정 티어, 레벨·오프셋 = 레벨의 티어).
+- [ ] 테스트: `Default_AllOriginal_NoChange`, `Pmc440_SetsEveryPart`, `Mult_ScalesMaxAndCurrent`, `SkillLevel_And_Pct`, `Mastering_Untouched`, `GroupOf_Roles`(assault→scav, bossKilla→boss, followerBully→follower, pmcBot→special, usec→pmc, 모르는 역할→null), `Config_Read_Clamped`. 웹: `모든 티어 버튼이 일곱 티어를 440·레벨 1로`, `배율·레벨 칸은 그 방식일 때만`.
 
 ### Task 8: 문서·버전 기록·시연
 

@@ -390,13 +390,13 @@ public static partial class ConfigModel
             ReadTriggers(r), r.Bool("weeklyBoss", true), ReadStats(r));
     }
 
-    /// <summary>stats.&lt;묶음&gt;.health·healthMult·skills·skillLevel·skillPct(1.0.6). 모르는 값은 원래대로.</summary>
-    private static Gravity.Gear.BotStatsSettings ReadStats(Reader r) => new(Gravity.Gear.BotStats.Groups.ToDictionary(g => g, g =>
+    /// <summary>stats.tiers.&lt;1~7&gt;.health·healthMult·skills·skillLevel·skillPct + stats.groups.&lt;묶음&gt;(기본 켬, 1.0.6). 모르는 값은 원래대로.</summary>
+    private static Gravity.Gear.BotStatsSettings ReadStats(Reader r) => new(Enumerable.Range(1, 7).Select(t =>
     {
-        var p = $"stats.{g}.";
-        return new Gravity.Gear.StatGroup(r.Str(p + "health", "orig", "orig", "pmc", "mult"), r.Num(p + "healthMult", 1, 0.5, 3),
+        var p = $"stats.tiers.{t}.";
+        return new Gravity.Gear.StatRule(r.Str(p + "health", "orig", "orig", "pmc", "mult"), r.Num(p + "healthMult", 1, 0.5, 3),
             r.Str(p + "skills", "orig", "orig", "level", "pct"), (int)r.Num(p + "skillLevel", 1, 0, 51), r.Num(p + "skillPct", 100, 0, 200));
-    }));
+    }).ToArray(), Gravity.Gear.BotStats.Groups.ToDictionary(g => g, g => r.Bool("stats.groups." + g, true)));
 
     /// <summary>초반·중반·후반 배수(0~3). 칸이 하나도 없거나 모두 1이면 null(= 1.0.5와 같게 고르게).</summary>
     internal static double[]? Curve(Reader r, string p)
