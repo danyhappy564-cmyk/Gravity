@@ -106,6 +106,13 @@ public sealed record SpecialSettings(bool On, IReadOnlyDictionary<string, double
     public static bool ExtraModel(string id) => id is "raiders" or "rogues";
 }
 
+/// <summary>
+/// 트리거 스폰 하나(1.0.6): 맵 → "트리거id|원래 역할" → 규칙. Chance null = 원래 확률, Max 0 = 원래 호위 인원,
+/// Role 빈 값 = 원래 역할(플레이어 조작 트리거의 레이더만 exUsec·blackDivAssault로 바꿀 수 있음).
+/// 트리거·구역·Delay·Time은 바꾸지 않는다.
+/// </summary>
+public sealed record TriggerRule(double? Chance, int Min, int Max, string Role);
+
 /// <summary>팩션 무리 종류 하나(순찰·검문소·사냥조, 0.4). TMin·TMax는 분(검문소·사냥조는 안 씀).</summary>
 public sealed record FactionKind(bool On, double Chance, int Count, int Min, int Max, double TMin, double TMax);
 
@@ -123,7 +130,8 @@ public sealed record GravityConfig(
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
     IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
     FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null,
-    OrbitSettings? Orbit = null, DiagSettings? Diag = null, CompatSettings? Compat = null)
+    OrbitSettings? Orbit = null, DiagSettings? Diag = null, CompatSettings? Compat = null,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, TriggerRule>>? Triggers = null)
 {
     public OrbitSettings OrbitOrDefault => Orbit ?? new OrbitSettings(true, false, true);
     public DiagSettings DiagOrDefault => Diag ?? new DiagSettings("summary", true, false);
@@ -359,7 +367,37 @@ public static partial class ConfigModel
                 r.Node("orbit.extractRefillMode") == null ? null : r.Str("orbit.extractRefillMode", r.Bool("orbit.refillAfterExtract", true) ? "infinite" : "off", "off", "infinite", "all"),
                 (int)r.Num("orbit.extractRefillCap", 20, 0, 100)),
             new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
-            new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")));
+            new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")),
+            ReadTriggers(r));
+    }
+
+    /// <summary>웹 triggers.&lt;맵&gt;.&lt;트리거id&gt;.&lt;역할&gt;.{chance,min,max,role}(1.0.6). 이름이 이상한 키는 버린다.</summary>
+    private static Dictionary<string, IReadOnlyDictionary<string, TriggerRule>>? ReadTriggers(Reader r)
+    {
+        if (r.Node("triggers") is not JsonObject root) return null;
+        static bool Key(string k) => k.Length is > 0 and <= 60 && k.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-');
+        var maps = new Dictionary<string, IReadOnlyDictionary<string, TriggerRule>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (map, mn) in root)
+        {
+            if (!Key(map) || mn is not JsonObject mo) continue;
+            var rules = new Dictionary<string, TriggerRule>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (trig, tn) in mo)
+            {
+                if (!Key(trig) || tn is not JsonObject to) continue;
+                foreach (var (role, rn) in to)
+                {
+                    if (!Key(role) || rn is not JsonObject) continue;
+                    var p = $"triggers.{map}.{trig}.{role}.";
+                    double? chance = r.Node(p + "chance") is JsonValue cv && cv.GetValueKind() == JsonValueKind.Number ? r.Num(p + "chance", 0, 0, 100) : null;
+                    var min = (int)r.Num(p + "min", 0, 0, 10);
+                    var max = (int)Math.Max(min, r.Num(p + "max", 0, 0, 10));
+                    var rule = new TriggerRule(chance, min, max, r.Str(p + "role", "", "", "pmcBot", "exUsec", "blackDivAssault"));
+                    if (rule.Chance != null || rule.Max > 0 || rule.Role.Length > 0) rules[$"{trig}|{role}"] = rule;
+                }
+            }
+            if (rules.Count > 0) maps[map] = rules;
+        }
+        return maps.Count > 0 ? maps : null;
     }
 
     /// <summary>

@@ -165,8 +165,12 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         // 팩션을 보스보다 먼저: 되살린 연구소 게이트 레이더도 특수 봇 설정을 받게 한다.
         var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
         RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates);
+        // 1.0.6: 트리거 스폰(레버·탈출구·게임 이벤트) 조절은 BlackDiv 게이트·특수 봇 처리 뒤에 남은 항목에만.
+        var trigChanged = RaidSpawnApplier.ApplyTriggers(loc, cfg, id, Detect.BlackDiv);
         var (hw, xm) = ActiveEvents();
         var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
+        if (trigChanged > 0)
+            evNote = (evNote != null ? evNote + " / " : "") + L.T($"트리거 스폰 {trigChanged}개 조절", $"adjusted {trigChanged} trigger spawns");
         // 상한 표(1.0): 모든 항목을 다 고친 뒤 종류별 상한 무시 표시를 맞춘다(팩션·이벤트·다른 모드 항목 포함)
         Gravity.Spawn.CapApplier.Apply(loc, cfg.SpawnFor(id).CapsOrDefault, Gravity.Factions.FactionRaid.FactionRoleSet(Detect.Ruaf, Detect.BlackDiv));
         return new RaidBuild(plan, info, pmcWhy, scavNote, otherPmc, facNote, evNote);

@@ -257,6 +257,44 @@ public static class RaidSpawnApplier
     }
 
     /// <summary>바닐라 호위 수 형식: 가능한 수를 쉼표로(클라가 하나를 고름). 예: 2~4 → "2,3,4".</summary>
+    /// <summary>
+    /// 1.0.6 트리거 스폰 조절(레버·스위치·탈출구·게임 이벤트). 보스·특수 봇·팩션 처리가 끝난 뒤 마지막에 부른다.
+    /// 규칙(맵 → "트리거id|원래 역할")이 있는 트리거 항목의 확률·호위 인원·(플레이어 조작 트리거의 레이더만) 역할을 바꾼다.
+    /// 트리거·구역·Delay·Time은 그대로 둔다. 이미 0%인 항목(원래 스폰 유지 끔·보스 끔)은 0%로 둔다.
+    /// 파르티잔처럼 보스 설정이 확률을 정하는 역할(BossRoleToId)과 Gravity가 바꿔 넣은 항목(BlackDiv 게이트 등)은 건드리지 않는다.
+    /// </summary>
+    /// <returns>바꾼 항목 수(로그용).</returns>
+    public static int ApplyTriggers(LocationBase loc, GravityConfig cfg, string mapId, bool blackDivInstalled)
+    {
+        if (cfg.Triggers == null || !cfg.Triggers.TryGetValue(mapId, out var rules) || loc.BossLocationSpawn == null) return 0;
+        var changed = 0;
+        var list = loc.BossLocationSpawn.ToList();
+        for (var i = 0; i < list.Count; i++)
+        {
+            var e = list[i];
+            if (string.IsNullOrEmpty(e.TriggerName) || string.IsNullOrEmpty(e.TriggerId) || e.BossName is not { Length: > 0 } role) continue;
+            if (e.SptId == "gravity" || BossRoleToId.ContainsKey(role)) continue;
+            if (!rules.TryGetValue($"{e.TriggerId}|{role}", out var rule)) continue;
+            var n = e;
+            if ((e.BossChance ?? 0) > 0 && rule.Chance is { } c) n = n with { BossChance = c };
+            if (rule.Max > 0) n = n with { BossEscortAmount = Range(Math.Max(0, rule.Min - 1), Math.Max(0, rule.Max - 1)) };
+            if (rule.Role.Length > 0 && !string.Equals(rule.Role, role, StringComparison.OrdinalIgnoreCase)
+                && CanSwapRole(e, role, rule.Role, blackDivInstalled))
+                n = n with { BossName = rule.Role, BossEscortType = rule.Role };
+            if (n == e) continue;
+            list[i] = n;
+            changed++;
+        }
+        if (changed > 0) loc.BossLocationSpawn = list;
+        return changed;
+    }
+
+    /// <summary>역할 바꾸기는 플레이어 조작 트리거(interactObject)의 레이더만, BlackDiv는 설치됐을 때만.</summary>
+    internal static bool CanSwapRole(BossLocationSpawn e, string from, string to, bool blackDivInstalled) =>
+        string.Equals(e.TriggerName, "interactObject", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(from, "pmcBot", StringComparison.OrdinalIgnoreCase)
+        && (to is "exUsec" or "pmcBot" || (to == "blackDivAssault" && blackDivInstalled));
+
     /// <summary>특수 봇 시각 창(분) → 게임 Time(초). 끝이 0이면 원래대로(-1 = 판 시작).</summary>
     internal static double SpecialTime(double from, double to, Random rnd, double raidSec, double original = -1)
     {
