@@ -15,6 +15,7 @@ namespace Gravity.Shared
 
         private readonly double[] _at;
         private readonly int[] _left;
+        private readonly int[] _taken; // 마지막 Due에서 웨이브별로 낸 수(GiveBack용)
         private int _first;
 
         /// <param name="list">원래 레이드 기준 초·인원.</param>
@@ -43,6 +44,7 @@ namespace Gravity.Shared
             _at = order.Select(i => at[i]).ToArray();
             _left = order.Select(i => n[i]).ToArray();
             Counts = (int[])_left.Clone();
+            _taken = new int[_at.Length];
         }
 
         /// <summary>이 판에 낼 웨이브 수(지난 것·하드 스톱 뒤·0명 제외).</summary>
@@ -65,6 +67,7 @@ namespace Gravity.Shared
             var give = 0;
             room = Math.Max(0, room);
             Waiting = 0;
+            Array.Clear(_taken, 0, _taken.Length);
             for (var i = _first; i < _at.Length; i++)
             {
                 if (_at[i] > elapsed) break;
@@ -73,11 +76,28 @@ namespace Gravity.Shared
                 _left[i] -= take;
                 room -= take;
                 give += take;
+                _taken[i] = take;
                 Waiting += _left[i];
                 if (_left[i] == 0 && i == _first) _first++;
             }
             Spawned += give;
             return give;
+        }
+
+        /// <summary>마지막 Due로 받은 인원 중 실제로 못 넣은 n마리(지점 없음 등)를 그 웨이브에 돌려준다. 그 웨이브의 60초 재시도 창 안에서 다시 나온다.</summary>
+        public void GiveBack(int n)
+        {
+            for (var i = _taken.Length - 1; i >= 0 && n > 0; i--)
+            {
+                var back = Math.Min(n, _taken[i]);
+                if (back <= 0) continue;
+                _taken[i] -= back;
+                _left[i] += back;
+                n -= back;
+                Spawned -= back;
+                Waiting += back;
+                if (i < _first) _first = i;
+            }
         }
 
         public string Describe() => $"{Count} waves ({Counts.Sum()} scavs)";

@@ -35,6 +35,9 @@ namespace Gravity.Client.Directors
         internal sealed class State
         {
             public readonly ScavSchedule Schedule;
+            /// <summary>1.0.6 스캐브 웨이브 목록(서버가 List를 보낼 때만). 있으면 채우기 대신 목록대로만 낸다.</summary>
+            public ScavWaveList? List;
+            public float NextListLog;
             public float NextTick;
             public int RefillIndex;
             public int ScavSpawned;
@@ -64,6 +67,8 @@ namespace Gravity.Client.Directors
             public State(ScavSchedule schedule) => Schedule = schedule;
         }
 
+        private static int Sum(IReadOnlyList<int> xs) { int t = 0; for (int i = 0; i < xs.Count; i++) t += xs[i]; return t; }
+
         private enum PmcResult { Spawned, NoRoom, Unavailable }
 
         /// <summary>NonWavesPatch에서 매 프레임 부른다. 2초가 안 지났으면 시각 비교만 하고 끝난다.</summary>
@@ -76,6 +81,12 @@ namespace Gravity.Client.Directors
             {
                 st = c.ScavState = new State(new ScavSchedule(c.S.Scav, c.S.Inf, c.S.HardStopScavSec, c.Rng));
                 Log.Info($"{c.S.MapId} 스캐브 관리 시작(바닐라 자동 스폰 대신){(c.S.Inf != null ? ", 무한 보충 PMC 분대 " + c.Refill.Count + "개" : "")}");
+                if (c.S.Scav.List != null)
+                {
+                    // 서버는 이때 Style "start"를 보내 ScavSchedule은 스캐브를 채우지 않는다(PMC 무한 차례만 그대로).
+                    st.List = new ScavWaveList(c.S.Scav.List, c.S.Scav.ListJitterSec, c.S.Scav.CurveOffsetSec, c.S.HardStopScavSec, new System.Random(c.S.Seed ^ 0x5CA1));
+                    Log.Info($"{c.S.MapId} 스캐브 웨이브 목록 {st.List.Count}개(총 {Sum(st.List.Counts)}마리)");
+                }
             }
             if (now < st.NextTick) return;
             st.NextTick = now + TickSec;
@@ -90,7 +101,7 @@ namespace Gravity.Client.Directors
 
             int aliveScavs = CollectPlayers(st.Humans, c, out int excluded);
             int players = Math.Max(1, st.Humans.Count);
-            if (c.S.Scav.Curve != null && now >= st.NextCurveLog)
+            if (c.S.Scav.Curve != null && st.List == null && now >= st.NextCurveLog)
             {
                 st.NextCurveLog = now + 120f;
                 double k = ScavSchedule.CurveAt(c.S.Scav, now);
@@ -110,6 +121,23 @@ namespace Gravity.Client.Directors
                 if (r == PmcResult.Spawned) { st.CapEpisode = false; return; }
                 if (r == PmcResult.NoRoom) MarkCap(c, st);
                 // Unavailable: 이 차례는 스캐브로
+            }
+
+            if (st.List != null)
+            {
+                // 목록 방식: 시각이 된 웨이브만, 빈자리(맵 상한 − 점유 − PMC 예약 몫)만큼. 못 낸 인원은 그 웨이브에 남아 60초까지 다시 본다.
+                int room = bc._maxCount - alive - c.PmcReserveLeft();
+                int due = st.List.Due(now, room);
+                int put = due > 0 ? SpawnScavs(c, st, bc, spawner, due, now, difficulties) : 0;
+                if (put < due) st.List.GiveBack(due - put);
+                if (put > 0) st.CapEpisode = false;
+                else if (st.List.Waiting > 0 && room <= 0) MarkCap(c, st);
+                if (now >= st.NextListLog && st.List.Count > 0)
+                {
+                    st.NextListLog = now + 120f;
+                    Log.Verbose($"{c.S.MapId} 스캐브 웨이브 {st.List.Done}/{st.List.Count}: 낸 {st.List.Spawned} · 상한 대기 {st.List.Waiting} · 상한으로 버림 {st.List.Dropped} (경과 {now / 60f:0.0}분)");
+                }
+                return;
             }
 
             if (n <= 0)

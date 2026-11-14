@@ -70,6 +70,21 @@ public class ScavWaveListTests
     }
 
     [Fact]
+    public void GiveBack_NotPlaced_RetriedInSameWave()
+    {
+        var l = new ScavWaveList([W(100, 3, 3), W(300, 2, 2)], 0, 0, 10000, new Random(1));
+        Assert.Equal(3, l.Due(100, 10));
+        l.GiveBack(2); // 지점이 없어 2마리 못 넣음
+        Assert.Equal(2, l.Waiting);
+        Assert.Equal(1, l.Spawned);
+        Assert.Equal(2, l.Due(130, 10));
+        Assert.Equal(2, l.Due(300, 10));
+        Assert.Equal(0, l.Dropped);
+        l.GiveBack(5); // 낸 수보다 많이 돌려도 그 웨이브 몫까지만
+        Assert.Equal(2, l.Waiting);
+    }
+
+    [Fact]
     public void Empty_NoError()
     {
         var l = new ScavWaveList([], 20, 0, 1500, new Random(1));
