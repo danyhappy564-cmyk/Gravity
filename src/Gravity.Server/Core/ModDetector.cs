@@ -15,6 +15,8 @@ public sealed record DetectResult(
     public string? OrbitFolder { get; init; }
     public bool MapVariants { get; init; }
     public bool Blackout { get; init; }
+    /// <summary>SPT-Realism(체력·스킬을 스스로 바꿈, 1.0.6 봇 체력·스킬 안내용).</summary>
+    public bool Realism { get; init; }
     /// <summary>맵 id → 그 맵을 바꿔 끼우는 변형 모드 이름들(0.6, 판정 54).</summary>
     public IReadOnlyDictionary<string, string[]> VariantMaps { get; init; } = new Dictionary<string, string[]>();
 }
@@ -46,7 +48,7 @@ public static class ModDetector
             LockWithQuestingBots = compat?.LockWithQuestingBots ?? false,
             OrbitFolder = folders.FirstOrDefault(f => f.Equals("ORBIT", StringComparison.OrdinalIgnoreCase))
                 ?? folders.FirstOrDefault(f => f.Contains("orbit", StringComparison.OrdinalIgnoreCase)),
-            MapVariants = Has("mapvariants"), Blackout = Has("blackout"),
+            MapVariants = Has("mapvariants"), Blackout = Has("blackout"), Realism = Has("realism"),
             VariantMaps = variants.ToDictionary(kv => kv.Key, kv => kv.Value.Distinct().ToArray())
         };
     }

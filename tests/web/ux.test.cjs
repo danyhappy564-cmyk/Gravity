@@ -1457,3 +1457,23 @@ test('1.0.6 #demo: 리저브 스캐브 웨이브 목록 예시가 버블로 보�
   a.run("page='spawn';spawnTab='rezervbase';mapSel='rezervbase'");
   assert.match(a.run("timeline(mapById('rezervbase'),true)"),/data-drag="scavw\|5"/);
 });
+test('1.0.6 봇 체력·스킬: 기본 원래대로, APBS처럼 버튼, 배율·레벨 칸은 그 방식일 때만', () => {
+  const a=app();
+  a.run("page='roles'");
+  assert.equal(a.run("Object.values(state.stats).every(g=>g.health==='orig'&&g.skills==='orig')"),true);
+  let html=a.run("P.roles.render()");
+  assert.match(html,/봇 체력 · 스킬/);
+  assert.ok(!/data-p="stats.scav.healthMult"/.test(html));
+  a.click({act:'statsApbs'});
+  assert.equal(a.run("Object.values(state.stats).every(g=>g.health==='pmc'&&g.skills==='level'&&g.skillLevel===1)"),true);
+  assert.equal(a.run("Object.keys(state.stats).join()"),'scav,pmc,special,boss,follower');
+  a.run("state.stats.boss.health='mult';state.stats.boss.skills='pct'");
+  html=a.run("P.roles.render()");
+  assert.match(html,/data-p="stats.boss.healthMult"/);
+  assert.match(html,/data-p="stats.boss.skillPct"/);
+  assert.ok(!/data-p="stats.scav.skillPct"/.test(html));
+  a.click({act:'statsReset'});
+  assert.equal(a.run("state.stats.boss.health"),'orig');
+  a.run("serverMeta={detect:{realism:true}}");
+  assert.match(a.run("P.roles.render()"),/Realism/);
+});

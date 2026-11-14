@@ -145,8 +145,12 @@ public sealed record GravityConfig(
     IReadOnlyDictionary<string, SpecialSettings>? Specials = null, EventSettings? Events = null,
     FactionSettings? Ruaf = null, BlackDivSettings? BlackDiv = null, string OtherPmc = "keep", GearSettings? Gear = null,
     OrbitSettings? Orbit = null, DiagSettings? Diag = null, CompatSettings? Compat = null,
-    IReadOnlyDictionary<string, IReadOnlyDictionary<string, TriggerRule>>? Triggers = null, bool WeeklyBoss = true)
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, TriggerRule>>? Triggers = null, bool WeeklyBoss = true,
+    Gravity.Gear.BotStatsSettings? StatsRaw = null)
 {
+    /// <summary>1.0.6 봇 체력·스킬(묶음별). 없으면 모두 원래대로.</summary>
+    public Gravity.Gear.BotStatsSettings Stats => StatsRaw ?? Gravity.Gear.BotStatsSettings.Default;
+
     public OrbitSettings OrbitOrDefault => Orbit ?? new OrbitSettings(true, false, true);
     public DiagSettings DiagOrDefault => Diag ?? new DiagSettings("summary", true, false);
     public CompatSettings CompatOrDefault => Compat ?? new CompatSettings(false, []);
@@ -383,8 +387,16 @@ public static partial class ConfigModel
                 (int)r.Num("orbit.extractRefillCap", 20, 0, 100)),
             new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
             new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")),
-            ReadTriggers(r), r.Bool("weeklyBoss", true));
+            ReadTriggers(r), r.Bool("weeklyBoss", true), ReadStats(r));
     }
+
+    /// <summary>stats.&lt;묶음&gt;.health·healthMult·skills·skillLevel·skillPct(1.0.6). 모르는 값은 원래대로.</summary>
+    private static Gravity.Gear.BotStatsSettings ReadStats(Reader r) => new(Gravity.Gear.BotStats.Groups.ToDictionary(g => g, g =>
+    {
+        var p = $"stats.{g}.";
+        return new Gravity.Gear.StatGroup(r.Str(p + "health", "orig", "orig", "pmc", "mult"), r.Num(p + "healthMult", 1, 0.5, 3),
+            r.Str(p + "skills", "orig", "orig", "level", "pct"), (int)r.Num(p + "skillLevel", 1, 0, 51), r.Num(p + "skillPct", 100, 0, 200));
+    }));
 
     /// <summary>초반·중반·후반 배수(0~3). 칸이 하나도 없거나 모두 1이면 null(= 1.0.5와 같게 고르게).</summary>
     internal static double[]? Curve(Reader r, string p)

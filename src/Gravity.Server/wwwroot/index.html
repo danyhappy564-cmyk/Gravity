@@ -698,6 +698,20 @@ function tierDataDefaults(){const out={};TBOTS.forEach(([b])=>{out[b]=[];for(let
 function spreadDefault(tier){const t=clampN(Math.round(tier)||1,1,7),o={t1:0,t2:0,t3:0,t4:0,t5:0,t6:0,t7:0};o['t'+t]=50;
   if(t===1)o.t2=50;else if(t===7)o.t6=50;else{o['t'+(t-1)]=25;o['t'+(t+1)]=25;}return o;}
 const spreadText=r=>r&&r.mode==='spread'&&r.spread?tr(T('분포','Spread'))+' '+[1,2,3,4,5,6,7].filter(i=>r.spread['t'+i]>0).map(i=>'T'+i+' '+r.spread['t'+i]).join('·'):'';
+// 1.0.6 봇 체력·스킬(Forge #2): 봇 묶음 5개마다 체력(원래대로·PMC 기준 440·배율)·일반 스킬(원래대로·레벨 고정·원래의 %). 무기 숙련은 그대로.
+const STAT_GROUPS=[['scav',T('스캐브 (저격·AI 플레이어 스캐브 포함)','Scavs (incl. snipers & AI player scavs)')],['pmc',T('PMC','PMCs')],['special',T('특수 봇 · 팩션 (레이더·로그·컬티스트 등)','Special bots & factions (Raiders, Rogues, Cultists…)')],['boss',T('보스','Bosses')],['follower',T('호위','Followers')]];
+const statDefaults=()=>Object.fromEntries(STAT_GROUPS.map(([g])=>[g,{health:'orig',healthMult:1,skills:'orig',skillLevel:1,skillPct:100}]));
+function statsCard(){const det=serverMeta?.detect||{};
+  const rows=STAT_GROUPS.map(([g,name])=>{const o=state.stats[g],P='stats.'+g+'.';return `<div class="sub" style="margin-top:12px">${tr(name)}</div>`
+    +seg(P+'health',T('체력','Health'),'',[['orig',T('원래대로','Original')],['pmc',T('PMC 기준 440','PMC 440')],['mult',T('배율','Multiplier')]])
+    +(o.health==='mult'?slider(P+'healthMult',T('체력 배율','Health multiplier'),T('부위별 최대·현재 체력에 곱합니다.','Multiplies max and current HP of every body part.'),{min:0.5,max:3,step:0.05,unit:UI.x}):'')
+    +seg(P+'skills',T('스킬','Skills'),'',[['orig',T('원래대로','Original')],['level',T('레벨 고정','Fixed level')],['pct',T('원래의 %','% of original')]])
+    +(o.skills==='level'?slider(P+'skillLevel',T('스킬 레벨','Skill level'),T('근력·지구력·반동 조절 같은 일반 스킬을 모두 이 레벨로 맞춥니다.','Sets every common skill (Strength, Endurance, Recoil Control…) to this level.'),{min:0,max:51,unit:''}):o.skills==='pct'?slider(P+'skillPct',T('원래 스킬의 %','% of original skills'),'',{min:0,max:200,unit:UI.pct}):'');}).join('');
+  return card(T('봇 체력 · 스킬','Bot health & skills'),
+    `<p class="muted small">${tr(T('봇이 만들어진 직후 체력과 일반 스킬만 고칩니다. 게임 자료 원본과 무기 숙련은 그대로이고, 내 스캐브(플레이어)는 건드리지 않습니다. 모두 "원래대로"면 1.0.5와 같습니다.','Adjusts health and common skills right after a bot is generated. Game data and weapon mastering stay as they are, and your own player scav is never touched. All "Original" = same as 1.0.5.'))}</p>`
+    +(det.apbs?notice(T('APBS가 있어 이 기능은 꺼져 있습니다. 체력·스킬은 APBS 설정을 쓰세요.','APBS is installed, so this is off. Use the APBS settings for health and skills.'),'warn'):'')
+    +(det.realism?notice(T('SPT-Realism도 봇 체력·스킬을 바꿉니다. 둘 다 켜면 나중에 적용된 쪽이 남으니 한쪽만 쓰는 것을 권합니다.','SPT-Realism also changes bot health and skills. With both on, whichever applies last wins — use one of them.'),'warn'):'')
+    +`<div class="chips"><button class="btn pri" data-act="statsApbs">${tr(T('APBS처럼: 모두 체력 440 · 스킬 레벨 1','Like APBS: all 440 HP · skill level 1'))}</button><button class="btn" data-act="statsReset">${tr(T('모두 원래대로','All original'))}</button></div>`+rows,{icon:'♥'});}
 function roleDefaults(id){
   const pmc=id==='usec'||id==='bear',boss=id.startsWith('boss_'),fol=id.startsWith('f_'),fac=['ruaf','untar','blackdiv','wedge'].includes(id);
   return {on:pmc,mode:pmc?'follow':boss||fol?'fixed':'fixed',tier:boss?6:fol?5:fac?5:id==='scav'||id==='marksman'?2:id==='pscav'?3:4,offset:0,
@@ -731,7 +745,7 @@ function makeDefaults(){
       scav:{curve:{early:1,mid:1,late:1},startOn:true,startPct:20,startMode:'pct',startMin:3,startMax:6,remainMode:'pct',remainMin:2,remainMax:4,separateStart:true,delay:4,activeMin:3,activeMax:7,quietMin:1,quietMax:3,refill:45,pending:3,softCap:18,perPlayer:20,pscavChance:10,playerScavRemain:60,startMarksman:true,lateRaiders:true}},
     near:{on:false,firstDelay:15,interval:180,botDelay:5,minDist:200,maxDist:300,spacing:15,waveMin:3,waveMax:8,slotChance:50,useDefault:true,pmcChance:30,
       custom:{on:false,t1:'raider',cap1:5,t2:'rogue',cap2:5,ratio2:50,diff:'normal'},group:{scavOff:false,chance:25,min:2,max:5},attempts:3,sight:false,sightPriority:70,stopAtCap:true},
-    maps,bosses,bossCommon:{on:false,chance:35},bossProg:{on:true,step:10,min:20,max:100,regressive:false},bossDiff:{easy:0,normal:60,hard:30,imp:10},weeklyBoss:true,
+    maps,bosses,bossCommon:{on:false,chance:35},bossProg:{on:true,step:10,min:20,max:100,regressive:false},bossDiff:{easy:0,normal:60,hard:30,imp:10},weeklyBoss:true,stats:statDefaults(),
     specials,factions,
     events:{halloween:{mode:'auto',zombies:30,nightCult:40,summon:true,gear:true},christmas:{mode:'auto',santa:25,gifts:true,snow:true,gear:true},newyears:{mode:'auto',fireworks:true},aprilfools:{mode:'off',gnomes:true},detect:true},
     gear:{poolVer:2,chanceVer:2,itemTier:{},thermalAdd:[],thermalRemove:[],tierMode:'mixed',mixPct:15,fixedTier:4,startTier:1,lv:lvDefaults(),splitAmmo:true,thermalsT7:true,seasonal:true,noQuest:true,tiers},
@@ -1756,7 +1770,7 @@ P.roles={desc:T('봇 종류마다 장비 적용 여부와 티어, 방탄판·탄
    ${card(T('내구도','Durability'),range(p+'wDurMin',p+'wDurMax',T('무기 내구도','Weapon durability'),'',{min:10,max:100,dis:off})+range(p+'aDurMin',p+'aDurMax',T('방탄 내구도','Armor durability'),'',{min:10,max:100,dis:off}),{icon:'◔',cls:off?'off':''})}
    ${card(T('소지품','Carried items'),sw(p+'loot',T('가방·주머니 전리품','Backpack/pocket loot'),'',{dis:off})+sw(p+'meds',T('의료품·음식 남은 양 무작위','Random meds/food remaining'),'',{adv:true,dis:off})+sw(p+'keys',T('열쇠 넣기','Carry keys'),'',{adv:true,dis:off})+sw(p+'quest',T('퀘스트 템 들고 다니기','Carry quest items'),'',{adv:true,dis:off})+slider(p+'poverty',T('빈곤 확률 (싸구려 장비)','Poverty chance (cheap kit)'),'',{max:50,adv:true,dis:off})+slider(p+'reroll',T('장비 다시 굴리기 확률','Re-roll chance'),'',{max:50,adv:true,dis:off}),{icon:'▤',cls:off?'off':''})}
    </div></div>`;
-  return `<div class="stack">${gearOff()}<div class="split">${list}${detail}</div></div>`;}};
+  return `<div class="stack">${gearOff()}<div class="split">${list}${detail}</div>${statsCard()}</div>`;}};
 
 P.weapons={desc:T('무기에 붙는 부품과 맵별 무기 성향을 정합니다.','Weapon builds and per-map weapon tendencies.'),render(){
   const w=state.weapons;
@@ -2577,6 +2591,7 @@ document.addEventListener('click',e=>{
   else if(a==='scavCopyPick'){const id=String(d.v||'');if(!mapById(id))return;scavCopySel=scavCopySel.includes(id)?scavCopySel.filter(x=>x!==id):[...scavCopySel,id];if(tlPopKey)openPop(tlPopKey,null,true);}
   else if(a==='scavCopy'){const r=copyScavList(String(d.v||''),scavCopySel);if(!r)return;const k=Object.values(r.dropped).reduce((x,y)=>x+y,0);toast(fmt(tr(k?T('{n}개 맵에 복사했습니다. 레이드가 짧아 길이 밖 웨이브 {k}개를 뺐습니다.','Copied to {n} maps. Dropped {k} waves beyond shorter raids.'):T('{n}개 맵에 복사했습니다.','Copied to {n} maps.')),{n:r.copied,k}));scavCopySel=[];rerender();}
   else if(a==='tlZoom'){const z=+d.v;if(![1,2,4].includes(z))return;tlZoom=z;try{localStorage.setItem('gravity.tlZoom',String(z));}catch{}rerender();}
+  else if(a==='statsApbs'||a==='statsReset'){STAT_GROUPS.forEach(([g])=>{const o=state.stats[g];if(a==='statsApbs'){o.health='pmc';o.skills='level';o.skillLevel=1;}else Object.assign(o,statDefaults()[g]);});toast(tr(a==='statsApbs'?T('모든 봇 묶음을 체력 440 · 스킬 레벨 1로 맞췄습니다. 저장하면 다음 레이드부터 적용됩니다.','All bot groups set to 440 HP · skill level 1. Save to apply from the next raid.'):T('모든 봇 묶음을 원래대로 돌렸습니다.','All bot groups reset to original.')));rerender();}
   else if(a==='capFix'){const [mid,i]=String(d.v||'').split('|'),m=mapById(mid),t=m&&capTips(m)[+i];if(t)capFixApply(mid,t.fix);rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
   else if(a==='capFixAll'){if(mapById(d.v))capFixAll(d.v);rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
   else if(a==='capAutoAll'){const on=d.v==='1';MAPS.forEach(m=>writeSetting(`maps.${m.id}.capAuto`,on));rerender();}
