@@ -1558,17 +1558,21 @@ test('공통 탭 타임라인의 맵 선택 칸에는 "미리 볼 맵" 이름표
   a.run("lang='en'");
   assert.match(a.run('P.spawn.render()'), />Preview map<\/label>/);
 });
-test('사이드바 맨 아래 황금 테두리 FAQ가 있고, FAQ 페이지는 소개 페이지 답으로 이어집니다', () => {
+test('사이드바 맨 아래 황금 테두리 FAQ는 소개 페이지와 같은 질문을 한 줄씩 열고 닫는 목록으로 보여 줍니다', () => {
+  const site = readFileSync(join(__dirname, '../../site/index.html'), 'utf8');
+  const siteIds = [...site.matchAll(/<details id="(faq-[^"]+)">/g)].map(m => m[1]);
   const a = app();
   a.run('renderNav()');
-  const nav = a.nodes.get('#nav').innerHTML;
-  assert.match(nav, /class="nav-btn nav-faq [^"]*" data-nav="faq">.*자주 묻는 질문<\/button>$/);
+  assert.match(a.nodes.get('#nav').innerHTML, /class="nav-btn nav-faq [^"]*" data-nav="faq">.*자주 묻는 질문<\/button>$/);
   a.run("selectPage('faq')");
   assert.equal(a.run('page'), 'faq');
+  assert.deepEqual(JSON.parse(a.run("JSON.stringify(FAQ_DATA.flatMap(g=>g[2].map(x=>x[0])))")), siteIds, 'tools/faq_sync.py 실행 필요');
   const html = a.run('P.faq.render()');
-  assert.match(html, /faq-hero/);
-  assert.match(html, /href="https:\/\/danyhappy564-cmyk\.github\.io\/Gravity\/\?lang=ko#faq"/);
-  assert.match(html, /href="https:\/\/danyhappy564-cmyk\.github\.io\/Gravity\/\?lang=ko#faq-isb" target="_blank" rel="noopener"/);
+  assert.equal((html.match(/<details class="faq-item"/g) || []).length, siteIds.length);
+  assert.match(html, /<details class="faq-item" data-faq="faq-isb"><summary>ISB Special Forces와 같이 써도 되나요\?<\/summary><div class="faq-a"><p>됩니다/);
+  assert.doesNotMatch(html, /class="faq-links"/);
+  assert.match(html, /href="https:\/\/sp-mod\.com\/mod\/3360\/gravity#issues"/);
+  assert.doesNotMatch(html, /github\.com\/danyhappy564-cmyk\/Gravity\/issues/);
   a.run("lang='en'");
-  assert.match(a.run('P.faq.render()'), /Gravity\/\?lang=en#faq-shared-tab/);
+  assert.match(a.run('P.faq.render()'), /<summary>Can I use ISB Special Forces with Gravity\?<\/summary>/);
 });
