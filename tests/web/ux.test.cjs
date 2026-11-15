@@ -1558,3 +1558,17 @@ test('공통 탭 타임라인의 맵 선택 칸에는 "미리 볼 맵" 이름표
   a.run("lang='en'");
   assert.match(a.run('P.spawn.render()'), />Preview map<\/label>/);
 });
+test('사이드바 맨 아래 황금 테두리 FAQ가 있고, FAQ 페이지는 소개 페이지 답으로 이어집니다', () => {
+  const a = app();
+  a.run('renderNav()');
+  const nav = a.nodes.get('#nav').innerHTML;
+  assert.match(nav, /class="nav-btn nav-faq [^"]*" data-nav="faq">.*자주 묻는 질문<\/button>$/);
+  a.run("selectPage('faq')");
+  assert.equal(a.run('page'), 'faq');
+  const html = a.run('P.faq.render()');
+  assert.match(html, /faq-hero/);
+  assert.match(html, /href="https:\/\/danyhappy564-cmyk\.github\.io\/Gravity\/\?lang=ko#faq"/);
+  assert.match(html, /href="https:\/\/danyhappy564-cmyk\.github\.io\/Gravity\/\?lang=ko#faq-isb" target="_blank" rel="noopener"/);
+  a.run("lang='en'");
+  assert.match(a.run('P.faq.render()'), /Gravity\/\?lang=en#faq-shared-tab/);
+});
