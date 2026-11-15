@@ -133,6 +133,9 @@ th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--li
 th { color: var(--muted); font-weight: 600; font-size: 14px; background: var(--panel); }
 td { color: var(--text); font-size: 15px; }
 tr:last-child td { border-bottom: 0; }
+td:first-child { min-width: 9.5em; }
+@media (min-width: 961px) { .feature-row .table-scroll table { min-width: 0; } }
+@media (max-width: 600px) { .table-scroll table { min-width: 0; } .table-scroll thead { display: none; } .table-scroll tr, .table-scroll td { display: block; } .table-scroll td:first-child { font-weight: 700; border-bottom: 0; padding-bottom: 2px; } }
 .tag { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 9px; }
 .tag.lock { background: rgba(224, 108, 108, .15); color: #f19a9a; }
 .tag.auto { background: rgba(89, 196, 139, .15); color: #8de0b2; }

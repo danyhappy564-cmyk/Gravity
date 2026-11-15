@@ -1549,3 +1549,12 @@ test('ISB Special Forces가 감지되면 막지 않고 상한·팩션·호환 �
   a.run("lang='en'");
   assert.match(a.run('P.diag.render()'), /does not manage ISB squads/);
 });
+test('공통 탭 타임라인의 맵 선택 칸에는 "미리 볼 맵" 이름표와 공통 값 설명이 있습니다', () => {
+  const a = app();
+  a.run("page='spawn';spawnTab='all'");
+  const common = a.run('P.spawn.render()');
+  assert.match(common, /<label for="flowMapSel"[^>]*>미리 볼 맵<\/label>/);
+  assert.match(common, /모든 맵 공통 값을 "미리 볼 맵"에 대 보고 그립니다/);
+  a.run("lang='en'");
+  assert.match(a.run('P.spawn.render()'), />Preview map<\/label>/);
+});
