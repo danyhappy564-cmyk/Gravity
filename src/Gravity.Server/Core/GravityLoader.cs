@@ -186,6 +186,7 @@ public class GravityLoader(
             DiagLog.Warn(m => logger.Warning(m))($"{GravityInfo.Tag} {L.T("Questing Bots의 PMC/플레이어 스캐브 스폰을 끄지 않으면 봇이 두 배로 나올 수 있습니다", "Turn off Questing Bots' PMC/player-scav spawning or bots may spawn twice")}");
         }
         if (detect.Blackout) found.Add("Blackout");
+        if (detect.PackNStrap) found.Add(detect.GearLocked ? "PackNStrap" : L.T("PackNStrap(봇 벨트 연동)", "PackNStrap (bot belts)"));
         if (detect.MapVariants) found.Add("MapVariants");
         if (detect.VariantMaps.Count > 0) found.Add(L.T("변형 맵 ", "map variants ") + string.Join(", ", detect.VariantMaps.Select(kv => $"{kv.Key}({string.Join("·", kv.Value)})")));
         if (found.Count > 0) { logger.Info($"{GravityInfo.Tag} {L.T("감지", "Detected")}: {string.Join(", ", found)}"); DiagLog.Remember("INFO", L.T("감지: ", "Detected: ") + string.Join(", ", found)); }
