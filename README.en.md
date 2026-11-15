@@ -74,6 +74,7 @@ The **Roll 10 raids** tool uses saved server settings. Entries requiring an even
 
 - With **ABPS** (bot placement) installed, Gravity's spawn module locks itself; with **APBS** (bot gear), the loadout module locks. Those features are left to that mod.
 - **ISB Special Forces** is neither blocked nor managed (ISB’s own config). Where the bot cap, Lab events and Black Division overlap is explained on the web **Compatibility** page and in the [FAQ](https://danyhappy564-cmyk.github.io/Gravity/#faq-isb).
+- **PBT (Harmony_Profiles) is not supported. Please don't use it with Gravity.** PBT swaps PMC loadouts for its own saved kits, so loadout problems in that setup (e.g. bots without mags) are not supported.
 - SAIN, ORBIT, SVM, MapVariants (variant maps) and others are detected and handled. See the **Compatibility** page in the web UI.
 
 ## Credits

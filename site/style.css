@@ -140,6 +140,7 @@ td:first-child { min-width: 9.5em; }
 .tag.lock { background: rgba(224, 108, 108, .15); color: #f19a9a; }
 .tag.auto { background: rgba(89, 196, 139, .15); color: #8de0b2; }
 .tag.warn { background: rgba(240, 192, 112, .15); color: #f0c070; }
+.tag.no { background: rgba(224, 108, 108, .28); color: #ffb3b3; }
 
 /* 감사·바닥 */
 .credit { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
