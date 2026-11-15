@@ -1579,7 +1579,7 @@ test('사이드바 맨 아래 황금 테두리 FAQ는 소개 페이지와 같은
 test('웹 FAQ 검색 칸은 지금 언어의 질문·답에서 낱말을 모두 포함한 질문만 남깁니다', () => {
   const a = app();
   a.run("selectPage('faq')");
-  assert.match(a.run('P.faq.render()'), /id="faqSearch"[^>]*><span class="muted small">질문 31개</);
+  assert.match(a.run('P.faq.render()'), /id="faqSearch"[^>]*><span class="muted small">질문 32개</);
   a.run("faqQ='ISB'");
   let html = a.run('P.faq.render()');
   assert.match(html, /data-faq="faq-isb" open/);

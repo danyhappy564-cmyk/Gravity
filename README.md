@@ -74,6 +74,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 
 - **ABPS**(봇 배치 모드)가 있으면 Gravity 스폰 모듈이, **APBS**(봇 장비 모드)가 있으면 Gravity 장비 모듈이 스스로 잠깁니다. 두 모드를 함께 쓰는 경우 해당 기능은 그 모드에 맡깁니다.
 - **ISB Special Forces**는 막지도 관리하지도 않습니다(ISB 설정 그대로). 봇 상한·연구소 이벤트·블랙 디비전이 겹치는 곳은 웹의 **호환 · 진단** 페이지와 [자주 묻는 질문](https://danyhappy564-cmyk.github.io/Gravity/#faq-isb)에 정리했습니다.
+- **WTT PackNStrap**(1.0.7~)이 있으면 봇 완장 칸에 티어별 벨트를 채우고 탄창을 벨트에 먼저 넣습니다(기본 PMC만, 봇 벨트는 못 줍게). 웹 **모드 아이템 → PackNStrap 벨트**에서 바꿉니다. [자주 묻는 질문](https://danyhappy564-cmyk.github.io/Gravity/#faq-pns)
 - **PBT(Harmony_Profiles)는 공식 호환하지 않습니다. 함께 쓰지 마십시오.** PBT가 PMC 장비를 자기가 저장한 장비로 바꿔 입히므로, 그 상태에서 생긴 장비 문제(탄창 없는 봇 등)는 Gravity에서 지원하지 않습니다.
 - SAIN·ORBIT·SVM·MapVariants(변형 맵) 등은 감지해서 맞춰 동작합니다. 감지 결과는 웹의 **호환 · 진단** 페이지에서 볼 수 있습니다.
 
