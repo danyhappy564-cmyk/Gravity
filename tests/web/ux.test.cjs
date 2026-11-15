@@ -771,6 +771,26 @@ test('모드 아이템 0개 설정·PMC만 설정은 티어 편집기에서도 �
   assert.doesNotThrow(()=>a.run('P.items.render()'));
 });
 
+test('PackNStrap 벨트는 모드 장비 0개·모드 PMC만 설정에 막히지 않고 벨트 설정을 따릅니다', () => {
+  const a=app(),b='000000000000000000000081';
+  a.run(`serverMeta={detect:{packNStrap:true}};GEAR_CATALOG=[{id:'${b}',ko:'벨트',en:'Belt',section:'armor',slot:'belt',equipmentSlots:['ArmBand'],source:'WTT-PackNStrap',mod:true,autoTier:1,armorClass:0,pen:0,price:100,tierGroup:'armor/belt',tierRank:1,tierSize:7}];rebuildSlots();INSTALLED['WTT-PackNStrap']=true;`);
+  const it=`{id:'${b}',src:'WTT-PackNStrap',mod:true}`;
+  a.run(`state.mods.subset=true;state.mods.equipment=0;state.mods.pmcOnly=true;state.gear.pns.pmcOnly=false`);
+  assert.equal(a.run(`blockOf(${it},'armor','pmc')`),null);    // 서버도 벨트를 준다
+  assert.equal(a.run(`blockOf(${it},'armor','boss')`),null);
+  a.run(`state.gear.pns.pmcOnly=true`);
+  assert.equal(a.run(`blockOf(${it},'armor','boss').l.ko`),'벨트는 PMC만');
+  assert.equal(a.run(`blockOf(${it},'armor','pmc')`),null);
+  a.run(`state.gear.pns.on=false`);
+  assert.equal(a.run(`blockOf(${it},'armor','pmc').k`),'mod');
+  a.run(`state.gear.pns.on=true;state.mods.disabledSources=['WTT-PackNStrap']`);
+  assert.equal(a.run(`blockOf(${it},'armor','pmc').k`),'mod');  // 모드 출처를 끄면 서버도 막는다
+  a.run(`state.mods.disabledSources=[]`);
+  const m='000000000000000000000082';   // 벨트가 아닌 모드 장비는 그대로 막힌다
+  a.run(`GEAR_CATALOG.push({id:'${m}',ko:'모드 헬멧',en:'Mod helmet',section:'armor',slot:'helmet',equipmentSlots:['Headwear'],source:'WTT-PackNStrap',mod:true,autoTier:1,armorClass:3,pen:0,price:100,tierGroup:'armor/helmet',tierRank:1,tierSize:7});`);
+  assert.equal(a.run(`blockOf({id:'${m}',src:'WTT-PackNStrap',mod:true},'armor','pmc').l.ko`),'모드 장비 0개 설정');
+});
+
 test('원작 프리셋 표는 모든 칸(부착물·탄약 자동 목록 포함)에서 모드 아이템을 보여 주지 않습니다', () => {
   const a=app(),v='000000000000000000000091',m='000000000000000000000092';
   a.run(`serverMeta={};GEAR_CATALOG=[{id:'${v}',ko:'바닐라 조준경',en:'Vanilla scope',section:'parts',slot:'scope',equipmentSlots:[],source:'vanilla',mod:false,autoTier:1,armorClass:0,pen:0,price:100},

@@ -2020,8 +2020,12 @@ const BL_SCOPE={all:()=>true,pmc:b=>b==='pmc',scav:b=>b==='scav',boss:b=>b==='bo
 function blockOf(it,sec,bot,t){const tk=bot;bot=grpOf(bot);
   if(!INSTALLED[it.src])return {k:'miss',l:T('모드 없음','Mod missing')};
   if(!modAllowed(it.src,sec))return {k:'mod',l:T('허용 안 한 모드','Mod not allowed')};
+  // PackNStrap 벨트는 서버 GearBelts.Decide와 같게: 판마다 일부만 쓰기·모드 아이템 PMC만은 보지 않고 벨트 설정(켬·PMC만)을 따른다
+  const belt=sec==='armor'&&(it.slot||catIndex()[it.id]?.slot)==='belt';
+  if(belt){const p=state.gear.pns||{};if(p.on===false)return {k:'mod',l:T('벨트 입히기 꺼짐','Belts turned off')};
+    if(p.pmcOnly!==false&&bot!=='pmc')return {k:'mod',l:T('벨트는 PMC만','Belts: PMC only')};}
   // 서버 GearContext.Blocked와 같게: 판마다 일부만 쓰기에서 그 종류 0개, 모드 장비는 PMC만
-  if(it.mod){const m=state.mods,cat=sec==='weapons'?'weapons':sec==='parts'?'attachments':sec==='armor'?'equipment':null;
+  if(it.mod&&!belt){const m=state.mods,cat=sec==='weapons'?'weapons':sec==='parts'?'attachments':sec==='armor'?'equipment':null;
     if(m.subset&&cat&&!(m[cat]>0))return {k:'mod',l:{weapons:T('모드 무기 0개 설정','Mod weapons set to 0'),attachments:T('모드 부착물 0개 설정','Mod attachments set to 0'),equipment:T('모드 장비 0개 설정','Mod gear set to 0')}[cat]};
     if(m.pmcOnly&&bot!=='pmc')return {k:'mod',l:T('모드 아이템은 PMC만','Mod items: PMC only')};}
   if(state.blacklist.entries.some(x=>x.id===it.id&&blHit(x,tk)==='full'))return {k:'bl',l:T('블랙리스트','Blacklisted')};
