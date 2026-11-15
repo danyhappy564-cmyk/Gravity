@@ -49,7 +49,9 @@ public static class GearCatalog
         ("5645bcb74bdc2ded0b8b4578","earpiece","gear","Earpiece"),
         ("5a341c4686f77469e155819e","faceCover","gear","FaceCover"),
         ("5448e5724bdc2ddf718b4568","eyewear","gear","Eyewear"),
-        ("5b3f15d486f77432d0509248","armband","gear","ArmBand")
+        ("5b3f15d486f77432d0509248","armband","gear","ArmBand"),
+        // 1.0.7 WTT PackNStrap 벨트(CustomBeltItem). 플레이어처럼 완장(ArmBand) 칸에 차는 수납 장비다.
+        (GearBelts.BeltBase,"belt","gear","ArmBand")
     ];
     private static readonly (string Base, string Slot)[] Parts =
     [

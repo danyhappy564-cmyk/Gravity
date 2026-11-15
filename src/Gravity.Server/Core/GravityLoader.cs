@@ -19,7 +19,7 @@ public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
     PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json,
     TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales,
-    SPTarkov.Server.Core.Utils.Cloners.ICloner cloner) : IOnLoad
+    SPTarkov.Server.Core.Utils.Cloners.ICloner cloner, SPTarkov.Server.Core.Services.Bot.BotInventoryContainerService containers) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -128,6 +128,7 @@ public class GravityLoader(
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
             Gravity.Gear.GearRuntime.Templates = templates.Items;
+            Gravity.Gear.GearRuntime.Containers = containers;
             Gravity.Gear.GearRuntime.Locale = lang => locales.GetLocaleDb(lang);
             // APBS가 있으면 장비 패치를 아예 걸지 않는다. 걸어만 둬도 Harmony_Profiles(PBT)가 봇 레벨 함수에
             // 다른 모드 패치가 있다고 보고 APBS 커리어 연동을 끈다(1.0.1).
@@ -143,6 +144,18 @@ public class GravityLoader(
                 new Gravity.Gear.GearDynamicGearPatch().Enable();
                 new Gravity.Gear.GearLootPatch().Enable();
                 new Gravity.Gear.GearUnheardPatch().Enable();
+                // 1.0.7 PackNStrap 벨트: 벨트 아이템이 있을 때만 건다(없으면 완장·탄창 칸은 SPT 그대로).
+                var belts = Gravity.Gear.GearBelts.All(Gravity.Gear.GearRuntime.Items).Count();
+                if (belts > 0)
+                {
+                    new Gravity.Gear.GearBeltEquipPatch().Enable();
+                    new Gravity.Gear.GearBeltSlotsPatch().Enable();
+                    var bs = store.Current.Gear;
+                    int locked = bs is { Module: true, Belts: { On: true, Unlootable: true } }
+                        ? Gravity.Gear.GearBelts.MarkUnlootable(templates.Items, Gravity.Gear.GearRuntime.Items) : 0;
+                    logger.Info($"{GravityInfo.Tag} " + L.T($"PackNStrap 벨트 {belts}개: 봇 완장 칸·탄창 칸 연동" + (locked > 0 ? $", 봇 벨트 줍기 막음 {locked}개" : ""),
+                        $"PackNStrap belts {belts}: bot armband slot + magazine storage" + (locked > 0 ? $", bot belts unlootable ({locked})" : "")));
+                }
             }
             var gi = Gravity.Gear.GearRuntime.Items;
             logger.Info($"{GravityInfo.Tag} " + L.T($"장비 자료: 아이템 {gi.Info.Count}개, 장비 칸 {gi.SlotTier.Count}개, 모드 아이템 무기 {gi.ModWeapons.Count}·장비 {gi.ModEquipment.Count}·부품 {gi.ModAttachments.Count}·옷 {gi.Clothing.Count}",

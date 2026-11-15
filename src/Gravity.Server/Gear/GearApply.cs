@@ -20,6 +20,12 @@ public sealed class GearContext
     public bool ThermalOk { get; init; }
     public bool LongOk { get; init; }
     public RoleGear Role => Settings.RoleFor(Pick.RoleId);
+    /// <summary>1.0.7 PackNStrap: 벨트 아이템이 있어 완장 칸을 Gravity가 정하는지.</summary>
+    public bool BeltManaged { get; set; }
+    /// <summary>1.0.7 PackNStrap: 이 봇의 완장 칸 벨트 목록. null = 벨트 안 참.</summary>
+    public Dictionary<MongoId, double>? Belts { get; set; }
+    /// <summary>1.0.7 PackNStrap: 실제로 찬 벨트 id(수납 칸 등록됨). null = 안 참.</summary>
+    public string? BeltWorn { get; set; }
 
     public ItemInfo? Info(string id)
     {
@@ -235,6 +241,10 @@ public static class GearApply
                 foreach (var mid in pool.Keys.ToList())
                     if (c.Blocked(mid.ToString())) { pool.Remove(mid); removed++; }
             }
+
+        // 5) 1.0.7 PackNStrap 벨트: 완장 칸을 만들 때(GearBeltEquipPatch) 쓸 목록을 정한다. 완장 칸이 없는 봇 종류면 만들어 둔다.
+        (c.BeltManaged, c.Belts) = GearBelts.Decide(c, table, rnd);
+        if (c.Belts != null && inv?.Equipment != null) inv.Equipment.TryAdd(EquipmentSlots.ArmBand, new());
 
         ApplyChances(bot, g, caps, c.Role, table, night);
         if (bot.BotChances?.EquipmentChances != null)

@@ -62,7 +62,9 @@ public sealed class GearItems
         List<string> Mods(Func<string, bool> slotPick) => bySlot.Where(kv => slotPick(kv.Key)).SelectMany(kv => kv.Value)
             .Where(id => info[id].Mod).Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList();
         ModWeapons = Mods(s => WeaponSlots.Contains(s)).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="weapons").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
-        ModEquipment = Mods(s => s != "mods" && !WeaponSlots.Contains(s) && !s.Contains('/')).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="armor").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
+        // PackNStrap 벨트는 판마다 고르는 모드 장비 묶음에 넣지 않는다(벨트 설정이 따로 정한다, 1.0.7).
+        ModEquipment = Mods(s => s != "mods" && !WeaponSlots.Contains(s) && !s.Contains('/')).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="armor").Select(kv=>kv.Key))
+            .Where(id => info[id].Slot != "belt").Distinct().Order(StringComparer.Ordinal).ToArray();
         ModAttachments = Mods(s => s == "mods").Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section is "parts" or "plates").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
     }
 

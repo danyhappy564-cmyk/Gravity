@@ -19,6 +19,8 @@ public sealed record DetectResult(
     public bool Realism { get; init; }
     /// <summary>ISB Special Forces(1.0.7 안내용). Gravity는 ISB 항목을 관리하지 않고 웹 안내만 띄운다.</summary>
     public bool Isb { get; init; }
+    /// <summary>WTT PackNStrap(1.0.7): 벨트를 봇 완장 칸 장비로 쓰고, 탄창을 벨트에 넣는다.</summary>
+    public bool PackNStrap { get; init; }
     /// <summary>맵 id → 그 맵을 바꿔 끼우는 변형 모드 이름들(0.6, 판정 54).</summary>
     public IReadOnlyDictionary<string, string[]> VariantMaps { get; init; } = new Dictionary<string, string[]>();
 }
@@ -51,6 +53,7 @@ public static class ModDetector
             OrbitFolder = folders.FirstOrDefault(f => f.Equals("ORBIT", StringComparison.OrdinalIgnoreCase))
                 ?? folders.FirstOrDefault(f => f.Contains("orbit", StringComparison.OrdinalIgnoreCase)),
             MapVariants = Has("mapvariants"), Blackout = Has("blackout"), Realism = Has("realism"), Isb = Has("isbspecialforces"),
+            PackNStrap = Has("packnstrap", "wtt-packnstrapserver"),
             VariantMaps = variants.ToDictionary(kv => kv.Key, kv => kv.Value.Distinct().ToArray())
         };
     }

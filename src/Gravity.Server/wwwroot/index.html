@@ -687,7 +687,7 @@ function allItems(){const out=[];['weapons','armor','ammo','meds','parts','look'
 const TSECS=[['weapons',T('무기','Weapons')],['armor',T('방어구 · 장비','Armor & gear')],['ammo',T('탄약','Ammo')],['meds',T('의약품 · 투척','Meds & throwables')],['parts',T('부착물','Attachments')],['gen',T('개수 · 확률','Counts & chances')],['rules',T('상한 · 방탄판','Caps & plates')],['sum',T('티어 요약','Tier summary')]];
 const TBOTS=[['pmc',T('PMC','PMC')],['scavs',T('스캐브','Scavs')],['boss',T('보스','Bosses')],['follower',T('호위','Followers')],['special',T('특수','Special')],['faction',T('팩션 모드','Faction mods')]];
 const GEN=[['magazines',T('탄창','Magazines'),[1,3],[3,5]],['meds',T('의약품','Meds'),[0,1],[2,4]],['stims',T('주사기','Stims'),[0,0],[1,2]],['grenades',T('수류탄','Grenades'),[0,1],[2,4]],['food',T('음식','Food'),[0,1],[1,2]],['drink',T('음료','Drink'),[0,1],[1,2]],['backpackLoot',T('가방 전리품','Backpack loot'),[0,3],[4,10]],['pocketLoot',T('주머니 전리품','Pocket loot'),[0,2],[1,4]],['vestLoot',T('리그 전리품','Vest loot'),[0,2],[2,5]]];
-const CHSLOTS=[['headwear',T('헬멧','Headwear'),50,95],['earpiece',T('헤드셋','Earpiece'),15,85],['faceCover',T('얼굴','Face cover'),30,70],['armorVest',T('방탄복','Armor vest'),40,95],['armouredRig',T('방탄 리그','Armoured rig'),10,60],['backpack',T('가방','Backpack'),40,90],['holster',T('권총','Sidearm'),20,60],['eyewear',T('안경','Eyewear'),20,60]];
+const CHSLOTS=[['headwear',T('헬멧','Headwear'),50,95],['earpiece',T('헤드셋','Earpiece'),15,85],['faceCover',T('얼굴','Face cover'),30,70],['armorVest',T('방탄복','Armor vest'),40,95],['armouredRig',T('방탄 리그','Armoured rig'),10,60],['backpack',T('가방','Backpack'),40,90],['holster',T('권총','Sidearm'),20,60],['eyewear',T('안경','Eyewear'),20,60],['belt',T('벨트 (PackNStrap)','Belt (PackNStrap)'),30,80]];
 /** 1.0.5: PMC 묶음만 T1 하한을 SPT 원본 usec/bear 수준으로(서버 GearDefaults.PmcChanceLo와 같은 값). */
 const PMC_CH_LO={armorVest:75,earpiece:50};
 const MODCH=[['scope',T('조준경','Scope'),40,95],['muzzle',T('머즐','Muzzle'),20,80],['tactical',T('전술 장치','Tactical'),10,70],['foregrip',T('손잡이','Foregrip'),20,75],['stock',T('개머리판','Stock'),70,100],['mount',T('마운트','Mount'),30,90]];
@@ -744,7 +744,7 @@ function makeDefaults(){
     maps,bosses,bossCommon:{on:false,chance:35},bossProg:{on:true,step:10,min:20,max:100,regressive:false},bossDiff:{easy:0,normal:60,hard:30,imp:10},weeklyBoss:true,stats:statDefaults(),
     specials,factions,
     events:{halloween:{mode:'auto',zombies:30,nightCult:40,summon:true,gear:true},christmas:{mode:'auto',santa:25,gifts:true,snow:true,gear:true},newyears:{mode:'auto',fireworks:true},aprilfools:{mode:'off',gnomes:true},detect:true},
-    gear:{poolVer:2,chanceVer:2,itemTier:{},thermalAdd:[],thermalRemove:[],tierMode:'mixed',mixPct:15,fixedTier:4,startTier:1,lv:lvDefaults(),splitAmmo:true,thermalsT7:true,seasonal:true,noQuest:true,tiers},
+    gear:{poolVer:2,chanceVer:2,itemTier:{},thermalAdd:[],thermalRemove:[],tierMode:'mixed',mixPct:15,fixedTier:4,startTier:1,lv:lvDefaults(),splitAmmo:true,thermalsT7:true,seasonal:true,noQuest:true,pns:{on:true,pmcOnly:true,unlootable:true},tiers},
     roles,
     weapons:{range:Object.fromEntries(MAPS.map(m=>[m.id,['woods','lighthouse','shoreline'].includes(m.id)?65:m.id.startsWith('factory')||m.id==='laboratory'||m.id==='labyrinth'?15:40])),
       looseAmmo:{on:true,chance:40,limit:2},bigMag:{on:true,count:1},stock:true,dust:true,scope:true,muzzle:{force:false,chance:55},partTiers:true,scopeLimit:2,tacLimit:1,night:{nvg:60,thermal:8,light:40}},
@@ -1878,6 +1878,10 @@ P.items={desc:T('모드로 추가된 무기·장비를 봇이 얼마나 쓸지 �
     +notice(fmt(tr(T('예상: 사망 1명당 램 증가가 약 {n}% 줄어듭니다 (모두 허용 대비, 대략값).','Estimate: ~{n}% less RAM growth per death (rough).')),{n:Math.min(80,Math.round(save/2))}),m.subset?'':'flat'),{icon:'▤'})}
   ${card(T('등장 비율','Frequency'),slider('mods.mult',T('모드 아이템 등장 배율','Mod item weight'),T('100% = 바닐라와 같은 무게.','100% = same as vanilla.'),{min:0,max:200,step:5})+sw('mods.pmcOnly',T('모드 장비는 PMC만','Mod gear for PMCs only'),'')
     +notice(T('부품 확률은 SPT 기본값을 씁니다. 다른 모드가 바꿔도 되돌립니다(오류·램 누수 방지).','Part chances use SPT defaults and are restored if changed (prevents errors/leaks).'),'flat'),{icon:'⚖'})}</div>
+  ${pnsOn()?card(T('PackNStrap 벨트','PackNStrap belts'),sw('gear.pns.on',T('봇에게 벨트 입히기','Give bots belts'),T('PackNStrap 벨트를 봇 완장 칸에 채우고, 벨트를 탄창 주머니로 씁니다. 찰 확률은 티어 편집기 → 개수 · 확률 → 벨트, 어떤 벨트를 쓸지는 방어구 · 장비 → 벨트에서 정합니다.','Puts PackNStrap belts in the bot armband slot and uses them for magazines. Chance: Tier editor → Counts & chances → Belt. Which belts: Armor & gear → Belts.'))
+    +sw('gear.pns.pmcOnly',T('PMC만','PMCs only'),T('끄면 장비 모듈이 입히는 다른 봇(보스·호위·스캐브 등)도 벨트를 찹니다.','Off: other bots Gravity dresses (bosses, followers, scavs…) can wear belts too.'),{dis:!state.gear.pns.on})
+    +sw('gear.pns.unlootable',T('봇 벨트는 못 줍게','Bot belts can’t be looted'),T('APBS와 같은 방식입니다. 서버를 다시 켜야 바뀝니다.','Same as APBS. Takes effect after a server restart.'),{dis:!state.gear.pns.on})
+    +notice(T('PackNStrap 아이템은 원래 봇에게 가지 않습니다(addtoBots: false). 벨트는 Gravity가 따로 넣으므로, 위 "레이드마다 일부만 사용"에 들지 않습니다.','PackNStrap items never reach bots on their own (addtoBots: false). Gravity adds belts separately, so they don’t count toward the per-raid subset above.'),'flat'),{icon:'▥'}):''}
   ${card(T('허용할 모드 (실제 설치된 모드)','Allowed mods (installed)'),modSourceList(),{desc:T('체크를 푼 모드의 아이템은 봇이 쓰지 않습니다. 티어 편집기에서는 "허용 안 한 모드"로 표시됩니다. 바닐라 아이템은 항상 허용입니다.','Bots skip items from unchecked mods; the tier editor marks them "Mod not allowed". Vanilla items are always allowed.')})}
   </div>`;}};
 
@@ -2034,7 +2038,7 @@ const PART_LABELS={scope:T('조준경','Scopes & sights'),muzzle:T('머즐·소�
 let GEAR_CATALOG=null,GEAR_CLOTHING=[],_catIdx=null,_catIdxOf=null;
 const catIndex=()=>{if(_catIdxOf!==GEAR_CATALOG){_catIdxOf=GEAR_CATALOG;_catIdx=Object.fromEntries((GEAR_CATALOG||[]).map(x=>[x.id,x]));}return _catIdx||{};};
 const GUN_KINDS=[['ar',T('돌격소총 (AR)','Assault rifles (AR)')],['carbine',T('카빈','Carbines')],['smg',T('기관단총 (SMG)','SMGs')],['lmg',T('기관총 (LMG)','Machine guns (LMG)')],['dmr',T('지정사수소총 (DMR)','Marksman rifles (DMR)')],['sniper',T('볼트액션 저격소총','Bolt-action sniper rifles')],['shotgun',T('산탄총','Shotguns')],['launcher',T('유탄·로켓','Launchers')],['special',T('기타 총기','Other guns')],['holster',T('권총','Pistols')],['scabbard',T('근접 무기','Melee')]];
-const ARMOR_LABELS={helmet:T('헬멧','Helmets'),headwear:T('헬멧·머리 장비','Helmets & headwear'),armor:T('방탄복','Body armor'),armorVest:T('방탄복','Body armor'),faceCover:T('얼굴 가리개','Face covers'),armouredRig:T('방탄 리그','Armored rigs'),tacticalVest:T('리그','Tactical rigs'),backpack:T('가방','Backpacks'),earpiece:T('헤드셋','Headsets'),facecover:T('얼굴 가리개','Face covers'),eyewear:T('안경','Eyewear'),armband:T('완장','Armbands')};
+const ARMOR_LABELS={helmet:T('헬멧','Helmets'),headwear:T('헬멧·머리 장비','Helmets & headwear'),armor:T('방탄복','Body armor'),armorVest:T('방탄복','Body armor'),faceCover:T('얼굴 가리개','Face covers'),armouredRig:T('방탄 리그','Armored rigs'),tacticalVest:T('리그','Tactical rigs'),backpack:T('가방','Backpacks'),earpiece:T('헤드셋','Headsets'),facecover:T('얼굴 가리개','Face covers'),eyewear:T('안경','Eyewear'),armband:T('완장','Armbands'),belt:T('벨트 (PackNStrap)','Belts (PackNStrap)')};
 const MED_LABELS={meds:T('의약품','Medical'),stims:T('주사기','Stimulants'),grenades:T('투척물','Throwables')};
 function rebuildSlots(){if(!GEAR_CATALOG)return;
   const mk=x=>({id:x.id,name:T(x.ko||x.en,x.en||x.ko),get t(){return state.gear.itemTier?.[x.id]||x.autoTier||1;},x:x.pen>0&&x.section==='ammo'?Math.round(x.pen):null,src:x.source||'vanilla',code:x.id,cls:x.armorClass,mod:x.mod});
@@ -2247,9 +2251,9 @@ function tierSummary(b,t){
     +sumRow('w:pis',tr(T('권총','Sidearm')),chOf('holster','Holster'),poolShare(b,t,'weapons',SLOTS.weapons.filter(([k])=>k==='holster')))
     +sumRow('w:mel',tr(T('근접 무기','Melee')),chOf('scabbard','Scabbard'),poolShare(b,t,'weapons',SLOTS.weapons.filter(([k])=>k==='scabbard')));
   // 방어구·장비
-  const ARM=[['headwear','Headwear'],['armorVest','ArmorVest'],['armouredRig',null],['tacticalVest','TacticalVest'],['backpack','Backpack'],['faceCover','FaceCover'],['earpiece','Earpiece'],['eyewear','Eyewear'],['armband','ArmBand']];
+  const ARM=[['headwear','Headwear'],['armorVest','ArmorVest'],['armouredRig',null],['tacticalVest','TacticalVest'],['backpack','Backpack'],['faceCover','FaceCover'],['earpiece','Earpiece'],['eyewear','Eyewear'],['armband','ArmBand'],['belt',null]];
   const clsCol=[T('방탄 등급','Class'),x=>x.it.cls>0?pill(x.it.cls+tr(T('등급','')),'gold'):'<span class="muted">—</span>'];
-  const armor=sumHead()+ARM.filter(([k])=>SLOTS.armor.some(s=>s[0]===k)).map(([k,name])=>{const l=poolShare(b,t,'armor',SLOTS.armor.filter(s=>s[0]===k)),ch=name?chOf(k,name):chOf('armouredRig',null);
+  const armor=sumHead()+ARM.filter(([k])=>SLOTS.armor.some(s=>s[0]===k)).map(([k,name])=>{const l=poolShare(b,t,'armor',SLOTS.armor.filter(s=>s[0]===k)),ch=name?chOf(k,name):chOf(k,null);
     const cls=l.filter(x=>x.it.cls>0).map(x=>x.it.cls),note=[cls.length?fmt(tr(T('방탄 {a}–{b}등급','class {a}–{b}')),{a:Math.min(...cls),b:Math.max(...cls)}):'',k==='armouredRig'?tr(T('확률 = 리그 칸에 방탄 리그를 허용할 확률','chance = armored rigs allowed in the rig slot')):''].filter(Boolean).join(' · ');
     return sumRow('a:'+k,tr(ARMOR_LABELS[k]||T(k,k)),ch,l,note,['armorVest','armouredRig','headwear'].includes(k)?clsCol:null);}).join('');
   // 탄약
@@ -2312,7 +2316,7 @@ function tierEditor(){
       body=`<div class="sw-row" style="margin-bottom:12px"><span class="small muted">${tr(T('무기','Weapon'))}</span><select id="atWeapon">${ws.map(w=>{const it=allItems().find(x=>x.id===w);return `<option value="${w}" ${w===atWeapon?'selected':''}>${tr(it.name)}</option>`;}).join('')}</select>${srcPill(wi.src)}<button class="mini-btn" data-act="attCopyAll">${tr(T('이 구성을 이 티어 모든 무기에','Apply to every weapon in this tier'))}</button></div>${blockSummary(st)}<div class="tlay">${nav}<div class="tmain">${main}</div></div>
       <p class="muted small" style="margin-top:6px">${tr(T('실제 모드에서는 그 무기에 실제로 맞는 부착물만 목록에 나옵니다(칸 호환 검사).','In the real mod only parts that actually fit this weapon are listed.'))}</p>`;}
   } else if(tSec==='gen'){
-    body=`<div class="grid g2">${card(T('개수','Counts'),GEN.map(([k,l])=>range(base+'gen.'+k+'.min',base+'gen.'+k+'.max',l,'',{min:0,max:k.includes('Loot')?15:8,unit:''})).join(''),{icon:'#'})}${card(T('장비 칸 확률','Slot chances'),CHSLOTS.map(([k,l])=>slider(base+'chance.'+k,l,'')).join(''),{icon:'%'})}${card(T('무기 부품 확률','Weapon part chances'),MODCH.map(([k,l])=>slider(base+'mods.'+k,l,'')).join(''),{icon:'⌖'})}</div>`;
+    body=`<div class="grid g2">${card(T('개수','Counts'),GEN.map(([k,l])=>range(base+'gen.'+k+'.min',base+'gen.'+k+'.max',l,'',{min:0,max:k.includes('Loot')?15:8,unit:''})).join(''),{icon:'#'})}${card(T('장비 칸 확률','Slot chances'),CHSLOTS.filter(([k])=>k!=='belt'||pnsOn()).map(([k,l])=>slider(base+'chance.'+k,l,k==='belt'?T('봇이 PackNStrap 벨트를 찰 확률입니다. 벨트를 차면 탄창을 벨트에 먼저 넣습니다.','Chance a bot wears a PackNStrap belt. Belted bots store magazines in the belt first.'):'')).join(''),{icon:'%'})}${card(T('무기 부품 확률','Weapon part chances'),MODCH.map(([k,l])=>slider(base+'mods.'+k,l,'')).join(''),{icon:'⌖'})}</div>`;
   } else if(tSec==='sum'){
     body=tierSummary(b,t);
   } else {
@@ -2801,6 +2805,8 @@ function detectedMods(){const d=serverMeta&&serverMeta.detect;if(!d)return ['ORB
   const o=serverMeta.orbit,l=[];if(d.orbit)l.push('ORBIT'+(o&&o.version?' '+o.version:''));if(d.sain)l.push('SAIN');if(d.svm)l.push('SVM');if(d.mapVariants)l.push('MapVariants');
   [...new Set(Object.values(d.variantMaps||{}).flat())].forEach(n=>l.push(n));if(d.ruaf)l.push('RUAF');if(d.untar)l.push('UNTAR');if(d.blackDiv)l.push('BlackDiv');if(d.blackout)l.push('Blackout');if(d.ppes)l.push('PastPresentEventSelector');if(d.moreBots)l.push('MoreBotsAPI');return l;}
 // 1.0.7 ISB Special Forces: Gravity는 ISB 항목을 관리하지 않는다(ISB 업데이트를 따라가기 어려움, 사용자 11-15). 막지 않고 겹치는 곳만 안내.
+/** 1.0.7 WTT PackNStrap이 깔렸는지(api/meta detect). 벨트 확률·설정은 이때만 보인다. */
+function pnsOn(){const d=serverMeta&&serverMeta.detect;return !!(d&&d.packNStrap);}
 function isbOn(){const d=serverMeta&&serverMeta.detect;return !!(d&&d.isb);}
 const ISB_TXT={
   own:T('Gravity는 ISB 분대를 관리하지 않습니다. ISB 등장 확률·인원·시각은 ISB 설정 그대로이고, Gravity 웹에는 ISB 칸이 없습니다. ISB를 막지도 않습니다.','Gravity does not manage ISB squads. Their chance, size and timing follow ISB’s own config; there are no ISB controls here, and ISB is not blocked.'),
@@ -2848,6 +2854,8 @@ function migratePmcChance(tierData,roles){const pmc=tierData&&tierData.pmc,nw=ti
   if(Array.isArray(pmc))pmc.forEach((d,t)=>{if(!d||!d.chance||!nw[t])return;[['armorVest',40,95],['earpiece',15,85]].forEach(([k,lo,hi])=>{if(d.chance[k]===Math.round(lo+(hi-lo)*t/6))d.chance[k]=nw[t].chance[k];});});
   ['usec','bear'].forEach(id=>{const r=roles&&roles[id];if(r&&r.frontPlate===90)r.frontPlate=100;});}
 function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
+  // 1.0.7: 저장된 티어 표(배열이라 통째로 덮임)에 새 확률 칸(벨트)이 없으면 기본값을 채운다. 서버도 같은 기본식(GearDefaults.Chance)을 쓴다.
+  Object.entries(state.tierData||{}).forEach(([b,arr])=>(arr||[]).forEach((d,t)=>{if(!d)return;d.chance||={};CHSLOTS.forEach(([k])=>{if(d.chance[k]==null){const dv=(DEFAULTS.tierData[b]||DEFAULTS.tierData.pmc)?.[t]?.chance?.[k];if(dv!=null)d.chance[k]=dv;}});}));
   if(!(raw&&raw.gear&&raw.gear.poolVer>=2)){Object.values(state.tierData||{}).forEach(arr=>(arr||[]).forEach(d=>['weapons','armor','ammo','meds','look'].forEach(sec=>{if(d[sec])Object.keys(d[sec]).forEach(k=>{d[sec][k]={};});})));state.gear.poolVer=2;}
   (state.gear.tiers||[]).forEach(t=>{if(t.sMin==null)t.sMin=Math.max(1,(t.side||2)-2);});
   // 1.0.5: 1.0.4 이하가 저장한 설정에서 손대지 않은 옛 PMC 기본값(방탄복 40~95·헤드셋 15~85 표, USEC·BEAR 앞뒤판 90)만 새 기본으로.

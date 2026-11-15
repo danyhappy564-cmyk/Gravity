@@ -35,6 +35,13 @@ public sealed record GearTable(IReadOnlyDictionary<string, (int Min, int Max)> G
 
 public sealed record BlacklistEntry(string Id, IReadOnlyList<string> Bots);
 
+/// <summary>
+/// 1.0.7 WTT PackNStrap 벨트(웹 gear.pns). PackNStrap이 깔렸을 때만 의미가 있다.
+/// On: 봇에 벨트를 입힘. PmcOnly: PMC만. Unlootable: 봇 완장 칸 벨트를 못 줍게(서버 시작 때 적용, APBS와 같은 방식).
+/// 확률은 티어 표 chance.belt(티어마다).
+/// </summary>
+public sealed record BeltSettings(bool On = true, bool PmcOnly = true, bool Unlootable = true);
+
 public sealed record GearSettings(
     bool Module, string TierMode, int FixedTier, int StartTier, LvRules Lv, IReadOnlyList<TierCaps> Tiers,
     IReadOnlyDictionary<string, RoleGear> Roles,
@@ -52,6 +59,8 @@ public sealed record GearSettings(
     public IReadOnlySet<string>? ClothingOn { get; init; }
     /// <summary>부착물에도 가격 티어 적용(웹 weapons.partTiers, 기본 켬).</summary>
     public bool PartTiers { get; init; } = true;
+    /// <summary>1.0.7 PackNStrap 벨트 설정.</summary>
+    public BeltSettings Belts { get; init; } = new();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
 
     /// <summary>봇의 표: 그 봇 전용 표가 켜져 있으면 그것, 아니면 묶음 표, 없으면 기본식.</summary>
@@ -117,7 +126,9 @@ public static class GearDefaults
     public static readonly (string Key, double Lo, double Hi)[] Chance =
     [
         ("headwear", 50, 95), ("earpiece", 15, 85), ("faceCover", 30, 70), ("armorVest", 40, 95),
-        ("armouredRig", 10, 60), ("backpack", 40, 90), ("holster", 20, 60), ("eyewear", 20, 60)
+        ("armouredRig", 10, 60), ("backpack", 40, 90), ("holster", 20, 60), ("eyewear", 20, 60),
+        // 1.0.7 PackNStrap 벨트를 찰 확률(PackNStrap이 없으면 쓰지 않음).
+        ("belt", 30, 80)
     ];
     /// <summary>1.0.5: PMC 묶음만 T1 하한을 SPT 원본 usec/bear 수준으로(방탄복 75·헤드셋 50). T7 값은 Chance 그대로.</summary>
     public static readonly IReadOnlyDictionary<string, double> PmcChanceLo = new Dictionary<string, double> { ["armorVest"] = 75, ["earpiece"] = 50 };
@@ -277,6 +288,7 @@ public static partial class ConfigModel
             (int)r.Num("mods.equipment", 30, 0, 1000), r.Num("mods.mult", 100, 0, 200), r.Bool("mods.pmcOnly", true),
             bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
         { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal),
-            ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true) };
+            ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
+            Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)) };
     }
 }

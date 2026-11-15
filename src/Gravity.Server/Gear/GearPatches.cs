@@ -22,6 +22,8 @@ public static class GearRuntime
     /// <summary>레벨별 경험치(SPT globals). PMC 레벨을 바꿀 때 경험치도 맞춘다.</summary>
     public static int[] ExpTable { get; set; } = [];
     public static ProfileActivityService? Activity { get; set; }
+    /// <summary>봇 수납 칸 목록(SPT 싱글턴, 로더가 채움). 1.0.7 PackNStrap 벨트를 수납 칸으로 등록할 때 쓴다.</summary>
+    public static BotInventoryContainerService? Containers { get; set; }
     public static GearRaid Raid { get; private set; } = new(null, 0, 0, 0);
     /// <summary>이번 판 묶음별 티어 개수(웹 진단).</summary>
     public static ConcurrentDictionary<string, int[]> Stats { get; } = new();
@@ -440,6 +442,18 @@ public class GearBotPatch : AbstractPatch
         string On(bool b) => b ? "O" : "-";
         return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}"
             + $"\t{L.T("방탄복", "vest")} {On(vest)}\t{L.T("헤드셋", "ear")} {On(ear)}\t{L.T("앞뒤판", "plate")} {On(plate)}"
-            + $"\t{L.T("옷", "outfit")} {Src(bot.Customization?.Body)}/{Src(bot.Customization?.Feet)}";
+            + $"\t{L.T("옷", "outfit")} {Src(bot.Customization?.Body)}/{Src(bot.Customization?.Feet)}"
+            + Belt(bot, items);
+    }
+
+    /// <summary>1.0.7 PackNStrap: 벨트를 찬 봇이면 벨트 이름과 벨트 안 탄창 수(안 찼으면 빈 글자라 기록 모양 그대로).</summary>
+    private static string Belt(BotBase bot, GearItems items)
+    {
+        var inv = bot.Inventory?.Items;
+        var belt = inv?.FirstOrDefault(i => i.SlotId == "ArmBand" && GearBelts.IsBelt(items, i.Template.ToString()));
+        if (belt == null) return "";
+        int mags = inv!.Count(i => i.ParentId == belt.Id.ToString() && items.Info.GetValueOrDefault(i.Template.ToString()) is { Section: "parts", Slot: "magazine" });
+        var name = GearRuntime.NameOf(belt.Template.ToString()) ?? belt.Template.ToString();
+        return $"\t{L.T("벨트", "belt")} {name} ({L.T("탄창", "mags")} {mags})";
     }
 }
