@@ -35,6 +35,19 @@
     if (remember) { try { localStorage.setItem(key, next); } catch { /* 저장 없이도 동작 */ } }
   }
 
+  /*FAQ_HASH_START*/
+  // #faq-<id> 주소로 들어오거나 링크를 누르면 그 질문을 펼친다(1.0.7: ISB 링크가 닫힌 질문으로만 가던 것)
+  function openFaqFromHash() {
+    const id = decodeURIComponent((location.hash || '').slice(1));
+    if (!id.startsWith('faq-')) return;
+    const d = document.getElementById(id);
+    if (!d || d.tagName !== 'DETAILS') return;
+    d.open = true;
+    d.scrollIntoView({ block: 'start' });
+  }
+  addEventListener('hashchange', openFaqFromHash);
+  /*FAQ_HASH_END*/
+
   function init() {
     document.querySelectorAll('[data-language]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.language, true)));
     setLang(lang);
@@ -53,6 +66,7 @@
       n.focus(); pick(n.dataset.target);
     }));
     if (tabs[0]) pick(tabs[0].dataset.target);
+    openFaqFromHash();
 
     // 스크롤 진행 막대·나타나기·현재 구역
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;

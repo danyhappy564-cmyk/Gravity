@@ -1592,3 +1592,33 @@ test('웹 FAQ 검색 칸은 지금 언어의 질문·답에서 낱말을 모두 
   a.run("faqQ='questing';lang='en'");
   assert.match(a.run('P.faq.render()'), /data-faq="faq-questing"/);
 });
+
+test('고급 모드의 보라색 고급 표시는 스위치 칸과 고급 안내 문단에도 붙습니다', () => {
+  // 1.0.7 로컬 점검: 고급 칸 65개 중 스위치 26개·이번 주 보스 문단 1개에 표시가 없어 FAQ(쉬움/고급) 답과 어긋났다.
+  const rule = html.match(/([^{}]*)\{content:var\(--advtxt\)/)[1];
+  assert.match(rule, /body:not\(\.easy\) \.adv>label\.sw>span\.tr\+span::after/);
+  assert.match(rule, /body:not\(\.easy\) p\.adv::after/);
+  const a = app();
+  assert.match(a.run(`sw('spawn.hotspotBoost',T('핫스팟 부스트','Hotspot boost'),T('',''),{adv:true})`), /<div class="ctl adv"><label class="sw"><input[^>]*><span class="tr"><\/span><span>핫스팟 부스트<\/span>/);
+});
+
+test('소개 사이트는 #faq-<id> 주소로 들어오거나 링크를 누르면 그 질문을 펼치고 머리줄 아래에 보입니다', () => {
+  // 1.0.7 로컬 점검: 1.0.7 요약의 ISB 링크(#faq-isb)가 질문 위치로만 가고 닫힌 채, 고정 머리줄에 가려졌다.
+  const siteJs = readFileSync(join(__dirname, '../../site/app.js'), 'utf8');
+  const css = readFileSync(join(__dirname, '../../site/style.css'), 'utf8');
+  const calls = [];
+  const details = {open: false, tagName: 'DETAILS', scrollIntoView: () => calls.push('scroll')};
+  const listeners = {};
+  const ctx = vm.createContext({location: {hash: '#faq-isb'}, document: {getElementById: id => id === 'faq-isb' ? details : null},
+    addEventListener: (n, f) => (listeners[n] ||= []).push(f)});
+  vm.runInContext(siteJs.match(/\/\*FAQ_HASH_START\*\/([\s\S]*?)\/\*FAQ_HASH_END\*\//)[1] + ';openFaqFromHash();', ctx);
+  assert.equal(details.open, true);
+  assert.deepEqual(calls, ['scroll']);
+  details.open = false; ctx.location.hash = '#faq-isb';
+  for (const f of listeners.hashchange || []) f();
+  assert.equal(details.open, true);
+  ctx.location.hash = '#install'; details.open = false;
+  for (const f of listeners.hashchange || []) f();
+  assert.equal(details.open, false);
+  assert.match(css, /\.faq details \{[^}]*scroll-margin-top: \d+px/);
+});
