@@ -37,7 +37,7 @@ public sealed record BlacklistEntry(string Id, IReadOnlyList<string> Bots);
 
 /// <summary>
 /// 1.0.7 WTT PackNStrap 벨트(웹 gear.pns). PackNStrap이 깔렸을 때만 의미가 있다.
-/// On: 봇에 벨트를 입힘. PmcOnly: PMC만. Unlootable: 봇 완장 칸 벨트를 못 줍게(서버 시작 때 적용, APBS와 같은 방식).
+/// On: 봇에 벨트를 입힘. PmcOnly: PMC만. Unlootable: 봇 완장 칸 벨트를 못 줍게(서버 시작 때 적용).
 /// 확률은 티어 표 chance.belt(티어마다).
 /// </summary>
 public sealed record BeltSettings(bool On = true, bool PmcOnly = true, bool Unlootable = true);

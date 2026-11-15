@@ -73,7 +73,7 @@ public static class GearBelts
     }
 
     /// <summary>
-    /// 아이템을 넣을 칸 목록에 벨트(ArmBand)를 끼운다. 탄창은 벨트 먼저(APBS와 같음), 의약품·주사기·투척물은 다른 칸이 다 찼을 때만.
+    /// 아이템을 넣을 칸 목록에 벨트(ArmBand)를 끼운다. 탄창은 벨트 먼저, 의약품·주사기·투척물은 다른 칸이 다 찼을 때만.
     /// 바꿀 필요가 없으면 null. 벨트 칸 필터가 받지 않는 아이템은 SPT가 알아서 다음 칸으로 넘긴다.
     /// </summary>
     public static HashSet<EquipmentSlots>? SlotsFor(HashSet<EquipmentSlots> slots, ItemInfo? item)
@@ -86,7 +86,7 @@ public static class GearBelts
     }
 
     /// <summary>
-    /// 봇이 찬 벨트를 못 줍게(서버 시작 때 한 번, APBS PackNStrap_UnlootablePMCArmbandBelts와 같은 값).
+    /// 봇이 찬 벨트를 못 줍게(서버 시작 때 한 번).
     /// 템플릿 값이라 서버를 다시 켜야 바뀐다. 바꾼 개수를 돌려준다.
     /// </summary>
     public static int MarkUnlootable(IReadOnlyDictionary<MongoId, TemplateItem> templates, GearItems items)
