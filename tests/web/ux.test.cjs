@@ -901,8 +901,8 @@ test('ABPS 감지 잠금이 저장된 스폰 모듈 값을 바꾸지 않고, 왼
   assert.equal(a.run('spawnOn()'), true);
   assert.equal(a.run("UI.mock.ko===undefined?u('mock'):u('mock')"), '9.9.9');
 });
-test('서버 판을 못 받아도 기본 버전 표시는 1.0.6입니다', () => {
-  assert.match(html, /mock:T\('1\.0\.6','1\.0\.6'\)/);
+test('서버 판을 못 받아도 기본 버전 표시는 1.0.7입니다', () => {
+  assert.match(html, /mock:T\('1\.0\.7','1\.0\.7'\)/);
 });
 
 test('타임라인 시작 인원 팝업도 최소·최대 짝을 검사합니다', () => {
@@ -1518,4 +1518,14 @@ test('웨이브 개수는 마릿수 합과 같은 기준(판 길이·스캐브 �
   a.run("page='spawn';mapSel='rezervbase';state.maps.rezervbase.scavStyle='list';state.maps.rezervbase.scavList=[{t:2,min:2,max:3},{t:20,min:15,max:20},{t:999,min:30,max:30}]");
   assert.match(a.run("previewOverview(mapById('rezervbase'))"), /웨이브 목록 2개 · 총 17~23마리/);
   assert.match(a.run("timeline(mapById('rezervbase'),true)"), /웨이브 목록 2개 · 총 17~23마리/);
+});
+
+test('1.0.7 펼친 특수 봇 줄에도 설정 창을 여는 곳이 있습니다(저격 스캐브 제보)', () => {
+  const a=app();
+  a.run("page='spawn';tlEdit=true");
+  ['cultists','bloodhounds','snipers'].forEach(id=>a.run(`tlOpen['spec:${id}']=true`));
+  const svg=a.run("timeline(mapById('bigmap'),true)");
+  for(const id of ['cultists','bloodhounds','snipers'])assert.match(svg,new RegExp(`<text[^>]*data-pop="spec\\|${id}"`),id);
+  // 펼친 줄 버블은 끌기 손잡이이고, 끌지 않고 누르면 클릭 처리기가 spec 창을 연다
+  assert.match(html,/closest\('svg\.tl-ed \[data-drag\]'\);if\(dh\)\{const \[dk,da\]=dh\.dataset\.drag\.split\('\|'\);if\(\(dk==='spec'\|\|dk==='specx'\)&&da\)\{if\(Date\.now\(\)-tlDragEnd>250\)openPop\('spec\|'\+da,e\)/);
 });
