@@ -1529,3 +1529,23 @@ test('1.0.7 펼친 특수 봇 줄에도 설정 창을 여는 곳이 있습니다
   // 펼친 줄 버블은 끌기 손잡이이고, 끌지 않고 누르면 클릭 처리기가 spec 창을 연다
   assert.match(html,/closest\('svg\.tl-ed \[data-drag\]'\);if\(dh\)\{const \[dk,da\]=dh\.dataset\.drag\.split\('\|'\);if\(\(dk==='spec'\|\|dk==='specx'\)&&da\)\{if\(Date\.now\(\)-tlDragEnd>250\)openPop\('spec\|'\+da,e\)/);
 });
+test('ISB Special Forces가 감지되면 막지 않고 상한·팩션·호환 화면에 겹침 안내를 띄웁니다', () => {
+  const a = app();
+  a.run("serverMeta={detect:{isb:false,blackDiv:true,variantMaps:{}}}");
+  assert.doesNotMatch(a.run('capTableBox()'), /ISB/);
+  assert.doesNotMatch(a.run('P.diag.render()'), /ISB Special Forces/);
+  a.run("serverMeta={detect:{isb:true,blackDiv:true,variantMaps:{}}}");
+  assert.match(a.run('capTableBox()'), /ISB 분대\(맵마다 4~7명\)는 상한을 무시하고/);
+  assert.match(a.run("capTableBox('laboratory')"), /맵 상한을 ISB 분대 크기만큼/);
+  const diag = a.run('P.diag.render()');
+  assert.match(diag, /ISB Special Forces/);
+  for (const re of [/일부 겹침/, /연구소 이벤트/, /blackDivisionBotPresets/, /업데이트가 잦고/]) assert.match(diag, re);
+  assert.match(a.run('P.dashboard.render()'), /ISB Special Forces → 일부 겹침/);
+  a.run("facSel='blackdiv'");
+  assert.match(a.run('P.factions.render()'), /ISB도 연구소 이벤트에서 블랙 디비전/);
+  a.run("facSel='ruaf'");
+  assert.match(a.run('P.factions.render()'), /Gravity는 ISB 분대를 관리하지 않습니다/);
+  assert.equal(a.run("state.modules.spawn"), true);
+  a.run("lang='en'");
+  assert.match(a.run('P.diag.render()'), /does not manage ISB squads/);
+});

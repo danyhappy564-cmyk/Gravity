@@ -17,6 +17,8 @@ public sealed record DetectResult(
     public bool Blackout { get; init; }
     /// <summary>SPT-Realism(체력·스킬을 스스로 바꿈, 1.0.6 봇 체력·스킬 안내용).</summary>
     public bool Realism { get; init; }
+    /// <summary>ISB Special Forces(1.0.7 안내용). Gravity는 ISB 항목을 관리하지 않고 웹 안내만 띄운다.</summary>
+    public bool Isb { get; init; }
     /// <summary>맵 id → 그 맵을 바꿔 끼우는 변형 모드 이름들(0.6, 판정 54).</summary>
     public IReadOnlyDictionary<string, string[]> VariantMaps { get; init; } = new Dictionary<string, string[]>();
 }
@@ -48,7 +50,7 @@ public static class ModDetector
             LockWithQuestingBots = compat?.LockWithQuestingBots ?? false,
             OrbitFolder = folders.FirstOrDefault(f => f.Equals("ORBIT", StringComparison.OrdinalIgnoreCase))
                 ?? folders.FirstOrDefault(f => f.Contains("orbit", StringComparison.OrdinalIgnoreCase)),
-            MapVariants = Has("mapvariants"), Blackout = Has("blackout"), Realism = Has("realism"),
+            MapVariants = Has("mapvariants"), Blackout = Has("blackout"), Realism = Has("realism"), Isb = Has("isbspecialforces"),
             VariantMaps = variants.ToDictionary(kv => kv.Key, kv => kv.Value.Distinct().ToArray())
         };
     }

@@ -17,7 +17,7 @@
 
 ## Changelog
 
-The full changelog (20 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-002.md`](changelog/CHANGELOG-002.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (21 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-003.md`](changelog/CHANGELOG-003.md)). Per-release summaries: [Releases](../../releases).
 
 # Gravity 1.0.7
 
@@ -73,6 +73,7 @@ The **Roll 10 raids** tool uses saved server settings. Entries requiring an even
 ## With other mods
 
 - With **ABPS** (bot placement) installed, Gravity's spawn module locks itself; with **APBS** (bot gear), the loadout module locks. Those features are left to that mod.
+- **ISB Special Forces** is neither blocked nor managed (ISB’s own config). Where the bot cap, Lab events and Black Division overlap is explained on the web **Compatibility** page and in the [FAQ](https://danyhappy564-cmyk.github.io/Gravity/#faq-isb).
 - SAIN, ORBIT, SVM, MapVariants (variant maps) and others are detected and handled. See the **Compatibility** page in the web UI.
 
 ## Credits

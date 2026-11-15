@@ -17,7 +17,7 @@
 
 ## 변경 이력
 
-전체 변경 이력 20개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-002.md`](changelog/CHANGELOG-002.md)). 릴리즈별 요약은 [Releases](../../releases).
+전체 변경 이력 21개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-003.md`](changelog/CHANGELOG-003.md)). 릴리즈별 요약은 [Releases](../../releases).
 
 # Gravity 1.0.7
 
@@ -73,6 +73,7 @@ SPT **4.1**용 서버·클라이언트 모드입니다. 레이드에 **누가, �
 ## 다른 모드와 함께 쓸 때
 
 - **ABPS**(봇 배치 모드)가 있으면 Gravity 스폰 모듈이, **APBS**(봇 장비 모드)가 있으면 Gravity 장비 모듈이 스스로 잠깁니다. 두 모드를 함께 쓰는 경우 해당 기능은 그 모드에 맡깁니다.
+- **ISB Special Forces**는 막지도 관리하지도 않습니다(ISB 설정 그대로). 봇 상한·연구소 이벤트·블랙 디비전이 겹치는 곳은 웹의 **호환 · 진단** 페이지와 [자주 묻는 질문](https://danyhappy564-cmyk.github.io/Gravity/#faq-isb)에 정리했습니다.
 - SAIN·ORBIT·SVM·MapVariants(변형 맵) 등은 감지해서 맞춰 동작합니다. 감지 결과는 웹의 **호환 · 진단** 페이지에서 볼 수 있습니다.
 
 ## 감사

@@ -16,6 +16,18 @@ public class ModDetectorTests
     }
 
     [Fact]
+    public void IsbSpecialForces_DetectedWithoutLock()
+    {
+        var byAssembly = ModDetector.Detect(["ISBSpecialForces"], []);
+        var byFolder = ModDetector.Detect([], ["ISBSpecialForces"]);
+        var aishiOnly = ModDetector.Detect(["ISBAishi"], ["ISB Aishi"]);
+        Assert.True(byAssembly.Isb);
+        Assert.True(byFolder.Isb);
+        Assert.False(byAssembly.SpawnLocked);
+        Assert.False(aishiOnly.Isb);
+    }
+
+    [Fact]
     public void NoMods_NothingLocked()
     {
         var d = ModDetector.Detect(["Gravity"], ["Gravity"]);
