@@ -132,8 +132,7 @@ namespace Gravity.Client.Patches
             c.Reserved.RemoveAll(r => r.until <= now);
             var reserved = new List<Vec3>(c.Reserved.Count);
             for (int i = 0; i < c.Reserved.Count; i++) reserved.Add(c.Reserved[i].pos);
-            var flight = new List<Vec3>(); // Task 1 진단판: 생성 중 분대 지점은 세기만 한다
-            int inFlight = AddInFlight(c, ctx, flight, now);
+            int inFlight = AddInFlight(c, ctx, reserved, now);
 
             var s = c.S;
             var actors = PmcZones.Actors();
