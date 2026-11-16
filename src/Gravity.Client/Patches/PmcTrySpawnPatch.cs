@@ -30,6 +30,8 @@ namespace Gravity.Client.Patches
             public RaidContext Raid = null!;
             public BossLocationSpawn Wave = null!;
             public BotCreationData Data = null!;
+            /// <summary>이 TrySpawn을 부른 게임 보스 스포너(생성 중 분대 목록 _spawnProcess를 읽는다, 1.0.8).</summary>
+            public BotBossSpawn? Boss;
             public int Size;
             public bool Waited;
             public bool ZonesSeen;
@@ -74,7 +76,7 @@ namespace Gravity.Client.Patches
                 if (c == null || wave == null || creationData == null || !c.Tracks(wave)) return true;
                 if (wave.BossType.IsPmcBot()) PmcZones.EnsureZones(c, __instance);
 
-                var ctx = new Ctx { Raid = c, Wave = wave, Data = creationData, Size = 1 + Math.Max(0, wave.EscortCount) };
+                var ctx = new Ctx { Raid = c, Wave = wave, Data = creationData, Boss = __instance, Size = 1 + Math.Max(0, wave.EscortCount) };
                 _active = ctx;
                 // 분대장 생성·활성화 실패를 따라가 대원 예약을 풀 수 있게(4차 재검토 1번, NativeCapPatch의 SpawnBossMain·ActivateBot 패치)
                 c.WatchSquad(creationData, wave);
@@ -177,7 +179,7 @@ namespace Gravity.Client.Patches
                     }
                     else
                     {
-                        c.Dropped["noPoint"]++; // 바닐라가 구역을 못 찾아 버린 경우
+                        c.Drop(wave, "noPoint"); // 바닐라가 구역을 못 찾아 버린 경우
                     }
                     return;
                 }
@@ -188,7 +190,7 @@ namespace Gravity.Client.Patches
                 if (!SpawnExpiry.Expired(first.Value, now, c.Elapsed, c.S.HardStopPmcSec)) return;
 
                 c.FirstFail.Remove(wave);
-                c.Dropped[ctx.Waited ? "groupCap" : "expired"]++;
+                c.Drop(wave, ctx.Waited ? "groupCap" : "expired");
                 __result = true; // 처리 끝으로 돌려 Spawn이 DelayBossSpawn을 부르지 않게 한다(대기열에서 빠짐)
             }
         }
@@ -274,7 +276,7 @@ namespace Gravity.Client.Patches
                 if (!SpawnExpiry.PastHardStop(c.Elapsed, stop)) { Wait(c, wave); return true; }
                 c.CancelWave(wave);
                 c.FirstFail.Remove(wave);
-                c.Dropped["cap"]++;
+                c.Drop(wave, "cap");
                 return false; // 대기열에 넣지 않음 = 버림
             }
             catch (Exception ex)

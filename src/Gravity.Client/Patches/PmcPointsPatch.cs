@@ -14,7 +14,8 @@ namespace Gravity.Client.Patches
     /// 바닐라("사람 PMC에게서 먼 1등 지점 복제", kb 2.33) 대신 PointPicker.PickSquad로 고른 지점을 filteredPoints에 넣고 원래 함수는 건너뛴다.
     /// 후보는 RaidContext.ZonePoints[zone] 중 재사용 대기(IsValid(time))와 진영(IsValid(side))이 맞는 것(바닐라와 같은 두 필터).
     /// 단, 플레이어 시작 지점은 진영 검사를 건너뛴다(PmcPointFilter — 게임이 PMC 보스 웨이브를 Savage로 만들어 Sides=Pmc 지점이 늘 걸림, 1.0.6 로컬 판).
-    /// 고른 지점은 10초 예약. 고르지 못하면 아무것도 넣지 않는다 → SelectAISpawnPoints가 빈 목록 → TrySpawn이 다음 구역, 끝나면 대기열.
+    /// 고른 지점은 10초 예약. 1.0.8: 게임이 몸을 읽는 중인 분대(BotBossSpawn._spawnProcess, 분대장 Active까지)의 지점도 같은 거리로 뺀다
+    /// (살아 있는 목록에 아직 없어 10초 뒤 다른 분대가 바로 옆을 고르던 겹침, INBOX #59). 고르지 못하면 아무것도 넣지 않는다 → SelectAISpawnPoints가 빈 목록 → TrySpawn이 다음 구역, 끝나면 대기열.
     /// 근처 보충(F8) PMC 웨이브면 NearDirector가 고른 지점(Tag.PointId) 하나만 같은 두 필터를 거쳐 넣는다(맞지 않으면 아무것도 넣지 않음).
     /// TrySpawn 밖에서 불린 경우(ValidateSpawnPosition 등)와 예외는 바닐라.
     /// 바닐라 TrySpawn은 maxCount=1로 지점 하나만 받고(BotBossSpawn.cs:363·366) SelectAISpawnPoints가 maxCount개만 꺼내므로(SpawnSystem.cs:1009-1013)
@@ -50,10 +51,10 @@ namespace Gravity.Client.Patches
                 }
 
                 bool only = StartPlayerOnly(c, ctx.Wave);
-                var picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, only);
+                var picked = Pick(c, ctx, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, only);
                 // 1.0.6 로컬 판(세관): 플레이어 시작 지점은 몇 구역에 몰려 있어 PMC 간 거리(80m)에 걸리면 시작 분대 8개 중 3개만 나왔다.
                 // 플레이어 지점에서 못 고르면 같은 구역의 PMC 지점으로 한 번 더 고른다(시작 PMC가 늦게·안 나오는 것보다 낫다).
-                if (!picked && only) picked = Pick(c, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, false);
+                if (!picked && only) picked = Pick(c, ctx, filteredPoints, zone, creationData, Math.Max(ctx.Size, maxCount), time, false);
                 ctx.PickedAny |= picked;
                 return false;
             }
@@ -89,6 +90,21 @@ namespace Gravity.Client.Patches
             return false;
         }
 
+        /// <summary>게임이 몸을 읽는 중인 다른 분대의 지점을 예약 목록에 더한다(이 분대 자신은 뺌). 더한 수.</summary>
+        private static int AddInFlight(RaidContext c, PmcTrySpawnPatch.Ctx ctx, List<Vec3> into, float now)
+        {
+            var list = ctx.Boss?._spawnProcess;
+            if (list == null) return 0;
+            int n = 0;
+            for (int i = 0; i < list.Count && i < 64; i++)
+            {
+                var p = list[i];
+                if (p == null || ReferenceEquals(p.Wave, ctx.Wave) || p.PotentialSpawnPoint == null) continue;
+                if (c.InFlight.Add(p, PmcZones.V(p.PotentialSpawnPoint.Position), now, SquadRules.InFlightMaxSec, into)) n++;
+            }
+            return n;
+        }
+
         private static bool PickNear(RaidContext c, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, int id,
             BotCreationData data, float now)
         {
@@ -99,7 +115,7 @@ namespace Gravity.Client.Patches
             return true;
         }
 
-        private static bool Pick(RaidContext c, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, BotZone z,
+        private static bool Pick(RaidContext c, PmcTrySpawnPatch.Ctx ctx, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, BotZone z,
             BotCreationData data, int size, float now, bool playerOnly = false)
         {
             if (!c.ZonePoints.TryGetValue(z, out var all) || all.Count == 0) return false;
@@ -116,6 +132,8 @@ namespace Gravity.Client.Patches
             c.Reserved.RemoveAll(r => r.until <= now);
             var reserved = new List<Vec3>(c.Reserved.Count);
             for (int i = 0; i < c.Reserved.Count; i++) reserved.Add(c.Reserved[i].pos);
+            var flight = new List<Vec3>(); // Task 1 진단판: 생성 중 분대 지점은 세기만 한다
+            int inFlight = AddInFlight(c, ctx, flight, now);
 
             var s = c.S;
             var actors = PmcZones.Actors();
@@ -128,6 +146,8 @@ namespace Gravity.Client.Patches
             if (r.Ids.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, (actors, reserved, rules), now); return false; }
             if (r.Reason == "farthest")
                 Log.InfoOnce("PmcPoints.Farthest:" + s.Seed, $"{s.MapId} 맵 전체가 시작 보호 반경({s.ProtectRadius:0}m) 안: 시작 PMC는 플레이어에게서 가장 먼 지점에 냄");
+
+            if (Log.Level == "verbose") PickDiag.Picked(c, ctx, z, c.PointById[r.Ids[0]], actors, reserved, inFlight, r.Reason, now);
 
             var pts = new List<ISpawnPoint>(r.Ids.Count);
             var seen = new HashSet<int>();
@@ -149,6 +169,25 @@ namespace Gravity.Client.Patches
     internal static class PickDiag
     {
         private static readonly Dictionary<string, float> Last = new Dictionary<string, float>();
+
+        /// <summary>분대 지점을 골랐을 때 한 줄: 위치, 가장 가까운 사람·PMC·예약(생성 중 분대 포함) 거리.</summary>
+        internal static void Picked(RaidContext c, PmcTrySpawnPatch.Ctx ctx, BotZone z, ISpawnPoint sp, List<Actor> actors,
+            List<Vec3> reserved, int inFlight, string reason, float now)
+        {
+            var p = PmcZones.V(sp.Position);
+            double human = double.MaxValue, pmc = double.MaxValue, res = double.MaxValue;
+            foreach (var a in actors)
+            {
+                double d = Vec3.Dist(p, a.Pos);
+                if (a.Kind == ActorKind.Human) human = Math.Min(human, d);
+                else if (a.Kind == ActorKind.Pmc) pmc = Math.Min(pmc, d);
+            }
+            foreach (var r in reserved) res = Math.Min(res, Vec3.Dist(p, r));
+            string M(double d) => d == double.MaxValue ? "-" : d.ToString("0");
+            Log.Verbose($"{c.S.MapId} PMC 분대 지점: {ctx.Wave.BossType} {ctx.Size}명, {ctx.Wave.Time:0}초 웨이브{(c.IsStartupWave(ctx.Wave) ? "(시작)" : "")}, 구역 {z.NameZone}, "
+                + $"({p.X:0},{p.Z:0}), 방식 {reason}, 가장 가까운 사람 {M(human)}m·PMC {M(pmc)}m·예약 {M(res)}m(생성 중 분대 {inFlight}), "
+                + (c.Started ? $"경과 {c.Elapsed:0}초" : "시작 전"));
+        }
 
         internal static void Fail(RaidContext c, BotZone z, int total, List<Candidate> cands,
             (List<Actor> actors, List<Vec3> reserved, PickRules r)? why, float now)

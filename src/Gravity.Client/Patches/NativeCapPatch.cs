@@ -313,6 +313,8 @@ namespace Gravity.Client.Patches
             internal RaidContext Raid = null!;
             internal RaidContext.SquadWatch Watch = null!;
             internal bool Callback;
+            /// <summary>이 생성 자료로 이미 나온 몸 수(늦은 대원을 버릴 때 남은 인원 계산).</summary>
+            internal int Made;
         }
 
         [PatchPrefix]
@@ -334,6 +336,14 @@ namespace Gravity.Client.Patches
                     inner?.Invoke(owner);
                     return;
                 }
+                if (!leader && LateEscort(c, w, data, owner, state))
+                {
+                    // 버린 대원: 게임 완료 콜백이 취소 상태에서 몸을 맵에서 빼고 카운터를 정리한다(BotSpawner.ActivateBotCallback).
+                    state.Callback = true;
+                    inner?.Invoke(owner);
+                    return;
+                }
+                state.Made++;
                 state.Callback = true;
                 c.Requests.Register(w.Wave, owner.Profile.Id);
                 c.MarkStartBody(w.Wave, owner.Profile.Id);
@@ -344,7 +354,7 @@ namespace Gravity.Client.Patches
                     if (value == EBotState.Active)
                     {
                         owner.OnBotStateChange -= onState;
-                        ReportActive(c, w);
+                        ReportActive(c, w, owner, leader);
                     }
                     else if (value == EBotState.ActiveFail)
                     {
@@ -359,7 +369,7 @@ namespace Gravity.Client.Patches
                     if (leader) c.SquadFailed(w, "활성화 실패");
                 }
                 else if (owner.BotState != EBotState.Active) owner.OnBotStateChange += onState;
-                else ReportActive(c, w);
+                else ReportActive(c, w, owner, leader);
                 if (WaveMark.IsExtraSpecial(w.Wave.TriggerId, w.Wave.TriggerName)) c.ExtraSpecialProfiles.Add(owner.Profile.Id);
                 inner?.Invoke(owner);
                 if (w.Wave.EscortCount == 0 && leader) c.FinishSubmission(w);
@@ -367,11 +377,95 @@ namespace Gravity.Client.Patches
             return true;
         }
 
-        private static void ReportActive(RaidContext c, RaidContext.SquadWatch w)
+        private static void ReportActive(RaidContext c, RaidContext.SquadWatch w, BotOwner owner, bool leader)
         {
-            if (Log.Level != "verbose" || !w.Wave.BossType.IsPmcBot()) return;
-            Log.Verbose($"{c.S.MapId} PMC 활성화 완료: {w.Wave.BossType}, {w.Wave.Time:0}초 웨이브, "
-                + (c.Started ? $"경과 {c.Elapsed:0.00}초" : "시작 전"));
+            try
+            {
+                if (!w.Wave.BossType.IsPmcBot() || !ReferenceEquals(RaidContext.Current, c)) return;
+                if (c.IsStartupWave(w.Wave)) c.Diag["startActive"]++;
+                double other = double.MaxValue;
+                if (leader)
+                {
+                    w.Leader = owner;
+                    w.LeaderActiveAt = Time.time;
+                    other = NearestOtherPmc(owner);
+                    if (SquadRules.Overlaps(other)) c.Diag["overlap"]++;
+                }
+                if (Log.Level != "verbose") return;
+                var pos = owner.GetPlayer != null ? owner.GetPlayer.Position : Vector3.zero;
+                Log.Verbose($"{c.S.MapId} PMC 활성화 완료: {w.Wave.BossType} {(leader ? "분대장" : "대원")}, {w.Wave.Time:0}초 웨이브, ({pos.x:0},{pos.z:0})"
+                    + (leader ? $", 다른 PMC 무리 {(other == double.MaxValue ? "-" : other.ToString("0"))}m" : w.LeaderActiveAt >= 0 ? $", 분대장보다 {Time.time - w.LeaderActiveAt:0}초 늦음" : "")
+                    + ", " + (c.Started ? $"경과 {c.Elapsed:0.00}초" : "시작 전"));
+            }
+            catch (Exception ex) { Log.ErrorOnce("ReportActive", ex); }
+        }
+
+        /// <summary>이 봇과 다른 무리인 살아 있는 PMC 봇까지 가장 가까운 거리(활성화 때 한 번).</summary>
+        private static double NearestOtherPmc(BotOwner owner)
+        {
+            var gw = Comfort.Common.Singleton<GameWorld>.Instance;
+            var me = owner.GetPlayer;
+            if (gw == null || me == null) return double.MaxValue;
+            var group = owner.BotsGroup;
+            double best = double.MaxValue;
+            var alive = gw.AllAlivePlayersList;
+            for (int i = 0; i < alive.Count && i < 256; i++)
+            {
+                var p = alive[i];
+                if (p == null || !p.IsAI || ReferenceEquals(p, me)) continue;
+                var role = p.Profile?.Info?.Settings?.Role;
+                if (role == null || !role.Value.IsPmcBot()) continue;
+                var o = p.AIData?.BotOwner;
+                if (o != null && group != null && ReferenceEquals(o.BotsGroup, group)) continue;
+                best = Math.Min(best, Vector3.Distance(p.Position, me.Position));
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// 1.0.8 늦은 대원(INBOX #59 ④): 대원 몸이 놓인 순간 분대장보다 30초 이상 늦었고, 분대장이 죽었거나 그 자리가 사람에게서
+        /// 완화된 PMC 거리(지점 고르기와 같은 PmcDist×0.75) 안이면 그 생성 자료의 남은 대원을 버린다. 시작 전(로딩 중 준비)은 보지 않는다.
+        /// </summary>
+        private static bool LateEscort(RaidContext c, RaidContext.SquadWatch w, BotCreationData data, BotOwner owner, Activation state)
+        {
+            try
+            {
+                if (!c.Started || w.LeaderActiveAt < 0 || !w.Wave.BossType.IsPmcBot() || !ReferenceEquals(RaidContext.Current, c)) return false;
+                var me = owner.GetPlayer;
+                if (me == null) return false;
+                float late = Time.time - w.LeaderActiveAt;
+                if (SquadRules.IsLate(late)) c.Diag["lateEscort"]++;
+                var lp = w.Leader != null ? w.Leader.GetPlayer : null;
+                bool leaderAlive = lp != null && lp.HealthController != null && lp.HealthController.IsAlive;
+                double human = double.MaxValue;
+                var gw = Comfort.Common.Singleton<GameWorld>.Instance;
+                if (gw != null)
+                {
+                    var alive = gw.AllAlivePlayersList;
+                    for (int i = 0; i < alive.Count && i < 256; i++)
+                    {
+                        var p = alive[i];
+                        if (p != null && !p.IsAI) human = Math.Min(human, Vector3.Distance(p.Position, me.Position));
+                    }
+                }
+                var verdict = SquadRules.JudgeEscort(late, leaderAlive, human, c.S.PmcDist * 0.75);
+                if (late >= SquadRules.LateJudgeSec)
+                    Log.Verbose($"{c.S.MapId} PMC 대원 늦게 등장: {w.Wave.BossType}, 분대장보다 {late:0}초 늦음, 분대장 {(leaderAlive ? "생존" : "사망")}, "
+                        + $"사람 {(human == double.MaxValue ? "-" : human.ToString("0"))}m → {(verdict == EscortVerdict.Keep ? "유지" : "버림")}, 경과 {c.Elapsed:0}초");
+                if (verdict == EscortVerdict.Keep || true) return false; // Task 1 진단판: 판정만 기록
+                int lost = Math.Max(1, (data.Profiles?.Count ?? 1) - state.Made);
+                c.Dropped["lateEscort"] += lost;
+                var key = w.Wave.BossType == WildSpawnType.pmcBEAR ? "pmcBEAR" : "pmcUSEC";
+                c.Spawned[key] = Math.Max(0, c.Spawned[key] - lost);
+                Log.Info($"{c.S.MapId} 늦게 나온 PMC 대원 {lost}명을 버림: {(verdict == EscortVerdict.DropLeaderDead ? "분대장 사망" : "사람 근처")}, 분대장보다 {late:0}초 늦음");
+                data.StopSpawn();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("LateEscort", ex);
+                return false;
+            }
         }
 
         [PatchPostfix]

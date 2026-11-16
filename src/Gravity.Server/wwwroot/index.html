@@ -2705,7 +2705,7 @@ Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){
 
 /* ================= 실제 서버 연결 ================= */
 const NOT_LIVE=new Set(['client']);
-const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap')};
+const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap'),lateEscort:T('늦게 나와 버린 PMC 대원(명)','Late PMC followers dropped (bots)')};
 function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
 function clientCard(){
   const c=serverMeta&&serverMeta.client,has=!!(c&&c.version);
@@ -2737,6 +2737,8 @@ function raidReportCard(){
     ${row('BEAR',p?p.bear:'-',bear)}</tbody></table></div>`;
   const dropKeys=Object.keys(DROP_LABEL),dropTotal=dropKeys.reduce((a,k)=>a+(dr[k]||0),0);
   const dropTbl=`<div class="tw" style="margin-top:10px"><table><thead><tr><th>${tr(T('버린 분대(이유별)','Dropped squads by reason'))}</th><th class="num">${tr(T('수','Count'))}</th></tr></thead><tbody>${dropKeys.map(k=>row(DROP_LABEL[k],dr[k]||0,'').replace('<td class="num"></td>','')).join('')}${row(T('프로필 정리(외형·장비)','Profile cleanup (looks/gear)'),r.sanitized||0,'').replace('<td class="num"></td>','')}</tbody></table></div>`;
+  const dg=r.diag||null;
+  const diagTbl=dg?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>${tr(T('분대 진단','Squad diagnostics'))}</th><th class="num">${tr(T('수','Count'))}</th></tr></thead><tbody>${[[T('시작 PMC 계획 인원','Start PMCs planned'),dg.startPlanned],[T('시작 PMC 활성화 인원','Start PMCs activated'),dg.startActive],[T('버린 시작 분대','Start squads dropped'),dg.startDropped],[T('다른 PMC 무리 30m 안에 나온 분대','Squads spawned within 30 m of another PMC group'),dg.overlap],[T('분대장보다 60초 넘게 늦게 나온 대원','Followers more than 60 s behind their leader'),dg.lateEscort]].map(([l,v])=>`<tr><td>${tr(l)}</td><td class="num">${v||0}</td></tr>`).join('')}</tbody></table></div>`:'';
   const kl=r.killed||{},KILL_LABEL={pmcUSEC:'USEC',pmcBEAR:'BEAR',assault:T('스캐브','Scav'),marksman:T('저격 스캐브','Marksman'),boss:T('보스·호위','Bosses/followers'),other:T('그 밖','Other')};
   const killTbl=Object.keys(kl).length?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>${tr(T('죽은 봇(역할별)','Killed bots by role'))}</th><th class="num">${tr(T('수','Count'))}</th></tr></thead><tbody>${Object.keys(KILL_LABEL).map(k=>`<tr><td>${tr(KILL_LABEL[k])}</td><td class="num">${kl[k]||0}</td></tr>`).join('')}</tbody></table></div>`:'';
   const ex=r.extracted||{},exTotal=Object.values(ex).reduce((a,b)=>a+(b||0),0);
@@ -2744,7 +2746,7 @@ function raidReportCard(){
   const ap=r.alivePerMinute||[],peak=ap.reduce((m,x)=>x[3]>m[3]?x:m,[0,0,0,0]);
   const alive=ap.length?`<p class="muted small" style="margin-top:10px">${fmt(tr(T('1분마다 센 살아 있는 봇: {n}번 기록, 가장 많았을 때 {t}마리(PMC {p} · 스캐브 {s}, {m}분째).','Alive bots sampled each minute: {n} samples, peak {t} (PMC {p} · scav {s}, minute {m}).')),{n:ap.length,t:peak[3],p:peak[1],s:peak[2],m:peak[0]})}</p>`:'';
   const note=p?'':`<p class="muted small" style="margin-top:6px">${none}: ${tr(T('이 보고와 같은 맵의 계획이 서버에 없어 계획 칸은 비웁니다.','The server has no plan for this report’s map, so the plan column is empty.'))}</p>`;
-  return card(T('계획 vs 실제','Plan vs actual'),`<p class="muted small" style="margin-bottom:8px">${esc(r.mapId)}${r.layout==='variant'?' · '+tr(T('변형 맵','variant map')):''} · ${tr(T('시드','seed'))} ${r.seed} · ${esc(fmtAt(r.at))}${dropTotal?' · '+tr(T('버린 분대 합계','dropped'))+' '+dropTotal:''}</p>${planTbl}${dropTbl}${killTbl}${exTbl}${alive}${note}`,{icon:'≈',right:refresh});
+  return card(T('계획 vs 실제','Plan vs actual'),`<p class="muted small" style="margin-bottom:8px">${esc(r.mapId)}${r.layout==='variant'?' · '+tr(T('변형 맵','variant map')):''} · ${tr(T('시드','seed'))} ${r.seed} · ${esc(fmtAt(r.at))}${dropTotal?' · '+tr(T('버린 분대 합계','dropped'))+' '+dropTotal:''}</p>${planTbl}${dropTbl}${diagTbl}${killTbl}${exTbl}${alive}${note}`,{icon:'≈',right:refresh});
 }
 const BOSS_ROLE={reshala:'bossBully',shturman:'bossKojaniy',tagilla:'bossTagilla',glukhar:'bossGluhar',sanitar:'bossSanitar',killa:'bossKilla',kaban:'bossBoar',kollontay:'bossKolontay',zryachiy:'bossZryachiy',goons:'bossKnight',partisan:'bossPartisan'};
 const zoneLabel=z=>z.replace(/^Zone/,'').replace(/([a-z])([A-Z])/g,'$1 $2');

@@ -65,5 +65,6 @@ namespace Gravity.Shared
         string MapId, int Seed,
         IReadOnlyDictionary<string, int> Spawned, IReadOnlyDictionary<string, int> Dropped,
         int Sanitized, IReadOnlyList<int[]> AlivePerMinute, IReadOnlyDictionary<string, int>? Killed = null,
-        IReadOnlyDictionary<string, int>? Extracted = null, int ExtractRefill = 0);
+        IReadOnlyDictionary<string, int>? Extracted = null, int ExtractRefill = 0, IReadOnlyDictionary<string, int>? Diag = null);
+    // 1.0.8 Diag: overlap·lateEscort·startPlanned·startActive·startDropped(RaidContext.Diag). 옛 클라는 null, 옛 서버는 모르는 칸이라 무시.
 }

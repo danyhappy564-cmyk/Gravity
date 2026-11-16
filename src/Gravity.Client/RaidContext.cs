@@ -90,7 +90,28 @@ namespace Gravity.Client
         /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
         /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번) + 상한에 막힌 근처 보충 자리 수.
         /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
-        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0 };
+        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0, ["lateEscort"] = 0 };
+
+        /// <summary>1.0.8 진단 카운터(INBOX #59, 기본 로그에서도 보고): overlap = 다른 PMC 무리 30m 안에 활성화된 분대장 수,
+        /// lateEscort = 분대장보다 60초 이상 늦게 나온 대원 수, startPlanned·startActive·startDropped = 시작 PMC 계획 인원·활성화 인원·버린 분대 수.</summary>
+        public readonly Dictionary<string, int> Diag = new Dictionary<string, int> { ["overlap"] = 0, ["lateEscort"] = 0, ["startPlanned"] = 0, ["startActive"] = 0, ["startDropped"] = 0 };
+
+        /// <summary>시작 분대를 버린 이유별 수(레이드 끝 한 줄 로그용).</summary>
+        private readonly Dictionary<string, int> _startDrops = new Dictionary<string, int>();
+
+        /// <summary>Gravity PMC 분대를 버린 이유를 센다. 시작 분대면 시작 PMC 결과에도 넣는다.</summary>
+        internal void Drop(BossLocationSpawn wave, string key)
+        {
+            Dropped.TryGetValue(key, out var n);
+            Dropped[key] = n + 1;
+            if (wave == null || !IsStartupWave(wave)) return;
+            Diag["startDropped"]++;
+            _startDrops.TryGetValue(key, out n);
+            _startDrops[key] = n + 1;
+        }
+
+        /// <summary>생성 중 분대 지점(게임 _spawnProcess 항목)을 처음 본 시각(1.0.8 Task 3).</summary>
+        internal readonly InFlightPoints InFlight = new InFlightPoints();
 
         private HashSet<string>? _capExclude;
         private HashSet<string>? _disabledZones;
@@ -263,6 +284,9 @@ namespace Gravity.Client
             public Action? PrepareStarts;
             public bool Submitted;
             public int Requested;
+            /// <summary>활성화된 분대장과 그 시각(Time.time, 1.0.8 늦은 대원 판정). 아직이면 null·-1.</summary>
+            public EFT.BotOwner? Leader;
+            public float LeaderActiveAt = -1;
             public SquadWatch(BossLocationSpawn wave) => Wave = wave;
         }
 
@@ -390,6 +414,7 @@ namespace Gravity.Client
             Rng = new System.Random(s.Seed);
             Refill = new List<RefillGroup>(s.RefillGroups ?? (IReadOnlyList<RefillGroup>)Array.Empty<RefillGroup>());
             Groups = new RaidGroupLedger(s.GroupCap, s.PlannedGroups);
+            Diag["startPlanned"] = Startup.Expected;
             Log.Level = s.LogLevel ?? "summary";
         }
 
@@ -481,11 +506,16 @@ namespace Gravity.Client
             if (c == null) return;
             c.ResumeSpawnTimers?.Invoke();
             c.ResumeSpawnTimers = null;
+            if (c.Startup.Expected > 0)
+                Log.Info($"{c.S.MapId} 시작 PMC 결과: 계획 {c.Startup.Expected}명 → 활성화 {c.Diag["startActive"]}명, 버린 분대 {c.Diag["startDropped"]}"
+                    + (c._startDrops.Count > 0 ? "(" + string.Join(" ", System.Linq.Enumerable.Select(c._startDrops, kv => kv.Key + " " + kv.Value)) + ")" : ""));
+            if (c.Diag["overlap"] > 0 || c.Diag["lateEscort"] > 0 || c.Dropped["lateEscort"] > 0)
+                Log.Info($"{c.S.MapId} 분대 겹침 생성 {c.Diag["overlap"]}, 늦은 대원 {c.Diag["lateEscort"]}명(버림 {c.Dropped["lateEscort"]}명)");
             ClientLink.SendReport(new RaidReport(
                 c.S.MapId, c.S.Seed,
                 new Dictionary<string, int>(c.Spawned), new Dictionary<string, int>(c.Dropped),
                 c.Sanitized, new List<int[]>(c.AlivePerMinute), new Dictionary<string, int>(c.Killed),
-                new Dictionary<string, int>(c.Extracted), c.ExtractRefill));
+                new Dictionary<string, int>(c.Extracted), c.ExtractRefill, new Dictionary<string, int>(c.Diag)));
         }
     }
 }

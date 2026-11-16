@@ -1642,3 +1642,14 @@ test('소개 사이트는 #faq-<id> 주소로 들어오거나 링크를 누르�
   assert.equal(details.open, false);
   assert.match(css, /\.faq details \{[^}]*scroll-margin-top: \d+px/);
 });
+test('1.0.8 레이드 보고서는 분대 진단(겹침·늦은 대원·시작 PMC)과 늦은 대원 버림 줄을 보여 줍니다', () => {
+  const a = app();
+  a.run("lastRaid={report:{mapId:'bigmap',seed:1,spawned:{pmcUSEC:4},dropped:{lateEscort:2},alivePerMinute:[],diag:{startPlanned:12,startActive:9,startDropped:1,overlap:3,lateEscort:2}}}");
+  const html = a.run('raidReportCard()');
+  assert.match(html, /분대 진단/);
+  assert.match(html, /시작 PMC 계획 인원<\/td><td class="num">12/);
+  assert.match(html, /다른 PMC 무리 30m 안에 나온 분대<\/td><td class="num">3/);
+  assert.match(html, /늦게 나와 버린 PMC 대원\(명\)<\/td><td class="num">2/);
+  a.run("lastRaid={report:{mapId:'bigmap',seed:1,spawned:{},dropped:{},alivePerMinute:[]}}");
+  assert.doesNotMatch(a.run('raidReportCard()'), /분대 진단/); // 옛 클라 보고에는 표가 없음
+});

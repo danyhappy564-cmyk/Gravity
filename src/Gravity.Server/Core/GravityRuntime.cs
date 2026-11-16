@@ -69,7 +69,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             + (r.Dropped.Count > 0 ? $" / {L.T("버림", "dropped")} {string.Join(" ", r.Dropped.Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
             + (r.Killed is { Count: > 0 } k ? $" / {L.T("사망", "killed")} {string.Join(" ", k.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} {kv.Value}"))}" : "")
             + (r.Extracted is { } x && x.Values.Sum() > 0 ? $" / {L.T("탈출", "extracted")} {string.Join(" ", x.Where(kv => kv.Value > 0).Select(kv => $"{kv.Key} {kv.Value}"))}" + (r.ExtractRefill > 0 ? $"({L.T("보충", "refilled")} {r.ExtractRefill})" : "") : "")
-            + $" / {L.T("정리", "sanitized")} {r.Sanitized}");
+            + $" / {L.T("정리", "sanitized")} {r.Sanitized}"
+            + (r.Diag is { Count: > 0 } d ? $" / {L.T("진단", "diag")} {string.Join(" ", d.Select(kv => $"{kv.Key} {kv.Value}"))}" : ""));
     }
 
     /// <summary>레이드 맵 복제본에 스폰 계획을 적용한다. 적용했으면 true. 예외는 잡아서 원본 유지.</summary>
