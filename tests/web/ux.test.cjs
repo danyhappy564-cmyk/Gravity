@@ -1695,3 +1695,14 @@ test('1.0.8 레이드 전체 봇 총량: 상한 카드 칸, 켜면 넘을 수 �
   assert.match(r, /31 \/ 30/);
   assert.match(r, /레이드 전체 봇 총량에 막힘<\/td><td class="num">2/);
 });
+test('1.0.8 옛 저장본(맵 스캐브 카드에 dist 없음·배치 카드에 wavePoints 없음)도 새 칸이 0·PMC 지점으로 보입니다', () => {
+  const a = app();
+  a.run("normalizeState({maps:{bigmap:{ovr:{scav:true,hotspot:true,limits:true},scav:{refill:30,curve:{early:1,mid:1,late:1}},placement:'hotspot'}}});page='spawn';spawnTab='bigmap';mapSel='bigmap';tlEdit=false");
+  const html = a.run('P.spawn.render()');
+  // 맵 탭 슬라이더는 다른 칸(보충 확인 주기)과 같은 맵 범위 경로를 쓴다 = 맵 값만 바뀜
+  const refill = html.match(/data-p="([^"]*scav\.refill)"/)[1];
+  assert.equal(html.match(/data-p="([^"]*scav\.dist\.wave)"/)[1], refill.replace('refill', 'dist.wave'));
+  assert.equal(html.match(/data-p="([^"]*totalCap)"/)[1], html.match(/data-p="([^"]*groupCap\.on)"/)?.[1]?.replace('groupCap.on', 'totalCap') ?? 'maps.bigmap.totalCap');
+  assert.match(html, /data-segp="maps\.bigmap\.wavePoints" data-v="pmc" class="on"/);
+  assert.doesNotMatch(html, />undefined</);
+});

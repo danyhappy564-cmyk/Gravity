@@ -1118,14 +1118,14 @@ const SCAV_GEN0={first:2,interval:5,min:2,max:4};
 function scavGenOpts(mid){return {...SCAV_GEN0,...(state.maps[mid]?.scavGen||{})};}
 function scavListOf(mid){const L=state.maps[mid]?.scavList;return Array.isArray(L)?L.map((w,i)=>w&&typeof w.t==='number'?{i,t:w.t,min:clampN(Math.round(w.min??1),0,20),max:clampN(Math.round(Math.max(w.min??1,w.max??w.min??1)),0,20)}:null).filter(Boolean).sort((a,b)=>a.t-b.t):[];}
 /* 1.0.8 레이드 전체 봇 총량(INBOX #61) */
-function totalCapBox(s,c){const v=+(c.totalCap||0);
+function totalCapBox(s,c,slider){const v=+(c.totalCap||0);
   return `<div class="sub" style="margin-top:10px">${tr(T('레이드 전체 봇 총량','Total bots per raid'))}</div>`
     +slider(s+'totalCap',T('한 레이드에서 나올 봇 수 최대 (0 = 끔)','Max bots spawned in one raid (0 = off)'),T('동시에 살아 있는 수가 아니라 레이드 내내 나온 봇의 누적 수입니다. 이 수에 닿으면 Gravity가 내는 스폰(PMC 분대·보충 PMC·스캐브 보충·근처 보충)만 멈춥니다.','Counts every bot spawned over the whole raid, not how many are alive at once. Once reached, only the spawns Gravity makes (PMC squads, refill PMCs, scav refills, near spawns) stop.'),{min:0,max:300,step:5,unit:UI.ppl,val:v})
     +(v>0?notice(T('보스·레버·이벤트 트리거 봇과 다른 모드가 직접 내는 봇은 세기만 하고 막지 않습니다. 이미 나오고 있는 분대의 대원도 막지 않습니다(반쪽 분대 방지). 그래서 실제 수가 이 값을 조금 넘을 수 있습니다.','Bosses, lever/event trigger bots and bots other mods spawn themselves are counted but never blocked, and followers of a squad already spawning are not blocked (no half squads). The real total can therefore go a little over this number.'),'flat'):'');}
 /* 1.0.8 스캐브 몰림: 레이드 진행 f(0~1)에서 강도 × 몰림 배수(0.2~3). 서버·클라 Lean.Linear와 같은 식. */
 function leanAt(l,f){return 1+clampN(+l||0,-100,100)/100*(2*clampN(f,0,1)-1);}
 function scavMulAt(c,f,kind){const cv=c.scav.curve||{},k=f<1/3?cv.early??1:f<2/3?cv.mid??1:cv.late??1,d=c.scav.dist||{};return clampN(k*leanAt(kind==='bots'?d.bots:d.wave,f),0.2,3);}
-function scavLeanCtl(s,c){const off=['start','list'].includes(c.scavStyle);
+function scavLeanCtl(s,c,slider){const off=['start','list'].includes(c.scavStyle);
   return `<div class="sub" style="margin-top:8px">${tr(T('스캐브 몰림','Scav lean'))}${tip(T('웨이브 몰림은 보충 빈도를, 인원 몰림은 살아 있는 스캐브 소프트 캡을 레이드 앞(음수)이나 뒤(양수)로 몰아줍니다. 위 시간대별 강도와 곱하며 합친 배수는 0.2~3배로 자릅니다. 시작 스캐브와 맵 동시 상한은 그대로입니다.','Wave lean shifts refill frequency, size lean shifts the live scav soft cap, toward the start (negative) or end (positive) of the raid. Multiplied with the intensity above; the combined factor is clamped to 0.2–3×. Starting scavs and the map cap are unchanged.'))}</div>`
     +(off?notice(T('"시작 스캐브만"·"웨이브 목록" 방식은 몰림을 쓰지 않습니다(목록은 직접 정한 시각·인원 그대로).','"Starting scavs only" and "Wave list" ignore lean (a list keeps the times and sizes you set).'),'flat'):'')
     +`<div class="grid g2" style="gap:0 18px">${slider(s+'scav.dist.wave',T('웨이브 몰림 (앞 ← 0 → 뒤)','Wave lean (early ← 0 → late)'),'',{min:-100,max:100,step:5,unit:'',dis:off})+slider(s+'scav.dist.bots',T('인원 몰림 (앞 ← 0 → 뒤)','Size lean (early ← 0 → late)'),'',{min:-100,max:100,step:5,unit:'',dis:off})}</div>`;}
@@ -1469,7 +1469,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +slider(s+'scav.pending',T('대기 봇이 이 수를 넘으면 보충 대기','Wait if more bots than this are pending'),'',{max:20,unit:UI.ppl})
     +slider(s+'scav.softCap',T('스캐브 동시 소프트 캡','Scav soft cap'),'',{max:60,unit:UI.ppl})
     +`<div class="sub" style="margin-top:8px">${tr(T('시간대별 스캐브 강도 (1 = 그대로)','Scav intensity over the raid (1 = unchanged)'))}${tip(T('레이드를 셋으로 나눠 살아 있는 스캐브 소프트 캡과 보충 속도에 곱합니다. 0.5 · 1 · 1.5면 PMC와 반대로 초반엔 적고 후반으로 갈수록 많아집니다. 시작 스캐브에는 곱하지 않고 맵 동시 상한은 넘지 않습니다. 맵마다 다르게 하려면 그 맵 탭의 스캐브 칸에서 "이 맵만"을 켜고 바꿉니다(예: 세관만 PMC 반대로).','Splits the raid in thirds and multiplies the live scav soft cap and refill speed. 0.5 · 1 · 1.5 is the reverse of PMCs: few early, more later. Starting scavs are not scaled and the map cap is never exceeded. For a per-map curve, turn on "This map only" in that map tab’s scav card (e.g. reverse only on Customs).'))}</div><div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(s+'scav.curve.'+k,[T('초반','Early'),T('중반','Mid'),T('후반','Late')][i],'',{min:0.2,max:3,step:0.05,unit:UI.x})).join('')}</div>`
-    +scavLeanCtl(s,c)
+    +scavLeanCtl(s,c,slider)
     +slider(s+'scav.perPlayer',T('플레이어당 스캐브 한도','Scavs per player'),'',{max:100,unit:UI.ppl})
     +slider(s+'hardStop.scavPct',T('남은 레이드가 이 비율 이하면 스캐브 중단','Stop scavs below this % left'),'',{max:90})
     +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),'')
@@ -1489,7 +1489,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +sw(s+'hotspotBoost',T('핫스팟 부스트','Hotspot boost'),T('아직 효과가 없습니다.','Not applied yet.'),{adv:true,dis:c.placement==='vanilla'})
     +sw(s+'hotspotIgnoreCap',T('핫스팟은 동시 상한 무시','Hotspots ignore cap'),T('아직 효과가 없습니다.','Not applied yet.'),{adv:true,dis:c.placement==='vanilla'})
     +seg(s+'wavePoints',T('웨이브 PMC 위치','Wave PMC locations'),T('시작 PMC는 그대로 두고, 레이드 중에 오는 웨이브 PMC만 바꿉니다. "맵 전체"는 PMC 구역뿐 아니라 스캐브 구역(저격 자리 제외)까지 구역 비중 없이 고르게 쓰고, 플레이어 시작 지점을 먼저 고르지 않습니다. 사람·다른 PMC와의 거리, 시작 보호, 끈 구역은 그대로 지킵니다.','Starting PMCs stay as they are; only PMCs from later waves change. "Whole map" uses scav zones too (not sniper spots), evenly without zone weights, and does not prefer player start points. Distance from people and other PMCs, start protection and disabled zones still apply.'),[['pmc',T('PMC 지점 (기본)','PMC points (default)')],['spread',T('맵 전체','Whole map')]],{val:c.wavePoints||'pmc'});
-  const limits=(mid?capTipBox(mapById(mid))+mapCapControl(mid):capAutoAllBox()+slider(s+'botCap',T('모든 맵 동시 봇 상한','Bot cap for every map'),T('맵 탭에서 "이 맵만 따로"를 켠 맵은 그 값이 우선합니다. 0 = 맵마다 게임 기본값.','Maps with "set separately" on use their own value. 0 = each map’s default.'),{min:0,max:60,unit:UI.ppl}))+capTableBox(mid)+groupCapBox(mid)+totalCapBox(s,c);
+  const limits=(mid?capTipBox(mapById(mid))+mapCapControl(mid):capAutoAllBox()+slider(s+'botCap',T('모든 맵 동시 봇 상한','Bot cap for every map'),T('맵 탭에서 "이 맵만 따로"를 켠 맵은 그 값이 우선합니다. 0 = 맵마다 게임 기본값.','Maps with "set separately" on use their own value. 0 = each map’s default.'),{min:0,max:60,unit:UI.ppl}))+capTableBox(mid)+groupCapBox(mid)+totalCapBox(s,c,slider);
   const shared=card(T('레이드 시간 (공통)','Raid length (shared)'),choice(s+'raid.mode',T('레이드 시간 기준','Raid time source'),'',[['detect','⟲',T('감지 (권장)','Detect'),T('실제 시간을 읽습니다.','Reads actual raid time.')],['set','⏱',T('Gravity가 정함','Set by Gravity'),T('맵별 시간을 씁니다.','Uses per-map raid time.')]])+raidTimeBox(det))
     +card(T('PMC 구성 (모든 맵 공통)','PMC makeup (all maps)'),slider(s+'usecPct',T('USEC 비율','USEC share'),'')
       +ratio(s+'squad',[['s1',T('솔로','Solo'),'#6ea8ff'],['s2',T('2인','Duo'),'#8fb8ff'],['s3',T('3인','Trio'),'#a78bfa'],['s4',T('4인','Squad 4'),'#e8b04b'],['s5',T('5인','Squad 5'),'#f08a5d']],T('분대 크기','Squad size'),'')
