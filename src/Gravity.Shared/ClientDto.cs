@@ -15,7 +15,8 @@ namespace Gravity.Shared
         bool Managed, double ActiveMin, double ActiveMax, double QuietMin, double QuietMax,
         double RefillSec, int Pending, int SoftCap, int PerPlayer, double PscavChance, double StartDelaySec = 0, string Style = "waves", double? FirstRefillSec = null, int InitialCount = 0,
         double[]? Curve = null, double CurveRaidSec = 0, double CurveOffsetSec = 0,
-        ScavWaveDto[]? List = null, double ListJitterSec = 0);
+        ScavWaveDto[]? List = null, double ListJitterSec = 0, double LeanWave = 0, double LeanBots = 0);
+    // 1.0.8 LeanWave·LeanBots: 스캐브 웨이브 몰림(보충 빈도)·인원 몰림(살아 있는 스캐브 상한), -100 앞 ~ 100 뒤. 0 또는 옛 서버 = 1.0.7과 같음.
     // 1.0.6 스캐브 웨이브 목록: List = 원래 레이드 기준 초·인원 범위. 있으면 새 클라는 목록대로만 낸다(채우기 안 함).
     // 서버는 이때 Style을 "start"로 보내 옛 클라는 시작 스캐브만 내고 채우지 않는다.
 

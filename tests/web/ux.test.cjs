@@ -1653,3 +1653,20 @@ test('1.0.8 레이드 보고서는 분대 진단(겹침·늦은 대원·시작 P
   a.run("lastRaid={report:{mapId:'bigmap',seed:1,spawned:{},dropped:{},alivePerMinute:[]}}");
   assert.doesNotMatch(a.run('raidReportCard()'), /분대 진단/); // 옛 클라 보고에는 표가 없음
 });
+test('1.0.8 스캐브 몰림: 스캐브 카드 슬라이더 2개, 이 맵만 목록, 목록·시작만 방식은 흐리게', () => {
+  const a = app();
+  a.run("page='spawn';spawnTab='all'");
+  const common = a.run('P.spawn.render()');
+  assert.match(common, /data-p="spawn\.scav\.dist\.wave"/);
+  assert.match(common, /data-p="spawn\.scav\.dist\.bots"/);
+  assert.match(common, /스캐브 몰림/);
+  assert.equal(a.run("state.spawn.scav.dist.wave"), 0); // 기본값 0 = 1.0.7과 같음
+  assert.ok(a.run("CARD_FIELDS.scav.includes('scav.dist.wave')&&CARD_FIELDS.scav.includes('scav.dist.bots')"));
+  assert.equal(a.run("leanAt(0,.1)"), 1);
+  assert.ok(a.run("leanAt(-100,0)") > 1.9 && a.run("leanAt(-100,1)") < 0.1);
+  a.run("state.spawn.scav.curve={early:3,mid:1,late:1};state.spawn.scav.dist.wave=-100");
+  assert.equal(a.run("scavMulAt(cfgFor(mapById('bigmap')),0,'wave')"), 3); // 합친 배수는 3배로 자름
+  a.run("spawnTab='bigmap';mapSel='bigmap';state.maps.bigmap.ovr.scav=true;state.maps.bigmap.scavStyle='list'");
+  const list = a.run('P.spawn.render()');
+  assert.match(list, /몰림을 쓰지 않습니다/);
+});

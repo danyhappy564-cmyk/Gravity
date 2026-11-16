@@ -45,8 +45,29 @@ namespace Gravity.Shared
             return double.IsNaN(k) ? 1 : Math.Clamp(k, 0.2, 3);
         }
 
-        private int SoftCapAt(double elapsed) => _s.Curve == null ? _s.SoftCap : (int)Math.Round(_s.SoftCap * CurveAt(_s, elapsed));
-        private double RefillAt(double elapsed) => _s.Curve == null ? _s.RefillSec : _s.RefillSec / CurveAt(_s, elapsed);
+        /// <summary>1.0.8 원래 레이드 진행(0~1). CurveRaidSec이 없으면(옛 서버) -1.</summary>
+        private static double Progress(ScavDto s, double elapsed) =>
+            s.CurveRaidSec <= 0 ? -1 : (elapsed + Math.Max(0, s.CurveOffsetSec)) / s.CurveRaidSec;
+
+        /// <summary>1.0.8 보충 빈도 배수 = 강도 × 웨이브 몰림(0.2~3으로 자름). 몰림 0이면 CurveAt과 같다.</summary>
+        public static double RateAt(ScavDto s, double elapsed) => Mixed(s, elapsed, s.LeanWave);
+
+        /// <summary>1.0.8 살아 있는 스캐브 상한 배수 = 강도 × 인원 몰림(0.2~3으로 자름). 몰림 0이면 CurveAt과 같다.</summary>
+        public static double CapMulAt(ScavDto s, double elapsed) => Mixed(s, elapsed, s.LeanBots);
+
+        private static double Mixed(ScavDto s, double elapsed, double lean)
+        {
+            var k = CurveAt(s, elapsed);
+            var f = Progress(s, elapsed);
+            if (lean == 0 || f < 0) return k;
+            return Math.Clamp(k * Lean.Linear(lean, f), 0.2, 3);
+        }
+
+        /// <summary>강도나 몰림이 하나라도 있으면 true(없으면 1.0.5 동작 그대로).</summary>
+        private bool Shaped => _s.Curve != null || _s.LeanWave != 0 || _s.LeanBots != 0;
+
+        private int SoftCapAt(double elapsed) => !Shaped ? _s.SoftCap : (int)Math.Round(_s.SoftCap * CapMulAt(_s, elapsed));
+        private double RefillAt(double elapsed) => !Shaped ? _s.RefillSec : _s.RefillSec / RateAt(_s, elapsed);
 
         /// <summary>마지막 Tick에서 스캐브가 0마리였던 이유. 맵 상한(Cap) 때문에 막힌 차례를 셀 때 쓴다.</summary>
         public ScavBlock LastBlock { get; private set; }
@@ -182,7 +203,7 @@ namespace Gravity.Shared
         private void Consume(float raidElapsed)
         {
             // 웨이브 방식의 스캐브 차례 간격만 강도로 줄이거나 늘린다. 무한 방식은 PMC와 같은 시계라 그대로(상한만 곡선).
-            double interval = _inf == null ? Math.Max(_s.Curve == null ? 0 : 2, RefillAt(raidElapsed)) : _s.RefillSec;
+            double interval = _inf == null ? Math.Max(!Shaped ? 0 : 2, RefillAt(raidElapsed)) : _s.RefillSec;
             if (_inf != null)
             {
                 double j = _inf.Jitter;

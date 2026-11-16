@@ -163,7 +163,15 @@ public static class SpawnPlanner
             // 1.0.6 웨이브 목록: 창 안 웨이브는 만들지 않는다(시작 스캐브만, 목록은 클라가 낸다).
             if (ms.ScavStyle is not ("start" or "list") && (ms.Style != "infinite" || ms.ScavStyle != "waves"))
                 for (var i = firstWindow; i < times.Count; i++)
-                    scav.Add(Wave(times[i], Math.Max(1, (int)R(per * ScavCurveAt(s.Scav.Curve, times[i], raid)))));
+                {
+                    // 1.0.8 스캐브 몰림: 0이면 시각·인원 모두 1.0.7과 같다(Lean.Skew·Linear가 그대로 돌려줌).
+                    var span = Math.Max(1e-6, scavEnd - startMin);
+                    var f = Math.Clamp((times[i] - startMin) / span, 0, 1);
+                    var tt = s.Scav.LeanWave == 0 ? times[i] : startMin + span * Gravity.Shared.Lean.Skew(f, s.Scav.LeanWave);
+                    var k = s.Scav.LeanBots == 0 ? ScavCurveAt(s.Scav.Curve, tt, raid)
+                        : Math.Clamp(ScavCurveAt(s.Scav.Curve, tt, raid) * Gravity.Shared.Lean.Linear(s.Scav.LeanBots, f), 0.2, 3);
+                    scav.Add(Wave(tt, Math.Max(1, (int)R(per * k))));
+                }
         }
 
         double Between(double a, double b) => a >= b ? a : a + rnd.NextDouble() * (b - a);

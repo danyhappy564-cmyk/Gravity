@@ -738,7 +738,7 @@ function makeDefaults(){
       stopBeforeEnd:10,hardStop:{mode:'percent',pmcPct:15,scavPct:5},maxRespawn:{pmc:0,scav:0},ignoreCap:{start:false,waves:false},allowPmcLabyrinth:false,allowScavLab:false,
       raid:{mode:'detect'},intensity:{early:1.2,mid:1,late:.6},protect:{on:true,sec:90,radius:120},spacing:{player:80,bots:25},
       usecPct:50,squad:{s1:40,s2:30,s3:20,s4:10,s5:0},caps:{pmcReserve:0,pmcGroups:0,boss:{mode:'separate',max:0},special:{mode:'separate',max:0},faction:{mode:'separate',max:0},event:{mode:'separate',max:0}},groupCap:{on:false,scope:'raid',over:'split',rules:[{size:5,cmp:'eq',count:1},{size:3,cmp:'eq',count:1}]},diff:{easy:10,normal:50,hard:30,imp:10},levelMode:'relative',lvRelMin:-10,lvRelMax:15,lvFixMin:15,lvFixMax:45,
-      scav:{curve:{early:1,mid:1,late:1},startOn:true,startPct:20,startMode:'pct',startMin:3,startMax:6,remainMode:'pct',remainMin:2,remainMax:4,separateStart:true,delay:4,activeMin:3,activeMax:7,quietMin:1,quietMax:3,refill:45,pending:3,softCap:18,perPlayer:20,pscavChance:10,playerScavRemain:60,startMarksman:true,lateRaiders:true}},
+      scav:{curve:{early:1,mid:1,late:1},dist:{wave:0,bots:0},startOn:true,startPct:20,startMode:'pct',startMin:3,startMax:6,remainMode:'pct',remainMin:2,remainMax:4,separateStart:true,delay:4,activeMin:3,activeMax:7,quietMin:1,quietMax:3,refill:45,pending:3,softCap:18,perPlayer:20,pscavChance:10,playerScavRemain:60,startMarksman:true,lateRaiders:true}},
     near:{on:false,firstDelay:15,interval:180,botDelay:5,minDist:200,maxDist:300,spacing:15,waveMin:3,waveMax:8,slotChance:50,useDefault:true,pmcChance:30,
       custom:{on:false,t1:'raider',cap1:5,t2:'rogue',cap2:5,ratio2:50,diff:'normal'},group:{scavOff:false,chance:25,min:2,max:5},attempts:3,sight:false,sightPriority:70,stopAtCap:true},
     maps,bosses,bossCommon:{on:false,chance:35},bossProg:{on:true,step:10,min:20,max:100,regressive:false},bossDiff:{easy:0,normal:60,hard:30,imp:10},weeklyBoss:true,stats:statDefaults(),
@@ -869,7 +869,7 @@ const capOf=mid=>{const o=state.maps[mid];if(o.capAuto)return capNeed(mapById(mi
 const raidOf=m=>state.spawn.raid.mode==='detect'?m.det:state.maps[m.id].raidSet;
 const CARD_FIELDS={
   flow:['startPmcPct','startMode','startPmcMin','startPmcMax','startPlayerOnly','firstDelay','interval','waveMin','waveMax','randomPct','minGap','dist.wave','dist.bots','dist.smooth','intensity.early','intensity.mid','intensity.late','hardStop.mode','hardStop.pmcPct','stopBeforeEnd','ignoreCap.start','ignoreCap.waves'],
-  scav:['scav.startOn','scav.startPct','scav.startMode','scav.startMin','scav.startMax','scav.remainMode','scav.remainMin','scav.remainMax','scav.separateStart','scav.delay','scav.activeMin','scav.activeMax','scav.quietMin','scav.quietMax','scav.refill','scav.pending','scav.softCap','scav.perPlayer','scav.pscavChance','scav.playerScavRemain','scav.startMarksman','hardStop.scavPct','scav.curve.early','scav.curve.mid','scav.curve.late'],
+  scav:['scav.startOn','scav.startPct','scav.startMode','scav.startMin','scav.startMax','scav.remainMode','scav.remainMin','scav.remainMax','scav.separateStart','scav.delay','scav.activeMin','scav.activeMax','scav.quietMin','scav.quietMax','scav.refill','scav.pending','scav.softCap','scav.perPlayer','scav.pscavChance','scav.playerScavRemain','scav.startMarksman','hardStop.scavPct','scav.curve.early','scav.curve.mid','scav.curve.late','scav.dist.wave','scav.dist.bots'],
   near:['near'],dist:['protect','spacing','pmcDist','scavDist'],hotspot:['placement','hotspotShare','hotspotBoost','hotspotIgnoreCap'],limits:['groupCap','caps']
 };
 const CARD_NAMES={flow:T('PMC 흐름','PMC flow'),scav:T('스캐브','Scavs'),near:T('근처 보충','Near-player refill'),dist:T('시작 보호 · 스폰 거리','Protection & distances'),hotspot:T('핫스팟 비중','Hotspot share'),limits:T('그룹 제한 · 맵 동시 상한','Group limits & map cap')};
@@ -1081,8 +1081,8 @@ function timeline(m,big=false){
     s+=`<text x="${x(p.raid)}" y="${ys+22}" fill="#bff3df" font-size="11.5" text-anchor="end"${pp('scavgen')}>${fmt(tr(T('웨이브 목록 {n}개 · 총 {a}~{b}마리','Wave list {n} · {a}–{b} scavs')),{n:SL.filter(w=>w.t<scEnd).length,a:sum('min'),b:sum('max')})}${ed?' ✎':''}</text>`+hv('scavEnd',x(scEnd),ys-15,30,'#5fd4a6');}
   else if(c.scavStyle==='start'){const s0=c.scav.separateStart?c.scav.delay:0;s+=`<rect x="${x(s0)-6}" y="${ys-12}" width="12" height="24" rx="5" fill="#5fd4a6"${pp('scav')}/><text x="${x(s0)+12}" y="${ys+5}" fill="#bff3df" font-size="13"${pp('scav')}>${tr(c.scav.startOn?T('시작 스캐브만','Starting scavs only'):T('시작 스캐브 꺼짐','Starting scavs off'))}</text>`;}
   else{const s0=c.scav.separateStart?c.scav.delay:0;s+=`<rect x="${x(s0)}" y="${ys-8}" width="${Math.max(0,x(scEnd)-x(s0))}" height="16" rx="8" fill="#5fd4a6" fill-opacity=".3" stroke="#5fd4a6" stroke-opacity=".75"${pp('scav')}/>`;
-    const refillStep=Math.max(2,c.scav.refill)/60;
-    for(let t=s0+refillStep,n=0;t<scEnd&&n<1000;t+=refillStep,n++)s+=`<line x1="${x(t)}" x2="${x(t)}" y1="${ys-8}" y2="${ys+8}" stroke="#bff3df" stroke-opacity=".75" stroke-width="1.4"/>`;
+    const refillStep=Math.max(2,c.scav.refill)/60,shaped=(c.scav.dist&&(c.scav.dist.wave||0))!==0;
+    for(let t=s0+refillStep,n=0;t<scEnd&&n<1000;t+=shaped?Math.max(2/60,refillStep/scavMulAt(c,t/p.raid,'wave')):refillStep,n++)s+=`<line x1="${x(t)}" x2="${x(t)}" y1="${ys-8}" y2="${ys+8}" stroke="#bff3df" stroke-opacity=".75" stroke-width="1.4"/>`;
     if(c.scavStyle==='waves'){const active=(c.scav.activeMin+c.scav.activeMax)/2,quiet=(c.scav.quietMin+c.scav.quietMax)/2,cycle=Math.max(1,active+quiet);for(let t=s0+active,n=0;t<scEnd&&n<400;t+=cycle,n++)s+=`<rect x="${x(t)}" y="${ys-8}" width="${Math.max(0,x(Math.min(scEnd,t+quiet))-x(t))}" height="16" fill="#0b0f1a" fill-opacity=".8" pointer-events="none"/>`;}
     s+=`<text x="${x(Math.max(s0,scEnd-1))}" y="${ys-13}" fill="#bff3df" font-size="12" text-anchor="end"${pp('scav')}>${tr(c.scavStyle==='infinite'?T('무한 보충','Endless refill'):T('활동 / 휴식','Active / quiet'))}</text>`;
     if(s0>0)s+=`<text x="${x(s0)-6}" y="${ys+5}" fill="#bff3df" font-size="12.5" text-anchor="end">+${s0}${u('min_')}</text>`;s+=hv('scavEnd',x(scEnd),ys-15,30,'#5fd4a6')+(c.scav.separateStart?hv('scavStart',x(s0),ys-15,30,'#5fd4a6'):'');}
@@ -1117,6 +1117,13 @@ const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 const SCAV_GEN0={first:2,interval:5,min:2,max:4};
 function scavGenOpts(mid){return {...SCAV_GEN0,...(state.maps[mid]?.scavGen||{})};}
 function scavListOf(mid){const L=state.maps[mid]?.scavList;return Array.isArray(L)?L.map((w,i)=>w&&typeof w.t==='number'?{i,t:w.t,min:clampN(Math.round(w.min??1),0,20),max:clampN(Math.round(Math.max(w.min??1,w.max??w.min??1)),0,20)}:null).filter(Boolean).sort((a,b)=>a.t-b.t):[];}
+/* 1.0.8 스캐브 몰림: 레이드 진행 f(0~1)에서 강도 × 몰림 배수(0.2~3). 서버·클라 Lean.Linear와 같은 식. */
+function leanAt(l,f){return 1+clampN(+l||0,-100,100)/100*(2*clampN(f,0,1)-1);}
+function scavMulAt(c,f,kind){const cv=c.scav.curve||{},k=f<1/3?cv.early??1:f<2/3?cv.mid??1:cv.late??1,d=c.scav.dist||{};return clampN(k*leanAt(kind==='bots'?d.bots:d.wave,f),0.2,3);}
+function scavLeanCtl(s,c){const off=['start','list'].includes(c.scavStyle);
+  return `<div class="sub" style="margin-top:8px">${tr(T('스캐브 몰림','Scav lean'))}${tip(T('웨이브 몰림은 보충 빈도를, 인원 몰림은 살아 있는 스캐브 소프트 캡을 레이드 앞(음수)이나 뒤(양수)로 몰아줍니다. 위 시간대별 강도와 곱하며 합친 배수는 0.2~3배로 자릅니다. 시작 스캐브와 맵 동시 상한은 그대로입니다.','Wave lean shifts refill frequency, size lean shifts the live scav soft cap, toward the start (negative) or end (positive) of the raid. Multiplied with the intensity above; the combined factor is clamped to 0.2–3×. Starting scavs and the map cap are unchanged.'))}</div>`
+    +(off?notice(T('"시작 스캐브만"·"웨이브 목록" 방식은 몰림을 쓰지 않습니다(목록은 직접 정한 시각·인원 그대로).','"Starting scavs only" and "Wave list" ignore lean (a list keeps the times and sizes you set).'),'flat'):'')
+    +`<div class="grid g2" style="gap:0 18px">${slider(s+'scav.dist.wave',T('웨이브 몰림 (앞 ← 0 → 뒤)','Wave lean (early ← 0 → late)'),'',{min:-100,max:100,step:5,unit:'',dis:off})+slider(s+'scav.dist.bots',T('인원 몰림 (앞 ← 0 → 뒤)','Size lean (early ← 0 → late)'),'',{min:-100,max:100,step:5,unit:'',dis:off})}</div>`;}
 function scavGen(mid,o){const m=mapById(mid),c=cfgFor(m),g={...scavGenOpts(mid),...(o||{})},raid=raidOf(m),stop=raid*(1-c.hardStop.scavPct/100),cv=c.scav.curve||{},out=[],step=Math.max(0.5,+g.interval||5);
   for(let t=Math.max(0,+g.first||0),n=0;t<stop&&n<60;t+=step,n++){const f=t/raid,k=clampN(f<1/3?cv.early??1:f<2/3?cv.mid??1:cv.late??1,0.2,3),mn=clampN(Math.round(g.min*k),0,20),mx=clampN(Math.max(mn,Math.round(g.max*k)),0,20);out.push({t:+t.toFixed(2),min:mn,max:mx});}
   return out;}
@@ -1457,6 +1464,7 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +slider(s+'scav.pending',T('대기 봇이 이 수를 넘으면 보충 대기','Wait if more bots than this are pending'),'',{max:20,unit:UI.ppl})
     +slider(s+'scav.softCap',T('스캐브 동시 소프트 캡','Scav soft cap'),'',{max:60,unit:UI.ppl})
     +`<div class="sub" style="margin-top:8px">${tr(T('시간대별 스캐브 강도 (1 = 그대로)','Scav intensity over the raid (1 = unchanged)'))}${tip(T('레이드를 셋으로 나눠 살아 있는 스캐브 소프트 캡과 보충 속도에 곱합니다. 0.5 · 1 · 1.5면 PMC와 반대로 초반엔 적고 후반으로 갈수록 많아집니다. 시작 스캐브에는 곱하지 않고 맵 동시 상한은 넘지 않습니다. 맵마다 다르게 하려면 그 맵 탭의 스캐브 칸에서 "이 맵만"을 켜고 바꿉니다(예: 세관만 PMC 반대로).','Splits the raid in thirds and multiplies the live scav soft cap and refill speed. 0.5 · 1 · 1.5 is the reverse of PMCs: few early, more later. Starting scavs are not scaled and the map cap is never exceeded. For a per-map curve, turn on "This map only" in that map tab’s scav card (e.g. reverse only on Customs).'))}</div><div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(s+'scav.curve.'+k,[T('초반','Early'),T('중반','Mid'),T('후반','Late')][i],'',{min:0.2,max:3,step:0.05,unit:UI.x})).join('')}</div>`
+    +scavLeanCtl(s,c)
     +slider(s+'scav.perPlayer',T('플레이어당 스캐브 한도','Scavs per player'),'',{max:100,unit:UI.ppl})
     +slider(s+'hardStop.scavPct',T('남은 레이드가 이 비율 이하면 스캐브 중단','Stop scavs below this % left'),'',{max:90})
     +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),'')
@@ -1510,7 +1518,7 @@ function kindLoad(m,k){const caps=cfgFor(m).caps||{},mx=(caps[k]||{}).max||0;
   const here=k==='boss'?bossesOn(m).length>0:k==='special'?specGroupMax(m).n>0:k==='faction'?FACTIONS.some(f=>state.factions[f.id].maps[m.id]&&facInst(f.id)):false;
   if(!here)return 0;const g=k==='special'?specGroupMax(m).n:CAP_LOAD_GUESS[k]||4;return mx>0?Math.min(mx,g):g;}
 function capNeed(m){const c=cfgFor(m),sp=startPmcOf(m,c),hs=m.scav>0||(m.id==='laboratory'&&c.allowScavLab),ss=hs&&c.scav.startOn?startScavOf(m,c):0;
-  const cv=c.scav.curve||{},k=Math.min(3,Math.max(cv.early??1,cv.mid??1,cv.late??1)),scav=!hs||c.scavStyle==='start'?0:c.scavStyle==='list'?scavListOf(m.id).filter(w=>w.t<raidOf(m)).reduce((a,w)=>Math.max(a,w.max),0):Math.round((c.scav.softCap||0)*k);
+  const cv=c.scav.curve||{},k=(c.scav.dist||{}).bots?Array.from({length:21},(_,i)=>scavMulAt(c,i/20,'bots')).reduce((a,b)=>Math.max(a,b),0):Math.min(3,Math.max(cv.early??1,cv.mid??1,cv.late??1)),scav=!hs||c.scavStyle==='start'?0:c.scavStyle==='list'?scavListOf(m.id).filter(w=>w.t<raidOf(m)).reduce((a,w)=>Math.max(a,w.max),0):Math.round((c.scav.softCap||0)*k);
   const pmc=c.style==='start'?sp:Math.max(sp,Math.round((c.waveMax||0)*2)),caps=c.caps||{},resv=caps.pmcReserve||0;
   const resp=CAP_KINDS.map(x=>x[0]).filter(x=>['respect','vanilla'].includes((caps[x]||{}).mode)).reduce((a,x)=>a+kindLoad(m,x),0);
   const start=c.ignoreCap&&c.ignoreCap.start?0:sp+ss,base=Math.max(start,pmc+scav,scav+resv),need=base+resp;
