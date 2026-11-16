@@ -147,7 +147,8 @@ namespace Gravity.Client.Patches
             if (r.Reason == "farthest")
                 Log.InfoOnce("PmcPoints.Farthest:" + s.Seed, $"{s.MapId} 맵 전체가 시작 보호 반경({s.ProtectRadius:0}m) 안: 시작 PMC는 플레이어에게서 가장 먼 지점에 냄");
 
-            if (Log.Level == "verbose") PickDiag.Picked(c, ctx, z, c.PointById[r.Ids[0]], actors, reserved, inFlight, r.Reason, now);
+            if (Log.Level == "verbose") PickDiag.Picked(c, ctx, z, c.PointById[r.Ids[0]], actors, reserved, inFlight, r.Reason, now,
+                cands.Exists(x => x.Id == r.Ids[0] && x.PlayerPoint));
 
             var pts = new List<ISpawnPoint>(r.Ids.Count);
             var seen = new HashSet<int>();
@@ -172,7 +173,7 @@ namespace Gravity.Client.Patches
 
         /// <summary>분대 지점을 골랐을 때 한 줄: 위치, 가장 가까운 사람·PMC·예약(생성 중 분대 포함) 거리.</summary>
         internal static void Picked(RaidContext c, PmcTrySpawnPatch.Ctx ctx, BotZone z, ISpawnPoint sp, List<Actor> actors,
-            List<Vec3> reserved, int inFlight, string reason, float now)
+            List<Vec3> reserved, int inFlight, string reason, float now, bool playerPoint)
         {
             var p = PmcZones.V(sp.Position);
             double human = double.MaxValue, pmc = double.MaxValue, res = double.MaxValue;
@@ -185,7 +186,7 @@ namespace Gravity.Client.Patches
             foreach (var r in reserved) res = Math.Min(res, Vec3.Dist(p, r));
             string M(double d) => d == double.MaxValue ? "-" : d.ToString("0");
             Log.Verbose($"{c.S.MapId} PMC 분대 지점: {ctx.Wave.BossType} {ctx.Size}명, {ctx.Wave.Time:0}초 웨이브{(c.IsStartupWave(ctx.Wave) ? "(시작)" : "")}, 구역 {z.NameZone}, "
-                + $"({p.X:0},{p.Z:0}), 방식 {reason}, 가장 가까운 사람 {M(human)}m·PMC {M(pmc)}m·예약 {M(res)}m(생성 중 분대 {inFlight}), "
+                + $"({p.X:0},{p.Z:0}){(playerPoint ? " 플레이어 시작 지점" : "")}, 방식 {reason}, 가장 가까운 사람 {M(human)}m·PMC {M(pmc)}m·예약 {M(res)}m(생성 중 분대 {inFlight}), "
                 + (c.Started ? $"경과 {c.Elapsed:0}초" : "시작 전"));
         }
 
