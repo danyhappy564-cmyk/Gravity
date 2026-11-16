@@ -99,7 +99,7 @@ namespace Gravity.Client
         /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
         /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번) + 상한에 막힌 근처 보충 자리 수.
         /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
-        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0, ["lateEscort"] = 0 };
+        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0, ["lateEscort"] = 0, ["total"] = 0 };
 
         /// <summary>1.0.8 진단 카운터(INBOX #59, 기본 로그에서도 보고): overlap = 다른 PMC 무리 30m 안에 활성화된 분대장 수,
         /// lateEscort = 분대장보다 60초 이상 늦게 나온 대원 수, startPlanned·startActive·startDropped = 시작 PMC 계획 인원·활성화 인원·버린 분대 수.</summary>
@@ -117,6 +117,27 @@ namespace Gravity.Client
             Diag["startDropped"]++;
             _startDrops.TryGetValue(key, out n);
             _startDrops[key] = n + 1;
+        }
+
+        /// <summary>1.0.8 레이드 전체 봇 총량(INBOX #61): 이 레이드에서 게임이 만든 봇 수(BotSpawner.OnBotCreated, 사람 제외·모든 봇).</summary>
+        internal int TotalCreated;
+
+        /// <summary>총량에 닿았다고 한 번 알렸는지(로그·버림 수를 한 번만).</summary>
+        internal bool TotalReached;
+
+        /// <summary>총량까지 남은 자리(총량 끔이면 int.MaxValue). 만들어진 수 + 지금 몸을 읽는 중인 수를 뺀다.</summary>
+        internal int TotalLeft(EFT.BotSpawner? spawner)
+        {
+            if (S.TotalCap <= 0) return int.MaxValue;
+            return S.TotalCap - TotalCreated - Math.Max(0, spawner?._inSpawnProcess ?? 0);
+        }
+
+        /// <summary>총량 때문에 Gravity 스폰을 멈췄다: 처음 한 번만 알린다.</summary>
+        internal void NoteTotal(string what)
+        {
+            if (TotalReached) return;
+            TotalReached = true;
+            Log.Info($"{S.MapId} 레이드 전체 봇 총량 {S.TotalCap}에 닿음(만든 봇 {TotalCreated}): 이제 Gravity {what}부터 내지 않음, 보스·트리거·다른 모드 봇과 생성 중인 분대의 대원은 그대로");
         }
 
         /// <summary>생성 중 분대 지점(게임 _spawnProcess 항목)을 처음 본 시각(1.0.8 Task 3).</summary>
@@ -518,6 +539,12 @@ namespace Gravity.Client
             if (c.Startup.Expected > 0)
                 Log.Info($"{c.S.MapId} 시작 PMC 결과: 계획 {c.Startup.Expected}명 → 활성화 {c.Diag["startActive"]}명, 버린 분대 {c.Diag["startDropped"]}"
                     + (c._startDrops.Count > 0 ? "(" + string.Join(" ", System.Linq.Enumerable.Select(c._startDrops, kv => kv.Key + " " + kv.Value)) + ")" : ""));
+            if (c.S.TotalCap > 0)
+            {
+                c.Diag["total"] = c.TotalCreated;
+                c.Diag["totalCap"] = c.S.TotalCap;
+                Log.Info($"{c.S.MapId} 레이드 전체 봇: {c.TotalCreated}/{c.S.TotalCap}명, 총량 때문에 안 낸 것 {c.Dropped["total"]}");
+            }
             if (c.Diag["overlap"] > 0 || c.Diag["lateEscort"] > 0 || c.Dropped["lateEscort"] > 0)
                 Log.Info($"{c.S.MapId} 분대 겹침 생성 {c.Diag["overlap"]}, 늦은 대원 {c.Diag["lateEscort"]}명(버림 {c.Dropped["lateEscort"]}명)");
             ClientLink.SendReport(new RaidReport(

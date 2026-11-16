@@ -117,6 +117,12 @@ namespace Gravity.Client.Directors
                     c.Dropped["nearCap"]++;
                     continue;
                 }
+                if (c.TotalLeft(spawner) < size) // 1.0.8 레이드 전체 봇 총량
+                {
+                    c.NoteTotal("근처 보충");
+                    c.Dropped["total"]++;
+                    continue;
+                }
 
                 List<Candidate> pool;
                 Dictionary<int, BotZone> zoneOf;

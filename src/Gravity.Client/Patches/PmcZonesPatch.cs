@@ -206,6 +206,7 @@ namespace Gravity.Client.Patches
             {
                 var c = RaidContext.Current;
                 if (c != null) PmcZones.EnsureZones(c, __instance?.BotSpawner?.BossSpawner);
+                if (c != null) Directors.DeathCounter.Hook(c, __instance); // 1.0.8 총량: 시작 봇보다 먼저 붙인다
             }
             catch (Exception ex)
             {

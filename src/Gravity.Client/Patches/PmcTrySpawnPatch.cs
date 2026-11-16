@@ -37,6 +37,8 @@ namespace Gravity.Client.Patches
             public bool ZonesSeen;
             public bool ZonesOk;
             public bool PickedAny;
+            /// <summary>레이드 전체 봇 총량에 닿아 이 분대를 버렸다(1.0.8).</summary>
+            public bool Total;
 
             /// <summary>근처 보충 웨이브면 그 표시(아니면 null).</summary>
             public Directors.NearDirector.Tag? Near;
@@ -88,6 +90,14 @@ namespace Gravity.Client.Patches
                 }
 
                 if (!wave.BossType.IsPmcBot()) return true;
+                // 1.0.8 레이드 전체 봇 총량: 분대가 통째로 들어갈 자리가 없으면 버린다(대원만 따로 내지 않음).
+                if (c.S.TotalCap > 0 && c.TotalLeft(__instance?._spawner) < ctx.Size)
+                {
+                    ctx.Total = true;
+                    c.NoteTotal("PMC 분대");
+                    __result = true; // 처리 끝 = 대기열에 넣지 않음
+                    return false;
+                }
                 var cap = c.S.GroupCap;
                 if (cap != null && cap.Scope == "alive"
                     && AliveGroupRule.Check(AliveGravitySquads(), ctx.Size, cap) == CapVerdict.Wait)
@@ -166,6 +176,12 @@ namespace Gravity.Client.Patches
                     return;
                 }
                 if (!wave.BossType.IsPmcBot()) return;
+                if (ctx.Total)
+                {
+                    c.FirstFail.Remove(wave);
+                    c.Drop(wave, "total");
+                    return;
+                }
                 var now = Time.time;
                 TryDiag(c, ctx, wave, __result, now);
 

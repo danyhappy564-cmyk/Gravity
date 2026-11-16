@@ -111,6 +111,7 @@ public static class SpawnPlanner
         }
         groups.Sort((a, b) => a.TimeSec.CompareTo(b.TimeSec));
         scav.Sort((a, b) => a.TimeMinSec.CompareTo(b.TimeMinSec));
+        if (s.TotalCap > 0) dropped += TrimToTotal(groups, scav, s.TotalCap);
         return new SpawnPlan(map.Id, raidSec, simStartSec, seed, ms.Style, groups, scav, ms.Cap, dropped);
 
         int AddPmcs(int count, Func<int> time, bool isStart)
@@ -175,6 +176,29 @@ public static class SpawnPlanner
         }
 
         double Between(double a, double b) => a >= b ? a : a + rnd.NextDouble() * (b - a);
+    }
+
+    /// <summary>
+    /// 1.0.8 레이드 전체 봇 총량(INBOX #61): 시작 PMC·시작 스캐브부터 시각 순으로 세어 총량을 넘는 PMC 분대·스캐브 웨이브를 뺀다.
+    /// 분대는 나누지 않는다(통째로 빼고 뒤의 작은 분대는 들어갈 수 있음). 뺀 PMC 인원을 돌려준다. 클라는 실제 생성 수로 다시 막는다.
+    /// </summary>
+    internal static int TrimToTotal(List<PmcGroup> groups, List<ScavWave> scav, int total)
+    {
+        var items = new List<(int t, bool start, int n, object o)>();
+        foreach (var g in groups) items.Add((g.TimeSec, g.IsStart, g.Size, g));
+        foreach (var w in scav) items.Add((w.TimeMinSec, w.IsStart, w.SlotsMax, w));
+        items.Sort((a, b) => a.start != b.start ? (a.start ? -1 : 1) : a.t.CompareTo(b.t));
+        int used = 0, lost = 0;
+        var drop = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        foreach (var (_, _, n, o) in items)
+        {
+            if (used + n <= total) { used += n; continue; }
+            drop.Add(o);
+            if (o is PmcGroup pg) lost += pg.Size;
+        }
+        groups.RemoveAll(g => drop.Contains(g));
+        scav.RemoveAll(w => drop.Contains(w));
+        return lost;
     }
 
     /// <summary>무한 보충용 PMC 분대 목록(크기·진영·난이도를 계획기와 같은 비율로 미리 뽑는다). 시드가 같으면 같은 목록.</summary>

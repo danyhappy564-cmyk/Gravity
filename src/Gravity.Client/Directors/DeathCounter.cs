@@ -17,6 +17,16 @@ namespace Gravity.Client.Directors
             try
             {
                 spawner.OnBotRemoved += bot => Count(c, bot);
+                // 1.0.8 레이드 전체 봇 총량: 게임이 실제로 만든 봇(취소된 생성 제외, BotSpawner.ActivateBotCallback)을 센다.
+                if (c.S.TotalCap > 0)
+                {
+                    // 붙기 전에 이미 만든 봇(로딩 중 시작 봇)은 지금 살아 있는 AI 수로 넣는다.
+                    var gw = Comfort.Common.Singleton<GameWorld>.Instance;
+                    if (gw != null)
+                        foreach (var p in gw.AllAlivePlayersList)
+                            if (p != null && p.IsAI) c.TotalCreated++;
+                    spawner.OnBotCreated += _ => c.TotalCreated++;
+                }
                 c.DeathHookedTo = spawner;
             }
             catch (Exception ex)

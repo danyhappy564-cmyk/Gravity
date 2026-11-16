@@ -289,6 +289,15 @@ namespace Gravity.Client.Directors
                 Log.Verbose($"{c.S.MapId} 레이드 전체 그룹 제한: 보충 분대 {size}명 → {string.Join("+", parts)}명으로 나눔");
                 size = parts[0];
             }
+            // 1.0.8 레이드 전체 봇 총량: 남은 자리에 분대가 안 들어가면 보충 PMC를 멈춘다(목록을 다 쓴 것처럼).
+            if (c.TotalLeft(spawner) < size)
+            {
+                c.NoteTotal("보충 PMC");
+                c.Dropped["total"] += Math.Max(0, groups.Count - st.RefillIndex) + c.ExtractQueue.Count;
+                st.RefillIndex = groups.Count;
+                c.ExtractQueue.Clear();
+                return PmcResult.Unavailable;
+            }
             // 상한 표 "PMC 동시 무리 최대"(1.0): 꽉 찼으면 자리가 없는 것과 같이 기다린다(우선 줄에 남음).
             if (c.PmcGroupsFull()) { st.LastSize = size; return PmcResult.NoRoom; }
             // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
@@ -307,6 +316,12 @@ namespace Gravity.Client.Directors
         private static int SpawnScavs(RaidContext c, State st, BotsController bc, BotSpawner spawner, int n, float now,
             WDictionary<BotDifficulty>? difficulties)
         {
+            int left = c.TotalLeft(spawner);
+            if (left < n)
+            {
+                if (left <= 0) { c.NoteTotal("스캐브"); return 0; }
+                n = left; // 1.0.8 레이드 전체 봇 총량까지만
+            }
             EnsureZones(st, spawner, c);
             var s = c.S;
             bool protect = s.ProtectOn && now < s.ProtectSec;

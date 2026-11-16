@@ -47,7 +47,8 @@ namespace Gravity.Shared
         bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
         string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
         IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null, CapTableDto? Caps = null,
-        IReadOnlyList<int>? StartGroups = null, bool StartPlayerOnly = false, string? WavePoints = null);
+        IReadOnlyList<int>? StartGroups = null, bool StartPlayerOnly = false, string? WavePoints = null, int TotalCap = 0);
+    // 1.0.8 TotalCap: 레이드 전체 봇 누적 상한(0 = 끔, 옛 서버도 0). Gravity 스폰만 멈춘다(INBOX #61).
     // 1.0.8 WavePoints: null·"pmc" = 1.0.7과 같음, "spread" = 웨이브 PMC 분대를 맵 전체 봇 구역(저격 제외)에 고르게(INBOX #60).
 
     /// <summary>

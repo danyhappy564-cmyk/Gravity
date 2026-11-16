@@ -1680,3 +1680,18 @@ test('1.0.8 웨이브 PMC 위치: 배치 카드에 PMC 지점(기본)·맵 전�
   assert.equal(a.run("cardFor('spawn.wavePoints')"), 'hotspot');
   assert.doesNotMatch(html, /APBS|ABPS/); // 다른 모드 이름 비교 금지
 });
+test('1.0.8 레이드 전체 봇 총량: 상한 카드 칸, 켜면 넘을 수 있음 안내, 보고서에 만든 수 / 총량', () => {
+  const a = app();
+  a.run("page='spawn';spawnTab='all'");
+  let html = a.run('P.spawn.render()');
+  assert.match(html, /data-p="spawn\.totalCap"/);
+  assert.doesNotMatch(html, /세기만 하고 막지 않습니다/); // 0 = 끔이면 안내 없음
+  assert.equal(a.run("cardFor('spawn.totalCap')"), 'limits');
+  a.run("state.spawn.totalCap=30");
+  html = a.run('P.spawn.render()');
+  assert.match(html, /세기만 하고 막지 않습니다/);
+  a.run("lastRaid={report:{mapId:'laboratory',seed:1,spawned:{},dropped:{total:2},alivePerMinute:[],diag:{total:31,totalCap:30}}}");
+  const r = a.run('raidReportCard()');
+  assert.match(r, /31 \/ 30/);
+  assert.match(r, /레이드 전체 봇 총량에 막힘<\/td><td class="num">2/);
+});
