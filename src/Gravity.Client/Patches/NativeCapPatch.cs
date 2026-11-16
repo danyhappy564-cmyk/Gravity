@@ -452,7 +452,7 @@ namespace Gravity.Client.Patches
                 if (late >= SquadRules.LateJudgeSec)
                     Log.Verbose($"{c.S.MapId} PMC 대원 늦게 등장: {w.Wave.BossType}, 분대장보다 {late:0}초 늦음, 분대장 {(leaderAlive ? "생존" : "사망")}, "
                         + $"사람 {(human == double.MaxValue ? "-" : human.ToString("0"))}m → {(verdict == EscortVerdict.Keep ? "유지" : "버림")}, 경과 {c.Elapsed:0}초");
-                if (verdict == EscortVerdict.Keep || true) return false; // Task 1 진단판: 판정만 기록
+                if (verdict == EscortVerdict.Keep) return false;
                 int lost = Math.Max(1, (data.Profiles?.Count ?? 1) - state.Made);
                 c.Dropped["lateEscort"] += lost;
                 var key = w.Wave.BossType == WildSpawnType.pmcBEAR ? "pmcBEAR" : "pmcUSEC";
