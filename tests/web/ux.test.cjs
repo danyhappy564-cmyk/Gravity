@@ -921,8 +921,8 @@ test('ABPS 감지 잠금이 저장된 스폰 모듈 값을 바꾸지 않고, 왼
   assert.equal(a.run('spawnOn()'), true);
   assert.equal(a.run("UI.mock.ko===undefined?u('mock'):u('mock')"), '9.9.9');
 });
-test('서버 판을 못 받아도 기본 버전 표시는 1.0.7입니다', () => {
-  assert.match(html, /mock:T\('1\.0\.7','1\.0\.7'\)/);
+test('서버 판을 못 받아도 기본 버전 표시는 1.0.8입니다', () => {
+  assert.match(html, /mock:T\('1\.0\.8','1\.0\.8'\)/);
 });
 
 test('타임라인 시작 인원 팝업도 최소·최대 짝을 검사합니다', () => {
@@ -1599,7 +1599,7 @@ test('사이드바 맨 아래 황금 테두리 FAQ는 소개 페이지와 같은
 test('웹 FAQ 검색 칸은 지금 언어의 질문·답에서 낱말을 모두 포함한 질문만 남깁니다', () => {
   const a = app();
   a.run("selectPage('faq')");
-  assert.match(a.run('P.faq.render()'), /id="faqSearch"[^>]*><span class="muted small">질문 32개</);
+  assert.match(a.run('P.faq.render()'), /id="faqSearch"[^>]*><span class="muted small">질문 36개</);
   a.run("faqQ='ISB'");
   let html = a.run('P.faq.render()');
   assert.match(html, /data-faq="faq-isb" open/);

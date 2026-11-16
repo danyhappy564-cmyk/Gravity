@@ -17,9 +17,9 @@
 
 ## Changelog
 
-The full changelog (29 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-003.md`](changelog/CHANGELOG-003.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (36 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-004.md`](changelog/CHANGELOG-004.md)). Per-release summaries: [Releases](../../releases).
 
-# Gravity 1.0.7
+# Gravity 1.0.8
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -59,6 +59,8 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 If you open the page from another PC or a Fika/LAN address (anything other than 127.0.0.1 on the server PC), log in with an SPT web admin account using the **SPT login** button at the top before saving — the same SPT login used by SAIN and other mod web pages. Opened on the server PC at 127.0.0.1, no login is needed.
 
 Use **1.0.3 or later within the 1.0.x series** for both server and client. Mixing with 1.0.2 or older is unsupported. Starting scavs are prepared together at the configured delay: 0 min prepares them during loading; the default delay is 4 min. Starting PMC squads prepare their members during loading, with up to 60 seconds of additional waiting. Map capacity, group limits, or unavailable spawn points can leave some bots in the existing queue and delay activation.
+
+**1.0.8:** Adds **Scav lean** to the scav card (wave lean = refill frequency, size lean = live scav cap), **Wave PMC locations** to the placement card (PMC points / Whole map: only wave PMCs, evenly across scav zones too, no sniper spots), and **Total bots per raid** to the limits card (a running total; when reached only Gravity's own spawns stop). Squads no longer pick a point another squad is still loading at, and PMC followers more than 30 s behind their leader are dropped when the leader is dead or the spot is right next to a person. The raid report gains **Squad diagnostics** (overlaps, late followers, start PMCs planned/activated) and the end-of-raid log gets a one-line start PMC result. New options give the same result as 1.0.7 at their defaults.
 
 **1.0.7:** Fixed the timeline special-bot lanes (Sniper scavs, Cultists, Bloodhounds, etc.): once a lane was expanded there was nothing to click to open its settings, so the chance could not be changed (since 1.0.6). Clicking the summary text on the right or the time bubble now opens the settings; dragging the bubble still only moves the time. Only the server and web changed; spawn results are the same as 1.0.6.
 
