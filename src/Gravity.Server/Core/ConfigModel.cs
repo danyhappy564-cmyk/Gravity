@@ -33,8 +33,11 @@ public sealed record SpawnSettings(
     bool IgnoreCapStart, bool IgnoreCapWaves, Intensity Intensity, double UsecPct,
     double[] Squad, GroupCap GroupCap, double[] Diff, ScavSettings Scav,
     ProtectSettings Protect, SpacingSettings Spacing, string Placement, double HotspotShare, bool HotspotBoost, bool AllowPmcLabyrinth, bool AllowScavLab,
-    CapTable? Caps = null, string StartMode = "pct", int StartPmcMin = 8, int StartPmcMax = 12, bool StartPlayerOnly = false)
+    CapTable? Caps = null, string StartMode = "pct", int StartPmcMin = 8, int StartPmcMax = 12, bool StartPlayerOnly = false,
+    string WavePoints = "pmc")
 {
+    // 1.0.8 WavePoints(INBOX #60): "pmc" = 1.0.7과 같음(PMC 구역의 PMC·플레이어 지점, 플레이어 시작 지점 먼저),
+    // "spread" = 웨이브 분대(시작 분대·근처 보충 제외)를 맵의 모든 봇 구역(저격 구역 제외)에 고르게, 플레이어 시작 지점 우선 없이.
     // 1.0.1: StartMode "count"면 시작 PMC를 StartPmcMin~Max 사이에서 판마다 굴린다(맵별 덮어쓰기 가능, "pct"는 예전처럼 바닐라 PMC 수 × 비율).
     // StartPlayerOnly: 시작 분대는 플레이어 시작 지점에서만(봇 PMC 지점으로 안 넘어감, 공장 같은 작은 맵은 그중 가장 먼 지점).
     public CapTable CapsOrDefault => Caps ?? CapTable.Default;
@@ -181,7 +184,7 @@ public sealed record GravityConfig(
         {
             if (m.Cards?.Scav == true) s = s with { Scav = v.Scav, HardStop = s.HardStop with { ScavPct = v.HardStop.ScavPct } };
             if (m.Cards?.Dist == true) s = s with { Protect = v.Protect, Spacing = v.Spacing };
-            if (m.Cards?.Hotspot == true) s = s with { Placement = v.Placement, HotspotShare = v.HotspotShare, HotspotBoost = v.HotspotBoost };
+            if (m.Cards?.Hotspot == true) s = s with { Placement = v.Placement, HotspotShare = v.HotspotShare, HotspotBoost = v.HotspotBoost, WavePoints = v.WavePoints };
             if (m.Cards?.Limits == true) s = s with { GroupCap = v.GroupCap, Caps = v.Caps };
         }
         return s;
@@ -539,7 +542,7 @@ public static partial class ConfigModel
             r.Bool(sp + "hotspotBoost", true), r.Bool(sp + "allowPmcLabyrinth", false),
             r.Bool(sp + "allowScavLab", false), ReadCaps(r, sp),
             r.Str(sp + "startMode", "pct", "pct", "count"), startMin, (int)Math.Max(startMin, r.Num(sp + "startPmcMax", 12, 0, 40)),
-            r.Bool(sp + "startPlayerOnly", false));
+            r.Bool(sp + "startPlayerOnly", false), r.Str(sp + "wavePoints", "pmc", "pmc", "spread"));
         return spawn;
     }
 
@@ -615,7 +618,7 @@ public static partial class ConfigModel
             var p when p.StartsWith("near.", StringComparison.Ordinal) => "near",
             var p when p.StartsWith("spawn.scav.", StringComparison.Ordinal) || p == "spawn.hardStop.scavPct" => "scav",
             var p when p.StartsWith("spawn.protect.", StringComparison.Ordinal) || p.StartsWith("spawn.spacing.", StringComparison.Ordinal) || p is "spawn.pmcDist" or "spawn.scavDist" => "dist",
-            "spawn.placement" or "spawn.hotspotShare" or "spawn.hotspotBoost" => "hotspot",
+            "spawn.placement" or "spawn.hotspotShare" or "spawn.hotspotBoost" or "spawn.wavePoints" => "hotspot",
             var p when p.StartsWith("spawn.groupCap.", StringComparison.Ordinal) || p.StartsWith("spawn.caps.", StringComparison.Ordinal) => "limits",
             var p when p.StartsWith("spawn.squad.", StringComparison.Ordinal) || p.StartsWith("spawn.diff.", StringComparison.Ordinal) || p is "spawn.usecPct" or "spawn.allowPmcLabyrinth" or "spawn.allowScavLab" => "common",
             _ => "flow"

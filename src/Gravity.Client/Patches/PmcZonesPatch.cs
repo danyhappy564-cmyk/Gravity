@@ -37,7 +37,8 @@ namespace Gravity.Client.Patches
             var holder = bc.CoversData?.AICorePointsHolder;
             var cores = holder?.CorePoints;
 
-            int id = 0, players = 0, bots = 0, noCore = 0, linked = 0;
+            int id = 0, players = 0, bots = 0, noCore = 0, linked = 0, spread = 0;
+            bool wantSpread = c.S.WavePoints == "spread";
             PathChecked = 0;
             foreach (var p in all)
             {
@@ -45,7 +46,8 @@ namespace Gravity.Client.Patches
                 var cat = p.Categories;
                 bool player = cat.ContainPlayerCategory() && p.Infiltration != null;
                 bool pmc = cat.ContainBotPmcCategory();
-                if (!player && !pmc) continue;
+                bool scav = wantSpread && cat.ContainBotCategory();
+                if (!player && !pmc && !scav) continue;
                 if (holder != null && cores is { Count: > 0 } && holder.GetCorePoint(p.CorePointId) == null)
                 {
                     var near = NearestCore(cores, p.Position);
@@ -57,11 +59,20 @@ namespace Gravity.Client.Patches
                 if (zone == null) continue;
                 id++;
                 c.PointById[id] = p;
+                var cand = new Candidate(id, V(p.Position), player);
+                if (wantSpread && !zone.SnipeZone)
+                {
+                    if (!c.SpreadPoints.TryGetValue(zone, out var sl)) c.SpreadPoints[zone] = sl = new List<Candidate>();
+                    sl.Add(cand);
+                    spread++;
+                }
+                if (!player && !pmc) continue; // 스캐브 전용 지점은 맵 전체 배치 후보에만
                 if (!c.ZonePoints.TryGetValue(zone, out var list)) c.ZonePoints[zone] = list = new List<Candidate>();
-                list.Add(new Candidate(id, V(p.Position), player));
+                list.Add(cand);
                 if (player) players++; else bots++;
             }
-            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개(경로 확인 {PathChecked})" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : ""));
+            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개(경로 확인 {PathChecked})" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : "")
+                + (wantSpread ? $", 맵 전체 배치 후보 {spread}개(구역 {c.SpreadPoints.Count}개, 저격 구역 제외)" : ""));
             return true;
         }
 
@@ -120,6 +131,21 @@ namespace Gravity.Client.Patches
             foreach (var kv in c.ZonePoints)
                 if (kv.Value.Count > 0 && kv.Key != null && !pmcZones.Contains(kv.Key)) pmcZones.Add(kv.Key);
             Log.Info($"{c.S.MapId} PMC 구역이 없는 맵: 후보 지점이 있는 구역 {pmcZones.Count}개를 PMC 구역으로 씀");
+        }
+
+        /// <summary>1.0.8 맵 전체 배치 웨이브 분대: 구역 목록을 맵 전체 후보 구역(끈 구역 제외)으로 바꿔 고르게 섞는다(가중치 무시).</summary>
+        internal static bool Spread(RaidContext c, BossLocationSpawn wave, List<BotZone> zones)
+        {
+            if (!c.Spreads(wave) || !EnsurePoints(c) || c.SpreadPoints.Count == 0) return false;
+            zones.Clear();
+            foreach (var kv in c.SpreadPoints)
+                if (kv.Key != null && kv.Value.Count > 0 && !c.IsZoneDisabled(kv.Key.NameZone)) zones.Add(kv.Key);
+            for (int i = zones.Count - 1; i > 0; i--)
+            {
+                int j = c.Rng.Next(i + 1);
+                (zones[i], zones[j]) = (zones[j], zones[i]);
+            }
+            return true;
         }
 
         /// <summary>배치가 hotspot·mixed면 구역 목록을 웹 구역 가중치로 제자리에서 다시 섞는다.</summary>
@@ -221,7 +247,7 @@ namespace Gravity.Client.Patches
                 if (wave.BossType.IsPmcBot())
                 {
                     var c = RaidContext.Current;
-                    if (c != null) PmcZones.Reorder(c, result);
+                    if (c != null && !PmcZones.Spread(c, wave, result)) PmcZones.Reorder(c, result);
                 }
                 PmcTrySpawnPatch.SawZones(wave, result);
             }

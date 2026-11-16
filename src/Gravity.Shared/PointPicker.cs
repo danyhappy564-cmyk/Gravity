@@ -7,7 +7,9 @@ namespace Gravity.Shared
 
     public sealed record PickRules(
         double PmcDist, double BotDist, double ReserveDist, bool ProtectActive, double ProtectRadius,
-        double SquadRadius = 20, double OccupiedRadius = 2, double RelaxFactor = 0.75, bool ProtectFallback = false);
+        double SquadRadius = 20, double OccupiedRadius = 2, double RelaxFactor = 0.75, bool ProtectFallback = false,
+        bool PlayerFirst = true);
+    // 1.0.8 PlayerFirst=false: 플레이어 시작 지점을 먼저 보는 1단계를 건너뛴다(맵 전체 배치 웨이브 분대, INBOX #60).
 
     /// <summary>성공이면 Reason "ok"·"relaxed"·"farthest", 실패면 "noPoint".</summary>
     public sealed record PickResult(IReadOnlyList<int> Ids, string Reason);
@@ -46,8 +48,8 @@ namespace Gravity.Shared
         private static int[]? TryPick(List<Candidate> list, IReadOnlyList<Actor> actors, IReadOnlyList<Vec3> reserved,
             int size, PickRules r, double pmcDist, double botDist, double reserveDist, double protectRadius)
         {
-            // 1단계: 플레이어 지점만, 2단계: 전체
-            for (int pass = 0; pass < 2; pass++)
+            // 1단계: 플레이어 지점만, 2단계: 전체(PlayerFirst=false면 2단계만)
+            for (int pass = r.PlayerFirst ? 0 : 1; pass < 2; pass++)
             {
                 bool playerOnly = pass == 0;
                 for (int i = 0; i < list.Count; i++)

@@ -118,7 +118,8 @@ namespace Gravity.Client.Patches
         private static bool Pick(RaidContext c, PmcTrySpawnPatch.Ctx ctx, SpawnSystem.SpawnPointsFilteredCollection filteredPoints, BotZone z,
             BotCreationData data, int size, float now, bool playerOnly = false)
         {
-            if (!c.ZonePoints.TryGetValue(z, out var all) || all.Count == 0) return false;
+            bool spread = c.Spreads(ctx.Wave);
+            if (!(spread ? c.SpreadPoints : c.ZonePoints).TryGetValue(z, out var all) || all.Count == 0) return false;
 
             var side = data.Side;
             var cands = new List<Candidate>(all.Count);
@@ -140,7 +141,7 @@ namespace Gravity.Client.Patches
             var rules = new PickRules(
                 PmcDist: s.PmcDist, BotDist: s.SpacingBots, ReserveDist: s.PmcDist,
                 ProtectActive: protect, ProtectRadius: s.ProtectRadius,
-                ProtectFallback: protect && !AnyOutsideProtect(c, actors, s.ProtectRadius, playerOnly));
+                ProtectFallback: protect && !AnyOutsideProtect(c, actors, s.ProtectRadius, playerOnly), PlayerFirst: !spread);
             var r = PointPicker.PickSquad(cands, actors, reserved, size, rules, c.Rng);
             if (r.Ids.Count == 0) { PickDiag.Fail(c, z, all.Count, cands, (actors, reserved, rules), now); return false; }
             if (r.Reason == "farthest")

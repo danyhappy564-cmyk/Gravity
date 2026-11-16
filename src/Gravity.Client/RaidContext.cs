@@ -55,6 +55,15 @@ namespace Gravity.Client
         /// BotsController.GetClosestZone으로 가장 가까운 구역에 배정한다. 레이드에서 한 번 만든다(PmcZones.EnsurePoints).</summary>
         public readonly Dictionary<BotZone, List<Candidate>> ZonePoints = new Dictionary<BotZone, List<Candidate>>();
 
+        /// <summary>1.0.8 맵 전체 배치(S.WavePoints == "spread")용 후보: 저격 구역을 뺀 모든 구역의 플레이어·봇 PMC·봇(스캐브) 지점.
+        /// spread일 때만 만든다(1.0.7과 같은 결과를 위해 pmc면 스캐브 지점을 건드리지 않음).</summary>
+        public readonly Dictionary<BotZone, List<Candidate>> SpreadPoints = new Dictionary<BotZone, List<Candidate>>();
+
+        /// <summary>이 분대가 맵 전체 배치 대상인지: spread 설정이고 Gravity 웨이브 분대(시작 분대·근처 보충 제외).</summary>
+        internal bool Spreads(BossLocationSpawn? wave) =>
+            wave != null && S.WavePoints == "spread" && wave.BossType.IsPmcBot() && Owns(wave) && !IsStartupWave(wave)
+            && !NearWaves.TryGetValue(wave, out _);
+
         /// <summary>Candidate.Id → 게임 지점.</summary>
         public readonly Dictionary<int, ISpawnPoint> PointById = new Dictionary<int, ISpawnPoint>();
 

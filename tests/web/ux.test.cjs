@@ -1670,3 +1670,13 @@ test('1.0.8 스캐브 몰림: 스캐브 카드 슬라이더 2개, 이 맵만 목
   const list = a.run('P.spawn.render()');
   assert.match(list, /몰림을 쓰지 않습니다/);
 });
+test('1.0.8 웨이브 PMC 위치: 배치 카드에 PMC 지점(기본)·맵 전체 선택, 이 맵만 배치 카드에 포함', () => {
+  const a = app();
+  a.run("page='spawn';spawnTab='all'");
+  const html = a.run('P.spawn.render()');
+  assert.match(html, /웨이브 PMC 위치/);
+  assert.match(html, /data-segp="spawn\.wavePoints" data-v="pmc" class="on"/);
+  assert.match(html, /data-segp="spawn\.wavePoints" data-v="spread"/);
+  assert.equal(a.run("cardFor('spawn.wavePoints')"), 'hotspot');
+  assert.doesNotMatch(html, /APBS|ABPS/); // 다른 모드 이름 비교 금지
+});

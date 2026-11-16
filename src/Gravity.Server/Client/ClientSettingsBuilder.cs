@@ -81,7 +81,7 @@ public static class ClientSettingsBuilder
             Gravity.Shared.WaveMark.Prefix,
             CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled),
             // 1.0.1: 시작 분대 번호(WaveMark 끝 번호)와 "플레이어 시작 지점만" 스위치
-            plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly);
+            plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly, s.WavePoints);
     }
 
     /// <summary>웨이브 목록 → 클라 자료(원래 레이드 기준 초). 레이드 길이 밖 웨이브는 뺀다.</summary>
