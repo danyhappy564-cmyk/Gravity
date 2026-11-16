@@ -139,12 +139,12 @@ tests/Gravity.Tests/*Tests.cs
 - [ ] 진단 페이지에 `api/lastraid` 요약.
 - [ ] 브라우저(SPT 서버 켜고 `https://127.0.0.1:6969/gravity/`)에서 21페이지 렌더 오류 0, 저장 → 파일 반영 확인. Commit `웹: 실제 화면`.
 
-### Task 8: 인게임 검증(SlopBridge)
+### Task 8: 인게임 검증(자동 시험 도구)
 
-- [ ] 게임·서버 꺼짐 확인 → `user/mods/Gravity` 설치(새 폴더라 백업 대상 없음, 프로필 백업) → `probe-env.ps1 set -Hide acidphantasm-botplacementsystem`(ABPS만) → `bridge-kit.ps1 install`.
+- [ ] 게임·서버 꺼짐 확인 → `user/mods/Gravity` 설치(새 폴더라 백업 대상 없음, 프로필 백업) → `probe-env.ps1 set -Hide acidphantasm-botplacementsystem`(ABPS만) → `시험 도구 스크립트 install`.
 - [ ] 서버 로그: `[Gravity] 0.1.0 로드`, 감지 목록, 오류 없음.
 - [ ] 세관 레이드(`probe-raid.ps1 -Map bigmap`): 시작 로그 계획 vs 30초 간격 살아 있는 봇(역할·그룹) 10분 기록. 상한 도달 때 웨이브 대기/버림 판정.
 - [ ] 공장 레이드 1판(짧은 맵).
 - [ ] `errors.log`·LogOutput·서버 콘솔 확인.
-- [ ] 되돌리기: `bridge-kit.ps1 remove`, `probe-env.ps1 restore`. Gravity는 남기되 결과 보고 때 사용자에게 유지 여부 확인.
+- [ ] 되돌리기: 시험 도구 제거, `probe-env.ps1 restore`. Gravity는 남기되 결과 보고 때 사용자에게 유지 여부 확인.
 - [ ] 결과를 `docs/superpowers/specs` 옆 `docs/verification/2026-11-09-ingame.md`에 기록, Commit.
