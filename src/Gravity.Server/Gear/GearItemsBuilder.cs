@@ -149,7 +149,41 @@ public static class GearItemsBuilder
             }
             if(slots.Count>0)compatibility[parentId]=slots;
         }
-        return new GearItems(info, pools,compatibility) { Clothing = GearClothing.Build(custom, vanillaCustomization, sources) };
+        var donors = BuildDonors(bots.Types.Where(kv => kv.Value?.BotInventory?.Mods != null).Select(kv => (kv.Key,
+            (IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>>)kv.Value!.BotInventory!.Mods!.Where(m => m.Value != null).ToDictionary(m => m.Key.ToString(),
+                m => (IReadOnlyDictionary<string, string[]>)m.Value.Where(s => s.Value != null).ToDictionary(s => s.Key, s => s.Value.Select(x => x.ToString()).ToArray())))));
+        return new GearItems(info, pools,compatibility) { Clothing = GearClothing.Build(custom, vanillaCustomization, sources), DonorMods = donors };
+    }
+
+    private static readonly HashSet<string> PmcTypes = new(StringComparer.OrdinalIgnoreCase) { "usec", "bear", "pmcUSEC", "pmcBEAR" };
+
+    /// <summary>1.0.9: 봇 종류별 부품 표를 부모 id 하나의 표로 합친다. PMC(USEC·BEAR) 표에 있는 부모는 PMC 표끼리만 합치고(실제 게임 자료라 조합이 자연스럽다),
+    /// PMC 표에 없는 부모만 나머지 봇 표를 합친다.</summary>
+    public static Dictionary<string, IReadOnlyDictionary<string, string[]>> BuildDonors(
+        IEnumerable<(string Type, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>> Mods)> tables)
+    {
+        var list = tables.ToList();
+        var pmc = Merge(list.Where(t => PmcTypes.Contains(t.Type)));
+        var rest = Merge(list.Where(t => !PmcTypes.Contains(t.Type)));
+        foreach (var (parent, slots) in rest) pmc.TryAdd(parent, slots);
+        return pmc.ToDictionary(kv => kv.Key, kv => (IReadOnlyDictionary<string, string[]>)kv.Value.ToDictionary(s => s.Key, s => s.Value.Order(StringComparer.Ordinal).ToArray()));
+    }
+
+    private static Dictionary<string, Dictionary<string, HashSet<string>>> Merge(
+        IEnumerable<(string Type, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>> Mods)> tables)
+    {
+        var d = new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.Ordinal);
+        foreach (var (_, mods) in tables)
+            foreach (var (parent, slots) in mods)
+            {
+                if (!d.TryGetValue(parent, out var cur)) d[parent] = cur = new Dictionary<string, HashSet<string>>();
+                foreach (var (slot, ids) in slots)
+                {
+                    if (!cur.TryGetValue(slot, out var set)) cur[slot] = set = new HashSet<string>(StringComparer.Ordinal);
+                    set.UnionWith(ids);
+                }
+            }
+        return d;
     }
 
     /// <summary>필수 부품 칸 이름(소문자). 없으면 null(대부분 아이템).</summary>

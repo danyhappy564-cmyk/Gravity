@@ -36,6 +36,9 @@ public sealed class GearItems
     public IReadOnlyList<string> ModAttachments { get; }
     /// <summary>1.0.5 의상 탭: 모드 옷(Body·Feet) 목록.</summary>
     public IReadOnlyList<ClothingItem> Clothing { get; init; } = [];
+    /// <summary>1.0.9: 봇 원본 표의 부품 목록(부모 id → 칸 → 후보). USEC·BEAR 표가 먼저, 거기 없는 부모만 나머지 봇 표 합집합.
+    /// 봇 표에 없던 총을 넣을 때 "맞는 부품 전부"(CompatibleMods) 대신 쓴다(GearCompatibility.AddMissing).</summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>> DonorMods { get; init; } = new Dictionary<string, IReadOnlyDictionary<string, string[]>>();
 
     public static readonly string[] WeaponSlots = ["FirstPrimaryWeapon", "SecondPrimaryWeapon", "Holster"];
 

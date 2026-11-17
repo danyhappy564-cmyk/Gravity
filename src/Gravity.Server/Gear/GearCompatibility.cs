@@ -17,7 +17,11 @@ public static class GearCompatibility
         while(pending.Count>0&&seen.Count<MaxParents)
         {
             var(id,depth,ancestors)=pending.Dequeue();
-            if(!seen.Add(id)||depth>=MaxDepth||!items.CompatibleMods.TryGetValue(id,out var slots))continue;
+            items.DonorMods.TryGetValue(id,out var donor);
+            items.CompatibleMods.TryGetValue(id,out var compat);
+            if(!seen.Add(id)||depth>=MaxDepth||(donor==null&&compat==null))continue;
+            // 1.0.9: 봇 원본 표에 이 부모가 있으면 그 표의 칸만 쓴다(맞는 부품 전부 대신). 빌린 표에 없는 필수 칸만 호환 목록으로 채운다.
+            var slots=donor==null?compat!:WithRequired(donor,compat,items.Info.GetValueOrDefault(id)?.RequiredSlots);
             bool exists=mods.TryGetValue(id,out var current);
             if(!exists){current=new();mods[id]=current;added++;}
             foreach(var(slot,candidates) in slots)
@@ -34,5 +38,20 @@ public static class GearCompatibility
             }
         }
         return added;
+    }
+
+    private static IReadOnlyDictionary<string,string[]> WithRequired(IReadOnlyDictionary<string,string[]> donor,
+        IReadOnlyDictionary<string,string[]>? compat, IReadOnlySet<string>? required)
+    {
+        if(compat==null||required==null||required.Count==0)return donor;
+        Dictionary<string,string[]>? merged=null;
+        foreach(var(slot,ids) in compat)
+        {
+            if(!required.Any(r=>string.Equals(r,slot,StringComparison.OrdinalIgnoreCase)))continue;
+            if(donor.Keys.Any(k=>string.Equals(k,slot,StringComparison.OrdinalIgnoreCase)))continue;
+            merged??=new Dictionary<string,string[]>(donor);
+            merged[slot]=ids;
+        }
+        return merged??donor;
     }
 }
