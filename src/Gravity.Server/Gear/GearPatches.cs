@@ -424,26 +424,49 @@ public class GearBotPatch : AbstractPatch
     internal static string BotLine(GearPick pick, BotBase bot, GearItems? items = null)
     {
         items ??= GearRuntime.Items;
-        string? weapon = null;
+        string? weapon = null, weaponItem = null;
         double armor = 0;
         bool vest = false, ear = false, plate = false;
         foreach (var it in bot.Inventory?.Items ?? [])
         {
             var tpl = it.Template.ToString();
-            if (it.SlotId == "FirstPrimaryWeapon") weapon = tpl;
+            if (it.SlotId == "FirstPrimaryWeapon") { weapon = tpl; weaponItem = it.Id.ToString(); }
             var info = items.Info.GetValueOrDefault(tpl);
             if (info is { ArmorClass: > 0 }) armor = Math.Max(armor, info.ArmorClass);
             if (it.SlotId == "ArmorVest" || (it.SlotId == "TacticalVest" && info is { ArmorClass: > 0 })) vest = true;
             if (it.SlotId == "Earpiece") ear = true;
             if (string.Equals(it.SlotId, "front_plate", StringComparison.OrdinalIgnoreCase) || string.Equals(it.SlotId, "back_plate", StringComparison.OrdinalIgnoreCase)) plate = true;
         }
-        var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon);
+        var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon) + (items.Info.GetValueOrDefault(weapon)?.Mod == true ? "*" : "");
+        // 1.0.9 측정: 주무기 아래(부모 사슬) 부품 수와 조준경 여부(마운트 위 조준경 포함)
+        var (parts, scope) = WeaponParts(bot.Inventory?.Items, weaponItem);
         string Src(MongoId? id) => id is { } m ? items.Clothing.FirstOrDefault(c => c.Id == m.ToString())?.Source ?? "vanilla" : "-";
         string On(bool b) => b ? "O" : "-";
         return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}"
             + $"\t{L.T("방탄복", "vest")} {On(vest)}\t{L.T("헤드셋", "ear")} {On(ear)}\t{L.T("앞뒤판", "plate")} {On(plate)}"
             + $"\t{L.T("옷", "outfit")} {Src(bot.Customization?.Body)}/{Src(bot.Customization?.Feet)}"
+            + $"\t{L.T("조준경", "scope")} {On(scope)}\t{L.T("부품", "parts")} {parts}"
             + Belt(bot, items);
+    }
+
+    private static (int Parts, bool Scope) WeaponParts(IEnumerable<SPTarkov.Server.Core.Models.Eft.Common.Tables.Item>? all, string? weaponItem)
+    {
+        if (all == null || weaponItem == null) return (0, false);
+        var list = all.ToList();
+        var parent = list.Where(i => i.ParentId != null).GroupBy(i => i.Id.ToString()).ToDictionary(g => g.Key, g => g.First().ParentId!);
+        bool Under(string id)
+        {
+            for (int d = 0; d < 20 && parent.TryGetValue(id, out var p); d++) { if (p == weaponItem) return true; id = p; }
+            return false;
+        }
+        int n = 0; bool scope = false;
+        foreach (var it in list)
+        {
+            if (!Under(it.Id.ToString())) continue;
+            n++;
+            if (it.SlotId?.StartsWith("mod_scope", StringComparison.OrdinalIgnoreCase) == true) scope = true;
+        }
+        return (n, scope);
     }
 
     /// <summary>1.0.7 PackNStrap: 벨트를 찬 봇이면 벨트 이름과 벨트 안 탄창 수(안 찼으면 빈 글자라 기록 모양 그대로).</summary>
