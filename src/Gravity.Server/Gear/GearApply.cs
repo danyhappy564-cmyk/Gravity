@@ -47,6 +47,8 @@ public sealed class GearContext
         if (Black.Contains(id)) return true;
         if (Info(id) is not { } info) return false;
         if (info.Quest && (Settings.NoQuest || Settings.BlockQuest)) return true;
+        // 1.0.9: 모드 아이템 전체 스위치가 꺼지면 모드 아이템은 막는다. PackNStrap 벨트는 따로 있는 벨트 설정(pns.on)을 따른다.
+        if (info.Mod && !Settings.ModsOn && !GearBelts.IsBelt(Items, id)) return true;
         if (info.Mod && (Settings.DisabledSources.Contains(info.Source) || !Raid.ModAllowed(id) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
         // 가져온 원작 프리셋 표(only): 모드 아이템은 어느 칸에서도 쓰지 않는다(부착물·탄약·소모품 포함, 모드 설정과 무관).
         if (info.Mod && Settings.TableFor(Pick.RoleId, Pick.Tier).Only) return true;

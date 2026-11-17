@@ -244,7 +244,12 @@ public static partial class ConfigModel
     /// <summary>변형 맵 적용 기본값(웹 makeDefaults와 같음): 등대만 끔(Manimal 등대는 스폰 모드를 스스로 끈다).</summary>
     public static bool DefaultVariant(string id) => id != "lighthouse";
 
-    public static GravityConfig Default() => FromState(null, []);
+    /// <summary>설정 파일이 없을 때(새 설치). 1.0.9: 모드 아이템은 새 설치만 꺼짐으로 시작한다(기존 파일은 값이 없으면 켜짐).</summary>
+    public static GravityConfig Default()
+    {
+        var c = FromState(null, []);
+        return c.Gear is { } g ? c with { Gear = g with { ModsOn = false } } : c;
+    }
 
     public static GravityConfig FromState(JsonNode? state, List<string> clamped)
     {

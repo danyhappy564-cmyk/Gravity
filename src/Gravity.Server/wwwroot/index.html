@@ -748,7 +748,7 @@ function makeDefaults(){
     roles,
     weapons:{range:Object.fromEntries(MAPS.map(m=>[m.id,['woods','lighthouse','shoreline'].includes(m.id)?65:m.id.startsWith('factory')||m.id==='laboratory'||m.id==='labyrinth'?15:40])),
       looseAmmo:{on:true,chance:40,limit:2},bigMag:{on:true,count:1},stock:true,dust:true,scope:true,muzzle:{force:false,chance:55},partTiers:true,scopeLimit:2,tacLimit:1,night:{nvg:60,thermal:8,light:40}},
-    mods:{disabledSources:[],subset:true,weapons:30,attachments:150,equipment:30,mult:100,pmcOnly:true,allowed},
+    mods:{on:false,disabledSources:[],subset:true,weapons:30,attachments:150,equipment:30,mult:100,pmcOnly:true,allowed},
     client:{preload:6,perFrame:1,perf:'balanced',pmcAnywhere:false},
     orbit:{extractRefillMode:'infinite',extractRefillCap:20,refillAfterExtract:true,nearAsGhost:false,respectTakeover:true,ghostCount:true},
     diag:{log:'summary',report:true,botLog:false},
@@ -1881,11 +1881,14 @@ P.itemtiers={desc:T('무기·방어구·탄약이 몇 티어부터 나오는지 
 P.tieredit={desc:T('봇마다 T1~T7에 들고 나올 아이템과 비율을 고칩니다. 왼쪽에서 봇을 켜고 고르고, 오른쪽에서 티어와 칸을 골라 고칩니다.','Edit what each bot carries in T1–T7. Pick a bot on the left, then a tier and slot.'),render(){return `<div class="stack">${gearOff()}${tierEditor()}</div>`;}};
 
 P.items={desc:T('모드로 추가된 무기·장비를 봇이 얼마나 쓸지 정합니다. 레이드마다 일부만 쓰면 램을 크게 아낍니다.','How much modded gear bots use. A per-raid subset saves a lot of RAM.'),render(){
-  const m=state.mods,dis=!m.subset;
+  const m=state.mods,off=m.on===false,dis=off||!m.subset;
   const all=(MODS[modTab]||[]).filter(([,n])=>n.toLowerCase().includes(modSearch.toLowerCase()));
   const sel=(MODS[modTab]||[]).filter(([id])=>(m.allowed[modTab]||{})[id]).reduce((a,[, ,c])=>a+c,0);
   const save=Math.round(((200-m.weapons)/200*90+(1000-m.attachments)/1000*60+(200-m.equipment)/200*35)*(m.subset?1:0));
-  return `<div class="stack">${gearOff()}<div class="grid g2">
+  return `<div class="stack">${gearOff()}
+  ${card(T('모드 아이템 사용','Use mod items'),sw('mods.on',T('모드 무기 · 장비 · 부품을 봇에게 쓰기','Let bots use mod weapons, gear and parts'),T('새로 설치하면 꺼져 있습니다. 끄면 다른 모드가 추가한 무기·장비·부품을 봇이 쓰지 않습니다(PackNStrap 벨트는 아래 벨트 설정을 따름).','Off on a fresh install. When off, bots never use weapons, gear or parts added by other mods (PackNStrap belts follow the belt setting below).'))
+    +notice(T('모드 무기·장비를 켜면 이상한 조합이 나올 수 있습니다. 티어 편집기에서 무기·부품을 정리해 주세요.','Mod weapons and gear can produce odd combinations. Tidy weapons and parts in the Tier editor.'),off?'flat':'warn'),{icon:'⊕'})}
+  <div class="grid g2"${off?' style="opacity:.55"':''}>
   ${card(T('레이드마다 일부만 사용','Per-raid subset'),sw('mods.subset',T('켜기 (램 절약)','Enable (save RAM)'),T('레이드 시작 때 이번 판 모드 아이템을 뽑습니다. 무기를 뽑으면 그 무기 전용 부품은 자동 포함.','Rolls this raid’s mod items. A rolled weapon brings its own parts.'))
     +slider('mods.weapons',T('모드 무기','Mod weapons'),'',{min:0,max:200,unit:'',dis})+slider('mods.attachments',T('모드 부착물','Mod attachments'),'',{min:0,max:1000,step:10,unit:'',dis,adv:true})
     +slider('mods.equipment',T('모드 장비','Mod equipment'),'',{min:0,max:200,unit:'',dis})
@@ -1994,8 +1997,10 @@ let customTierPresets=[];
 let customSpawnPresets=[];
 /* 적용 순번: 파일 프리셋을 읽는 동안 다른 프리셋을 고르거나 장비를 고치면 늦게 온 응답은 버린다(Codex 6차 8번) */
 let tierApplySeq=0;
+/* 1.0.9: 장비 프리셋을 적용해도 모드 아이템 전체 스위치(mods.on)는 사용자가 정한 값 그대로 둔다(INBOX #64). */
+function keepModsOn(f){const on=state.mods&&state.mods.on;f();if(state.mods&&on!==undefined)state.mods.on=on;}
 function tierPresetApply(id){const seq=++tierApplySeq;const base=DEFAULTS.gear.tiers;const bp=TIER_PRESETS.find(x=>x.id===id),cs=customTierPresets.find(x=>x.id===id);
-  if(bp&&bp.file){fetch(bp.file).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(j=>{if(seq!==tierApplySeq)return;GEAR_KEYS.forEach(k=>{state[k]=mergeInto(clone(DEFAULTS[k]),(j.settings||{})[k]||{});});state.gear.poolVer=2;if(Array.isArray(j.tiers)&&j.tiers.length===7)state.gear.tiers=mergeInto(clone(DEFAULTS.gear.tiers),j.tiers);state.tierData=mergeInto(tierDataDefaults(),j.tables||{});if(!((j.settings||{}).gear&&j.settings.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=clone(j.ownTables||{});state.tierPreset=id;state.gear.tiers.forEach(t=>{if(t.sMin==null)t.sMin=Math.max(1,(t.side||2)-2);});rebuildSlots();toast(fmt(tr(T('장비 프리셋 적용: {n}','Loadout preset applied: {n}')),{n:tr(bp.name)}));render();}).catch(e=>toast(tr(T('프리셋 파일을 읽지 못했습니다: ','Could not read the preset file: '))+e.message));return;}if(cs&&cs.gearSnap)GEAR_KEYS.forEach(k=>{if(cs.gearSnap[k]!==undefined)state[k]=mergeInto(clone(DEFAULTS[k]),cs.gearSnap[k]);});else if(bp){GEAR_KEYS.forEach(k=>state[k]=clone(DEFAULTS[k]));Object.entries(bp.patch||{}).forEach(([k,v])=>setIn(state,k,v));}if(!state.gear.lv)state.gear.lv=lvDefaults();const c=customTierPresets.find(x=>x.id===id);if(c&&c.data)state.tierData=clone(c.data);if(id==='auto'||id==='default')state.tierData=tierDataDefaults();state.gear.tiers=c?clone(c.tiers):base.map((t,i,all)=>clone(TIER_PRESETS.find(x=>x.id===id).f(clone(t),i,clone(all))));state.tierPreset=id;if(cs&&!(cs.gearSnap&&cs.gearSnap.gear&&cs.gearSnap.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=Object.fromEntries(Object.keys(state.tierData).filter(k=>!isGroup(k)).map(k=>[k,true]));if(tRole&&!state.tierOwn[tRole])tBot=grpOf(tRole);else if(!isGroup(tBot)&&!state.tierOwn[tBot])tBot=grpOf(tBot);}
+  if(bp&&bp.file){fetch(bp.file).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(j=>{if(seq!==tierApplySeq)return;keepModsOn(()=>GEAR_KEYS.forEach(k=>{state[k]=mergeInto(clone(DEFAULTS[k]),(j.settings||{})[k]||{});}));state.gear.poolVer=2;if(Array.isArray(j.tiers)&&j.tiers.length===7)state.gear.tiers=mergeInto(clone(DEFAULTS.gear.tiers),j.tiers);state.tierData=mergeInto(tierDataDefaults(),j.tables||{});if(!((j.settings||{}).gear&&j.settings.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=clone(j.ownTables||{});state.tierPreset=id;state.gear.tiers.forEach(t=>{if(t.sMin==null)t.sMin=Math.max(1,(t.side||2)-2);});rebuildSlots();toast(fmt(tr(T('장비 프리셋 적용: {n}','Loadout preset applied: {n}')),{n:tr(bp.name)}));render();}).catch(e=>toast(tr(T('프리셋 파일을 읽지 못했습니다: ','Could not read the preset file: '))+e.message));return;}if(cs&&cs.gearSnap)keepModsOn(()=>GEAR_KEYS.forEach(k=>{if(cs.gearSnap[k]!==undefined)state[k]=mergeInto(clone(DEFAULTS[k]),cs.gearSnap[k]);}));else if(bp){keepModsOn(()=>GEAR_KEYS.forEach(k=>state[k]=clone(DEFAULTS[k])));Object.entries(bp.patch||{}).forEach(([k,v])=>setIn(state,k,v));}if(!state.gear.lv)state.gear.lv=lvDefaults();const c=customTierPresets.find(x=>x.id===id);if(c&&c.data)state.tierData=clone(c.data);if(id==='auto'||id==='default')state.tierData=tierDataDefaults();state.gear.tiers=c?clone(c.tiers):base.map((t,i,all)=>clone(TIER_PRESETS.find(x=>x.id===id).f(clone(t),i,clone(all))));state.tierPreset=id;if(cs&&!(cs.gearSnap&&cs.gearSnap.gear&&cs.gearSnap.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=Object.fromEntries(Object.keys(state.tierData).filter(k=>!isGroup(k)).map(k=>[k,true]));if(tRole&&!state.tierOwn[tRole])tBot=grpOf(tRole);else if(!isGroup(tBot)&&!state.tierOwn[tBot])tBot=grpOf(tBot);}
 function tierRules(){const g=state.gear,t=g.tiers[tierSel],p='gear.tiers.'+tierSel+'.';let gapWarn='';for(let i=1;i<g.tiers.length;i++)if(g.tiers[i].min!==g.tiers[i-1].max+1){gapWarn=notice(fmt(tr(T('티어 {a}와 {b} 사이 레벨이 비거나 겹칩니다.','Gap/overlap between tier {a} and {b}.')),{a:i,b:i+1}),'warn');break;}
   const tabs='';return card(T('상한 · 범위','Caps & ranges'),gapWarn+`<div class="grid g3">
      <div><div class="sub">${tr(T('레벨','Levels'))}</div><div class="ctl"><div class="tierin">${num(p+'min',1,100)}–${num(p+'max',1,100)}</div></div>
@@ -2036,6 +2041,8 @@ function blockOf(it,sec,bot,t){const tk=bot;bot=grpOf(bot);
   if(!modAllowed(it.src,sec))return {k:'mod',l:T('허용 안 한 모드','Mod not allowed')};
   // PackNStrap 벨트는 서버 GearBelts.Decide와 같게: 판마다 일부만 쓰기·모드 아이템 PMC만은 보지 않고 벨트 설정(켬·PMC만)을 따른다
   const belt=sec==='armor'&&(it.slot||catIndex()[it.id]?.slot)==='belt';
+  // 1.0.9: 서버 GearContext.Blocked와 같게 모드 아이템 전체 스위치가 꺼지면 모드 아이템은 막힘(벨트 제외)
+  if(!belt&&it.mod&&state.mods.on===false)return {k:'mod',l:T('모드 아이템 꺼짐','Mod items off')};
   if(belt){const p=state.gear.pns||{};if(p.on===false)return {k:'mod',l:T('벨트 입히기 꺼짐','Belts turned off')};
     if(p.pmcOnly!==false&&bot!=='pmc')return {k:'mod',l:T('벨트는 PMC만','Belts: PMC only')};}
   // 서버 GearContext.Blocked와 같게: 판마다 일부만 쓰기에서 그 종류 0개, 모드 장비는 PMC만
@@ -2877,6 +2884,8 @@ function migratePmcChance(tierData,roles){const pmc=tierData&&tierData.pmc,nw=ti
   if(Array.isArray(pmc))pmc.forEach((d,t)=>{if(!d||!d.chance||!nw[t])return;[['armorVest',40,95],['earpiece',15,85]].forEach(([k,lo,hi])=>{if(d.chance[k]===Math.round(lo+(hi-lo)*t/6))d.chance[k]=nw[t].chance[k];});});
   ['usec','bear'].forEach(id=>{const r=roles&&roles[id];if(r&&r.frontPlate===90)r.frontPlate=100;});}
 function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
+  // 1.0.9: 모드 아이템 스위치는 새 설치만 꺼짐. 값이 없는 기존 설정은 서버(mods.on 기본 켜짐)와 같게 켜 둔다(다음 저장에 꺼짐이 굳지 않게).
+  if(raw&&(!raw.mods||raw.mods.on===undefined))state.mods.on=true;
   // 1.0.7: 저장된 티어 표(배열이라 통째로 덮임)에 새 확률 칸(벨트)이 없으면 기본값을 채운다. 서버도 같은 기본식(GearDefaults.Chance)을 쓴다.
   Object.entries(state.tierData||{}).forEach(([b,arr])=>(arr||[]).forEach((d,t)=>{if(!d)return;d.chance||={};CHSLOTS.forEach(([k])=>{if(d.chance[k]==null){const dv=(DEFAULTS.tierData[b]||DEFAULTS.tierData.pmc)?.[t]?.chance?.[k];if(dv!=null)d.chance[k]=dv;}});}));
   if(!(raw&&raw.gear&&raw.gear.poolVer>=2)){Object.values(state.tierData||{}).forEach(arr=>(arr||[]).forEach(d=>['weapons','armor','ammo','meds','look'].forEach(sec=>{if(d[sec])Object.keys(d[sec]).forEach(k=>{d[sec][k]={};});})));state.gear.poolVer=2;}

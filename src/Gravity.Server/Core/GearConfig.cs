@@ -55,6 +55,8 @@ public sealed record GearSettings(
     public IReadOnlySet<string> ThermalAdd { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> ThermalRemove { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> DisabledSources { get; init; } = new HashSet<string>();
+    /// <summary>1.0.9 모드 아이템 전체 스위치(mods.on). 기존 설정 파일에 값이 없으면 켜짐, 새 설치(ConfigModel.Default)는 꺼짐.</summary>
+    public bool ModsOn { get; init; } = true;
     /// <summary>1.0.5 의상 탭: 옷을 허용한 모드 출처. null = 한 번도 저장 안 함 → 봇 외형을 바꾸지 않음.</summary>
     public IReadOnlySet<string>? ClothingOn { get; init; }
     /// <summary>부착물에도 가격 티어 적용(웹 weapons.partTiers, 기본 켬).</summary>
@@ -287,7 +289,7 @@ public static partial class ConfigModel
             r.Bool("mods.subset", true), (int)r.Num("mods.weapons", 30, 0, 1000), (int)r.Num("mods.attachments", 150, 0, 5000),
             (int)r.Num("mods.equipment", 30, 0, 1000), r.Num("mods.mult", 100, 0, 200), r.Bool("mods.pmcOnly", true),
             bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
-        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal),
+        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal), ModsOn = r.Bool("mods.on", true),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)) };
     }

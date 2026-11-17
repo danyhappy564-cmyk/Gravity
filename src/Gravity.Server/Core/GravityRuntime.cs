@@ -396,6 +396,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         Gravity.Gear.GearRuntime.LogBots = Store.Current.DiagOrDefault.BotLog;
         if (Gravity.Gear.GearRuntime.LogBots) DiagLog.NewGearRaid($"{DateTime.Now:s} {mapId} " + L.T("봇 장비 기록(역할 티어 레벨 주무기 방탄)", "bot gear log (role tier level primary armor)"));
         var gr = Gravity.Gear.GearRuntime.Raid;
+        if (!gear.ModsOn) return L.T("장비: Gravity(모드 아이템 꺼짐)", "gear: Gravity (mod items off)");
         return gr.Allowed != null ? L.T($"장비: 모드 아이템 무기 {gr.Weapons}·장비 {gr.Equipment}·부품 {gr.Attachments}", $"gear: mod items {gr.Weapons} weapons · {gr.Equipment} gear · {gr.Attachments} attachments") : L.T("장비: Gravity", "gear: Gravity");
     }
 
