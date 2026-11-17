@@ -1473,8 +1473,8 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
     +slider(s+'scav.perPlayer',T('플레이어당 스캐브 한도','Scavs per player'),'',{max:100,unit:UI.ppl})
     +slider(s+'hardStop.scavPct',T('남은 레이드가 이 비율 이하면 스캐브 중단','Stop scavs below this % left'),'',{max:90})
     +slider(s+'scav.pscavChance',T('플레이어 스캐브 섞일 확률','Player-scav chance'),'')
-    +seg(s+'scav.remainMode',T('스캐브 레이드 때 PMC 남기는 방식','PMC groups left for scav raids by'),T('비율 = 이번 판 PMC 무리 중 몇 %를 남김. 개수 = 최소~최대 무리를 남기고 판마다 그 사이에서 굴립니다(있는 무리 수보다 많이는 못 남김).','Share = keep this % of the raid’s PMC groups. Count = keep a min–max number of groups, rolled each raid (never more than exist).'),[['pct',T('비율','Share')],['count',T('개수','Count')]])
-    +(sc.remainMode==='count'?range(s+'scav.remainMin',s+'scav.remainMax',T('스캐브 레이드 때 남는 PMC 무리','PMC groups left for scav raids'),'',{min:0,max:30,unit:T('무리',' groups')})
+    +seg(s+'scav.remainMode',T('스캐브 레이드 때 PMC 남기는 방식','PMC groups left for scav raids by'),T('비율 = 이번 판 PMC 무리 중 몇 %를 남김. 개수 = 최소~최대 무리를 남기고 판마다 그 사이에서 굴립니다(있는 무리 수보다 많이는 못 남김). 남은 시간 = 스캐브로 늦게 들어간 만큼 줄여 남깁니다(20분 맵에 10분 남았으면 50%).','Share = keep this % of the raid’s PMC groups. Count = keep a min–max number of groups, rolled each raid (never more than exist). Time left = keep the share of raid time still left (10 of 20 minutes left = 50%).'),[['pct',T('비율','Share')],['count',T('개수','Count')],['time',T('남은 시간','Time left')]])
+    +(sc.remainMode==='time'?'':sc.remainMode==='count'?range(s+'scav.remainMin',s+'scav.remainMax',T('스캐브 레이드 때 남는 PMC 무리','PMC groups left for scav raids'),'',{min:0,max:30,unit:T('무리',' groups')})
       :slider(s+'scav.playerScavRemain',T('스캐브 레이드 때 남는 PMC 무리','PMC groups left for scav raids'),''))
     +sw(s+'scav.startMarksman',T('시작 저격 스캐브','Starting marksmen'),'');
   const dist=sw(s+'protect.on',T('시작 직후 보호','Start protection'),'')

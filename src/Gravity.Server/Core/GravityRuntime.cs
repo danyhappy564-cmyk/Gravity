@@ -168,8 +168,14 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         if (scavRaid && plan.Groups.Count > 0)
         {
             var sc = cfg.SpawnFor(id).Scav;
-            var keep = KeepForScavRaid(plan.Groups, sc, s);
-            var how = sc.RemainMode == "count" ? $"{sc.RemainMin}–{sc.RemainMax}" : $"{sc.PlayerScavRemain:0}%";
+            var frac = raidSec > 0 ? Math.Clamp((raidSec - simStart) / (double)raidSec, 0, 1) : 1;
+            var keep = KeepForScavRaid(plan.Groups, sc, s, frac);
+            var how = sc.RemainMode switch
+            {
+                "count" => $"{sc.RemainMin}–{sc.RemainMax}",
+                "time" => L.T($"남은 시간 {frac * 100:0}%", $"time left {frac * 100:0}%"),
+                _ => $"{sc.PlayerScavRemain:0}%"
+            };
             scavNote = " / " + L.T($"스캐브 레이드: PMC 무리 {plan.Groups.Count}개 중 {keep.Count}개 남김({how})",
                 $"scav raid: kept {keep.Count} of {plan.Groups.Count} PMC groups ({how})");
             plan = plan with { Groups = keep };
@@ -360,9 +366,11 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, double pct, int seed) =>
         Keep(groups, (int)Math.Round(groups.Count * Math.Clamp(pct, 0, 100) / 100.0, MidpointRounding.AwayFromZero), new Random(seed ^ 0x5CA7));
 
-    /// <summary>1.0.2: 남김 방식이 "count"면 무리 수를 RemainMin~Max에서 굴린다(있는 무리 수를 넘지 않음).</summary>
-    public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, ScavSettings sc, int seed)
+    /// <summary>1.0.2: 남김 방식이 "count"면 무리 수를 RemainMin~Max에서 굴린다(있는 무리 수를 넘지 않음).
+    /// 1.0.9: "time"이면 남은 레이드 시간 비율(remainFrac, 0~1)만큼 남긴다.</summary>
+    public static List<PmcGroup> KeepForScavRaid(List<PmcGroup> groups, ScavSettings sc, int seed, double remainFrac = 1)
     {
+        if (sc.RemainMode == "time") return KeepForScavRaid(groups, Math.Clamp(remainFrac, 0, 1) * 100, seed);
         if (sc.RemainMode != "count") return KeepForScavRaid(groups, sc.PlayerScavRemain, seed);
         var rnd = new Random(seed ^ 0x5CA7);
         var n = rnd.Next(Math.Min(sc.RemainMin, sc.RemainMax), Math.Max(sc.RemainMin, sc.RemainMax) + 1);

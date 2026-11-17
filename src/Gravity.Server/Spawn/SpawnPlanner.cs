@@ -105,7 +105,10 @@ public static class SpawnPlanner
         // 4) 스캐브 레이드 시작 지연: 이른 항목 빼고 시각을 당긴다
         if (simStartSec > 0)
         {
-            groups = groups.Where(g => g.TimeSec >= simStartSec).Select(g => g with { TimeSec = g.TimeSec - simStartSec }).ToList();
+            // 1.0.9: "시작만" 방식은 무리가 전부 1~5초라 다 지워져 스캐브 레이드 PMC가 0명이었다(INBOX #65).
+            // 이 방식의 시작 무리는 "이미 레이드 안에 있던 PMC"로 남기고(시각 그대로), 몇 개 남길지는 KeepForScavRaid가 정한다.
+            groups = groups.Where(g => g.TimeSec >= simStartSec || (ms.Style == "start" && g.IsStart))
+                .Select(g => g.TimeSec >= simStartSec ? g with { TimeSec = g.TimeSec - simStartSec } : g).ToList();
             scav = scav.Where(w => w.TimeMinSec >= simStartSec)
                 .Select(w => w with { TimeMinSec = w.TimeMinSec - simStartSec, TimeMaxSec = w.TimeMaxSec - simStartSec }).ToList();
         }
