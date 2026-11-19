@@ -35,6 +35,7 @@ public static class SpawnPlanner
         var scav = new List<ScavWave>();
         var cap = new CapTracker(clientAliveCap && s.GroupCap.Scope == "alive" ? s.GroupCap with { On = false } : s.GroupCap);
         var dropped = 0;
+        var startSquads = 0;
 
         // 1) 시작 PMC
         var startCount = s.StartMode == "count" ? rnd.Next(Math.Min(s.StartPmcMin, s.StartPmcMax), Math.Max(s.StartPmcMin, s.StartPmcMax) + 1)
@@ -114,6 +115,8 @@ public static class SpawnPlanner
         }
         groups.Sort((a, b) => a.TimeSec.CompareTo(b.TimeSec));
         scav.Sort((a, b) => a.TimeMinSec.CompareTo(b.TimeMinSec));
+        // 1.1.0 보충 상한: 시작 뒤 PMC 분대·스캐브 웨이브를 시각순으로 상한 인원까지만(클라도 같은 상한으로 레이드 중 보충을 센다).
+        dropped += TrimRespawn(groups, scav, s.MaxRespawnPmc, s.MaxRespawnScav);
         if (s.TotalCap > 0) dropped += TrimToTotal(groups, scav, s.TotalCap);
         return new SpawnPlan(map.Id, raidSec, simStartSec, seed, ms.Style, groups, scav, ms.Cap, dropped);
 
@@ -124,10 +127,20 @@ public static class SpawnPlanner
             while (left > 0)
             {
                 var want = Math.Min(left, PickSize(s.Squad, rnd));
+                // 1.1.0 시작 분대: 기본(100·5·0)이면 난수를 더 쓰지 않아 1.0.9와 같은 계획이 나온다.
+                if (isStart && want > 1)
+                {
+                    want = Math.Min(want, Math.Max(1, s.StartGroupMaxSize));
+                    if (s.StartGroupMaxCount > 0 && startSquads >= s.StartGroupMaxCount) want = 1;
+                    else if (s.StartGroupChance < 100 && rnd.NextDouble() * 100 >= s.StartGroupChance) want = 1;
+                }
                 left -= want;
                 var fit = cap.Fit(want, out var l);
                 foreach (var size in fit)
+                {
+                    if (isStart && size > 1) startSquads++;
                     groups.Add(new PmcGroup(time(), rnd.NextDouble() * 100 < s.UsecPct, size, Pick(DiffNames, s.Diff, rnd), isStart));
+                }
                 lost += l;
             }
             return lost;
@@ -185,6 +198,34 @@ public static class SpawnPlanner
     /// 1.0.8 레이드 전체 봇 총량(INBOX #61): 시작 PMC·시작 스캐브부터 시각 순으로 세어 총량을 넘는 PMC 분대·스캐브 웨이브를 뺀다.
     /// 분대는 나누지 않는다(통째로 빼고 뒤의 작은 분대는 들어갈 수 있음). 뺀 PMC 인원을 돌려준다. 클라는 실제 생성 수로 다시 막는다.
     /// </summary>
+    /// <summary>1.1.0 보충 상한: 시작이 아닌 PMC 분대·스캐브 웨이브를 시각순으로 인원 상한까지만 남긴다(0 = 제한 없음). 버린 PMC 인원.</summary>
+    internal static int TrimRespawn(List<PmcGroup> groups, List<ScavWave> scav, int maxPmc, int maxScav)
+    {
+        int lost = 0;
+        if (maxPmc > 0)
+        {
+            int used = 0;
+            var keep = new List<PmcGroup>();
+            foreach (var g in groups)
+            {
+                if (g.IsStart || used + g.Size <= maxPmc) { if (!g.IsStart) used += g.Size; keep.Add(g); }
+                else lost += g.Size;
+            }
+            groups.Clear(); groups.AddRange(keep);
+        }
+        if (maxScav > 0)
+        {
+            int used = 0;
+            scav.RemoveAll(w =>
+            {
+                if (w.IsStart) return false;
+                if (used + w.SlotsMax <= maxScav) { used += w.SlotsMax; return false; }
+                return true;
+            });
+        }
+        return lost;
+    }
+
     internal static int TrimToTotal(List<PmcGroup> groups, List<ScavWave> scav, int total)
     {
         var items = new List<(int t, bool start, int n, object o)>();

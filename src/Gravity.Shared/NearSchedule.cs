@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Gravity.Shared
 {
     /// <summary>근처 보충으로 넣을 한 자리. Role = pmcUSEC, pmcBEAR, assault 또는 사용자 지정 역할. Count = 무리 크기.</summary>
-    public sealed record NearSlot(string Role, int Count);
+    public sealed record NearSlot(string Role, int Count, bool Custom = false);
 
     /// <summary>
     /// 근처 보충의 시각과 자리 구성을 정하는 순수 일정. 지점 계산과 실제 생성은 호출 쪽(NearDirector) 몫이다.
@@ -80,7 +80,7 @@ namespace Gravity.Shared
                 if (count > room) count = room;
                 if (second) _used2 += count; else _used1 += count;
                 if (IsBossRole(role)) role = "assault";
-                return new NearSlot(role, count);
+                return new NearSlot(role, count, true);
             }
             return null;
         }

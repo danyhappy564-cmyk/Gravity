@@ -298,6 +298,15 @@ namespace Gravity.Client.Directors
                 c.ExtractQueue.Clear();
                 return PmcResult.Unavailable;
             }
+            // 1.1.0 보충 상한: 남은 인원에 분대가 안 들어가면 보충 PMC를 멈춘다(총량과 같게).
+            if (c.RespawnRoom(true) < size)
+            {
+                c.UseRespawn(true, size);
+                c.Dropped["respawn"] += Math.Max(0, groups.Count - st.RefillIndex) + c.ExtractQueue.Count;
+                st.RefillIndex = groups.Count;
+                c.ExtractQueue.Clear();
+                return PmcResult.Unavailable;
+            }
             // 상한 표 "PMC 동시 무리 최대"(1.0): 꽉 찼으면 자리가 없는 것과 같이 기다린다(우선 줄에 남음).
             if (c.PmcGroupsFull()) { st.LastSize = size; return PmcResult.NoRoom; }
             // 맵 상한: 생존·로딩·대기·예약을 모두 세고 제외 팩션을 뺀 빈자리에 분대가 들어가야 예약하고 요청한다(Codex 검토 1번).
@@ -307,6 +316,7 @@ namespace Gravity.Client.Directors
             c.Owned.Add(wave, wave);
 
             c.Groups.TryUse(size);
+            if (c.S.RespawnPmcLeft >= 0) c.RespawnPmcUsed += size;
             if (extra) c.ExtractQueue.Dequeue();
             else st.RefillIndex++;
             bc.ActivateBotsByWave(wave);
@@ -321,6 +331,13 @@ namespace Gravity.Client.Directors
             {
                 if (left <= 0) { c.NoteTotal("스캐브"); return 0; }
                 n = left; // 1.0.8 레이드 전체 봇 총량까지만
+            }
+            // 1.1.0 보충 상한: 시작 스캐브는 서버 웨이브로 나오므로 여기서 내는 스캐브는 모두 다시 넣는 인원이다.
+            int respawn = c.RespawnRoom(false);
+            if (respawn < n)
+            {
+                if (respawn <= 0) { c.UseRespawn(false, 1); return 0; }
+                n = respawn;
             }
             EnsureZones(st, spawner, c);
             var s = c.S;
@@ -370,6 +387,7 @@ namespace Gravity.Client.Directors
                 done++;
             }
             st.ScavSpawned += done;
+            if (c.S.RespawnScavLeft >= 0) c.RespawnScavUsed += done;
             c.Spawned["assault"] += done;
             return done;
         }

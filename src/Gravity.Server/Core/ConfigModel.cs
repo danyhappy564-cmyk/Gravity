@@ -36,6 +36,15 @@ public sealed record SpawnSettings(
     CapTable? Caps = null, string StartMode = "pct", int StartPmcMin = 8, int StartPmcMax = 12, bool StartPlayerOnly = false,
     string WavePoints = "pmc", int TotalCap = 0)
 {
+    // 1.1.0 시작 분대(spawn.startGroup.*): 시작 PMC가 분대(2명 이상)로 나올 확률·최대 인원·최대 분대 수(0 = 제한 없음).
+    // 100·5·0이면 1.0.9와 같다(분대 크기 비율 그대로). 설정 판 110 전 저장본은 이 값으로 읽는다.
+    public double StartGroupChance { get; init; } = 100;
+    public int StartGroupMaxSize { get; init; } = 5;
+    public int StartGroupMaxCount { get; init; }
+    // 1.1.0 보충 상한(spawn.maxRespawn.*): 시작 봇 뒤 Gravity가 레이드 중 다시 넣는 PMC·스캐브 최대 인원(0 = 제한 없음).
+    public int MaxRespawnPmc { get; init; }
+    public int MaxRespawnScav { get; init; }
+
     // 1.0.8 TotalCap(INBOX #61): 레이드 전체에서 활성화되는 봇 누적 수 상한(0 = 끔). 닿으면 Gravity가 내는 스폰만 멈춘다.
     // 보스·트리거·이벤트·다른 모드 봇은 세기만 하고 막지 않으며, 이미 생성 중인 분대의 대원도 막지 않는다. 사람은 세지 않는다.
     // 1.0.8 WavePoints(INBOX #60): "pmc" = 1.0.7과 같음(PMC 구역의 PMC·플레이어 지점, 플레이어 시작 지점 먼저),
@@ -61,7 +70,15 @@ public sealed record NearSettings(
     bool On, double FirstDelay, double Interval, double MinDist, double MaxDist, double Spacing,
     int WaveMin, int WaveMax, double SlotChance, double PmcChance, int Attempts, bool Sight, bool StopAtCap,
     bool GroupScavOff, double GroupChance, int GroupMin, int GroupMax,
-    bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2, bool UseDefault = true);
+    bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2, bool UseDefault = true)
+{
+    // 1.1.0: Sight = 웹 '시야 안에도 스폰 허용'(켜면 허용). SightPriority = 허용했을 때 시야 검사를 건너뛸 확률 %.
+    public double SightPriority { get; init; } = 70;
+    /// <summary>한 차례 자리 사이 간격(초). 0 = 한꺼번에(1.0.9). 판 110 전 저장본은 0.</summary>
+    public double BotDelay { get; init; }
+    /// <summary>직접 고른 종류의 난이도(easy·normal·hard·impossible·random).</summary>
+    public string CustomDiff { get; init; } = "normal";
+}
 
 /// <summary>시즌 이벤트(0.3). Mode: auto(날짜)·on(항상)·off. 확률은 %.</summary>
 public sealed record EventSettings(
@@ -581,6 +598,17 @@ public static partial class ConfigModel
             r.Bool(sp + "allowScavLab", false), ReadCaps(r, sp),
             r.Str(sp + "startMode", "pct", "pct", "count"), startMin, (int)Math.Max(startMin, r.Num(sp + "startPmcMax", 12, 0, 40)),
             r.Bool(sp + "startPlayerOnly", false), r.Str(sp + "wavePoints", "pmc", "pmc", "spread"), (int)r.Num(sp + "totalCap", 0, 0, 500));
+        // 1.1.0: 화면에만 있던 칸. 핫스팟 부스트·시작 분대는 옛 저장본(판 110 전)의 화면 기본값이 지금 결과와 달라 판 110부터 읽는다.
+        bool v110 = r.Num("settingsVer", 0, 0, 999) >= 110;
+        spawn = spawn with
+        {
+            HotspotBoost = v110 && spawn.HotspotBoost,
+            StartGroupChance = v110 ? r.Num(sp + "startGroup.chance", 100, 0, 100) : 100,
+            StartGroupMaxSize = v110 ? (int)r.Num(sp + "startGroup.maxSize", 5, 1, 5) : 5,
+            StartGroupMaxCount = v110 ? (int)r.Num(sp + "startGroup.maxCount", 0, 0, 10) : 0,
+            MaxRespawnPmc = (int)r.Num(sp + "maxRespawn.pmc", 0, 0, 200),
+            MaxRespawnScav = (int)r.Num(sp + "maxRespawn.scav", 0, 0, 500)
+        };
         return spawn;
     }
 
@@ -598,7 +626,12 @@ public static partial class ConfigModel
             r.Bool("near.group.scavOff", false), r.Num("near.group.chance", 25, 0, 100), gMin, (int)Math.Max(gMin, r.Num("near.group.max", 5, 1, 10)),
             r.Bool("near.custom.on", false), r.Role("near.custom.t1", "raider"), (int)r.Num("near.custom.cap1", 5, 0, 60),
             r.Role("near.custom.t2", "rogue"), (int)r.Num("near.custom.cap2", 5, 0, 60), r.Num("near.custom.ratio2", 50, 0, 100),
-            r.Bool("near.useDefault", true));
+            r.Bool("near.useDefault", true))
+        {
+            SightPriority = r.Num("near.sightPriority", 70, 0, 100),
+            BotDelay = r.Num("settingsVer", 0, 0, 999) >= 110 ? r.Num("near.botDelay", 5, 0, 30) : 0,
+            CustomDiff = r.Str("near.custom.diff", "normal", "normal", "easy", "hard", "impossible", "random")
+        };
         return near;
     }
 

@@ -37,6 +37,8 @@ public static class ClientSettingsBuilder
         // 설정에 없는 켜진 구역은 기본 비중 100(Codex 검토 4번): 원본 배치에서 한 구역만 편집해도 나머지가 1로 떨어지지 않게.
         FillDefaults(weights, map.PmcZones, ms.Zones);
         FillDefaults(scavWeights, map.ScavZones, ms.Zones);
+        // 1.1.0 핫스팟 부스트: 구역 비중 차이를 제곱으로 키운다(기본 100은 그대로, 200 → 400, 50 → 25).
+        if (s.HotspotBoost && s.Placement != "vanilla") { Boost(weights); Boost(scavWeights); }
 
         var rules = s.GroupCap.Rules.Select(r => new GroupCapRuleDto(r.Size, r.Cmp == "ge" ? "gte" : "eq", r.Count)).ToList();
         var sc = s.Scav;
@@ -81,7 +83,14 @@ public static class ClientSettingsBuilder
             Gravity.Shared.WaveMark.Prefix,
             CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled),
             // 1.0.1: 시작 분대 번호(WaveMark 끝 번호)와 "플레이어 시작 지점만" 스위치
-            plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly, s.WavePoints, s.TotalCap);
+            plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly, s.WavePoints, s.TotalCap,
+            s.MaxRespawnPmc > 0 ? s.MaxRespawnPmc : -1, s.MaxRespawnScav > 0 ? s.MaxRespawnScav : -1);
+    }
+
+    /// <summary>핫스팟 부스트: 비중 w → w²/기본(100). 0은 0.</summary>
+    internal static void Boost(Dictionary<string, double> w)
+    {
+        foreach (var k in w.Keys.ToList()) w[k] = w[k] * w[k] / ZoneWeight.Default;
     }
 
     /// <summary>웨이브 목록 → 클라 자료(원래 레이드 기준 초). 레이드 길이 밖 웨이브는 뺀다.</summary>
@@ -122,8 +131,10 @@ public static class ClientSettingsBuilder
 
     private static NearDto BuildNear(NearSettings n, double min, double max) => new(
         n.On, n.FirstDelay, n.Interval, min, max, n.Spacing, n.WaveMin, n.WaveMax,
-        n.SlotChance / 100, n.PmcChance / 100, n.Attempts, n.Sight, n.StopAtCap, n.GroupScavOff,
-        n.GroupChance / 100, n.GroupMin, n.GroupMax, n.CustomOn, NearRole(n.CustomT1), n.CustomCap1, NearRole(n.CustomT2), n.CustomCap2, n.CustomRatio2 / 100, n.UseDefault);
+        n.SlotChance / 100, n.PmcChance / 100, n.Attempts, n.Sight ? n.SightPriority < 100 : true, n.StopAtCap, n.GroupScavOff,
+        n.GroupChance / 100, n.GroupMin, n.GroupMax, n.CustomOn, NearRole(n.CustomT1), n.CustomCap1, NearRole(n.CustomT2), n.CustomCap2, n.CustomRatio2 / 100, n.UseDefault,
+        // 1.1.0: 웹 '시야 안에도 스폰 허용'(n.Sight)을 클라 '시야 검사'로 뒤집어 보낸다 — 1.0.9까지는 그대로 보내 끄면(권장) 시야 검사를 안 했다.
+        n.Sight ? n.SightPriority / 100 : 0, n.BotDelay, n.CustomDiff);
 
     /// <summary>
     /// 웹 화면 이름(near.custom.t1/t2) → 클라 WildSpawnType 이름. pmc는 클라가 자리마다 USEC/BEAR를 고른다.

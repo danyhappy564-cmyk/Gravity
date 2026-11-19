@@ -65,6 +65,10 @@ namespace Gravity.Client.Directors
             public readonly List<Vec3> Taken = new List<Vec3>();
             public readonly List<Vec3> Seen = new List<Vec3>();
 
+            // 1.1.0 봇 사이 간격: 아직 안 낸 자리와 다음에 낼 시각
+            public readonly Queue<NearSlot> Pending = new Queue<NearSlot>();
+            public float NextRelease;
+
             public State(NearSchedule schedule) => Schedule = schedule;
         }
 
@@ -79,10 +83,13 @@ namespace Gravity.Client.Directors
             if (st == null)
             {
                 st = c.NearState = new State(new NearSchedule(n, c.Rng));
-                Log.Info($"{c.S.MapId} 근처 보충 시작: 첫 차례 {n.FirstDelay:0}초, 간격 {n.Interval:0}초, 거리 {n.MinDist:0}~{n.MaxDist:0}m, 시야 {(n.Sight ? "켬" : "끔")}");
+                Log.Info($"{c.S.MapId} 근처 보충 시작: 첫 차례 {n.FirstDelay:0}초, 간격 {n.Interval:0}초, 거리 {n.MinDist:0}~{n.MaxDist:0}m, 시야 검사 {(n.Sight ? (n.SightIgnore > 0 ? $"켬(건너뜀 {n.SightIgnore:P0})" : "켬") : "끔")}, 봇 사이 {n.BotDelay:0.#}초");
             }
-            if (now < st.NextTick) return;
-            st.NextTick = now + TickSec;
+            // 1.1.0 봇 사이 간격(BotDelay): 차례에 나온 자리를 대기열에 두고 간격마다 하나씩 낸다(0 = 1.0.9처럼 한꺼번에).
+            bool due = now >= st.NextTick;
+            bool release = st.Pending.Count > 0 && now >= st.NextRelease;
+            if (!due && !release) return;
+            if (due) st.NextTick = now + TickSec;
 
             if (bc == null && Singleton<IBotGame>.Instantiated) bc = Singleton<IBotGame>.Instance.BotsController;
             var spawner = bc?.BotSpawner;
@@ -93,67 +100,106 @@ namespace Gravity.Client.Directors
             var player = gw.MainPlayer;
             if (player == null || player.HealthController == null || !player.HealthController.IsAlive) return;
 
-            int excluded = c.CountCapExcluded();
-            // 상한 표 PMC 예약 자리(1.0): 근처 보충도 스캐브처럼 아직 PMC가 안 채운 예약 몫만큼 덜 쓴다.
-            var slots = st.Schedule.Tick(now, bc._maxCount - c.PmcReserveLeft(), Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(UnityEngine.Time.time));
-            if (slots.Count == 0) return;
-
             Vector3 pp = player.Position;
             var playerPos = new Vec3(pp.x, pp.y, pp.z);
             Vector3 eye = EyePosition(player);
-            st.Taken.Clear();
-            st.Seen.Clear();
-            // 생성은 비동기라 같은 차례 안에서는 게임 집계가 아직 안 는다. 1.0: 빈자리는 공용 장부로(생존·로딩·대기·예약, 제외 팩션 뺌). 자리마다 예약하므로 탈출·무한 보충과 겹쳐도 상한을 넘지 않는다.
 
-            for (int i = 0; i < slots.Count; i++)
+            if (due)
             {
-                var slot = slots[i];
-                var role = ParseRole(slot.Role);
-                int size = Math.Max(1, slot.Count);
-                bool pmc = role.IsPmcBot();
-
-                if (size > c.ScavRoom(bc))
+                int excluded = c.CountCapExcluded();
+                // 상한 표 PMC 예약 자리(1.0): 근처 보충도 스캐브처럼 아직 PMC가 안 채운 예약 몫만큼 덜 쓴다.
+                var slots = st.Schedule.Tick(now, bc._maxCount - c.PmcReserveLeft(), Math.Max(0, RaidContext.Occupied(spawner) - excluded) + c.Ledger.Held(UnityEngine.Time.time));
+                if (slots.Count > 0)
                 {
-                    c.Dropped["nearCap"]++;
-                    continue;
+                    st.Taken.Clear();
+                    st.Seen.Clear();
+                    if (n.BotDelay > 0)
+                    {
+                        for (int i = 0; i < slots.Count; i++) st.Pending.Enqueue(slots[i]);
+                        if (st.Pending.Count == slots.Count) st.NextRelease = now;
+                        release = st.Pending.Count > 0 && now >= st.NextRelease;
+                    }
+                    else
+                    {
+                        // 생성은 비동기라 같은 차례 안에서는 게임 집계가 아직 안 는다. 1.0: 빈자리는 공용 장부로(생존·로딩·대기·예약, 제외 팩션 뺌). 자리마다 예약하므로 탈출·무한 보충과 겹쳐도 상한을 넘지 않는다.
+                        for (int i = 0; i < slots.Count; i++) SpawnSlot(c, st, n, bc, spawner, slots[i], playerPos, eye);
+                    }
                 }
-                if (c.TotalLeft(spawner) < size) // 1.0.8 레이드 전체 봇 총량
-                {
-                    c.NoteTotal("근처 보충");
-                    c.Dropped["total"]++;
-                    continue;
-                }
-
-                List<Candidate> pool;
-                Dictionary<int, BotZone> zoneOf;
-                if (pmc)
-                {
-                    if (!EnsurePmc(c, st)) { c.Dropped["noPoint"]++; continue; }
-                    pool = st.PmcCands;
-                    zoneOf = st.PmcZone;
-                }
-                else
-                {
-                    EnsureScav(c, st, spawner);
-                    pool = st.ScavCands;
-                    zoneOf = st.ScavZone;
-                }
-
-                int id = Pick(c, st, n, pool, playerPos, eye);
-                if (id < 0 || !zoneOf.TryGetValue(id, out var zone) || zone == null)
-                {
-                    c.Dropped["noPoint"]++;
-                    continue;
-                }
-
-                Vec3 pos = Find(pool, id);
-                st.Taken.Add(pos);
-                var wave = WaveFactory.AtPoint(role, size, pos, zone.NameZone);
-                if (!c.TryReserveScav(bc, wave, size)) { c.Dropped["nearCap"]++; continue; }
-                c.NearWaves.Add(wave, new Tag(pmc ? id : -1, size));
-                bc.ActivateBotsByWave(wave);
-                c.Spawned["near"] += size;
             }
+            if (release)
+            {
+                // 위치는 낼 때의 플레이어 기준으로 다시 고른다. 맵 상한·총량·보충 상한도 낼 때 다시 본다.
+                SpawnSlot(c, st, n, bc, spawner, st.Pending.Dequeue(), playerPos, eye);
+                st.NextRelease = now + (float)n.BotDelay;
+            }
+        }
+
+        private static void SpawnSlot(RaidContext c, State st, NearDto n, BotsController bc, BotSpawner spawner, NearSlot slot, Vec3 playerPos, Vector3 eye)
+        {
+            var role = ParseRole(slot.Role);
+            int size = Math.Max(1, slot.Count);
+            bool pmc = role.IsPmcBot();
+
+            if (size > c.ScavRoom(bc))
+            {
+                c.Dropped["nearCap"]++;
+                return;
+            }
+            if (c.TotalLeft(spawner) < size) // 1.0.8 레이드 전체 봇 총량
+            {
+                c.NoteTotal("근처 보충");
+                c.Dropped["total"]++;
+                return;
+            }
+            if (c.RespawnRoom(pmc) < size) // 1.1.0 보충 상한
+            {
+                c.UseRespawn(pmc, size);
+                c.Dropped["respawn"]++;
+                return;
+            }
+
+            List<Candidate> pool;
+            Dictionary<int, BotZone> zoneOf;
+            if (pmc)
+            {
+                if (!EnsurePmc(c, st)) { c.Dropped["noPoint"]++; return; }
+                pool = st.PmcCands;
+                zoneOf = st.PmcZone;
+            }
+            else
+            {
+                EnsureScav(c, st, spawner);
+                pool = st.ScavCands;
+                zoneOf = st.ScavZone;
+            }
+
+            // 1.1.0 시야 안 스폰 우선도(SightIgnore): 시야 안 스폰을 허용했을 때 자리마다 이 확률로 시야 검사를 건너뛴다.
+            bool sight = n.Sight && !(n.SightIgnore > 0 && c.Rng.NextDouble() < n.SightIgnore);
+            int id = Pick(c, st, n, pool, playerPos, eye, sight);
+            if (id < 0 || !zoneOf.TryGetValue(id, out var zone) || zone == null)
+            {
+                c.Dropped["noPoint"]++;
+                return;
+            }
+
+            Vec3 pos = Find(pool, id);
+            st.Taken.Add(pos);
+            var wave = WaveFactory.AtPoint(role, size, pos, zone.NameZone, slot.Custom ? CustomDiff(n, c.Rng) : "normal");
+            if (!c.TryReserveScav(bc, wave, size)) { c.Dropped["nearCap"]++; return; }
+            if (pmc ? c.S.RespawnPmcLeft >= 0 : c.S.RespawnScavLeft >= 0) c.UseRespawn(pmc, size);
+            c.NearWaves.Add(wave, new Tag(pmc ? id : -1, size));
+            bc.ActivateBotsByWave(wave);
+            c.Spawned["near"] += size;
+        }
+
+        private static readonly string[] Diffs = { "easy", "normal", "hard", "impossible" };
+
+        /// <summary>직접 고른 종류의 난이도(1.1.0). random이면 넷 중 하나, 모르는 값은 normal.</summary>
+        internal static string CustomDiff(NearDto n, System.Random rng)
+        {
+            var d = (n.CustomDiff ?? "").ToLowerInvariant();
+            if (d == "random") return Diffs[rng.Next(Diffs.Length)];
+            return Array.IndexOf(Diffs, d) >= 0 ? d : "normal";
         }
 
         /// <summary>
@@ -161,14 +207,14 @@ namespace Gravity.Client.Directors
         /// 그 뒤 후보는 "보임"으로 쳐서 PickRing이 실패하게 한다(다음 시도에서 다시 섞음). 이번 차례에 보인다고 나온 지점은 쏘지 않고 뺀다.
         /// 시야를 안 보면 PickRing이 결정적으로 거르므로 한 번만 부른다.
         /// </summary>
-        private static int Pick(RaidContext c, State st, NearDto n, List<Candidate> pool, Vec3 player, Vector3 eye)
+        private static int Pick(RaidContext c, State st, NearDto n, List<Candidate> pool, Vec3 player, Vector3 eye, bool sight)
         {
             if (pool.Count == 0) return -1;
-            int attempts = n.Sight ? Math.Max(1, n.Attempts) : 1;
+            int attempts = sight ? Math.Max(1, n.Attempts) : 1;
             for (int a = 0; a < attempts; a++)
             {
                 Func<Vec3, bool>? visible = null;
-                if (n.Sight)
+                if (sight)
                 {
                     bool used = false;
                     visible = p =>

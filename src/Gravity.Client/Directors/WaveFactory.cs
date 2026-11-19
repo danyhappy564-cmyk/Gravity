@@ -44,8 +44,8 @@ namespace Gravity.Client.Directors
         }
 
         /// <summary>정해진 위치 근처 분대(F8용). PerfectPos를 주면 GetPossibleZones가 그 위치에 가까운 구역 순으로 고른다.</summary>
-        public static BossLocationSpawn AtPoint(WildSpawnType role, int count, Vec3 pos, string zoneName) =>
-            Build(role.ToString(), Math.Max(1, count), "normal", zoneName, new Vector3(pos.X, pos.Y, pos.Z));
+        public static BossLocationSpawn AtPoint(WildSpawnType role, int count, Vec3 pos, string zoneName, string diff = "normal") =>
+            Build(role.ToString(), Math.Max(1, count), string.IsNullOrEmpty(diff) ? "normal" : diff, zoneName, new Vector3(pos.X, pos.Y, pos.Z));
 
         private static BossLocationSpawn Build(string role, int size, string diff, string zoneName, Vector3? perfectPos)
         {

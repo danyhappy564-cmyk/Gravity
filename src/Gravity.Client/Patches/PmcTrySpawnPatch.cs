@@ -39,6 +39,7 @@ namespace Gravity.Client.Patches
             public bool PickedAny;
             /// <summary>레이드 전체 봇 총량에 닿아 이 분대를 버렸다(1.0.8).</summary>
             public bool Total;
+            public bool Respawn;
 
             /// <summary>근처 보충 웨이브면 그 표시(아니면 null).</summary>
             public Directors.NearDirector.Tag? Near;
@@ -96,6 +97,13 @@ namespace Gravity.Client.Patches
                     ctx.Total = true;
                     c.NoteTotal("PMC 분대");
                     __result = true; // 처리 끝 = 대기열에 넣지 않음
+                    return false;
+                }
+                // 1.1.0 보충 상한: 시작 분대가 아닌 Gravity 분대는 레이드 중 다시 넣는 PMC 인원으로 센다(같은 웨이브 재시도는 한 번만).
+                if (c.S.RespawnPmcLeft >= 0 && c.Owns(wave) && !c.IsStartupWave(wave) && c.RespawnCounted.Add(wave) && !c.UseRespawn(true, ctx.Size))
+                {
+                    ctx.Respawn = true;
+                    __result = true;
                     return false;
                 }
                 var cap = c.S.GroupCap;
@@ -176,10 +184,10 @@ namespace Gravity.Client.Patches
                     return;
                 }
                 if (!wave.BossType.IsPmcBot()) return;
-                if (ctx.Total)
+                if (ctx.Total || ctx.Respawn)
                 {
                     c.FirstFail.Remove(wave);
-                    c.Drop(wave, "total");
+                    c.Drop(wave, ctx.Total ? "total" : "respawn");
                     return;
                 }
                 var now = Time.time;

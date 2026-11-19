@@ -99,7 +99,7 @@ namespace Gravity.Client
         /// <summary>버린 수(키 noPoint·expired·groupCap·cap). cap = 맵 상한 대기 중 하드 스톱에 닿아 버린 PMC 분대 +
         /// ScavDirector 차례가 상한에 막힌 구간 수(막힌 차례가 이어지는 동안 한 번) + 상한에 막힌 근처 보충 자리 수.
         /// noPoint에는 지점을 못 찾은 근처 보충 자리 수도 들어간다. 보고용.</summary>
-        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0, ["lateEscort"] = 0, ["total"] = 0 };
+        public readonly Dictionary<string, int> Dropped = new Dictionary<string, int> { ["noPoint"] = 0, ["expired"] = 0, ["groupCap"] = 0, ["cap"] = 0, ["scavCap"] = 0, ["nearCap"] = 0, ["lateEscort"] = 0, ["total"] = 0, ["respawn"] = 0 };
 
         /// <summary>1.0.8 진단 카운터(INBOX #59, 기본 로그에서도 보고): overlap = 다른 PMC 무리 30m 안에 활성화된 분대장 수,
         /// lateEscort = 분대장보다 60초 이상 늦게 나온 대원 수, startPlanned·startActive·startDropped = 시작 PMC 계획 인원·활성화 인원·버린 분대 수.</summary>
@@ -130,6 +130,31 @@ namespace Gravity.Client
         {
             if (S.TotalCap <= 0) return int.MaxValue;
             return S.TotalCap - TotalCreated - Math.Max(0, spawner?._inSpawnProcess ?? 0);
+        }
+
+        /// <summary>1.1.0 레이드 중 다시 넣은 PMC·스캐브 인원(시작 봇 제외, 보충 상한용).</summary>
+        internal int RespawnPmcUsed, RespawnScavUsed;
+        internal readonly HashSet<BossLocationSpawn> RespawnCounted = new HashSet<BossLocationSpawn>();
+        private bool _respawnNoted;
+
+        /// <summary>보충 상한까지 남은 인원(제한 없음이면 int.MaxValue).</summary>
+        internal int RespawnRoom(bool pmc)
+        {
+            int left = pmc ? S.RespawnPmcLeft : S.RespawnScavLeft;
+            if (left < 0) return int.MaxValue;
+            return Math.Max(0, left - (pmc ? RespawnPmcUsed : RespawnScavUsed));
+        }
+
+        /// <summary>보충 상한 안이면 인원을 쓰고 true. 넘으면 처음 한 번 알리고 false.</summary>
+        internal bool UseRespawn(bool pmc, int size)
+        {
+            if (RespawnRoom(pmc) < size)
+            {
+                if (!_respawnNoted) { _respawnNoted = true; Log.Info($"{S.MapId} 보충 상한에 닿음(PMC {RespawnPmcUsed}/{S.RespawnPmcLeft}, 스캐브 {RespawnScavUsed}/{S.RespawnScavLeft}): 그 종류는 더 넣지 않음"); }
+                return false;
+            }
+            if (pmc) RespawnPmcUsed += size; else RespawnScavUsed += size;
+            return true;
         }
 
         /// <summary>총량 때문에 Gravity 스폰을 멈췄다: 처음 한 번만 알린다.</summary>

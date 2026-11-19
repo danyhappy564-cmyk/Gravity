@@ -35,7 +35,9 @@ namespace Gravity.Shared
         int WaveMin, int WaveMax, double SlotChance, double PmcChance, int Attempts,
         bool Sight, bool StopAtCap, bool GroupScavOff, double GroupChance, int GroupMin, int GroupMax,
         bool CustomOn, string CustomT1, int CustomCap1, string CustomT2, int CustomCap2, double CustomRatio2,
-        bool UseDefault = true);
+        bool UseDefault = true, double SightIgnore = 0, double BotDelay = 0, string CustomDiff = "normal");
+    // 1.1.0: Sight = 보이는 지점을 피함(시야 검사). SightIgnore = 시야 안 스폰을 허용했을 때 자리마다 시야 검사를 건너뛸 확률(0~1).
+    // BotDelay = 한 차례 자리 사이 간격(초, 0 = 한꺼번에). CustomDiff = 직접 고른 종류의 난이도(easy·normal·hard·impossible·random). 옛 서버 = 1.0.9와 같음.
 
     public sealed record ClientRaidSettings(
         string MapId, bool Managed, int Seed, int RaidSec, int HardStopPmcSec, int HardStopScavSec, int Cap,
@@ -47,7 +49,9 @@ namespace Gravity.Shared
         bool RefillAfterExtract = false, string LogLevel = "summary", IReadOnlyDictionary<string, double>? ScavZoneWeights = null,
         string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
         IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null, CapTableDto? Caps = null,
-        IReadOnlyList<int>? StartGroups = null, bool StartPlayerOnly = false, string? WavePoints = null, int TotalCap = 0);
+        IReadOnlyList<int>? StartGroups = null, bool StartPlayerOnly = false, string? WavePoints = null, int TotalCap = 0,
+        int RespawnPmcLeft = -1, int RespawnScavLeft = -1);
+    // 1.1.0 RespawnPmcLeft·RespawnScavLeft: 시작 봇 뒤 Gravity가 다시 넣는 PMC·스캐브 최대 인원(-1 = 제한 없음, 옛 서버도 -1).
     // 1.0.8 TotalCap: 레이드 전체 봇 누적 상한(0 = 끔, 옛 서버도 0). Gravity 스폰만 멈춘다(INBOX #61).
     // 1.0.8 WavePoints: null·"pmc" = 1.0.7과 같음, "spread" = 웨이브 PMC 분대를 맵 전체 봇 구역(저격 제외)에 고르게(INBOX #60).
 
