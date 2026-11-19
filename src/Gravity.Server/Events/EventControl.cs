@@ -65,6 +65,13 @@ public static class EventControl
                 st.EnableChristmasHideout = ev.Gifts;
                 st.AdjustBotAppearances = ev.Snow && seasonalOutfits;
             }
+            if (st != null && e.Type == SeasonalEventType.NewYears)
+            {
+                // 1.1.0: 새해도 산타·장식·외형을 웹 칸대로(전에는 크리스마스 칸만 고쳐 새해엔 SPT 값 그대로였다)
+                st.EnableSanta = ev.Santa > 0;
+                st.EnableChristmasHideout = ev.NewYearsDecor;
+                if (!seasonalOutfits) st.AdjustBotAppearances = false;
+            }
             log.Add($"{e.Name} {mode}{(e.Enabled ? "" : L.T("(꺼짐)", " (off)"))}");
         }
 

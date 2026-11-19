@@ -90,7 +90,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     }
 
     /// <summary>지금 켜진 SPT 시즌 이벤트(할로윈 계열, 크리스마스 계열). 시험에서는 둘 다 꺼짐.</summary>
-    public Func<(bool Halloween, bool Christmas)> ActiveEvents { get; set; } = () => (false, false);
+    /// <summary>켜진 이벤트. NewYearOnly: 새해만(크리스마스 아님), AprilOnly: 만우절만(할로윈·크리스마스·새해 아님).</summary>
+    public Func<(bool Halloween, bool Christmas, bool NewYearOnly, bool AprilOnly)> ActiveEvents { get; set; } = () => (false, false, false, false);
 
     /// <summary>팩션 모드 설정·SPT 원본 PMC 지문(0.4). 시험에서는 비어 있음.</summary>
     public Gravity.Factions.FactionData Factions { get; set; } = Gravity.Factions.FactionData.Empty;
@@ -197,8 +198,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         if (realRaid && cfg.BossProg.On) BossProgress.Save();
         // 1.0.6: 트리거 스폰(레버·탈출구·게임 이벤트) 조절은 BlackDiv 게이트·특수 봇 처리 뒤에 남은 항목에만.
         var trigChanged = RaidSpawnApplier.ApplyTriggers(loc, cfg, id, Detect.BlackDiv, new Random(s ^ 0x7A19));
-        var (hw, xm) = ActiveEvents();
-        var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm);
+        var (hw, xm, ny, af) = ActiveEvents();
+        var evNote = Gravity.Events.EventRaid.Apply(loc, cfg, id, s, hw, xm, ny, af);
         if (trigChanged > 0)
             evNote = (evNote != null ? evNote + " / " : "") + L.T($"트리거 스폰 {trigChanged}개 조절", $"adjusted {trigChanged} trigger spawns");
         // 1.0.6 진단: Gravity가 넣은 특수 봇 무리(추가 스폰·원래 없는 맵 복제) 수
@@ -238,6 +239,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             var raidSec = (int)Math.Round((loc.EscapeTimeLimit ?? info.DbRaidSec / 60.0) * 60) + simStart;
             var s = seed ?? Random.Shared.Next(1, int.MaxValue);
             var b = BuildRaid(id, loc, cfg, info, raidSec, simStart, s, hasClient, scavRaid, realRaid: true);
+            if (Detect.Ruaf) Gravity.Factions.RuafLink.ApplyRadius(cfg.Ruaf is { Managed: true } ru ? ru.CheckpointRadius : 0);
             var plan = b.Plan;
             LastOtherPmc = b.OtherPmc;
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv, Orbit);

@@ -11,9 +11,16 @@ namespace Gravity.Events;
 /// </summary>
 public static class EventRaid
 {
+    /// <summary>SPT 만우절이 넣는 이벤트 보스(seasonalevents.json halloweensummon·halloweennightcult, 산타). 연구소 태길라는 원래 보스와 이름이 같아 뺀다.</summary>
+    public static readonly HashSet<string> AprilBosses = new(StringComparer.OrdinalIgnoreCase)
+        { "peacefullZryachiyEvent", "ravangeZryachiyEvent", "sectactPriestEvent", "sectantPredvestnik", "gifter" };
+
     /// <param name="halloween">할로윈 또는 만우절이 켜짐(밤 컬티스트 의식이 들어감)</param>
     /// <param name="christmas">크리스마스·새해 또는 만우절이 켜짐(산타가 들어감)</param>
-    public static string? Apply(LocationBase loc, GravityConfig cfg, string mapId, int seed, bool halloween = false, bool christmas = false)
+    /// <param name="newYearOnly">새해만 켜짐: 장식 칸을 끄면 춤추는 트리(호로보드) 확률 0(평소 DB 값)</param>
+    /// <param name="aprilOnly">만우절만 켜짐: 만우절 봇 칸을 끄면 만우절이 넣은 이벤트 보스 확률 0</param>
+    public static string? Apply(LocationBase loc, GravityConfig cfg, string mapId, int seed, bool halloween = false, bool christmas = false,
+        bool newYearOnly = false, bool aprilOnly = false)
     {
         var ev = cfg.Events;
         if (ev == null) return null;
@@ -36,12 +43,25 @@ public static class EventRaid
             }
         }
 
-        int cult = 0, santa = 0;
+        if (newYearOnly && !ev.NewYearsDecor && loc.Events?.Khorovod is { Chance: > 0 } kh)
+        {
+            kh.Chance = 0;
+            if (loc.BotLocationModifier != null) loc.BotLocationModifier.KhorovodChance = 0;
+            notes.Add(L.T("춤추는 트리 끔", "dancing tree off"));
+        }
+
+        int cult = 0, santa = 0, april = 0;
         foreach (var b in loc.BossLocationSpawn ?? [])
         {
+            if (aprilOnly && !ev.AprilBots && b.BossName is { } bn && AprilBosses.Contains(bn))
+            {
+                b.BossChance = 0; april++;
+                continue;
+            }
             if (halloween && string.Equals(b.BossName, "sectantPredvestnik", StringComparison.OrdinalIgnoreCase)) { b.BossChance = ev.NightCult; cult++; }
             else if (christmas && string.Equals(b.BossName, "gifter", StringComparison.OrdinalIgnoreCase)) { b.BossChance = ev.Santa; santa++; }
         }
+        if (april > 0) notes.Add(L.T($"만우절 이벤트 보스 {april}개 끔", $"April Fools event bosses off ({april})"));
         if (cult > 0) notes.Add(L.T($"밤 컬티스트 {ev.NightCult:0}%", $"night cultists {ev.NightCult:0}%"));
         if (santa > 0) notes.Add(L.T($"산타 {ev.Santa:0}%", $"Santa {ev.Santa:0}%"));
         return notes.Count == 0 ? null : L.T("이벤트: ", "events: ") + string.Join(", ", notes);

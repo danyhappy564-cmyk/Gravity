@@ -68,7 +68,13 @@ public sealed record EventSettings(
     string Owner, bool Detect,
     string Halloween, double Zombies, double NightCult, bool Summon, bool HalloweenGear,
     string Christmas, double Santa, bool Gifts, bool Snow, bool ChristmasGear,
-    string NewYears, string AprilFools);
+    string NewYears, string AprilFools)
+{
+    /// <summary>1.1.0 새해 '은신처 장식 · 춤추는 트리'(events.newyears.fireworks). 끄면 새해에 은신처 장식·호로보드를 넣지 않는다.</summary>
+    public bool NewYearsDecor { get; init; } = true;
+    /// <summary>1.1.0 만우절 이벤트 보스(events.aprilfools.gnomes): 산타·밤 컬티스트·즈랴치 소환 이벤트. 끄면 만우절에만 확률 0.</summary>
+    public bool AprilBots { get; init; } = true;
+}
 
 public sealed record InfSettings(double DelaySec, int Batch, double PmcShare, double Jitter);
 public sealed record ZoneLayout(IReadOnlyDictionary<string, bool> On,
@@ -144,7 +150,11 @@ public sealed record FactionKind(bool On, double Chance, int Count, int Min, int
 
 /// <summary>RUAF·UNTAR 같은 순찰형 팩션(0.4). Maps에는 웹에서 정한 맵만 있다(없는 맵 = 모드 설정 기본).</summary>
 public sealed record FactionSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
-    FactionKind Patrol, FactionKind Checkpoint, FactionKind Hunt, string Style = "waves");
+    FactionKind Patrol, FactionKind Checkpoint, FactionKind Hunt, string Style = "waves")
+{
+    /// <summary>1.1.0 검문소 지키는 반경(m, RUAF 클라가 받는 값). 0 = RUAF 설정 값 그대로. 설정 판 110 전 저장본은 0.</summary>
+    public double CheckpointRadius { get; init; }
+}
 
 /// <summary>블랙 디비전(0.4). TMin·TMax는 레이드 %, 연구소 웨지·게이트, 블랙아웃 연동.</summary>
 public sealed record BlackDivSettings(bool Managed, bool ShareCap, IReadOnlyDictionary<string, bool> Maps,
@@ -371,7 +381,10 @@ public static partial class ConfigModel
             r.Num("events.halloween.nightCult", 40, 0, 100), r.Bool("events.halloween.summon", true), r.Bool("events.halloween.gear", true),
             r.Str("events.christmas.mode", "auto", modes), r.Num("events.christmas.santa", 25, 0, 100),
             r.Bool("events.christmas.gifts", true), r.Bool("events.christmas.snow", true), r.Bool("events.christmas.gear", true),
-            r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes));
+            r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes))
+        {
+            NewYearsDecor = r.Bool("events.newyears.fireworks", true), AprilBots = r.Bool("events.aprilfools.gnomes", true)
+        };
 
         FactionKind Kind(string p, double chance, int count, int min, int max, double tMin, double tMax)
         {
@@ -391,7 +404,8 @@ public static partial class ConfigModel
         const string fr = "factions.ruaf.";
         var ruaf = new FactionSettings(r.Bool(fr + "managed", false), r.Bool(fr + "shareCap", false), FacMaps(fr + "maps"),
             Kind(fr + "patrol.", 45, 2, 3, 6, 5, 28), Kind(fr + "checkpoint.", 45, 2, 3, 4, 0, 0), Kind(fr + "hunt.", 20, 1, 3, 4, 0, 0),
-            r.Str(fr + "style", "waves", "waves", "start"));
+            r.Str(fr + "style", "waves", "waves", "start"))
+        { CheckpointRadius = r.Num("settingsVer", 0, 0, 999) >= 110 ? r.Num(fr + "checkpoint.radius", 0, 0, 60) : 0 };
         const string fb = "factions.blackdiv.";
         var bdT0 = r.Num(fb + "bd.tMin", 10, 0, 100);
         var bdMin = (int)r.Num(fb + "bd.huntMin", 3, 1, 10);

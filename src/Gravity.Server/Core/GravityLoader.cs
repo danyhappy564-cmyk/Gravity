@@ -20,7 +20,7 @@ public class GravityLoader(
     PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json,
     TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales,
     SPTarkov.Server.Core.Utils.Cloners.ICloner cloner, SPTarkov.Server.Core.Services.Bot.BotInventoryContainerService containers,
-    SPTarkov.Server.Core.Helpers.Bot.BotGeneratorHelper botHelper) : IOnLoad
+    SPTarkov.Server.Core.Helpers.Bot.BotGeneratorHelper botHelper, IServiceProvider services) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -67,8 +67,8 @@ public class GravityLoader(
             {
                 var types = seasonal.GetActiveEvents().Select(e => e.Type).ToHashSet();
                 bool af = types.Contains(SeasonalEventType.AprilFools);
-                return (af || types.Contains(SeasonalEventType.Halloween),
-                    af || types.Contains(SeasonalEventType.Christmas) || types.Contains(SeasonalEventType.NewYears));
+                bool hw = types.Contains(SeasonalEventType.Halloween), xm = types.Contains(SeasonalEventType.Christmas), ny = types.Contains(SeasonalEventType.NewYears);
+                return (af || hw, af || xm || ny, ny && !xm, af && !hw && !xm && !ny);
             }
         };
         // 0.4: 팩션 모드 설정·SPT 원본 PMC 지문(읽기 전용). SPT_Data는 user/mods에서 두 단계 위.
@@ -115,6 +115,13 @@ public class GravityLoader(
             logger.Warning($"{GravityInfo.Tag} {m.Id}: {L.T("SPT 원본 구역을 못 읽어 웹의 원본 배치 편집을 비활성화합니다", "could not read the SPT original zones; original-layout zone editing is disabled in the web UI")}");
         if (sptData == null) logger.Warning($"{GravityInfo.Tag} {L.T("SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다", "SPT_Data folder not found; other-mod PMC detection and Labs gate restore are off")}");
         RaidStartPatch.Activity = activity;
+        // 1.1.0 RUAF 검문소 반경: RUAF가 클라에 보내는 메모리 설정을 레이드 시작 때 웹 값으로(0 = RUAF 값).
+        if (detect.Ruaf)
+        {
+            Gravity.Factions.RuafLink.Bind(services);
+            if (Gravity.Factions.RuafLink.Status != "ok")
+                logger.Info($"{GravityInfo.Tag} {L.T("RUAF 검문소 반경은 RUAF 값 그대로", "RUAF checkpoint radius left to RUAF")}: {Gravity.Factions.RuafLink.Status}");
+        }
         new RaidStartPatch().Enable();
 
         // 0.5 장비: 아이템 정보·자동 티어(읽기만)와 봇 생성 패치. APBS가 있으면 패치를 걸지 않는다(GearRuntime.Active도 잠금).
