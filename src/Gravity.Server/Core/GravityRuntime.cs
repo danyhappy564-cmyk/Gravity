@@ -150,7 +150,11 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     /// <summary>
     /// 복제본 loc에 스폰 계획·팩션·보스·이벤트를 적용한다(바깥 상태는 안 바꿈 — 레이드와 개발 페이지 시뮬레이션이 같이 쓴다).
     /// </summary>
-    public RaidBuild BuildRaid(string id, LocationBase loc, GravityConfig cfg, MapInfo info, int raidSec, int simStart, int s, bool hasClient, bool scavRaid)
+    /// <summary>1.1.0 보스 점증·점감 상태(config/boss-progress.json, 로더가 읽음).</summary>
+    public Gravity.Spawn.BossProgress BossProgress { get; set; } = new();
+
+    /// <param name="realRaid">실제 레이드 시작이면 true: 보스 점증·점감을 굴리고 저장한다(미리 보기·시뮬레이션은 false).</param>
+    public RaidBuild BuildRaid(string id, LocationBase loc, GravityConfig cfg, MapInfo info, int raidSec, int simStart, int s, bool hasClient, bool scavRaid, bool realRaid = false)
     {
         var plan = SpawnPlanner.Plan(cfg, info, raidSec, simStart, s, clientAliveCap: hasClient);
         // 스캐브: 클라 플러그인이 없으면 바닐라 그대로(웨이브 밖 자동 스폰이 있어 웨이브만 바꿔서는 통제가 안 된다).
@@ -189,7 +193,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
         // 팩션을 보스보다 먼저: 되살린 연구소 게이트 레이더도 특수 봇 설정을 받게 한다.
         var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
-        RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates, Weekly);
+        RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates, Weekly, realRaid ? BossProgress : null);
+        if (realRaid && cfg.BossProg.On) BossProgress.Save();
         // 1.0.6: 트리거 스폰(레버·탈출구·게임 이벤트) 조절은 BlackDiv 게이트·특수 봇 처리 뒤에 남은 항목에만.
         var trigChanged = RaidSpawnApplier.ApplyTriggers(loc, cfg, id, Detect.BlackDiv, new Random(s ^ 0x7A19));
         var (hw, xm) = ActiveEvents();
@@ -232,7 +237,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             var simStart = (int)Math.Max(0, changes?.SimulatedRaidStartSeconds ?? 0);
             var raidSec = (int)Math.Round((loc.EscapeTimeLimit ?? info.DbRaidSec / 60.0) * 60) + simStart;
             var s = seed ?? Random.Shared.Next(1, int.MaxValue);
-            var b = BuildRaid(id, loc, cfg, info, raidSec, simStart, s, hasClient, scavRaid);
+            var b = BuildRaid(id, loc, cfg, info, raidSec, simStart, s, hasClient, scavRaid, realRaid: true);
             var plan = b.Plan;
             LastOtherPmc = b.OtherPmc;
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv, Orbit);

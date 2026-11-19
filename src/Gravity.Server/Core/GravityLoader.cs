@@ -57,6 +57,7 @@ public class GravityLoader(
         {
             Orbit = orbit,
             Library = library,
+            BossProgress = Gravity.Spawn.BossProgress.Load(Path.Combine(paths.ConfigDir, "boss-progress.json")),
             Verbose = DiagLog.Verbose(m => logger.Info(m)),
             CurrentBase = id => locations.GetLocation(id)?.Base,
             CloneBase = id => locations.GetLocation(id)?.Base is { } b ? cloner.Clone(b) : null,

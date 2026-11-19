@@ -106,7 +106,11 @@ public sealed record DiagSettings(string Log, bool Report, bool BotLog);
 public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<string, bool> Maps,
     bool Followers = true, int EscMin = 0, int EscMax = 0, double TFrom = 0, double TTo = 0, string Diff = "",
     bool Extra = false, IReadOnlyDictionary<string, string[]>? Zones = null,
-    IReadOnlyDictionary<string, double>? MapChance = null);
+    IReadOnlyDictionary<string, double>? MapChance = null)
+{
+    /// <summary>1.1.0: 게임 기본 보스 항목을 지우고 Gravity 항목(이 맵 보스 구역 전체, 트리거 없음)만 쓴다.</summary>
+    public bool NoVanilla { get; init; }
+}
 
 /// <summary>특수 봇 무리(레이더·로그·컬티스트·블러드하운드). Chance는 맵별(없는 맵은 바닐라 확률 유지), Min·Max는 무리 전체 인원.</summary>
 /// <summary>특수 봇 설정. 레이더·로그(ExtraModel)는 ABPS식(사용자 결정 11-10): 원래 항목(레버·탈출구 이벤트 포함)은 Vanilla면 확률·인원 그대로 두고,
@@ -156,6 +160,11 @@ public sealed record GravityConfig(
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, TriggerRule>>? Triggers = null, bool WeeklyBoss = true,
     Gravity.Gear.BotStatsSettings? StatsRaw = null)
 {
+    /// <summary>1.1.0 보스 점증·점감·공통 난이도 분포·SVM 보스 확률 담당(svmOwn.boss = "svm"이면 맵에 들어 있는 확률을 그대로 둠).</summary>
+    public Gravity.Spawn.BossProgSettings BossProg { get; init; } = new();
+    public Gravity.Spawn.BossDiffDist BossDiff { get; init; } = new();
+    public bool SvmBossKeep { get; init; }
+
     /// <summary>1.0.6 봇 체력·스킬(묶음별). 없으면 모두 원래대로.</summary>
     public Gravity.Gear.BotStatsSettings Stats => StatsRaw ?? Gravity.Gear.BotStatsSettings.Default;
 
@@ -324,7 +333,8 @@ public static partial class ConfigModel
             bosses[id] = new BossSettings(r.Bool(p + "on", true), r.Num(p + "chance", ch, 0, 100), bm,
                 r.Bool(p + "followers", true), eMin, (int)Math.Max(eMin, r.Num(p + "escMax", 0, 0, 10)),
                 tFrom, Math.Max(tFrom, r.Num(p + "tTo", 0, 0, 600)),
-                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random"), r.Bool(p + "extra", false), zones, mapChance);
+                r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random", "dist"), r.Bool(p + "extra", false), zones, mapChance)
+            { NoVanilla = r.Bool(p + "noVanilla", false) };
         }
 
         var specials = new Dictionary<string, SpecialSettings>();
@@ -400,7 +410,14 @@ public static partial class ConfigModel
                 (int)r.Num("orbit.extractRefillCap", 20, 0, 100)),
             new DiagSettings(r.Str("diag.log", "summary", "off", "summary", "verbose"), r.Bool("diag.report", true), r.Bool("diag.botLog", false)),
             new CompatSettings(r.Bool("compat.lockWithQuestingBots", false), r.StringList("compat.variantMods")),
-            ReadTriggers(r), r.Bool("weeklyBoss", true), ReadStats(r));
+            ReadTriggers(r), r.Bool("weeklyBoss", true), ReadStats(r))
+        {
+            // 1.1.0: 판 110 전 저장본의 bossProg.on(화면 기본 켜짐)은 서버가 안 읽던 값 → 꺼짐으로.
+            BossProg = new Gravity.Spawn.BossProgSettings(r.Num("settingsVer", 0, 0, 999) >= 110 && r.Bool("bossProg.on", true),
+                r.Num("bossProg.step", 10, 1, 50), r.Num("bossProg.min", 20, 0, 100), r.Num("bossProg.max", 100, 0, 100), r.Bool("bossProg.regressive", false)),
+            BossDiff = new Gravity.Spawn.BossDiffDist(r.Num("bossDiff.easy", 0, 0, 100), r.Num("bossDiff.normal", 60, 0, 100), r.Num("bossDiff.hard", 30, 0, 100), r.Num("bossDiff.imp", 10, 0, 100)),
+            SvmBossKeep = r.Str("svmOwn.boss", "gravity", "gravity", "svm") == "svm"
+        };
     }
 
     /// <summary>stats.tiers.&lt;1~7&gt;.health·healthMult·skills·skillLevel·skillPct + stats.groups.&lt;묶음&gt;(기본 켬, 1.0.6). 모르는 값은 원래대로.</summary>

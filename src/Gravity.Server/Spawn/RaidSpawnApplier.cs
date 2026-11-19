@@ -122,9 +122,12 @@ public static class RaidSpawnApplier
         return cfg.BossCommonOn && id != "zryachiy" ? cfg.BossCommonChance : b.Chance;
     }
 
+    /// <param name="progress">1.1.0 보스 점증·점감 상태. 실제 레이드 시작 때만 넘긴다(그 판 출현을 미리 굴려 기록). null = 원래 확률 그대로(미리 보기).</param>
     public static void ApplyBosses(LocationBase loc, GravityConfig cfg, string mapId, int seed = 1, int raidSec = 0,
-        IReadOnlyDictionary<string, BossLocationSpawn>? templates = null, WeeklyBoss.Pick? weekly = null)
+        IReadOnlyDictionary<string, BossLocationSpawn>? templates = null, WeeklyBoss.Pick? weekly = null, BossProgress? progress = null)
     {
+        var rolled = new HashSet<string>(StringComparer.Ordinal);
+        var replaced = new HashSet<string>(StringComparer.Ordinal);
         var weeklyHere = weekly != null && weekly.Map == mapId;
         var rnd = new Random(seed ^ 0x5B055);
         var valid = new HashSet<string>(StringComparer.Ordinal);
@@ -143,11 +146,15 @@ public static class RaidSpawnApplier
         {
             if (e.BossName is { } role && BossRoleToId.TryGetValue(role, out var id) && cfg.Bosses.TryGetValue(id, out var b))
             {
-                var chance = BossChanceFor(cfg, id, b, mapId);
+                // 1.1.0 바닐라 보스 지우기: 원래 항목은 빼고, 아래 '원래 항목이 없는 보스' 단계에서 Gravity 항목을 새로 넣는다(즈랴치는 섬 전용이라 제외).
+                if (b.NoVanilla && b.On && id != "zryachiy" && templates != null && templates.ContainsKey(role)) { replaced.Add(id); continue; }
+                // 1.1.0 SVM 보스 확률 담당: 보스를 켠 맵이면 맵에 들어 있는 확률(SVM이 먼저 바꾼 값)을 그대로.
+                var chance = cfg.SvmBossKeep && b.On && (!b.Maps.TryGetValue(mapId, out var mon) || mon) ? e.BossChance ?? 0 : BossChanceFor(cfg, id, b, mapId);
                 var isWeekly = weeklyHere && role == weekly!.Role;
                 // 1.0.6 주간 보스: SPT가 표시한 첫 항목만. 켜짐 = 100%(보스·맵을 끈 경우는 0 그대로), 꺼짐 = Gravity 확률 + 해골 끔.
                 if (isWeekly) weeklyHere = false;
                 if (isWeekly && cfg.WeeklyBoss && chance > 0) chance = 100;
+                else if (progress != null && cfg.BossProg.On && chance > 0 && rolled.Add(id)) chance = Progress(progress, cfg.BossProg, id, mapId, chance, rnd);
                 var n = Detail(e with { BossChance = chance }, b);
                 if (isWeekly && !cfg.WeeklyBoss) n = n with { ShowOnTarkovMap = false, ShowOnTarkovMapPvE = false };
                 result.Add(n);
@@ -185,11 +192,12 @@ public static class RaidSpawnApplier
             foreach (var (role, id) in BossRoleToId)
             {
                 if (id == "zryachiy" || !cfg.Bosses.TryGetValue(id, out var b) || !b.On) continue;
-                if (!b.Maps.TryGetValue(mapId, out var on) || !on) continue;
+                if ((!b.Maps.TryGetValue(mapId, out var on) || !on) && !replaced.Contains(id)) continue;
                 if (result.Any(x => string.Equals(x.BossName, role, StringComparison.OrdinalIgnoreCase))) continue;
                 if (!templates.TryGetValue(role, out var tpl)) continue;
                 var chance = BossChanceFor(cfg, id, b, mapId);
                 if (chance <= 0) continue;
+                if (progress != null && cfg.BossProg.On && rolled.Add(id)) { chance = Progress(progress, cfg.BossProg, id, mapId, chance, rnd); if (chance <= 0) continue; }
                 var zones = valid.Where(z => !z.StartsWith("ZoneSniper", StringComparison.OrdinalIgnoreCase)).ToArray();
                 var n = Detail(tpl with { BossChance = chance, BossZone = string.Join(",", zones.Length > 0 ? zones : valid), TriggerId = "", TriggerName = "", SptId = "gravity" }, b);
                 result.Add(n);
@@ -250,7 +258,7 @@ public static class RaidSpawnApplier
             }
             if (b.Diff is { Length: > 0 })
             {
-                var d = b.Diff == "random" ? Diffs[rnd.Next(Diffs.Length)] : b.Diff;
+                var d = b.Diff == "random" ? Diffs[rnd.Next(Diffs.Length)] : b.Diff == "dist" ? cfg.BossDiff.Pick(rnd) : b.Diff;
                 n = n with { BossDifficulty = d, BossEscortDifficulty = d };
             }
             if (b.Zones != null && b.Zones.TryGetValue(mapId, out var zs))
@@ -260,6 +268,16 @@ public static class RaidSpawnApplier
             }
             return n;
         }
+    }
+
+    /// <summary>1.1.0 점증·점감: 이번 판 확률로 미리 굴려 나옴(100)/안 나옴(0)을 정하고 결과를 기록한다.</summary>
+    internal static double Progress(BossProgress progress, BossProgSettings p, string id, string mapId, double baseChance, Random rnd)
+    {
+        var key = BossProgress.Key(id, mapId);
+        var eff = progress.Effective(p, key, baseChance);
+        bool spawn = rnd.NextDouble() * 100 < eff;
+        progress.Record(p, key, spawn);
+        return spawn ? 100 : 0;
     }
 
     /// <summary>바닐라 호위 수 형식: 가능한 수를 쉼표로(클라가 하나를 고름). 예: 2~4 → "2,3,4".</summary>

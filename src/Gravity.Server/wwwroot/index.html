@@ -725,7 +725,7 @@ function makeDefaults(){
       startPmcPct:35,interval:6,waveMin:2,waveMax:4,early:1.2,mid:1,late:.6,original:true,variant:m.id!=='lighthouse',
       cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,capOn:false,capAuto:false,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,zones:z,zonesAlt:{}};});
   const bosses={};BOSSES.forEach(b=>{const mm={},zz={};MAPS.forEach(m=>{mm[m.id]=b.maps.includes(m.id);zz[m.id]=b.zones[m.id]?[...b.zones[m.id]]:['default'];});
-    bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'normal',maps:mm,zones:zz,mapChance:{}};});
+    bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'dist',maps:mm,zones:zz,mapChance:{}};});
   const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],tFrom:0,tTo:0,xFrom:0,xTo:0};
     // 레이더·로그(ABPS식): 원래 스폰(레버·탈출구 이벤트 포함)은 그대로 두고, 맵 확률·인원은 따로 넣는 "추가 스폰"에만(기본 0% = 원래 스폰만)
     if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,vanillaMax:0,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1],extraCount:1,extraCurve:{early:1,mid:1,late:1}});});
@@ -1678,7 +1678,7 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
   const zoneBoxes=selMaps.map(m=>`<div class="zbox"><h4>${tr(m.name)}${pill(bb.zones[m.id].length+' '+tr(T('구역','zones')))}</h4><div class="tog">${['default',...(BOSSZ[m.id]||ZONES[m.id].map(z=>z.id))].map(z=>`<button class="gold ${bb.zones[m.id].includes(z)?'on':''}" data-zone="${b.id}|${m.id}|${z}">${BOSSZ[m.id]&&z!=='default'?zoneLabel(z):zname(m.id,z)}</button>`).join('')}</div></div>`).join('')||notice(T('나오는 맵을 하나 이상 고르세요.','Pick at least one map.'),'warn');
   const detail=card(T(b.name.ko,b.name.en),sw(p+'on',BOSSF.on,'')
      +slider(p+'chance',T('등장 확률','Spawn chance'),lock?T('공통 확률이 켜져 있어 잠겨 있습니다.','Locked by shared chance.'):'',{dis:lock||!bb.on,val:lock?c.chance:bb.chance})
-     +seg(p+'diff',BOSSF.diff,'',[['easy',T('쉬움','Easy')],['normal',T('보통','Normal')],['hard',T('어려움','Hard')],['impossible',T('불가능','Imposs.')]],{adv:true})
+     +seg(p+'diff',BOSSF.diff,T('공통 분포는 보스 페이지 위쪽 보스 공통 카드의 난이도 분포로 판마다 고릅니다.','Shared mix picks each raid from the difficulty mix on the All bosses card.'),[['dist',T('공통 분포','Shared mix')],['easy',T('쉬움','Easy')],['normal',T('보통','Normal')],['hard',T('어려움','Hard')],['impossible',T('불가능','Imposs.')]],{adv:true})
      +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.filter(m=>!previewMid||m.id===previewMid).map(m=>flipBtn(p+'maps.'+m.id,tr(m.name))).join('')}</div>`
      +bossMapChanceBox(b,bb,lock?c.chance:bb.chance,previewMid)
      +`<div class="sub">${tr(T('태어나는 구역 (여러 개면 그중 무작위)','Spawn zones (random among selected)'))}</div>${zoneBoxes}`
@@ -1687,12 +1687,12 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
      +range(p+'escMin',p+'escMax',T('호위 수','Escorts'),'',{min:0,max:8,unit:UI.ppl,dis:!bb.followers})
      +range(p+'tFrom',p+'tTo',T('등장 시각 (분)','Appears at (min)'),T('0–0 = 레이드 시작 때. 범위면 그 사이 무작위.','0–0 = at start. A range = random within.'),{min:0,max:120,unit:UI.min_})
      +sw(p+'extra',BOSSF.extra,T('맵 기본 자리 외에 추가로 한 번 더 굴립니다.','Roll once more besides the default spawn.'),{adv:true})
-     +sw(p+'noVanilla',BOSSF.noVanilla,T('게임 기본 보스 스폰을 지우고 Gravity 것만 씁니다. 지금 판은 Gravity가 바닐라 항목을 직접 고치므로 이 칸은 효과가 없습니다.','Remove vanilla boss spawns; use Gravity only. No effect in this version: Gravity edits the vanilla entries directly.'),{adv:true}),{icon:'★',right:pill(bb.on?u('on'):u('off'),bb.on?'good':'')});
+     +sw(p+'noVanilla',BOSSF.noVanilla,T('게임 기본 보스 항목(원래 구역·트리거)을 지우고, Gravity가 이 맵 보스 구역 전체에서 새로 넣은 항목만 씁니다. 확률·호위·시각은 위 값을 따릅니다.','Removes the game’s own boss entry (original zones/triggers) and uses only a Gravity entry over all boss zones of the map, with the chance, escorts and time above.'),{adv:true}),{icon:'★',right:pill(bb.on?u('on'):u('off'),bb.on?'good':'')});
   if(inPreview)return `<div class="stack">${previewMid?notice(T('켜기·확률·호위·시각·난이도는 이 보스가 나오는 모든 맵에 적용됩니다. 나오는 맵·구역 선택·맵별 확률만 현재 맵 설정입니다.','Enable, chance, escorts, time and difficulty apply on every map of this boss. Only the map toggle, zones and per-map chance are local.')):''}${list}${detail}<button class="btn preview-common-only" data-spawn-tab="all">${tr(T('보스 공통 확률 · 난이도 · 주간 설정','Shared boss chance, difficulty & weekly settings'))}</button></div>`;
   return `<div class="stack">${spawnOff()}<div class="grid g3">
    ${card(T('공통 확률','Shared chance'),sw('bossCommon.on',T('모든 보스에 같은 확률','One chance for all'),T('즈랴치처럼 항상 나오는 보스는 제외.','Excludes always-on bosses.'))+slider('bossCommon.chance',T('공통 확률','Shared chance'),'',{dis:!c.on}),{icon:'★'})}
-   ${card(T('점증 · 점감','Progressive · regressive'),sw('bossProg.on',T('안 나오면 다음 판 확률 올리기','Raise after a miss'),'')+sw('bossProg.regressive',T('나오면 다음 판 확률 내리기','Lower after a spawn'),'',{adv:true})+slider('bossProg.step',T('한 판마다','Step per raid'),'',{min:1,max:30,dis:!state.bossProg.on})+range('bossProg.min','bossProg.max',T('확률 범위','Chance range'),'',{adv:true}),{icon:'↗'})}
-   ${card(T('보스 공통','All bosses'),ratio('bossDiff',[['easy',T('쉬움','Easy'),'#5fd4a6'],['normal',T('보통','Normal'),'#6ea8ff'],['hard',T('어려움','Hard'),'#f0c070'],['imp',T('불가능','Imposs.'),'#f27f8c']],T('기본 난이도 분포','Default difficulty'),'')+sw('weeklyBoss',T('주간 보스 (한 맵 100%)','Weekly boss (100% on one map)'),'',{adv:true})+weeklyNote(),{icon:'⚙'})}</div>
+   ${card(T('점증 · 점감','Progressive · regressive'),sw('bossProg.on',T('안 나오면 다음 판 확률 올리기','Raise after a miss'),T('보스·맵마다 따로 셉니다. 레이드를 시작할 때 이번 판 확률로 미리 굴리고, 안 나온 판이면 다음 판에 한 판만큼 올립니다. 나오면 원래 확률로 돌아갑니다.','Counted per boss and map. Rolled at raid start; after a miss the next raid gets one step more, after a spawn it resets.'))+sw('bossProg.regressive',T('나오면 다음 판 확률 내리기','Lower after a spawn'),T('나온 다음 판은 원래 확률보다 한 판만큼 낮춥니다(연달아 나오면 더 낮게).','After a spawn the next raid is one step below the base chance (lower again on repeats).'),{adv:true,dis:!state.bossProg.on})+slider('bossProg.step',T('한 판마다','Step per raid'),'',{min:1,max:30,dis:!state.bossProg.on})+range('bossProg.min','bossProg.max',T('확률 범위','Chance range'),T('올리고 내린 확률은 이 범위 안에 둡니다. 꺼 둔 보스·맵(0%)은 그대로 0%입니다.','Raised/lowered chances stay in this range; bosses or maps at 0% stay 0%.'),{adv:true}),{icon:'↗'})}
+   ${card(T('보스 공통','All bosses'),ratio('bossDiff',[['easy',T('쉬움','Easy'),'#5fd4a6'],['normal',T('보통','Normal'),'#6ea8ff'],['hard',T('어려움','Hard'),'#f0c070'],['imp',T('불가능','Imposs.'),'#f27f8c']],T('기본 난이도 분포','Default difficulty'),T('보스별 난이도를 공통 분포로 둔 보스(새 설치 기본)에 판마다 이 비율로 씁니다.','Used each raid for bosses whose difficulty is set to Shared mix (new-install default).'))+sw('weeklyBoss',T('주간 보스 (한 맵 100%)','Weekly boss (100% on one map)'),'',{adv:true})+weeklyNote(),{icon:'⚙'})}</div>
    <div class="split">${list}${detail}</div></div>`;}};
 
 /** 1.0.5 보스 상세: 나오는 맵마다 확률 칸. 비우면 기본(공통/보스 확률), 0이면 그 맵에서 안 나옴. */
@@ -2888,7 +2888,7 @@ function migratePmcChance(tierData,roles){const pmc=tierData&&tierData.pmc,nw=ti
   ['usec','bear'].forEach(id=>{const r=roles&&roles[id];if(r&&r.frontPlate===90)r.frontPlate=100;});}
 /** 1.1.0 옛 저장본 → 지금 결과와 같은 값(서버 GearConfig.ParseGear의 v110 규칙과 같음). */
 function legacy110(s){Object.entries(s.roles||{}).forEach(([id,r])=>{const pmc=id==='usec'||id==='bear';r.skipBack=pmc;r.limitClass=pmc;r.keys=true;r.quest=true;r.reroll=0;r.topload={...(r.topload||{}),on:false};});
-  (s.gear.tiers||[]).forEach(t=>{t.valuables=0;t.keycard=0;});s.gear.splitAmmo=false;}
+  (s.gear.tiers||[]).forEach(t=>{t.valuables=0;t.keycard=0;});s.gear.splitAmmo=false;if(s.bossProg)s.bossProg.on=false;}
 function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
   // 1.0.9: 모드 아이템 스위치는 새 설치만 꺼짐. 값이 없는 기존 설정은 서버(mods.on 기본 켜짐)와 같게 켜 둔다(다음 저장에 꺼짐이 굳지 않게).
   if(raw&&(!raw.mods||raw.mods.on===undefined))state.mods.on=true;
