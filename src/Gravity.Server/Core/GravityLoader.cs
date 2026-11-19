@@ -19,7 +19,8 @@ public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
     PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json,
     TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales,
-    SPTarkov.Server.Core.Utils.Cloners.ICloner cloner, SPTarkov.Server.Core.Services.Bot.BotInventoryContainerService containers) : IOnLoad
+    SPTarkov.Server.Core.Utils.Cloners.ICloner cloner, SPTarkov.Server.Core.Services.Bot.BotInventoryContainerService containers,
+    SPTarkov.Server.Core.Helpers.Bot.BotGeneratorHelper botHelper) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -144,6 +145,11 @@ public class GravityLoader(
                 new Gravity.Gear.GearDynamicGearPatch().Enable();
                 new Gravity.Gear.GearLootPatch().Enable();
                 new Gravity.Gear.GearUnheardPatch().Enable();
+                // 1.1.0 무기 화면: 부품 개수 제한·밤 손전등·대용량 탄창·낱개 탄약(설정이 꺼져 있으면 패치는 아무것도 안 바꿈)
+                Gravity.Gear.GearMagPatch.Helper = botHelper;
+                new Gravity.Gear.GearModLimitPatch().Enable();
+                new Gravity.Gear.GearLightPatch().Enable();
+                new Gravity.Gear.GearMagPatch().Enable();
                 // 1.0.7 PackNStrap 벨트: 벨트 아이템이 있을 때만 건다(없으면 완장·탄창 칸은 SPT 그대로).
                 var belts = Gravity.Gear.GearBelts.All(Gravity.Gear.GearRuntime.Items).Count();
                 if (belts > 0)

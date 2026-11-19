@@ -19,6 +19,9 @@ public sealed class GearContext
     public required HashSet<string> Black { get; init; }
     public bool ThermalOk { get; init; }
     public bool LongOk { get; init; }
+    /// <summary>1.1.0: 이번 레이드 맵 id(소문자, 모르면 null)와 밤 여부. 맵별 무기 성향·밤 손전등에 쓴다.</summary>
+    public string? Map { get; init; }
+    public bool Night { get; init; }
     public RoleGear Role => Settings.RoleFor(Pick.RoleId);
     /// <summary>1.0.7 PackNStrap: 벨트 아이템이 있어 완장 칸을 Gravity가 정하는지.</summary>
     public bool BeltManaged { get; set; }
@@ -79,14 +82,15 @@ public static class GearApply
         g.Blacklist.Where(e => e.Bots.Any(b => b == "all" || b == pick.Group || b == pick.RoleId || (b == "scav" && pick.Group == "scavs")))
             .Select(e => e.Id).ToHashSet();
 
-    public static GearContext Context(GearSettings g, GearPick pick, GearItems items, GearRaid raid, bool night, Random rnd)
+    public static GearContext Context(GearSettings g, GearPick pick, GearItems items, GearRaid raid, bool night, Random rnd, string? map = null)
     {
         var caps = g.Tiers[pick.Tier];
         return new GearContext
         {
             Pick = pick, Settings = g, Caps = caps, Items = items, Raid = raid, Black = BlackFor(g, pick),
             ThermalOk = (g.ThermalsT7 && pick.Tier == 6) || (night && rnd.NextDouble() * 100 < g.NightThermal),
-            LongOk = rnd.NextDouble() * 100 < caps.LongScope
+            LongOk = rnd.NextDouble() * 100 < caps.LongScope,
+            Map = string.IsNullOrEmpty(map) ? null : map.ToLowerInvariant(), Night = night
         };
     }
 
@@ -161,6 +165,10 @@ public static class GearApply
                 if (userSlot && pool.Count == 0) emptySlots.Add(slot);
             }
         }
+
+        // 1-1) 1.1.0 맵별 무기 성향: 맵 기본값보다 원거리로 옮기면 지정사수·저격총 무게를, 근거리로 옮기면 기관단총·산탄총 무게를 키운다.
+        // 기본값 그대로면 바꾸지 않는다. 무게가 모두 0이 되면 그 칸은 손대지 않는다(맨손 방지).
+        if (inv?.Equipment != null) ApplyRange(inv.Equipment, c);
 
         // 2) 탄약: 관통 상한(스캐브는 블랙리스트 스캐브 상한도), 티어 거리 무게. 칼리버마다 최소 한 개는 남긴다(총은 있는데 탄이 없으면 안 됨).
         double penCap = pick.Group == "scavs" ? Math.Min(caps.Pen, g.ScavPenCap) : caps.Pen;
@@ -378,6 +386,25 @@ public static class GearApply
             foreach (var m in cand) set.Add(m);
         }
         return (orig.Count - set.Count, true);
+    }
+
+    internal static void ApplyRange(Dictionary<EquipmentSlots, Dictionary<MongoId, double>> equipment, GearContext c)
+    {
+        var (fl, fs) = c.Settings.Weapons.RangeFactors(c.Map);
+        if (fl == 1 && fs == 1) return;
+        foreach (var slot in new[] { EquipmentSlots.FirstPrimaryWeapon, EquipmentSlots.SecondPrimaryWeapon })
+        {
+            if (!equipment.TryGetValue(slot, out var pool) || pool == null || pool.Count == 0) continue;
+            var next = pool.ToDictionary(kv => kv.Key, kv => kv.Value * (WeaponExtras.RangeKind(c.Info(kv.Key.ToString())?.Slot) switch
+            {
+                "long" => fl,
+                "short" => fs,
+                _ => 1.0
+            }));
+            if (next.Values.All(v => v <= 0)) continue;
+            pool.Clear();
+            foreach (var (k, v) in next) if (v > 0) pool[k] = v;
+        }
     }
 
     private static void ApplyChances(BotType bot, GearSettings g, TierCaps caps, RoleGear role, GearTable table, bool night)

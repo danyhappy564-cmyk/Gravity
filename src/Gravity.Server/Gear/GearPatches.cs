@@ -163,7 +163,7 @@ public class GearFilterPatch : AbstractPatch
             int? lvl = botGenerationDetails.IsPmc ? GearRuntime.PmcLevel ?? botGenerationDetails.BotLevel : null;
             var pick = new GearPick(id, group, GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd), botGenerationDetails.IsPmc);
             var night = GearRuntime.Night(sessionId);
-            var ctx = GearApply.Context(g, pick, GearRuntime.Items, GearRuntime.Raid, night, rnd);
+            var ctx = GearApply.Context(g, pick, GearRuntime.Items, GearRuntime.Raid, night, rnd, botGenerationDetails.Location);
             GearApply.Apply(baseBotNode, ctx, night, rnd);
             GearRuntime.Current = ctx;
             GearRuntime.Stats.AddOrUpdate(group, _ => { var a = new int[7]; a[pick.Tier] = 1; return a; }, (_, a) => { Interlocked.Increment(ref a[pick.Tier]); return a; });

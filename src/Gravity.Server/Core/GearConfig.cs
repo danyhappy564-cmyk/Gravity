@@ -63,6 +63,8 @@ public sealed record GearSettings(
     public bool PartTiers { get; init; } = true;
     /// <summary>1.0.7 PackNStrap 벨트 설정.</summary>
     public BeltSettings Belts { get; init; } = new();
+    /// <summary>1.1.0 무기 화면의 낱개 탄약·대용량 탄창·부품 개수·밤 손전등·맵별 무기 성향.</summary>
+    public Gravity.Gear.WeaponExtras Weapons { get; init; } = new();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
 
     /// <summary>봇의 표: 그 봇 전용 표가 켜져 있으면 그것, 아니면 묶음 표, 없으면 기본식.</summary>
@@ -291,6 +293,7 @@ public static partial class ConfigModel
             bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
         { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal), ModsOn = r.Bool("mods.on", true),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
-            Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)) };
+            Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),
+            Weapons = Gravity.Gear.WeaponExtras.Read(r) };
     }
 }
