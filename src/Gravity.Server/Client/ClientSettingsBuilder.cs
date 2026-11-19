@@ -74,7 +74,7 @@ public static class ClientSettingsBuilder
                 isList || ms.ScavStyle == "start" ? 0 : sc.LeanWave, isList || ms.ScavStyle == "start" ? 0 : sc.LeanBots),
             // 좁은 맵(공장·미궁)은 ORBIT 수면 거리 밖 지점이 없어 근처 보충이 전부 버려진다(11-09 공장 판 noPoint 5) → 거리 보정 안 함.
             inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
-            cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.DiagOrDefault.Log, scavWeights,
+            cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.ClientOpts.Verbose ? "verbose" : cfg.DiagOrDefault.Log, scavWeights,
             cfg.OrbitOrDefault.RefillMode, cfg.OrbitOrDefault.ExtractRefillCap,
             ExcludedZones(ms.Zones, map.PmcZones, map.ScavZones),
             // 서버 계획이 이미 넣은 PMC 분대 크기: 클라가 "레이드 전체" 그룹 제한을 이어서 센다(Codex 검토 2번).
@@ -84,7 +84,32 @@ public static class ClientSettingsBuilder
             CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled),
             // 1.0.1: 시작 분대 번호(WaveMark 끝 번호)와 "플레이어 시작 지점만" 스위치
             plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly, s.WavePoints, s.TotalCap,
-            s.MaxRespawnPmc > 0 ? s.MaxRespawnPmc : -1, s.MaxRespawnScav > 0 ? s.MaxRespawnScav : -1);
+            s.MaxRespawnPmc > 0 ? s.MaxRespawnPmc : -1, s.MaxRespawnScav > 0 ? s.MaxRespawnScav : -1,
+            cfg.ClientOpts.PerFrame, Preload(plan, refill, cfg.ClientOpts.Preload), cfg.ClientOpts.PmcAnywhere,
+            cfg.ClientOpts is { Markers: false, Zones: false, Overlay: false } ? null : new DevDto(cfg.ClientOpts.Markers, cfg.ClientOpts.Zones, cfg.ClientOpts.Overlay),
+            plan.Groups.Select(g => Math.Max(0, g.TimeSec - sim)).ToArray());
+    }
+
+    /// <summary>
+    /// 1.1.0 봇 미리 만들어 두기: 시작 뒤 계획 분대(시각순)와 무한 보충 분대에서 앞쪽 n명의 진영·난이도를 센다.
+    /// 클라는 이 수를 게임 예비 프로필 목표에 넣어 레이드 중 분대가 나올 때 서버에 프로필을 묻는 끊김을 줄인다.
+    /// </summary>
+    internal static PreloadDto[] Preload(SpawnPlan plan, IReadOnlyList<RefillGroup> refill, int n)
+    {
+        if (n <= 0) return [];
+        var count = new Dictionary<(string, string), int>();
+        int left = n;
+        void Add(bool usec, string diff, int size)
+        {
+            if (left <= 0) return;
+            var k = (usec ? "pmcUSEC" : "pmcBEAR", string.IsNullOrEmpty(diff) ? "normal" : diff);
+            var take = Math.Min(left, Math.Max(1, size));
+            count[k] = count.GetValueOrDefault(k) + take;
+            left -= take;
+        }
+        foreach (var g in plan.Groups.Where(g => !g.IsStart).OrderBy(g => g.TimeSec)) Add(g.Usec, g.Difficulty, g.Size);
+        foreach (var g in refill) Add(g.Usec, g.Difficulty, g.Size);
+        return count.Select(kv => new PreloadDto(kv.Key.Item1, kv.Key.Item2, kv.Value)).OrderBy(p => p.Role).ThenBy(p => p.Difficulty).ToArray();
     }
 
     /// <summary>핫스팟 부스트: 비중 w → w²/기본(100). 0은 0.</summary>

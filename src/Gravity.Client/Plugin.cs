@@ -40,6 +40,10 @@ namespace Gravity.Client
             }
         }
 
+        // 1.1.0 클라이언트·개발자 화면: 봇 미리 만들어 두기·지금 넣어 보기(매 프레임), 게임 화면 표시(OnGUI)
+        private void Update() => Gravity.Client.Directors.DevView.Update();
+        private void OnGUI() => Gravity.Client.Directors.DevView.OnGUI();
+
         private void Awake()
         {
             Log.Init(Logger);

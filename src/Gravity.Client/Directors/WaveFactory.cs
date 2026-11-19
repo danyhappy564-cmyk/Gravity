@@ -43,6 +43,16 @@ namespace Gravity.Client.Directors
             return Build(role, Math.Max(1, g.Size), Diff(g.Difficulty), zoneName, null);
         }
 
+        /// <summary>1.1.0 '지금 넣어 보기': 역할·대원 역할·대원 수 그대로. 모르는 역할이면 null. at이 있으면 그 위치 근처 구역부터.</summary>
+        public static BossLocationSpawn? Custom(string role, string escort, int escorts, string diff, Vector3? at)
+        {
+            if (!Enum.TryParse<WildSpawnType>(role, true, out _) || !Enum.TryParse<WildSpawnType>(escort, true, out _)) return null;
+            var w = Build(role, 1 + Math.Max(0, escorts), Diff(diff), "", at);
+            w.BossEscortType = escort;
+            w.Init();
+            return w;
+        }
+
         /// <summary>정해진 위치 근처 분대(F8용). PerfectPos를 주면 GetPossibleZones가 그 위치에 가까운 구역 순으로 고른다.</summary>
         public static BossLocationSpawn AtPoint(WildSpawnType role, int count, Vec3 pos, string zoneName, string diff = "normal") =>
             Build(role.ToString(), Math.Max(1, count), string.IsNullOrEmpty(diff) ? "normal" : diff, zoneName, new Vector3(pos.X, pos.Y, pos.Z));

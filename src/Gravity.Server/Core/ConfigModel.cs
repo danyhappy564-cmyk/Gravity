@@ -178,6 +178,10 @@ public sealed record BlackDivSettings(bool Managed, bool ShareCap, IReadOnlyDict
     double Chance, double TMin, double TMax, int HuntMin, int HuntMax, double LabsGate, bool Wedge, double WedgeChance,
     string BlackoutLink, double BlackoutMult, string Style = "waves");
 
+/// <summary>1.1.0 클라이언트 화면(client.perFrame·preload·pmcAnywhere)과 개발자 화면 게임 표시(dev.*).</summary>
+public sealed record ClientOptions(int PerFrame = 1, int Preload = 0, bool PmcAnywhere = false,
+    bool Markers = false, bool Zones = false, bool Overlay = false, bool Verbose = false);
+
 public sealed record GravityConfig(
     bool SpawnModule, SpawnSettings Spawn, IReadOnlyDictionary<string, MapSettings> Maps,
     IReadOnlyDictionary<string, BossSettings> Bosses, bool BossCommonOn, double BossCommonChance, NearSettings Near,
@@ -189,6 +193,8 @@ public sealed record GravityConfig(
 {
     /// <summary>1.1.0 보스 점증·점감·공통 난이도 분포·SVM 보스 확률 담당(svmOwn.boss = "svm"이면 맵에 들어 있는 확률을 그대로 둠).</summary>
     public Gravity.Spawn.BossProgSettings BossProg { get; init; } = new();
+    /// <summary>1.1.0 클라이언트·개발자 화면(client.*, dev.*).</summary>
+    public ClientOptions ClientOpts { get; init; } = new();
     public Gravity.Spawn.BossDiffDist BossDiff { get; init; } = new();
     public bool SvmBossKeep { get; init; }
 
@@ -447,7 +453,11 @@ public static partial class ConfigModel
             BossProg = new Gravity.Spawn.BossProgSettings(r.Num("settingsVer", 0, 0, 999) >= 110 && r.Bool("bossProg.on", true),
                 r.Num("bossProg.step", 10, 1, 50), r.Num("bossProg.min", 20, 0, 100), r.Num("bossProg.max", 100, 0, 100), r.Bool("bossProg.regressive", false)),
             BossDiff = new Gravity.Spawn.BossDiffDist(r.Num("bossDiff.easy", 0, 0, 100), r.Num("bossDiff.normal", 60, 0, 100), r.Num("bossDiff.hard", 30, 0, 100), r.Num("bossDiff.imp", 10, 0, 100)),
-            SvmBossKeep = r.Str("svmOwn.boss", "gravity", "gravity", "svm") == "svm"
+            SvmBossKeep = r.Str("svmOwn.boss", "gravity", "gravity", "svm") == "svm",
+            // 1.1.0: 봇 미리 만들어 두기는 판 110 전 저장본(화면 기본 6)이면 0(1.0.9처럼 안 함).
+            ClientOpts = new ClientOptions((int)r.Num("client.perFrame", 1, 1, 5),
+                r.Num("settingsVer", 0, 0, 999) >= 110 ? (int)r.Num("client.preload", 6, 0, 20) : 0, r.Bool("client.pmcAnywhere", false),
+                r.Bool("dev.markers", false), r.Bool("dev.zones", false), r.Bool("dev.overlay", false), r.Bool("dev.verbose", false))
         };
     }
 

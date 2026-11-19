@@ -48,6 +48,7 @@ public class ClientRoutes : StaticRouter
     public const string HelloPath = "/gravity-client/hello";
     public const string RaidPath = "/gravity-client/raid";
     public const string ReportPath = "/gravity-client/report";
+    public const string PollPath = "/gravity-client/poll";
 
     private static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web);
 
@@ -69,6 +70,13 @@ public class ClientRoutes : StaticRouter
         {
             var res = GravityRuntime.Instance?.ClientRaidFor(info.MapId) ?? ClientSettingsBuilder.Unmanaged(info.MapId);
             return ValueTask.FromResult(http.NoBody(ToWire(res)));
+        }),
+        // 1.1.0 '지금 넣어 보기': 레이드 중 클라가 몇 초마다 묻는다. 쌓인 명령을 이 맵 기준으로 만들어 준다.
+        new RouteAction<RaidRequestData>(PollPath, (url, info, sessionId, output, token) =>
+        {
+            var rt = GravityRuntime.Instance;
+            var cmds = rt is null ? [] : DevCommands.Drain(info.MapId, rt.CurrentBase?.Invoke(info.MapId), rt.Store.Current, rt.Detect.Ruaf, rt.Note);
+            return ValueTask.FromResult(http.NoBody(ToWire(new DevPollResponse(cmds))));
         }),
         new RouteAction<ReportRequestData>(ReportPath, (url, info, sessionId, output, token) =>
         {

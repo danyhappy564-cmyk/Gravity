@@ -13,7 +13,7 @@ public static class FactionRaid
 {
     private static readonly string[] Modes = ["regular", "pve"];
     private static readonly string[] RuafSpecialists = ["ruafMarksman", "ruafMachinegunner", "ruafAutorifleman"];
-    private const string RuafLeader = "ruafRiflemanSenior", RuafRifleman = "ruafRifleman";
+    internal const string RuafLeader = "ruafRiflemanSenior", RuafRifleman = "ruafRifleman";
     private const string BdAssault = "blackDivAssault", BdWedge = "bossWedge", BdGuard = "blackDivIb";
 
     // 모드가 등록한 봇 종류(이름과 번호). 클라는 역할 이름이 번호로 보일 수도 있어 둘 다 보낸다.

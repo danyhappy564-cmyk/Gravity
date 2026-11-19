@@ -38,7 +38,7 @@ namespace Gravity.Client.Patches
             var cores = holder?.CorePoints;
 
             int id = 0, players = 0, bots = 0, noCore = 0, linked = 0, spread = 0;
-            bool wantSpread = c.S.WavePoints == "spread";
+            bool wantSpread = c.S.WavePoints == "spread" || c.S.PmcAnywhere;
             PathChecked = 0;
             foreach (var p in all)
             {

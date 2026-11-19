@@ -61,7 +61,7 @@ namespace Gravity.Client
 
         /// <summary>이 분대가 맵 전체 배치 대상인지: spread 설정이고 Gravity 웨이브 분대(시작 분대·근처 보충 제외).</summary>
         internal bool Spreads(BossLocationSpawn? wave) =>
-            wave != null && S.WavePoints == "spread" && wave.BossType.IsPmcBot() && Owns(wave) && !IsStartupWave(wave)
+            wave != null && (S.WavePoints == "spread" || S.PmcAnywhere) && wave.BossType.IsPmcBot() && Owns(wave) && (S.PmcAnywhere || !IsStartupWave(wave))
             && !NearWaves.TryGetValue(wave, out _);
 
         /// <summary>Candidate.Id → 게임 지점.</summary>

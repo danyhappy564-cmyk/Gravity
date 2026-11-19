@@ -130,6 +130,16 @@ public class GravityWeb : IHttpListener
                         await Send(res, r.Ok ? 200 : 400, new { ok = r.Ok, error = r.Error });
                         return;
                     }
+                    case ("dev/spawn", "POST"):
+                    {
+                        // 1.1.0 '지금 넣어 보기': 종류만 대기열에. 레이드 중 클라가 가져간다.
+                        if (!await WriteAccess.CheckAsync(context)) { await Send(res, 403, Denied); return; }
+                        var kind = (req.Query["kind"].ToString() ?? "").ToLowerInvariant();
+                        if (!rt.Detect.SpawnLocked && Gravity.Client.DevCommands.Enqueue(kind))
+                            await Send(res, 200, new { ok = true, inRaid = Gravity.Client.DevCommands.InRaid, map = Gravity.Client.DevCommands.PolledMap });
+                        else await Send(res, 400, new { ok = false, error = rt.Detect.SpawnLocked ? "스폰 잠금 중" : "모르는 종류이거나 대기열이 찼습니다" });
+                        return;
+                    }
                     case ("gear/rebuild", "POST"):
                     {
                         if (!await WriteAccess.CheckAsync(context)) { await Send(res, 403, Denied); return; }

@@ -39,6 +39,9 @@ namespace Gravity.Client.Directors
             public ScavWaveList? List;
             public float NextListLog;
             public float NextTick;
+            /// <summary>1.1.0 프레임당 상한(S.PerFrame)으로 다음 프레임에 넘긴 스캐브 수와 그 프레임.</summary>
+            public int Drip;
+            public int DripFrame;
             public int RefillIndex;
             public int ScavSpawned;
             public bool CapEpisode;
@@ -88,6 +91,7 @@ namespace Gravity.Client.Directors
                     Log.Info($"{c.S.MapId} 스캐브 웨이브 목록 {st.List.Count}개(총 {Sum(st.List.Counts)}마리)");
                 }
             }
+            if (st.Drip > 0 && now < st.NextTick) { DripScavs(c, st, bc, now, difficulties); return; }
             if (now < st.NextTick) return;
             st.NextTick = now + TickSec;
 
@@ -128,8 +132,9 @@ namespace Gravity.Client.Directors
                 // 목록 방식: 시각이 된 웨이브만, 빈자리(맵 상한 − 점유 − PMC 예약 몫)만큼. 못 낸 인원은 그 웨이브에 남아 60초까지 다시 본다.
                 int room = bc._maxCount - alive - c.PmcReserveLeft();
                 int due = st.List.Due(now, room);
-                int put = due > 0 ? SpawnScavs(c, st, bc, spawner, due, now, difficulties) : 0;
-                if (put < due) st.List.GiveBack(due - put);
+                int first = FrameShare(c, st, due);
+                int put = first > 0 ? SpawnScavs(c, st, bc, spawner, first, now, difficulties) : 0;
+                if (put < first) { st.List.GiveBack(due - put); st.Drip = 0; }
                 if (put > 0) st.CapEpisode = false;
                 else if (st.List.Waiting > 0 && room <= 0) MarkCap(c, st);
                 if (now >= st.NextListLog && st.List.Count > 0)
@@ -146,8 +151,40 @@ namespace Gravity.Client.Directors
                 return;
             }
 
-            int done = SpawnScavs(c, st, bc, spawner, n, now, difficulties);
+            int part = FrameShare(c, st, n);
+            int done = SpawnScavs(c, st, bc, spawner, part, now, difficulties);
+            if (done < part) st.Drip = 0;
             if (done > 0) st.CapEpisode = false;
+        }
+
+        /// <summary>1.1.0 프레임당 상한: 이번 프레임에 낼 수(n 중 S.PerFrame까지), 나머지는 다음 프레임들로(st.Drip).</summary>
+        private static int FrameShare(RaidContext c, State st, int n)
+        {
+            int pf = c.S.PerFrame;
+            if (pf <= 0 || n <= pf) { st.Drip = 0; return n; }
+            st.Drip = n - pf;
+            st.DripFrame = Time.frameCount;
+            return pf;
+        }
+
+        /// <summary>넘긴 스캐브를 프레임마다 S.PerFrame명씩. 상한·자리에 막히면 남은 것은 버린다(목록 방식은 웨이브에 돌려준다).</summary>
+        private static void DripScavs(RaidContext c, State st, BotsController? bc, float now, WDictionary<BotDifficulty>? difficulties)
+        {
+            if (Time.frameCount == st.DripFrame) return;
+            st.DripFrame = Time.frameCount;
+            if (bc == null && Singleton<IBotGame>.Instantiated) bc = Singleton<IBotGame>.Instance.BotsController;
+            var spawner = bc?.BotSpawner;
+            if (bc == null || spawner == null || !bc._canSpawn) { GiveUpDrip(st); return; }
+            int k = Math.Min(st.Drip, Math.Max(1, c.S.PerFrame));
+            st.Drip -= k;
+            int put = SpawnScavs(c, st, bc, spawner, k, now, difficulties);
+            if (put < k) { st.Drip += k - put; GiveUpDrip(st); }
+        }
+
+        private static void GiveUpDrip(State st)
+        {
+            if (st.Drip > 0 && st.List != null) st.List.GiveBack(st.Drip);
+            st.Drip = 0;
         }
 
         /// <summary>

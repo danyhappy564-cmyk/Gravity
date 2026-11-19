@@ -50,7 +50,20 @@ namespace Gravity.Shared
         string? ExtractRefillMode = null, int? ExtractRefillCap = null, IReadOnlyList<string>? DisabledZones = null,
         IReadOnlyList<int>? PlannedGroups = null, string? WaveMark = null, CapTableDto? Caps = null,
         IReadOnlyList<int>? StartGroups = null, bool StartPlayerOnly = false, string? WavePoints = null, int TotalCap = 0,
-        int RespawnPmcLeft = -1, int RespawnScavLeft = -1);
+        int RespawnPmcLeft = -1, int RespawnScavLeft = -1,
+        int PerFrame = 0, IReadOnlyList<PreloadDto>? Preload = null, bool PmcAnywhere = false, DevDto? Dev = null, IReadOnlyList<int>? PlannedTimes = null);
+    // 1.1.0 클라이언트 화면: PerFrame = Gravity 스캐브 요청을 한 프레임에 이만큼까지(0 = 제한 없음, 옛 서버),
+    // Preload = 레이드 시작 때 게임 예비 프로필 목표(BotSpawner.AddToTargetBackup)로 미리 만들어 둘 역할·난이도·수,
+    // PmcAnywhere = 시작 분대까지 맵 전체(저격 제외) 지점 사용, Dev = 게임 화면 표시, PlannedTimes = 계획 PMC 분대 시각(초, 화면 표시용).
+
+    public sealed record PreloadDto(string Role, string Difficulty, int Count);
+
+    public sealed record DevDto(bool Markers, bool Zones, bool Overlay);
+
+    /// <summary>1.1.0 '지금 넣어 보기' 명령. Kind: wave·scav·boss·faction·near. Escorts = 대원 수.</summary>
+    public sealed record DevCommand(string Kind, string Role, string Escort, int Escorts, string Difficulty, int Id);
+
+    public sealed record DevPollResponse(IReadOnlyList<DevCommand> Commands);
     // 1.1.0 RespawnPmcLeft·RespawnScavLeft: 시작 봇 뒤 Gravity가 다시 넣는 PMC·스캐브 최대 인원(-1 = 제한 없음, 옛 서버도 -1).
     // 1.0.8 TotalCap: 레이드 전체 봇 누적 상한(0 = 끔, 옛 서버도 0). Gravity 스폰만 멈춘다(INBOX #61).
     // 1.0.8 WavePoints: null·"pmc" = 1.0.7과 같음, "spread" = 웨이브 PMC 분대를 맵 전체 봇 구역(저격 제외)에 고르게(INBOX #60).

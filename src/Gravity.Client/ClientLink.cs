@@ -16,6 +16,18 @@ namespace Gravity.Client
         public const string HelloPath = "/gravity-client/hello";
         public const string RaidPath = "/gravity-client/raid";
         public const string ReportPath = "/gravity-client/report";
+        public const string PollPath = "/gravity-client/poll";
+
+        /// <summary>1.1.0 '지금 넣어 보기' 명령 묻기(옛 서버는 경로가 없어 실패 → 경고 없이 null).</summary>
+        public static async Task<DevPollResponse?> PollAsync(string mapId)
+        {
+            try
+            {
+                var json = await RequestHandler.PostJsonAsync(PollPath, RaidBody(mapId)).ConfigureAwait(false);
+                return string.IsNullOrWhiteSpace(json) ? null : Deserialize<DevPollResponse>(json);
+            }
+            catch { return null; }
+        }
 
         /// <summary>속성 이름만 camelCase. 사전 키(구역 이름, pmcUSEC 등)는 그대로 둔다.
         /// 레코드는 매개변수 있는 public 생성자가 하나뿐이라 Newtonsoft가 그 생성자로 만든다(이름은 대소문자 무시로 맞춤).</summary>
