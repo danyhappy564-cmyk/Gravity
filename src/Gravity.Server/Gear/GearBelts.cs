@@ -69,7 +69,7 @@ public static class GearBelts
     private static bool Allowed(GearContext c, string id)
     {
         if (c.Black.Contains(id) || c.Info(id) is not { } info) return false;
-        return !(info.Mod && c.Settings.DisabledSources.Contains(info.Source));
+        return !c.Settings.ModDisabled(info);
     }
 
     /// <summary>

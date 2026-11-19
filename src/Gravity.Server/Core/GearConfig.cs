@@ -55,6 +55,23 @@ public sealed record GearSettings(
     public IReadOnlySet<string> ThermalAdd { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> ThermalRemove { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> DisabledSources { get; init; } = new HashSet<string>();
+    /// <summary>
+    /// 1.1.0(#69): 모드 아이템 탭(무기·장구류·부착물·기타)마다 따로 끈 모드. null = 옛 설정(mods.disabledBy 없음) → DisabledSources를 모든 탭에 쓴다.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlySet<string>>? DisabledBy { get; init; }
+    public static readonly string[] ModTabs = ["weapons", "equipment", "attachments", "other"];
+    /// <summary>아이템 분류 → 모드 아이템 탭(웹 MOD_TABS와 같은 규칙).</summary>
+    public static string ModTab(string section) => section switch
+    {
+        "weapons" => "weapons",
+        "armor" or "plates" => "equipment",
+        "parts" => "attachments",
+        _ => "other"
+    };
+    /// <summary>이 모드 아이템의 출처를 그 아이템 탭에서 껐는지.</summary>
+    public bool ModDisabled(Gravity.Gear.ItemInfo info) => info.Mod && (DisabledBy is { } by
+        ? by.TryGetValue(ModTab(info.Section), out var set) && set.Contains(info.Source)
+        : DisabledSources.Contains(info.Source));
     /// <summary>1.0.9 모드 아이템 전체 스위치(mods.on). 기존 설정 파일에 값이 없으면 켜짐, 새 설치(ConfigModel.Default)는 꺼짐.</summary>
     public bool ModsOn { get; init; } = true;
     /// <summary>1.0.5 의상 탭: 옷을 허용한 모드 출처. null = 한 번도 저장 안 함 → 봇 외형을 바꾸지 않음.</summary>
@@ -291,7 +308,8 @@ public static partial class ConfigModel
             r.Bool("mods.subset", true), (int)r.Num("mods.weapons", 30, 0, 1000), (int)r.Num("mods.attachments", 150, 0, 5000),
             (int)r.Num("mods.equipment", 30, 0, 1000), r.Num("mods.mult", 100, 0, 200), r.Bool("mods.pmcOnly", true),
             bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
-        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal), ModsOn = r.Bool("mods.on", true),
+        { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal),
+            DisabledBy = r.Node("mods.disabledBy") is JsonObject ? GearSettings.ModTabs.ToDictionary(t => t, t => (IReadOnlySet<string>)r.StringList("mods.disabledBy." + t).ToHashSet(StringComparer.Ordinal)) : null, ModsOn = r.Bool("mods.on", true),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),
             Weapons = Gravity.Gear.WeaponExtras.Read(r) };

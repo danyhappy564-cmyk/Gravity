@@ -610,6 +610,9 @@ const FACTIONS=[
  {id:'untar',name:T('UNTAR','UNTAR'),mod:'TacticalToasterUNTARGH',color:'#5b9bd5',kinds:['patrol','checkpoint','hunt'],maps:['woods','bigmap','interchange','tarkovstreets','sandbox'],orbit:'TakeOverUntar'},
  {id:'blackdiv',name:T('블랙 디비전 · 웨지','Black Division · Wedge'),mod:'BlackDiv',color:'#9a9a9a',kinds:['blackdiv'],maps:['bigmap','tarkovstreets','shoreline','lighthouse','factory4_day','factory4_night','interchange','sandbox_high','rezervbase','labyrinth'],orbit:'TakeOverBlackDivision'}
 ];
+/** 1.1.0(#69): 아이템 분류 → 모드 아이템 탭. 탭마다 끈 모드는 mods.disabledBy.<탭>에 따로 저장(서버 GearSettings.ModTab과 같은 규칙). */
+const modTabOf=sec=>sec==='weapons'?'weapons':sec==='armor'||sec==='plates'?'equipment':sec==='parts'||sec==='attach'?'attachments':'other';
+const modOffIn=tab=>(state.mods.disabledBy&&state.mods.disabledBy[tab])||[];
 const MOD_TABS=[['weapons',T('무기','Weapons'),x=>x.section==='weapons'],['equipment',T('장구류','Gear'),x=>x.section==='armor'||x.section==='plates'],['attachments',T('부착물','Attachments'),x=>x.section==='parts'],['other',T('기타','Other'),x=>!['weapons','armor','plates','parts'].includes(x.section)],['clothing',T('의상','Clothing'),()=>false]];
 /** 1.0.5 의상 탭: 모드 단위로만 허용(옷 하나하나는 고르지 않음). 허용 목록 mods.clothingOn — 키가 없으면 봇 외형을 바꾸지 않는다. */
 function clothingSourceList(tabsBar){const on=state.mods.clothingOn,q=modSearch.toLowerCase(),cnt={};
@@ -619,7 +622,7 @@ function clothingSourceList(tabsBar){const on=state.mods.clothingOn,q=modSearch.
     <div class="sw-row" style="margin-bottom:10px"><input type="search" id="modSearch" placeholder="${tr(T('모드 이름 검색','Search mods'))}" value="${esc(modSearch)}"><button class="mini-btn" data-modall="on">${tr(T('보이는 것 모두 켜기','Enable all shown'))}</button><button class="mini-btn" data-modall="off">${tr(T('보이는 것 모두 끄기','Disable all shown'))}</button>${on?pill(fmt(tr(T('켬 {a} / {n}','On {a} / {n}')),{a:list.filter(([n])=>has(n)).length,n:list.length}),'blue'):pill(tr(T('지금: 봇 옷 그대로 (설정 전)','Now: outfits untouched (not set)')))}</div>
     <div class="modlist">${list.map(([n,c])=>`<button class="modrow modsrc${has(n)?'':' off'}" data-clothsrc="${esc(n)}"><span class="ck">${has(n)?'■':'□'}</span><span>${esc(n)}</span><small class="muted">${fmt(tr(T('상의 {b} · 하의 {f}','Tops {b} · bottoms {f}')),{b:c.body,f:c.feet})}</small><span class="pill" style="margin-left:auto">${c.n}</span></button>`).join('')||`<div class="modrow muted">${tr(T('설치된 의상 모드가 없습니다 (SPT 원본에 없는 상의·하의를 넣은 모드만 보입니다).','No clothing mods installed (only mods that add new tops or bottoms appear).'))}</div>`}</div>`;}
 function modSourceList(){if(!GEAR_CATALOG)return `<p class="muted small">${tr(T('설치된 모드 목록은 서버 연결 뒤 보입니다.','Installed mods appear once the server is connected.'))}</p>`;
-  const tab=MOD_TABS.find(x=>x[0]===modTab)||MOD_TABS[0],off=state.mods.disabledSources||[],q=modSearch.toLowerCase();
+  const tab=MOD_TABS.find(x=>x[0]===modTab)||MOD_TABS[0],off=modOffIn(tab[0]),q=modSearch.toLowerCase();
   if(tab[0]==='clothing')return clothingSourceList(`<div class="tabs">${MOD_TABS.map(([k,l])=>`<button data-modtab="${k}" class="${k===tab[0]?'on':''}">${tr(l)}</button>`).join('')}</div>`);
   const cnt={};GEAR_CATALOG.forEach(x=>{if(x.mod&&tab[2](x))cnt[x.source]=(cnt[x.source]||0)+1;});
   const srt={count:(a,b)=>b[1]-a[1],name:(a,b)=>a[0].localeCompare(b[0]),on:(a,b)=>off.includes(a[0])-off.includes(b[0])||b[1]-a[1],off:(a,b)=>off.includes(b[0])-off.includes(a[0])||b[1]-a[1]};
@@ -748,7 +751,7 @@ function makeDefaults(){
     roles,
     weapons:{range:Object.fromEntries(MAPS.map(m=>[m.id,['woods','lighthouse','shoreline'].includes(m.id)?65:m.id.startsWith('factory')||m.id==='laboratory'||m.id==='labyrinth'?15:40])),
       ver:2,looseAmmo:{on:true,chance:40,limit:2},bigMag:{on:false,count:1},stock:true,dust:true,scope:true,muzzle:{force:false},partTiers:true,modLimit:false,scopeLimit:2,tacLimit:1,night:{nvg:60,thermal:8,lightOn:false,light:40}},
-    mods:{on:false,disabledSources:[],subset:true,weapons:30,attachments:150,equipment:30,mult:100,pmcOnly:true,allowed},
+    mods:{on:false,disabledBy:{weapons:[],equipment:[],attachments:[],other:[]},subset:true,weapons:30,attachments:150,equipment:30,mult:100,pmcOnly:true,allowed},
     client:{preload:6,perFrame:1,perf:'balanced',pmcAnywhere:false},
     orbit:{extractRefillMode:'infinite',extractRefillCap:20,refillAfterExtract:true,nearAsGhost:false,respectTakeover:true,ghostCount:true},
     diag:{log:'summary',report:true,botLog:false},
@@ -1835,7 +1838,7 @@ const ammoTierOf=pen=>{const ts=state.gear.tiers;for(let i=0;i<ts.length;i++)if(
 /** 방탄 등급 상한: 헬멧·방탄복·리그는 판 등급 상한(fMax)이 그 등급 이상인 티어부터 나온다(서버 ClassCapped). */
 const classTierOf=x=>{if(!(x.armorClass>0)||!(x.equipmentSlots||[]).some(s=>['Headwear','ArmorVest','TacticalVest'].includes(s)))return 1;const ts=state.gear.tiers;for(let i=0;i<ts.length;i++)if(ts[i].fMax>=x.armorClass)return i+1;return 8;};
 const itAuto=x=>x.autoTier||1;
-const modOff=x=>!!x.mod&&(state.mods.disabledSources||[]).includes(x.source);
+const modOff=x=>!!x.mod&&modOffIn(modTabOf(x.section)).includes(x.source);
 const itMan=x=>state.gear.itemTier?.[x.id]||0;
 const itEff=x=>itMan(x)||itAuto(x);
 /** 비교 묶음 이름: 장비 칸(봇 기본 목록에 있는 아이템) 또는 종류(목록에 없는 아이템, 주로 모드 아이템). */
@@ -2034,7 +2037,7 @@ function scopePicker(e,i){const B=e.bots||['all'],all=B.includes('all');
   return `<div class="blscope"><div class="bls-g"><button class="mini-btn ${all?'on':''}" data-blbot="${i}|all">${tr(T('모든 봇','All bots'))}</button><span class="small muted">${tr(T('또는 아래에서 그룹 전체나 봇을 여러 개 고르세요.','Or pick whole groups and/or single bots below.'))}</span></div>${ROLE_GROUPS.map(([cap,items],gi)=>{const g=GKEYS[gi],gOn=B.includes(g);return `<div class="bls-g"><button class="mini-btn grp ${gOn?'on':''}" data-blbot="${i}|${g}">${fmt(tr(T('{g} 전체','All {g}')),{g:tr(cap)})}</button>${items.map(([id,ko,en])=>`<button class="mini-btn ${gOn||B.includes(id)?'on':''}" data-blbot="${i}|${id}" ${gOn?'disabled':''}>${tr(T(ko,en))}</button>`).join('')}</div>`;}).join('')}<p class="muted small">${tr(T('그룹 전체를 고르면 그 그룹의 모든 봇에 적용됩니다. 봇 하나만 고르면 그 봇에게만 금지되고, 같은 그룹 표를 쓰는 다른 봇은 계속 받습니다.','A whole group bans it for every bot in the group; a single bot bans it only for that bot.'))}</p></div>`;}
 const MODKEY={'WTT Armory':'wtt-armory','Eco Attachment Emporium':'eco-emporium','Epic Gun Pack':'epic-guns'};
 const SEC2MOD={weapons:'weapons',armor:'equipment',ammo:'weapons',meds:'equipment',look:'clothing',attach:'attachments'};
-function modAllowed(src,sec){if(src==='vanilla')return true;if(GEAR_CATALOG)return !(state.mods.disabledSources||[]).includes(src);const k=MODKEY[src],cat=SEC2MOD[sec],A=state.mods.allowed;if(!k)return true;if(A[cat]&&k in A[cat])return !!A[cat][k];return Object.values(A).some(c=>c[k]);}
+function modAllowed(src,sec){if(src==='vanilla')return true;if(GEAR_CATALOG)return !modOffIn(modTabOf(sec)).includes(src);const k=MODKEY[src],cat=SEC2MOD[sec],A=state.mods.allowed;if(!k)return true;if(A[cat]&&k in A[cat])return !!A[cat][k];return Object.values(A).some(c=>c[k]);}
 const BL_SCOPE={all:()=>true,pmc:b=>b==='pmc',scav:b=>b==='scav',boss:b=>b==='boss'||b==='follower',faction:b=>b==='faction'};
 function blockOf(it,sec,bot,t){const tk=bot;bot=grpOf(bot);
   if(!INSTALLED[it.src])return {k:'miss',l:T('모드 없음','Mod missing')};
@@ -2584,8 +2587,8 @@ document.addEventListener('click',e=>{
     writeSetting('mods.clothingOn',d.modall==='on'?[...new Set([...cur,...names])].sort():cur.filter(n=>!names.includes(n)));rerender();return;}
   if(d.clothsrc){const a=[...(state.mods.clothingOn||[])],i=a.indexOf(d.clothsrc);if(i>=0)a.splice(i,1);else a.push(d.clothsrc);writeSetting('mods.clothingOn',a);rerender();return;}
   if(d.modall){const tab=MOD_TABS.find(x=>x[0]===modTab)||MOD_TABS[0],q=modSearch.toLowerCase(),names=[...new Set((GEAR_CATALOG||[]).filter(x=>x.mod&&tab[2](x)).map(x=>x.source))].filter(n=>n.toLowerCase().includes(q));
-    let a=[...(state.mods.disabledSources||[])];if(d.modall==='off')a=[...new Set([...a,...names])];else a=a.filter(n=>!names.includes(n));writeSetting('mods.disabledSources',a);toast(fmt(tr(d.modall==='off'?T('모드 {n}개를 껐습니다','Disabled {n} mods'):T('모드 {n}개를 켰습니다','Enabled {n} mods')),{n:names.length}));rerender();return;}
-  if(d.modsrc){const a=[...(state.mods.disabledSources||[])],i=a.indexOf(d.modsrc);if(i>=0)a.splice(i,1);else a.push(d.modsrc);writeSetting('mods.disabledSources',a);rerender();return;}
+    let a=[...modOffIn(tab[0])];if(d.modall==='off')a=[...new Set([...a,...names])];else a=a.filter(n=>!names.includes(n));writeSetting('mods.disabledBy.'+tab[0],a);toast(fmt(tr(d.modall==='off'?T('모드 {n}개를 껐습니다','Disabled {n} mods'):T('모드 {n}개를 켰습니다','Enabled {n} mods')),{n:names.length}));rerender();return;}
+  if(d.modsrc){const tab=(MOD_TABS.find(x=>x[0]===modTab)||MOD_TABS[0])[0],a=[...modOffIn(tab)],i=a.indexOf(d.modsrc);if(i>=0)a.splice(i,1);else a.push(d.modsrc);writeSetting('mods.disabledBy.'+tab,a);rerender();return;}
   if(d.padd){const[sec,slot,id]=d.padd.split('|');let done=[];if(sec==='attach'){const o=attFor(tBot,tierSel,atWeapon).slots[slot].items;if(!(id in o)){o[id]=wDefault(findAtt(slot,id),tierSel);done=[tierSel];}}else{const it=findItem(sec,slot,id);(pickTiers||[tierSel]).forEach(ti=>{const o=materialize(tBot,ti,sec,slot);if(!(id in o)||!o[id]){o[id]=wDefault(it,ti);done.push(ti);}});presetTouched('tierData');}const it=sec==='attach'?findAtt(slot,id):findItem(sec,slot,id);toast(fmt(tr(T('{a}을(를) {t}에 넣었습니다','Added {a} to {t}')),{a:tr(it.name),t:done.map(i=>'T'+(i+1)).join(', ')}));markEdited();rerender();return;}
   if(d.sp){const[op,id]=d.sp.split('|');spAct(op,id);return;}
   if(d.cscope){tCopyScope=d.cscope;rerender();return;}
@@ -2886,6 +2889,9 @@ function migratePmcChance(tierData,roles){const pmc=tierData&&tierData.pmc,nw=ti
 function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
   // 1.0.9: 모드 아이템 스위치는 새 설치만 꺼짐. 값이 없는 기존 설정은 서버(mods.on 기본 켜짐)와 같게 켜 둔다(다음 저장에 꺼짐이 굳지 않게).
   if(raw&&(!raw.mods||raw.mods.on===undefined))state.mods.on=true;
+  // 1.1.0(#69): 옛 설정의 끈 모드 한 목록(mods.disabledSources)은 모든 탭에 그대로 옮긴다(결과 같음). 이후엔 탭마다 따로.
+  if(!(raw&&raw.mods&&raw.mods.disabledBy&&typeof raw.mods.disabledBy==='object')){const old=Array.isArray(raw?.mods?.disabledSources)?raw.mods.disabledSources:[];state.mods.disabledBy={weapons:[...old],equipment:[...old],attachments:[...old],other:[...old]};}
+  ['weapons','equipment','attachments','other'].forEach(k=>{if(!Array.isArray(state.mods.disabledBy[k]))state.mods.disabledBy[k]=[];});delete state.mods.disabledSources;
   // 1.1.0: 1.0.9까지 저장된 '대용량 탄창 제한 켜짐'은 서버가 안 읽던 화면 기본값이다. 서버(weapons.ver 2 전 무시)와 같게 끈다.
   if(raw&&!(raw.weapons&&raw.weapons.ver>=2))state.weapons.bigMag.on=false;state.weapons.ver=2;
   // 1.0.7: 저장된 티어 표(배열이라 통째로 덮임)에 새 확률 칸(벨트)이 없으면 기본값을 채운다. 서버도 같은 기본식(GearDefaults.Chance)을 쓴다.
