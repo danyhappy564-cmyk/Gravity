@@ -633,8 +633,12 @@ public static partial class ConfigModel
 
         public JsonNode? Node(string path) => RawNode(MapPath(path));
 
+        /// <summary>시험용: 읽은 설정 경로를 모은다(웹 칸 ↔ 서버 읽기 전수 점검). 평소에는 null.</summary>
+        internal static System.Collections.Concurrent.ConcurrentBag<string>? Trace;
+
         private JsonNode? RawNode(string path)
         {
+            Trace?.Add(path);
             var n = root;
             foreach (var part in path.Split('.'))
             {
