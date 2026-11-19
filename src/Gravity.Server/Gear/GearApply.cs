@@ -416,6 +416,12 @@ public static class GearApply
                 foreach (var key in wm.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList()) wm[key] = force ? v : table.PartChances.GetValueOrDefault(key,v);
                 wm[prefix] = v;
             }
+            // 1.1.0(#64): SPT는 마운트 칸(mod_mount·mod_mount_000)에 마운트가 붙어야 그 아래 조준경 칸을 100%로 올린다.
+            // 마운트 굴림이 조준경 확률보다 낮으면 AK·볼트액션처럼 마운트가 있어야 조준경을 다는 총에서 조준경이 빠지므로
+            // 조준경을 받을 수 있는 두 칸(SPT _scopeIds)은 조준경 확률 이상으로 굴린다.
+            double scopeChance = g.ForceScope ? 100 : Of("scope");
+            foreach (var key in new[] { "mod_mount", "mod_mount_000" })
+                wm[key] = Math.Max(wm.GetValueOrDefault(key, Of("mount")), scopeChance);
             if (g.ForceDust) wm["mod_reciever"] = 100;
             foreach(var(k,v) in table.PartChances)
                 if(k.StartsWith("mod_")&&!rules.Any(r=>k.StartsWith(r.Prefix,StringComparison.OrdinalIgnoreCase))&&!(g.ForceDust&&k=="mod_reciever"))wm[k]=v;
