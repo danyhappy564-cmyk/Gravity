@@ -129,6 +129,7 @@ public class GravityLoader(
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
             Gravity.Gear.GearRuntime.Templates = templates.Items;
+            Gravity.Gear.GearRuntime.BuildExtraPools(templates.Items);
             Gravity.Gear.GearRuntime.Containers = containers;
             Gravity.Gear.GearRuntime.Locale = lang => locales.GetLocaleDb(lang);
             // APBS가 있으면 장비 패치를 아예 걸지 않는다. 걸어만 둬도 Harmony_Profiles(PBT)가 봇 레벨 함수에
@@ -148,6 +149,7 @@ public class GravityLoader(
                 // 1.1.0 무기 화면: 부품 개수 제한·밤 손전등·대용량 탄창·낱개 탄약(설정이 꺼져 있으면 패치는 아무것도 안 바꿈)
                 Gravity.Gear.GearMagPatch.Helper = botHelper;
                 new Gravity.Gear.GearModLimitPatch().Enable();
+                new Gravity.Gear.GearEquipModPatch().Enable();
                 new Gravity.Gear.GearLightPatch().Enable();
                 new Gravity.Gear.GearMagPatch().Enable();
                 // 1.0.7 PackNStrap 벨트: 벨트 아이템이 있을 때만 건다(없으면 완장·탄창 칸은 SPT 그대로).

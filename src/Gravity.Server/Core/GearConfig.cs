@@ -10,6 +10,9 @@ public sealed record TierCaps(int Min, int Max, double Pen, double Spare, int FM
     double AMin, double AMax, double WMin, double WMax, int Mags, double LongScope, double HelmetAcc, int Meds, int Nades)
 {
     public int SMin { get; init; } = 1;
+    /// <summary>1.1.0: 귀중품·열쇠/카드 하나를 넣을 확률(%). 설정 판 110 전 저장본은 0(지금 결과).</summary>
+    public double Valuables { get; init; }
+    public double Keycard { get; init; }
 }
 
 /// <summary>봇 레벨 기준(웹 gear.lv). Pick: tier(내 티어마다 폭)·flat(단순 폭)·fixed(고정 구간).</summary>
@@ -18,7 +21,26 @@ public sealed record LvRules(string Pick, int Below, int Above, int FixMin, int 
 
 /// <summary>봇 종류 하나(웹 roles.&lt;id&gt;).</summary>
 public sealed record RoleGear(bool On, string Mode, int Tier, int Offset, double FrontPlate, double SidePlate,
-    double WDurMin, double WDurMax, double ADurMin, double ADurMax, bool Loot, double Poverty, double[]? Spread = null);
+    double WDurMin, double WDurMax, double ADurMin, double ADurMax, bool Loot, double Poverty, double[]? Spread = null)
+{
+    // 1.1.0 웹 봇별 장비 화면에만 있던 칸. 기본값 = SPT 결과(설정 판 110 전 저장본도 이 값으로 읽는다).
+    /// <summary>앞판이 없으면 뒤판도 빼기(SPT SkipBackPlateIfFrontPlateMissing). SPT는 PMC만 켬.</summary>
+    public bool SkipBack { get; init; }
+    /// <summary>뒤판 등급을 앞판 이하로(SPT LimitPlateClassToFrontPlateClass). SPT는 PMC만 켬.</summary>
+    public bool LimitClass { get; init; }
+    /// <summary>전리품에 열쇠·키카드를 허용(끄면 목록에서 뺌).</summary>
+    public bool Keys { get; init; } = true;
+    /// <summary>퀘스트 전용 템 허용(전역 퀘스트 템 금지가 꺼져 있을 때만 의미).</summary>
+    public bool Quest { get; init; } = true;
+    /// <summary>의료품·음식 남은 양 무작위(SPT 기본). 끄면 가득 찬 채로.</summary>
+    public bool Meds { get; init; } = true;
+    /// <summary>장비 티어를 한 번 더 굴려 높은 쪽을 쓸 확률(%).</summary>
+    public double Reroll { get; init; }
+    /// <summary>상탄: 이 확률로 탄창 위쪽 TopPct%를 더 좋은 탄으로.</summary>
+    public bool TopOn { get; init; }
+    public double TopChance { get; init; }
+    public double TopPct { get; init; } = 30;
+}
 // 1.0.6 Spread = 티어 분포(mode "spread"): T1~T7 비중 7칸. 합이 0이면 null(고정 티어로).
 
 /// <summary>티어 편집기 "개수·확률" 표 한 칸(웹 tierData.&lt;키&gt;[티어]의 gen·chance·mods).</summary>
@@ -80,6 +102,10 @@ public sealed record GearSettings(
     public bool PartTiers { get; init; } = true;
     /// <summary>1.0.7 PackNStrap 벨트 설정.</summary>
     public BeltSettings Belts { get; init; } = new();
+    /// <summary>1.1.0 상탄/하탄 분리: 여분 탄창·낱개·보안 컨테이너 탄은 티어 예비 탄 관통 상한(Spare) 안에서 따로 고른다.</summary>
+    public bool SplitAmmo { get; init; }
+    /// <summary>1.1.0 계절 외형: 끄면 SPT 크리스마스 봇 외형 바꾸기를 하지 않는다.</summary>
+    public bool Seasonal { get; init; } = true;
     /// <summary>1.1.0 무기 화면의 낱개 탄약·대용량 탄창·부품 개수·밤 손전등·맵별 무기 성향.</summary>
     public Gravity.Gear.WeaponExtras Weapons { get; init; } = new();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
@@ -116,6 +142,9 @@ public static class GearDefaults
             pmc ? 100 : boss ? 100 : fol ? 85 : 40, pmc ? 35 : boss ? 60 : fol ? 30 : 10,
             pmc ? 75 : 60, 100, pmc ? 70 : 50, 100, true, pmc ? 5 : 0);
     }
+
+    /// <summary>1.1.0 티어별 귀중품·열쇠/카드 확률 기본값(웹 tiers 표의 마지막 두 칸).</summary>
+    internal static readonly (double Val, double Key)[] TierExtra = [(5, 0), (8, 1), (12, 2), (16, 4), (20, 6), (25, 8), (30, 12)];
 
     private static readonly int[][] TierRows =
     [
@@ -209,6 +238,8 @@ public static partial class ConfigModel
     internal static GearSettings ParseGear(Reader r)
     {
         const string g = "gear.";
+        // 1.1.0: 이 판 전에 저장된 설정에는 그때 화면 기본값(서버가 안 읽던 칸)이 들어 있다 → 새로 구현한 칸은 지금 결과 값으로 읽는다.
+        bool v110 = r.Num("settingsVer", 0, 0, 999) >= 110;
         var tiers = new List<TierCaps>();
         for (int i = 0; i < 7; i++)
         {
@@ -223,7 +254,8 @@ public static partial class ConfigModel
                 fMin, (int)Math.Max(fMin, r.Num(p + "fMax", d.FMax, 1, 6)), (int)Math.Max(sMin, r.Num(p + "side", d.Side, 1, 6)),
                 aMin, Math.Max(aMin, r.Num(p + "aMax", d.AMax, 1, 100)), wMin, Math.Max(wMin, r.Num(p + "wMax", d.WMax, 1, 100)),
                 (int)r.Num(p + "mags", d.Mags, 0, 10), r.Num(p + "longScope", d.LongScope, 0, 100),
-                r.Num(p + "helmetAcc", d.HelmetAcc, 0, 100), (int)r.Num(p + "meds", d.Meds, 0, 10), (int)r.Num(p + "nades", d.Nades, 0, 10)) { SMin = sMin });
+                r.Num(p + "helmetAcc", d.HelmetAcc, 0, 100), (int)r.Num(p + "meds", d.Meds, 0, 10), (int)r.Num(p + "nades", d.Nades, 0, 10))
+            { SMin = sMin, Valuables = v110 ? r.Num(p + "valuables", GearDefaults.TierExtra[i].Val, 0, 100) : 0, Keycard = v110 ? r.Num(p + "keycard", GearDefaults.TierExtra[i].Key, 0, 100) : 0 });
         }
 
         var ld = GearDefaults.Lv();
@@ -248,7 +280,14 @@ public static partial class ConfigModel
                 (int)r.Num(p + "tier", d.Tier, 1, 7), (int)r.Num(p + "offset", 0, -3, 3),
                 r.Num(p + "frontPlate", d.FrontPlate, 0, 100) is var fp && legacyChance && d.On && fp == 90 ? d.FrontPlate : fp, r.Num(p + "sidePlate", d.SidePlate, 0, 100),
                 wd, Math.Max(wd, r.Num(p + "wDurMax", d.WDurMax, 1, 100)), ad, Math.Max(ad, r.Num(p + "aDurMax", d.ADurMax, 1, 100)),
-                r.Bool(p + "loot", true), r.Num(p + "poverty", d.Poverty, 0, 100), ReadSpread(r, p));
+                r.Bool(p + "loot", true), r.Num(p + "poverty", d.Poverty, 0, 100), ReadSpread(r, p))
+            {
+                SkipBack = v110 ? r.Bool(p + "skipBack", true) : d.On, LimitClass = v110 ? r.Bool(p + "limitClass", true) : d.On,
+                Keys = !v110 || r.Bool(p + "keys", id == "scav"), Quest = !v110 || r.Bool(p + "quest", d.On),
+                Meds = r.Bool(p + "meds", true), Reroll = v110 ? r.Num(p + "reroll", d.On ? 20 : 0, 0, 100) : 0,
+                TopOn = v110 && r.Bool(p + "topload.on", d.On || id.StartsWith("boss_") || id.StartsWith("f_")),
+                TopChance = r.Num(p + "topload.chance", d.On ? 40 : 30, 0, 100), TopPct = r.Num(p + "topload.pct", 30, 1, 100)
+            };
         }
 
         // 티어 편집기 개수·확률 표: 묶음 표는 늘, 봇 전용 표는 tierOwn.<봇>이 켜졌을 때만.
@@ -312,6 +351,6 @@ public static partial class ConfigModel
             DisabledBy = r.Node("mods.disabledBy") is JsonObject ? GearSettings.ModTabs.ToDictionary(t => t, t => (IReadOnlySet<string>)r.StringList("mods.disabledBy." + t).ToHashSet(StringComparer.Ordinal)) : null, ModsOn = r.Bool("mods.on", true),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),
-            Weapons = Gravity.Gear.WeaponExtras.Read(r) };
+            Weapons = Gravity.Gear.WeaponExtras.Read(r), SplitAmmo = v110 && r.Bool(g + "splitAmmo", true), Seasonal = r.Bool(g + "seasonal", true) };
     }
 }

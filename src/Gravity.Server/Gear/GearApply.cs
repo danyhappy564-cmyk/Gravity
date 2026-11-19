@@ -44,12 +44,15 @@ public sealed class GearContext
     public int TierOf(string slot, string id) => Settings.ItemTier.TryGetValue(id, out var tier) && tier is >= 1 and <= 7
         ? tier - 1 : Items.TierOf(slot, id);
 
+    /// <summary>1.1.0 전리품 목록용: 막힌 것 + 열쇠 넣기를 끈 봇의 열쇠·키카드.</summary>
+    public bool LootBlocked(string id) => Blocked(id) || (!Role.Keys && Items.Info.TryGetValue(id, out var x) && x.Cat == "key");
+
     /// <summary>블랙리스트·퀘스트 템·이번 판 묶음 밖 모드 아이템·PMC 전용 모드 아이템. 어떤 경우에도 되살리지 않는다.</summary>
     public bool Blocked(string id)
     {
         if (Black.Contains(id)) return true;
         if (Info(id) is not { } info) return false;
-        if (info.Quest && (Settings.NoQuest || Settings.BlockQuest)) return true;
+        if (info.Quest && (Settings.NoQuest || Settings.BlockQuest || !Role.Quest)) return true;
         // 1.0.9: 모드 아이템 전체 스위치가 꺼지면 모드 아이템은 막는다. PackNStrap 벨트는 따로 있는 벨트 설정(pns.on)을 따른다.
         if (info.Mod && !Settings.ModsOn && !GearBelts.IsBelt(Items, id)) return true;
         if (info.Mod && (Settings.ModDisabled(info) || !Raid.ModAllowed(id) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
@@ -249,7 +252,7 @@ public static class GearApply
             {
                 if (pool == null) continue;
                 foreach (var mid in pool.Keys.ToList())
-                    if (c.Blocked(mid.ToString())) { pool.Remove(mid); removed++; }
+                    if (c.LootBlocked(mid.ToString())) { pool.Remove(mid); removed++; }
             }
 
         // 5) 1.0.7 PackNStrap 벨트: 완장 칸을 만들 때(GearBeltEquipPatch) 쓸 목록을 정한다. 완장 칸이 없는 봇 종류면 만들어 둔다.
@@ -386,6 +389,15 @@ public static class GearApply
             foreach (var m in cand) set.Add(m);
         }
         return (orig.Count - set.Count, true);
+    }
+
+    /// <summary>1.1.0: 판 목록을 이 등급 이하로. 다 빠지면 가장 낮은 등급 판만 남긴다.</summary>
+    internal static void CapPlateClass(HashSet<MongoId> set, double max, GearItems items)
+    {
+        double Cls(MongoId m) => items.Info.TryGetValue(m.ToString(), out var i) ? i.ArmorClass : 0;
+        var keep = set.Where(m => Cls(m) <= max).ToList();
+        if (keep.Count == 0) { var low = set.Min(Cls); keep = set.Where(m => Cls(m) == low).ToList(); }
+        set.IntersectWith(keep);
     }
 
     internal static void ApplyRange(Dictionary<EquipmentSlots, Dictionary<MongoId, double>> equipment, GearContext c)

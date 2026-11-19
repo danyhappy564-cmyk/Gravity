@@ -32,6 +32,33 @@ public static class GearRuntime
     /// <summary>봇마다 장비 기록 한 줄(diag.botLog, 0.6). 판마다 레이드 시작 때 정한다.</summary>
     public static bool LogBots;
 
+    /// <summary>1.1.0 티어 귀중품(귀중품·정보 아이템)·열쇠/카드 후보 id. 로더가 SPT 템플릿에서 채운다.</summary>
+    public static IReadOnlyList<string> ValuableIds { get; set; } = [];
+    public static IReadOnlyList<string> KeyIds { get; set; } = [];
+
+    /// <summary>템플릿 부모 사슬로 귀중품·열쇠 후보를 만든다(퀘스트 템 제외).</summary>
+    public static void BuildExtraPools(IReadOnlyDictionary<MongoId, TemplateItem> templates)
+    {
+        bool IsA(TemplateItem t, string baseId)
+        {
+            var cur = t;
+            for (int d = 0; d < 20 && cur != null; d++)
+            {
+                if (cur.Id.ToString() == baseId) return true;
+                if (cur.Parent.IsEmpty || !templates.TryGetValue(cur.Parent, out cur!)) return false;
+            }
+            return false;
+        }
+        var val = new List<string>(); var keys = new List<string>();
+        foreach (var (id, t) in templates)
+        {
+            if (t.Type != "Item" || t.Properties?.QuestItem == true) continue;
+            if (IsA(t, GearExtras.Jewelry) || IsA(t, GearExtras.InfoItem)) val.Add(id.ToString());
+            else if (IsA(t, GearExtras.MechanicalKey) || IsA(t, GearExtras.Keycard)) keys.Add(id.ToString());
+        }
+        ValuableIds = val; KeyIds = keys;
+    }
+
     /// <summary>아이템 자료를 다시 만드는 함수(로더가 채움, 웹 "설치된 아이템으로 다시 만들기"). 시험에서는 null.</summary>
     public static Func<GearItems>? Builder { get; set; }
 
@@ -161,7 +188,10 @@ public class GearFilterPatch : AbstractPatch
             var group = GearDefaults.GroupOf(id);
             var rnd = Random.Shared;
             int? lvl = botGenerationDetails.IsPmc ? GearRuntime.PmcLevel ?? botGenerationDetails.BotLevel : null;
-            var pick = new GearPick(id, group, GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd), botGenerationDetails.IsPmc);
+            int tier = GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd);
+            // 1.1.0 장비 다시 굴리기: 이 확률로 한 번 더 굴려 높은 쪽을 쓴다.
+            if (role.Reroll > 0 && rnd.NextDouble() * 100 < role.Reroll) tier = Math.Max(tier, GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd));
+            var pick = new GearPick(id, group, tier, botGenerationDetails.IsPmc);
             var night = GearRuntime.Night(sessionId);
             var ctx = GearApply.Context(g, pick, GearRuntime.Items, GearRuntime.Raid, night, rnd, botGenerationDetails.Location);
             GearApply.Apply(baseBotNode, ctx, night, rnd);
@@ -182,13 +212,15 @@ public class GearPlatePatch : AbstractPatch
     protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(BotEquipmentModGenerator), nameof(BotEquipmentModGenerator.FilterPlateModsForSlotByLevel));
 
     [PatchPrefix]
-    public static bool Prefix(string modSlot, HashSet<MongoId> existingPlateTplPool, ref FilterPlateModsForSlotByLevelResult __result)
+    public static bool Prefix(string modSlot, HashSet<MongoId> existingPlateTplPool, int? maxArmorLevel, ref FilterPlateModsForSlotByLevelResult __result)
     {
         var c = GearRuntime.Current;
         if (c == null || existingPlateTplPool == null || existingPlateTplPool.Count == 0) return true;
         var set = new HashSet<MongoId>(existingPlateTplPool);
         GearApply.FilterModSet(set, modSlot ?? "", c);
         if (set.Count == 0) return true;
+        // 1.1.0: 뒤판 등급을 앞판 이하로(SPT가 앞판 등급을 maxArmorLevel로 넘김). 다 빠지면 가장 낮은 등급 하나를 남긴다.
+        if (maxArmorLevel is { } max) GearApply.CapPlateClass(set, max, c.Items);
         __result = new FilterPlateModsForSlotByLevelResult { Result = Result.SUCCESS, PlateModTemplates = set };
         return false;
     }
@@ -335,7 +367,7 @@ public class GearLootPatch : AbstractPatch
                 __result = GearApply.ConsumablesFor(__result, gen, kind, c);
                 return;
             }
-            if (__result.Count > 0) __result = __result.Where(kv => !c.Blocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value);
+            if (__result.Count > 0) __result = __result.Where(kv => !c.LootBlocked(kv.Key.ToString())).ToDictionary(kv => kv.Key, kv => kv.Value);
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }
@@ -396,6 +428,8 @@ public class GearBotPatch : AbstractPatch
                 rep.MaxDurability = info.MaxDurability;
                 rep.Durability = Math.Round(info.MaxDurability * pct / 100.0, 1);
             }
+            // 1.1.0: 의료품·음식 남은 양 무작위를 끈 봇은 가득 채운다.
+            if (!role.Meds && GearRuntime.Templates is { } tpls) GearExtras.FillConsumables(__result.Inventory.Items, t => tpls.GetValueOrDefault(t));
             if (GearRuntime.LogBots) Gravity.Core.DiagLog.GearLine(BotLine(pick, __result));
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }

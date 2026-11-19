@@ -29,7 +29,8 @@ public static class EventControl
     };
 
     /// <summary>담당이 Gravity일 때 SPT 이벤트 설정을 고친다. 바꾼 내용을 사람이 읽을 줄로 돌려준다.</summary>
-    public static List<string> Apply(SeasonalEventConfig cfg, EventSettings ev)
+    /// <param name="seasonalOutfits">1.1.0 장비 화면 '계절 외형'(gear.seasonal). 끄면 크리스마스 봇 외형 바꾸기를 하지 않는다.</param>
+    public static List<string> Apply(SeasonalEventConfig cfg, EventSettings ev, bool seasonalOutfits = true)
     {
         var log = new List<string>();
         var modes = new Dictionary<SeasonalEventType, string>
@@ -62,7 +63,7 @@ public static class EventControl
             {
                 st.EnableSanta = ev.Santa > 0;
                 st.EnableChristmasHideout = ev.Gifts;
-                st.AdjustBotAppearances = ev.Snow;
+                st.AdjustBotAppearances = ev.Snow && seasonalOutfits;
             }
             log.Add($"{e.Name} {mode}{(e.Enabled ? "" : L.T("(꺼짐)", " (off)"))}");
         }
@@ -144,7 +145,7 @@ public class GravityEventLoader(ISptLogger<GravityEventLoader> logger, ModHelper
                 logger.Info($"{GravityInfo.Tag} {L.T("시즌 이벤트 담당", "Seasonal events handled by")}: {ResolvedOwner} {L.T("(Gravity는 이벤트 봇 확률만)", "(Gravity only sets event bot chances)")}");
                 return Task.CompletedTask;
             }
-            Applied.AddRange(EventControl.Apply(seasonal, ev));
+            Applied.AddRange(EventControl.Apply(seasonal, ev, GravityBoot.Store!.Current.Gear?.Seasonal ?? true));
             logger.Info($"{GravityInfo.Tag} {L.T("시즌 이벤트 담당", "Seasonal events handled by")}: Gravity — {string.Join(", ", Applied)}");
         }
         catch (Exception ex)
