@@ -118,15 +118,18 @@ public sealed class GearRaid
         var w = Take(items.ModWeapons, weapons).ToList();
         var e = Take(items.ModEquipment, equipment).ToList();
         // 1.1.0(#73): 뽑은 모드 무기·장비의 필수 칸 모드 부품은 개수와 별도로 넣는다 — 없으면 수신기·총열이 빠진 총이 되거나 총이 빠졌다.
-        var need = RequiredMods(items, w.Concat(e));
+        var need = RequiredMods(items, w.Concat(e), rnd);
         var a = Take(items.ModAttachments.Where(x => !need.Contains(x)).ToList(), attachments).ToList();
         var o = Take(items.ModOther, other).ToList();
         HashSet<string>? cl = clothing < 0 ? null : Take(items.Clothing.Select(x => x.Id).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList(), clothing).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return new GearRaid([.. w, .. e, .. need, .. a, .. o], w.Count, e.Count, a.Count) { Required = need.Count, Other = o.Count, Clothing = cl };
     }
 
-    /// <summary>부모들의 필수 칸(RequiredSlots) 후보 중 모드 아이템을 끝까지 따라가 모은다(봇 표 → 호환 목록 순, 최대 2000개).</summary>
-    public static HashSet<string> RequiredMods(GearItems items, IEnumerable<string> roots)
+    /// <summary>
+    /// 부모들의 필수 칸(RequiredSlots)을 채울 모드 부품을 모은다(봇 표 → 호환 목록 순). 바닐라 후보가 있는 칸은 바닐라로 채워지므로 넣지 않고,
+    /// 모드 후보만 있는 칸은 칸마다 최대 <paramref name="perSlot"/>개를 골라 그 부품의 필수 칸도 따라간다(1.1.0 실측: 다 넣으면 무기 15개에 446개).
+    /// </summary>
+    public static HashSet<string> RequiredMods(GearItems items, IEnumerable<string> roots, Random? rnd = null, int perSlot = 2)
     {
         var found = new HashSet<string>(StringComparer.Ordinal);
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -142,9 +145,11 @@ public sealed class GearRaid
             foreach (var slot in req)
             {
                 string[]? cands = donor != null && donor.TryGetValue(slot, out var d) && d.Length > 0 ? d : compat != null && compat.TryGetValue(slot, out var c) ? c : null;
-                if (cands == null) continue;
-                foreach (var x in cands)
-                    if (items.Info.TryGetValue(x, out var xi) && xi.Mod && found.Add(x)) q.Enqueue(x);
+                if (cands == null || cands.Any(x => items.Info.TryGetValue(x, out var vi) && !vi.Mod)) continue;
+                var mods = cands.Where(x => items.Info.TryGetValue(x, out var xi) && xi.Mod).ToList();
+                if (mods.Any(found.Contains)) continue; // 다른 부모가 이미 이 칸 후보를 넣음
+                foreach (var x in (rnd == null ? mods : mods.OrderBy(_ => rnd.Next()).ToList()).Take(perSlot))
+                    if (found.Add(x)) q.Enqueue(x);
             }
         }
         return found;
