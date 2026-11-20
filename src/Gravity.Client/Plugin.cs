@@ -14,6 +14,8 @@ namespace Gravity.Client
     /// </summary>
     [BepInPlugin(Guid, "Gravity", GravityVersion.Current)]
     [BepInDependency(AbpsGuid, BepInDependency.DependencyFlags.SoftDependency)]
+    // Fika가 먼저 올라와야 FikaHostPatches가 HostGameController 형식을 찾는다.
+    [BepInDependency(FikaHost.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.rf.gravity.client";
@@ -21,6 +23,9 @@ namespace Gravity.Client
 
         /// <summary>ABPS 플러그인이 같이 깔려 있으면 true(Awake에서 정함).</summary>
         public static bool AbpsPresent { get; private set; }
+
+        /// <summary>Fika가 깔려 있으면 true: 레이드는 LocalGame 대신 Fika HostGameController로 만들어진다.</summary>
+        public static bool FikaPresent { get; private set; }
 
         /// <summary>마지막 Hello 응답. 실패했거나 아직 안 받았으면 null.</summary>
         public static HelloResponse? LastHello { get; internal set; }
@@ -39,10 +44,12 @@ namespace Gravity.Client
         {
             Log.Init(Logger);
             AbpsPresent = Chainloader.PluginInfos.ContainsKey(AbpsGuid);
+            FikaPresent = Chainloader.PluginInfos.ContainsKey(FikaHost.Guid);
 
             // 메뉴 진입 때 Hello, 레이드 시작·끝, 맵 상한. ABPS 유무와 무관하게 연결은 한다(서버에 ABPS를 알리려고).
             Enable(new MenuHelloPatch());
             Enable(new RaidCreatePatch());
+            if (FikaPresent) Enable(new FikaHostCreatePatch());
             Enable(new GameStartedPatch());
             Enable(new GameWorldDisposePatch());
 
@@ -55,6 +62,7 @@ namespace Gravity.Client
                 Enable(new CapPatch());
                 Enable(new ScavWaveSettingsPatch());
                 Enable(new StartupPmcPatch());
+                if (FikaPresent) Enable(new FikaStartupPmcPatch());
                 Enable(new StartupSquadPatch());
                 Enable(new ProfileSanitizerPatch());
                 // PMC 지점 고르기(방식 A): 구역 0개 맵 보충·구역 가중 순서·지점 고르기·동시 그룹 제한·대기열 만료
