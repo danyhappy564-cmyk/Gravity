@@ -144,8 +144,16 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
     /// <summary>팩션의 웹 관리 선택이 최종값이다. 옛 respectTakeover는 읽기 호환만 유지한다.</summary>
     public GravityConfig EffectiveConfig(GravityConfig cfg) => cfg;
 
-    public GravityConfig ConfigForLayout(GravityConfig cfg, string id, LocationBase? current) =>
-        cfg.ForLayout(id, IsVariant(id, current), ActiveVariants?.Contains(id) ?? Detect.VariantMaps.ContainsKey(id));
+    public GravityConfig ConfigForLayout(GravityConfig cfg, string id, LocationBase? current)
+    {
+        var variant = IsVariant(id, current);
+        var c = cfg.ForLayout(id, variant, ActiveVariants?.Contains(id) ?? Detect.VariantMaps.ContainsKey(id));
+        if (!variant || Detect.VariantMaps.GetValueOrDefault(id) is not { } labels) return c;
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (label, map, roles) in ModDetector.VariantBossOwners)
+            if (string.Equals(map, id, StringComparison.OrdinalIgnoreCase) && labels.Contains(label)) keep.UnionWith(roles);
+        return keep.Count == 0 ? c : c with { BossKeepRoles = keep };
+    }
 
     /// <summary>한 판 계산 결과(복제본에 이미 적용됨).</summary>
     public sealed record RaidBuild(SpawnPlan Plan, MapInfo Info, string? PmcWhy, string? ScavNote, int OtherPmc, string? FacNote, string? EvNote);

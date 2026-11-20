@@ -195,6 +195,8 @@ public sealed record GravityConfig(
     public Gravity.Spawn.BossProgSettings BossProg { get; init; } = new();
     /// <summary>1.1.0 클라이언트·개발자 화면(client.*, dev.*).</summary>
     public ClientOptions ClientOpts { get; init; } = new();
+    /// <summary>1.1.0 이번 판에서 다른 모드(변형 맵)가 맡는 보스 역할. Gravity는 이 역할 항목을 건드리지 않고 새로 넣지도 않는다.</summary>
+    public IReadOnlySet<string> BossKeepRoles { get; init; } = new HashSet<string>();
     /// <summary>1.1.0(#67) BTR 빈도(삼림·스트리트만, 꺼짐 = SPT 그대로).</summary>
     public Gravity.Spawn.BtrSettings Btr { get; init; } = new();
     public Gravity.Spawn.BossDiffDist BossDiff { get; init; } = new();

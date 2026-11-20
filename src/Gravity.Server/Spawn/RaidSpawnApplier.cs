@@ -142,8 +142,11 @@ public static class RaidSpawnApplier
             .Where(SpecialSettings.ExtraModel).Select(k => ConfigModel.SpecialRoles[k]), StringComparer.OrdinalIgnoreCase);
         var result = new List<BossLocationSpawn>(loc.BossLocationSpawn.Count);
         var extra = new List<BossLocationSpawn>();
+        var keep = cfg.BossKeepRoles;
         foreach (var e in loc.BossLocationSpawn)
         {
+            // 1.1.0 다른 모드가 이 판 보스를 맡음(세관 클래식 config/bosses.json): 그대로 둔다.
+            if (keep.Count > 0 && e.BossName is { } kr && keep.Contains(kr)) { result.Add(e); continue; }
             if (e.BossName is { } role && BossRoleToId.TryGetValue(role, out var id) && cfg.Bosses.TryGetValue(id, out var b))
             {
                 // 1.1.0 바닐라 보스 지우기: 원래 항목은 빼고, 아래 '원래 항목이 없는 보스' 단계에서 Gravity 항목을 새로 넣는다(즈랴치는 섬 전용이라 제외).
@@ -191,7 +194,7 @@ public static class RaidSpawnApplier
         if (templates != null)
             foreach (var (role, id) in BossRoleToId)
             {
-                if (id == "zryachiy" || !cfg.Bosses.TryGetValue(id, out var b) || !b.On) continue;
+                if (id == "zryachiy" || keep.Contains(role) || !cfg.Bosses.TryGetValue(id, out var b) || !b.On) continue;
                 if ((!b.Maps.TryGetValue(mapId, out var on) || !on) && !replaced.Contains(id)) continue;
                 if (result.Any(x => string.Equals(x.BossName, role, StringComparison.OrdinalIgnoreCase))) continue;
                 if (!templates.TryGetValue(role, out var tpl)) continue;
@@ -210,7 +213,7 @@ public static class RaidSpawnApplier
         if (templates != null)
             foreach (var (sr, sp) in specialByRole)
             {
-                if (extraRoles.Contains(sr) || !sp.On || !sp.Chance.TryGetValue(mapId, out var c) || c <= 0) continue;
+                if (extraRoles.Contains(sr) || keep.Contains(sr) || !sp.On || !sp.Chance.TryGetValue(mapId, out var c) || c <= 0) continue;
                 if (result.Any(x => string.Equals(x.BossName, sr, StringComparison.OrdinalIgnoreCase))) continue;
                 if (!templates.TryGetValue(sr, out var tpl)) continue;
                 var n = tpl with

@@ -59,12 +59,23 @@ public static class ModDetector
     }
 
     /// <summary>알려진 변형 모드. 이 목록 밖의 변형은 MapCatalog의 SPT 원본 비교로 감지한다.</summary>
+    /// <summary>
+    /// 1.1.0 변형 판의 보스를 자기 설정으로 정하는 변형 모드: 라벨 → (맵, 역할). 그 판에서 Gravity는 이 역할 항목을 그대로 두고 새로 넣지도 않는다.
+    /// 세관 클래식은 레쇼트·굿즈·컬티스트를 기본 0%로 빼고, 켜면 클래식에서 지점이 남은 구역에만 넣는다.
+    /// </summary>
+    internal static readonly (string Label, string Map, string[] Roles)[] VariantBossOwners =
+    [
+        ("CustomsClassic", "bigmap", ["bossBully", "followerBully", "bossKnight", "followerBigPipe", "followerBirdEye", "sectantPriest", "sectantWarrior"])
+    ];
+
     internal static readonly (string Key, string Label, string[] Maps)[] VariantMods =
     [
         ("manimalinterchange", "Manimal", ["interchange"]),
         ("manimallighthouse", "Manimal", ["lighthouse"]),
         ("manimallabsboiler", "Manimal", ["laboratory"]),
         ("factoryclassic", "FactoryClassic", ["factory4_day", "factory4_night"]),
+        // 1.1.0: 세관 클래식(LennoxP90-CustomsClassic, MapVariants 1.1.0+). 클래식 판의 보스는 그 모드 config/bosses.json이 맡는다(VariantBossOwners).
+        ("customsclassic", "CustomsClassic", ["bigmap"]),
         ("interchangerework", "Interchange Rework", ["interchange"])
     ];
 }
