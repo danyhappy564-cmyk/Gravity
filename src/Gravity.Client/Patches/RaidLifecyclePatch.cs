@@ -53,14 +53,17 @@ namespace Gravity.Client.Patches
         }
     }
 
-    /// <summary>LocalGame.Create 뒤: 이 레이드의 서버 설정 받기를 시작한다(BotsController.SetSettings보다 먼저 돈다).</summary>
+    /// <summary>LocalGame.Create 뒤: 이 레이드의 서버 설정 받기를 시작한다(BotsController.SetSettings보다 먼저 돈다). Fika 레이드는 FikaHostCreatePatch.</summary>
     internal sealed class RaidCreatePatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod() =>
             typeof(LocalGame).GetMethod(nameof(LocalGame.Create), BindingFlags.Static | BindingFlags.Public)!;
 
         [PatchPostfix]
-        private static void Postfix(LocationSettings.Location location)
+        private static void Postfix(LocationSettings.Location location) => Begin(location, "RaidCreate");
+
+        /// <summary>레이드 생성 지점(바닐라 LocalGame.Create, Fika HostGameController 생성자)에서 부른다.</summary>
+        internal static void Begin(LocationSettings.Location? location, string where)
         {
             try
             {
@@ -71,7 +74,7 @@ namespace Gravity.Client.Patches
             }
             catch (Exception ex)
             {
-                Log.ErrorOnce("RaidCreate", ex);
+                Log.ErrorOnce(where, ex);
             }
         }
     }

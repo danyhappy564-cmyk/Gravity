@@ -10,7 +10,7 @@ namespace Gravity.Client
 {
     /// <summary>
     /// 지금 레이드의 서버 설정과 집계. 서버가 관리하는 레이드(S.Managed=true)일 때만 있다.
-    /// 설정 받기는 LocalGame.Create 직후 비동기로 시작하고(게임 스레드는 기다리지 않음),
+    /// 설정 받기는 LocalGame.Create 직후(Fika 호스트는 HostGameController 생성자 뒤) 비동기로 시작하고(게임 스레드는 기다리지 않음),
     /// 결과는 Current를 처음 읽을 때(봇 프로필 미리 읽기, BotsController.SetSettings 뒤, GameWorld.OnGameStarted 뒤) 붙인다.
     /// OnGameStarted까지 응답이 없으면 그 레이드는 손대지 않는다. 레이드 끝(GameWorld.Dispose 앞)에서 보고를 보내고 지운다.
     /// </summary>
