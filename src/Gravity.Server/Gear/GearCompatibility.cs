@@ -40,6 +40,38 @@ public static class GearCompatibility
         return added;
     }
 
+    /// <summary>
+    /// 1.1.0(#64·#68): 봇 표 안의 부품 후보인데 그 부품의 칸 표가 없는 것(구멍)을 다른 봇 표(DonorMods)로만 메운다. 호환 목록 전부는 쓰지 않는다.
+    /// SPT 원본 USEC·BEAR 표의 Sako TRG M10은 수신기에 조준경 마운트가 있는데 그 마운트 표가 없어 조준경이 한 번도 안 달렸다
+    /// (버드아이 표에는 마운트 → 링 마운트 → 조준경이 있음). 이미 있는 표는 건드리지 않는다.
+    /// </summary>
+    public static int FillHoles(Dictionary<MongoId,Dictionary<string,HashSet<MongoId>>> mods, GearItems items, Func<string,bool>? blocked = null)
+    {
+        if(items.DonorMods.Count==0)return 0;
+        int added=0;
+        var scan=mods.Values.ToList();
+        for(int round=0;round<MaxDepth&&scan.Count>0&&added<MaxParents;round++)
+        {
+            var next=new List<Dictionary<string,HashSet<MongoId>>>();
+            foreach(var slots in scan)
+                foreach(var set in slots.Values)
+                {
+                    if(set==null)continue;
+                    foreach(var child in set)
+                    {
+                        if(mods.ContainsKey(child))continue;
+                        var id=child.ToString();
+                        if(blocked?.Invoke(id)==true||!items.DonorMods.TryGetValue(id,out var donor)||donor.Count==0)continue;
+                        var fill=donor.ToDictionary(kv=>kv.Key,kv=>kv.Value.Where(x=>x!=id).Select(x=>(MongoId)x).ToHashSet());
+                        mods[child]=fill;next.Add(fill);
+                        if(++added>=MaxParents)return added;
+                    }
+                }
+            scan=next;
+        }
+        return added;
+    }
+
     private static IReadOnlyDictionary<string,string[]> WithRequired(IReadOnlyDictionary<string,string[]> donor,
         IReadOnlyDictionary<string,string[]>? compat, IReadOnlySet<string>? required)
     {

@@ -454,13 +454,14 @@ public class GearBotPatch : AbstractPatch
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }
 
-    /// <summary>장비 기록 한 줄: 역할 티어 레벨 주무기 방탄 최고 등급(조끼·리그·헬멧·판), 방탄복(조끼 또는 방탄 리그)·헤드셋·앞뒤판 있음(O/-), 옷 출처(상의/하의, 1.0.5).</summary>
+    /// <summary>장비 기록 한 줄: 역할 티어 레벨 주무기 방탄 최고 등급(조끼·리그·헬멧·판), 방탄복(조끼 또는 방탄 리그)·헤드셋·앞뒤판 있음(O/-), 옷 출처(상의/하의, 1.0.5), 조준경·부품 수(1.0.9), 머리 칸 장비 있음(1.1.0 #68).</summary>
     internal static string BotLine(GearPick pick, BotBase bot, GearItems? items = null)
     {
         items ??= GearRuntime.Items;
         string? weapon = null, weaponItem = null;
         double armor = 0;
         bool vest = false, ear = false, plate = false;
+        string head = "-"; string? headId = null;
         foreach (var it in bot.Inventory?.Items ?? [])
         {
             var tpl = it.Template.ToString();
@@ -469,21 +470,25 @@ public class GearBotPatch : AbstractPatch
             if (info is { ArmorClass: > 0 }) armor = Math.Max(armor, info.ArmorClass);
             if (it.SlotId == "ArmorVest" || (it.SlotId == "TacticalVest" && info is { ArmorClass: > 0 })) vest = true;
             if (it.SlotId == "Earpiece") ear = true;
+            if (it.SlotId == "Headwear") { headId = it.Id.ToString(); head = info is { ArmorClass: > 0 } ? "O" : "c"; } // O=방탄 헬멧, c=모자 등
             if (string.Equals(it.SlotId, "front_plate", StringComparison.OrdinalIgnoreCase) || string.Equals(it.SlotId, "back_plate", StringComparison.OrdinalIgnoreCase)) plate = true;
         }
+        // 4.x 헬멧은 방탄 등급이 자식 삽입물(Helmet_top 등)에 있다
+        if (head == "c" && headId != null && (bot.Inventory?.Items ?? []).Any(i => i.ParentId == headId && items.Info.GetValueOrDefault(i.Template.ToString()) is { ArmorClass: > 0 })) head = "O";
         var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon) + (items.Info.GetValueOrDefault(weapon)?.Mod == true ? "*" : "");
         // 1.0.9 측정: 주무기 아래(부모 사슬) 부품 수와 조준경 여부(마운트 위 조준경 포함)
-        var (parts, scope) = WeaponParts(bot.Inventory?.Items, weaponItem);
+        var (parts, scope) = WeaponParts(bot.Inventory?.Items, weaponItem, items);
         string Src(MongoId? id) => id is { } m ? items.Clothing.FirstOrDefault(c => c.Id == m.ToString())?.Source ?? "vanilla" : "-";
         string On(bool b) => b ? "O" : "-";
         return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}"
             + $"\t{L.T("방탄복", "vest")} {On(vest)}\t{L.T("헤드셋", "ear")} {On(ear)}\t{L.T("앞뒤판", "plate")} {On(plate)}"
             + $"\t{L.T("옷", "outfit")} {Src(bot.Customization?.Body)}/{Src(bot.Customization?.Feet)}"
             + $"\t{L.T("조준경", "scope")} {On(scope)}\t{L.T("부품", "parts")} {parts}"
+            + $"\t{L.T("머리", "head")} {head}"
             + Belt(bot, items);
     }
 
-    private static (int Parts, bool Scope) WeaponParts(IEnumerable<SPTarkov.Server.Core.Models.Eft.Common.Tables.Item>? all, string? weaponItem)
+    private static (int Parts, bool Scope) WeaponParts(IEnumerable<SPTarkov.Server.Core.Models.Eft.Common.Tables.Item>? all, string? weaponItem, GearItems items)
     {
         if (all == null || weaponItem == null) return (0, false);
         var list = all.ToList();
@@ -498,7 +503,10 @@ public class GearBotPatch : AbstractPatch
         {
             if (!Under(it.Id.ToString())) continue;
             n++;
-            if (it.SlotId?.StartsWith("mod_scope", StringComparison.OrdinalIgnoreCase) == true) scope = true;
+            // 1.1.0: 마운트 칸에 바로 달린 조준기(도브테일 EKP-8-02, P90 링 사이트 등)도 조준경. 가늠자·가늠쇠 칸(mod_sight_*)은 뺀다.
+            var slot = it.SlotId ?? "";
+            if (slot.StartsWith("mod_scope", StringComparison.OrdinalIgnoreCase)
+                || (!slot.StartsWith("mod_sight", StringComparison.OrdinalIgnoreCase) && items.Info.GetValueOrDefault(it.Template.ToString()) is { Section: "parts", Slot: "scope" })) scope = true;
         }
         return (n, scope);
     }

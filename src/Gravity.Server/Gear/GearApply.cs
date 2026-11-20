@@ -231,6 +231,8 @@ public static class GearApply
             inv.Mods??=new();
             GearCompatibility.AddMissing(inv.Mods,addedEquipment.Concat(noPool).Where(id=>!c.Blocked(id)),c.Items);
         }
+        // 1.1.0: 표 안 부품 중 칸 표가 없는 것은 다른 봇 표로 메운다(TRG M10 조준경 마운트 등).
+        if(inv?.Mods!=null)GearCompatibility.FillHoles(inv.Mods,c.Items,c.Blocked);
         if (inv?.Mods != null)
             foreach (var (parentId, slots) in inv.Mods)
             {
