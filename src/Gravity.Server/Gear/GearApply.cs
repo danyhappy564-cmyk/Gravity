@@ -340,6 +340,9 @@ public static class GearApply
     private static bool AboveTier(ItemInfo info, string id, double? weight, GearContext c)
     {
         if (!c.Settings.PartTiers || info.Section != "parts") return false;
+        // 1.1.0(#74): 탄창은 가격 티어로 빼지 않는다(대용량은 무기 화면의 대용량 탄창 제한이 맡음). 비싼 전용 탄창만 빠지면
+        // 그 탄창만 맞는 개머리판(M700 Hogue → Wyatt, 모신 Archangel → Promag)이 골라졌을 때 총이 탄창 없이 나왔다.
+        if (info.Slot == "magazine" && !c.Settings.ItemTier.ContainsKey(id)) return false;
         if (weight is > 0 && !c.Settings.ItemTier.ContainsKey(id)) return false;
         return c.TierOf("parts/" + info.Slot, id) > c.Pick.Tier;
     }
