@@ -190,6 +190,8 @@ namespace Gravity.Client.Directors
             c.NearWaves.Add(wave, new Tag(pmc ? id : -1, size));
             bc.ActivateBotsByWave(wave);
             c.Spawned["near"] += size;
+            float dx = pos.X - playerPos.X, dz = pos.Z - playerPos.Z;
+            Log.Verbose($"{c.S.MapId} 근처 보충: {role} {size}명, 구역 {zone.NameZone}, 플레이어와 {Math.Sqrt(dx * dx + dz * dz):0}m, 대기 {st.Pending.Count}, 경과 {c.Elapsed:0.0}초");
         }
 
         private static readonly string[] Diffs = { "easy", "normal", "hard", "impossible" };
