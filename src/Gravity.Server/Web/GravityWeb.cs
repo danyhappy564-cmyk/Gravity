@@ -204,8 +204,8 @@ public class GravityWeb : IHttpListener
         {
             active = Gravity.Gear.GearRuntime.Active() != null, locked = rt.Detect.GearLocked,
             items = gi.Info.Count, slots = gi.SlotTier.Count,
-            mods = new { weapons = gi.ModWeapons.Count, equipment = gi.ModEquipment.Count, attachments = gi.ModAttachments.Count },
-            raid = new { subset = raid.Allowed != null, weapons = raid.Weapons, equipment = raid.Equipment, attachments = raid.Attachments },
+            mods = new { weapons = gi.ModWeapons.Count, equipment = gi.ModEquipment.Count, attachments = gi.ModAttachments.Count, other = gi.ModOther.Count, clothing = gi.Clothing.Count },
+            raid = new { subset = raid.Allowed != null, weapons = raid.Weapons, equipment = raid.Equipment, attachments = raid.Attachments, required = raid.Required, other = raid.Other, clothing = raid.Clothing?.Count },
             dressed = Gravity.Gear.GearRuntime.Dressed,
             tiers = Gravity.Gear.GearRuntime.Stats.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray()),
             error = Gravity.Gear.GearRuntime.LastError

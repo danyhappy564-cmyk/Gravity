@@ -47,7 +47,7 @@ public sealed class GearContext
     /// <summary>1.1.0 전리품 목록용: 막힌 것 + 열쇠 넣기를 끈 봇의 열쇠·키카드.</summary>
     public bool LootBlocked(string id) => Blocked(id) || (!Role.Keys && Items.Info.TryGetValue(id, out var x) && x.Cat == "key");
 
-    /// <summary>블랙리스트·퀘스트 템·이번 판 묶음 밖 모드 아이템·PMC 전용 모드 아이템. 어떤 경우에도 되살리지 않는다.</summary>
+    /// <summary>블랙리스트·퀘스트 템·이번 판 묶음 밖 모드 아이템(1.1.0: 탄약은 무기를 따라가므로 묶음 검사 안 함)·PMC 전용 모드 아이템. 어떤 경우에도 되살리지 않는다.</summary>
     public bool Blocked(string id)
     {
         if (Black.Contains(id)) return true;
@@ -55,7 +55,7 @@ public sealed class GearContext
         if (info.Quest && (Settings.NoQuest || Settings.BlockQuest || !Role.Quest)) return true;
         // 1.0.9: 모드 아이템 전체 스위치가 꺼지면 모드 아이템은 막는다. PackNStrap 벨트는 따로 있는 벨트 설정(pns.on)을 따른다.
         if (info.Mod && !Settings.ModsOn && !GearBelts.IsBelt(Items, id)) return true;
-        if (info.Mod && (Settings.ModDisabled(info) || !Raid.ModAllowed(id) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
+        if (info.Mod && (Settings.ModDisabled(info) || (info.Section != "ammo" && !Raid.ModAllowed(id)) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
         // 가져온 원작 프리셋 표(only): 모드 아이템은 어느 칸에서도 쓰지 않는다(부착물·탄약·소모품 포함, 모드 설정과 무관).
         if (info.Mod && Settings.TableFor(Pick.RoleId, Pick.Tier).Only) return true;
         return false;

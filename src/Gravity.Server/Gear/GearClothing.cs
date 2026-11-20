@@ -32,10 +32,10 @@ public static class GearClothing
     private static string? SideOf(string roleId) => roleId switch { "usec" => "usec", "bear" => "bear", "scav" => "savage", _ => null };
 
     /// <returns>바꾼 항목 수(더함 + 뺌 + 무게 고침).</returns>
-    public static int Apply(BotType bot, GearContext c, Random rnd) => Apply(bot, c.Settings, c.Pick.RoleId, c.Items);
+    public static int Apply(BotType bot, GearContext c, Random rnd) => Apply(bot, c.Settings, c.Pick.RoleId, c.Items, c.Raid);
 
     /// <summary>장비 티어를 안 고치는 봇(역할 장비 스위치 꺼짐, 기본 스캐브)도 의상만은 적용한다(Codex 1.0.5 검토 2번).</summary>
-    public static int Apply(BotType bot, GearSettings settings, string roleId, GearItems items)
+    public static int Apply(BotType bot, GearSettings settings, string roleId, GearItems items, GearRaid? raid = null)
     {
         var allowed = settings.ClothingOn;
         if (allowed == null || !settings.Module || bot.BotAppearance == null) return 0;
@@ -52,7 +52,7 @@ public static class GearClothing
             var w = Math.Max(1, Math.Round(baseW * settings.ModMult / 100));
             var next = vanilla.ToDictionary(kv => kv.Key, kv => kv.Value);
             foreach (var m in items.Clothing)
-                if (m.Part == part && m.Sides.Contains(side) && allowed.Contains(m.Source)) next[new MongoId(m.Id)] = w;
+                if (m.Part == part && m.Sides.Contains(side) && allowed.Contains(m.Source) && (raid?.Clothing == null || raid.Clothing.Contains(m.Id))) next[new MongoId(m.Id)] = w;
             if (next.Count == 0) continue;
             var before = pool.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value);
             changed += next.Count(kv => !before.TryGetValue(kv.Key.ToString(), out var old) || old != kv.Value)

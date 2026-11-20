@@ -751,7 +751,7 @@ function makeDefaults(){
     roles,
     weapons:{range:Object.fromEntries(MAPS.map(m=>[m.id,['woods','lighthouse','shoreline'].includes(m.id)?65:m.id.startsWith('factory')||m.id==='laboratory'||m.id==='labyrinth'?15:40])),
       ver:2,looseAmmo:{on:true,chance:40,limit:2},bigMag:{on:false,count:1},stock:true,dust:true,scope:true,muzzle:{force:false},partTiers:true,modLimit:false,scopeLimit:2,tacLimit:1,night:{nvg:60,thermal:8,lightOn:false,light:40}},
-    mods:{on:false,disabledBy:{weapons:[],equipment:[],attachments:[],other:[]},subset:true,weapons:30,attachments:150,equipment:30,mult:100,pmcOnly:true,allowed},
+    mods:{on:false,disabledBy:{weapons:[],equipment:[],attachments:[],other:[]},subset:true,weapons:15,attachments:100,equipment:25,other:10,clothingCount:4,mult:100,pmcOnly:true,allowed},
     client:{preload:6,perFrame:1,perf:'balanced',pmcAnywhere:false},
     orbit:{extractRefillMode:'infinite',extractRefillCap:20,refillAfterExtract:true,nearAsGhost:false,respectTakeover:true,ghostCount:true},
     diag:{log:'summary',report:true,botLog:false},
@@ -1896,14 +1896,17 @@ P.items={desc:T('모드로 추가된 무기·장비를 봇이 얼마나 쓸지 �
   const m=state.mods,off=m.on===false,dis=off||!m.subset;
   const all=(MODS[modTab]||[]).filter(([,n])=>n.toLowerCase().includes(modSearch.toLowerCase()));
   const sel=(MODS[modTab]||[]).filter(([id])=>(m.allowed[modTab]||{})[id]).reduce((a,[, ,c])=>a+c,0);
-  const save=Math.round(((200-m.weapons)/200*90+(1000-m.attachments)/1000*60+(200-m.equipment)/200*35)*(m.subset?1:0));
+  const save=Math.round(((200-m.weapons)/200*90+(1000-m.attachments)/1000*60+(200-m.equipment)/200*35+(200-(m.other??200))/200*10+(300-(m.clothingCount??300))/300*25)*(m.subset?1:0));
   return `<div class="stack">${gearOff()}
   ${card(T('모드 아이템 사용','Use mod items'),sw('mods.on',T('모드 무기 · 장비 · 부품을 봇에게 쓰기','Let bots use mod weapons, gear and parts'),T('새로 설치하면 꺼져 있습니다. 끄면 다른 모드가 추가한 무기·장비·부품을 봇이 쓰지 않습니다(PackNStrap 벨트는 아래 벨트 설정을 따름).','Off on a fresh install. When off, bots never use weapons, gear or parts added by other mods (PackNStrap belts follow the belt setting below).'))
     +notice(T('모드 무기·장비를 켜면 이상한 조합이 나올 수 있습니다. 티어 편집기에서 무기·부품을 정리해 주세요.','Mod weapons and gear can produce odd combinations. Tidy weapons and parts in the Tier editor.'),off?'flat':'warn'),{icon:'⊕'})}
   <div class="grid g2"${off?' style="opacity:.55"':''}>
   ${card(T('레이드마다 일부만 사용','Per-raid subset'),sw('mods.subset',T('켜기 (램 절약)','Enable (save RAM)'),T('레이드 시작 때 이번 판 모드 아이템을 뽑습니다. 무기를 뽑으면 그 무기 전용 부품은 자동 포함.','Rolls this raid’s mod items. A rolled weapon brings its own parts.'))
-    +slider('mods.weapons',T('모드 무기','Mod weapons'),'',{min:0,max:200,unit:'',dis})+slider('mods.attachments',T('모드 부착물','Mod attachments'),'',{min:0,max:1000,step:10,unit:'',dis,adv:true})
-    +slider('mods.equipment',T('모드 장비','Mod equipment'),'',{min:0,max:200,unit:'',dis})
+    +slider('mods.weapons',T('모드 무기','Mod weapons'),T('뽑힌 무기가 꼭 달아야 하는 모드 부품(수신기·총열 등)은 아래 부착물 수와 따로 자동으로 넣습니다. 모드 탄약은 무기를 따라가므로 고르지 않습니다.','Required mod parts of rolled weapons (receivers, barrels…) are added on top of the attachment count. Mod ammo follows the weapons and is never rolled.'),{min:0,max:200,unit:'',dis})
+    +slider('mods.equipment',T('모드 장구류','Mod gear'),T('헬멧·방탄복·조끼·가방·헤드셋·방탄판 등.','Helmets, armor, rigs, backpacks, headsets, plates…'),{min:0,max:200,unit:'',dis})
+    +slider('mods.attachments',T('모드 부착물','Mod attachments'),T('조준경·손잡이·소음기 등 그 밖의 부품.','Scopes, grips, suppressors and other parts.'),{min:0,max:1000,step:10,unit:'',dis})
+    +slider('mods.other',T('모드 기타','Mod other'),T('의약품·수류탄·음식·전리품.','Meds, grenades, food and loot.'),{min:0,max:200,unit:'',dis})
+    +slider('mods.clothingCount',T('모드 의상','Mod clothing'),T('의상 탭에서 허용한 모드 옷 중 이번 판에 쓸 수. 옷은 텍스처가 커서 램을 많이 씁니다.','How many allowed mod outfits this raid may use. Outfits have large textures.'),{min:0,max:300,unit:'',dis})
     +notice(fmt(tr(T('예상: 사망 1명당 램 증가가 약 {n}% 줄어듭니다 (모두 허용 대비, 대략값).','Estimate: ~{n}% less RAM growth per death (rough).')),{n:Math.min(80,Math.round(save/2))}),m.subset?'':'flat'),{icon:'▤'})}
   ${card(T('등장 비율','Frequency'),slider('mods.mult',T('모드 아이템 등장 배율','Mod item weight'),T('100% = 바닐라와 같은 무게.','100% = same as vanilla.'),{min:0,max:200,step:5})+sw('mods.pmcOnly',T('모드 장비는 PMC만','Mod gear for PMCs only'),'')
     +notice(T('부품 확률은 SPT 기본값을 씁니다. 다른 모드가 바꿔도 되돌립니다(오류·램 누수 방지).','Part chances use SPT defaults and are restored if changed (prevents errors/leaks).'),'flat'),{icon:'⚖'})}</div>
@@ -2816,7 +2819,7 @@ function liveBanner(pg){
   if(pg==='specials')h+=notice(T('레이더·로그는 맵에 원래 있는 무리(레버·탈출구 이벤트 포함)를 그대로 두고, 맵 확률은 판 시작 때 더 넣는 "추가 스폰"에만 씁니다(상한을 지킴). 컬티스트·블러드하운드는 원래 무리의 확률·인원을 바꿉니다. 저격 스캐브도 지금 적용됩니다(웨이브마다 맵 확률로 남김). 감염자는 할로윈 이벤트가 켜졌을 때 판마다 "감염 판" 확률로 적용됩니다(켜면 이 맵 확률, 끄면 이벤트 페이지의 좀비 확률). 감염자 인원 칸은 적용되지 않습니다(SPT가 감염 정도로 정함).','Raiders and rogues keep the map’s own groups (incl. lever/exfil events) as they are; the map chance is used only for an "extra spawn" added at raid start (respects the cap). Cultists and bloodhounds change the original groups’ chance and size. Sniper scavs apply too (each wave kept by the map chance). Infected apply during Halloween as a per-raid "infected raid" chance (the map chance when on, otherwise the Events zombie chance). Infected size is not applied.'),'flat');
   const GM=serverMeta&&serverMeta.gear;
   if(GEAR_NOTE[pg]){if(GM&&GM.locked)h+=notice(T('APBS가 설치되어 있어 Gravity 장비는 적용되지 않습니다. 값은 저장됩니다.','APBS is installed, so Gravity loadouts are not applied. Values are saved.'),'warn');else h+=applyInfo(pg,[{label:T('적용','Applied'),items:[GEAR_NOTE[pg].applied]},{label:T('미적용','Not applied'),pending:true,items:[GEAR_NOTE[pg].pending]}]);}
-  if(GM&&!GM.locked&&pg==='items')h+=notice(T(`서버 자료: 모드 아이템 무기 ${GM.mods.weapons} · 장비 ${GM.mods.equipment} · 부품 ${GM.mods.attachments}개. 지난 판에 쓴 묶음: 무기 ${GM.raid.weapons} · 장비 ${GM.raid.equipment} · 부품 ${GM.raid.attachments}.`,`Server: mod weapons ${GM.mods.weapons} · gear ${GM.mods.equipment} · parts ${GM.mods.attachments}. Last raid subset: ${GM.raid.weapons} · ${GM.raid.equipment} · ${GM.raid.attachments}.`),'flat');
+  if(GM&&!GM.locked&&pg==='items')h+=notice(T(`서버 자료: 설치된 모드 무기 ${GM.mods.weapons} · 장구류 ${GM.mods.equipment} · 부착물 ${GM.mods.attachments} · 기타 ${GM.mods.other??'?'} · 의상 ${GM.mods.clothing??'?'}개. 지난 판에 쓴 묶음: 무기 ${GM.raid.weapons} · 장구류 ${GM.raid.equipment} · 부착물 ${GM.raid.attachments}(+필수 부품 ${GM.raid.required??0}) · 기타 ${GM.raid.other??0} · 의상 ${GM.raid.clothing??'제한 없음'}.`,`Server: installed mod weapons ${GM.mods.weapons} · gear ${GM.mods.equipment} · attachments ${GM.mods.attachments} · other ${GM.mods.other??'?'} · clothing ${GM.mods.clothing??'?'}. Last raid subset: ${GM.raid.weapons} · ${GM.raid.equipment} · ${GM.raid.attachments} (+${GM.raid.required??0} required parts) · ${GM.raid.other??0} · ${GM.raid.clothing??'no limit'}.`),'flat');
   if(GM&&!GM.locked&&(pg==='tiers'||pg==='roles')&&GM.dressed>0)h+=notice(T('지난 판에 Gravity 장비를 입힌 봇: ','Bots dressed last raid: ')[lang]+GM.dressed+' — '+Object.entries(GM.tiers||{}).map(([k,a])=>k+' '+a.map((n,i)=>n?('T'+(i+1)+'×'+n):'').filter(Boolean).join(' ')).join(' / '),'flat');
   if(GM&&GM.error&&GEAR_NOTE[pg])h+=notice(T('장비 처리 중 오류(그 봇은 SPT 기본 장비): ','Loadout error (that bot used SPT default): ')[lang]+GM.error,'warn');
   if(NOT_LIVE.has(pg))h+=notice(T('이 페이지는 아직 게임에 적용되지 않습니다(다음 판). 값은 저장되므로 미리 맞춰 둘 수 있습니다.','This page is not applied in game yet (next version). Values are saved for later.'),'flat');
@@ -2838,7 +2841,7 @@ const GEAR_NOTE={
  tieredit:{applied:T('무기·방어구·탄약·의약품·부착물의 아이템별 무게 표, 개수·확률 표와 상한·범위. 아이템 티어 직접 지정은 아이템 티어 페이지에서 설정합니다.','Per-item weight tables for weapons, armor, ammo, meds and attachments, counts and chances, caps and ranges; manual item tiers are set on the Item tiers page.'),pending:T('없음','None')},
  roles:{applied:T('켜기·티어 방식·고정 티어·오프셋·앞뒤판/옆판 확률·앞판 없으면 뒤판 빼기·뒤판 등급 제한·상탄·내구도(티어 범위와 겹치는 구간)·가방 전리품·의료품 남은 양·열쇠·퀘스트 템·빈곤·다시 굴리기 확률. 플레이어 스캐브는 SPT 장비 필터를 건너뜁니다.','Enablement, tier mode, fixed tier, offset, plate chances, back plate rules, top-loading, durability overlapping tier ranges, loot, meds remaining, keys, quest items, poverty and re-roll. SPT skips loadout filtering for player scavs.'),pending:T('없음','None')},
  weapons:{applied:T('개머리판·더스트커버·조준경 항상·머즐 강제·조준경/전술 장치 개수·낱개 탄약·대용량 탄창·밤 야투경/열화상/손전등 확률·맵별 무기 성향·열화상 수동 지정(Remove 우선). 머즐 확률은 티어 편집기 표를 씁니다.','Forced stock, dust cover, scope and muzzle; scope/tactical limits, loose ammo, large mags; night NVG/thermal/light chances; per-map weapon range; manual thermal lists (Remove wins). Muzzle chance uses the tier table.'),pending:T('없음','None')},
- items:{applied:T('판마다 일부만 쓰기(무기·장비·부품)·PMC만. 등장 배율은 장비와 탄약 무게에 적용됩니다. 모드 아이템은 SPT 원본에 없는 아이템입니다. 아이템 티어 직접 지정도 적용됩니다.','Per-raid subsets of weapons, gear and parts; PMC only. Weight multiplier applies to gear and ammo. Mod items are absent from SPT originals. Manual item tiers also apply.'),pending:T('없음','None')},
+ items:{applied:T('판마다 일부만 쓰기(무기·장구류·부착물·기타·의상, 뽑힌 무기의 필수 부품 자동 포함, 탄약은 무기를 따라감)·PMC만. 등장 배율은 장비와 탄약 무게에 적용됩니다. 모드 아이템은 SPT 원본에 없는 아이템입니다. 아이템 티어 직접 지정도 적용됩니다.','Per-raid subsets of weapons, gear, attachments, other items and clothing (required parts of rolled weapons included, ammo follows weapons); PMC only. Weight multiplier applies to gear and ammo. Mod items are absent from SPT originals. Manual item tiers also apply.'),pending:T('없음','None')},
  blacklist:{applied:T('서버 연결 시 실제 아이템 검색·장비/탄약/부품/전리품 목록 제외. 보안 컨테이너는 유지합니다. 개발용 아이템은 SPT 차단 목록을 씁니다.','Live item search and removal from gear, ammo, parts and loot pools. Secure containers remain; dev items use SPT’s block list.'),pending:T('없음','None')},
  gearpresets:{applied:T('장비 메뉴 값을 한꺼번에 바꾸며 다음 레이드부터 적용됩니다.','Switches Loadout menu values together, applied from the next raid.'),pending:T('없음','None')}
 };
@@ -2906,7 +2909,10 @@ function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeM
   // 1.0.9: 모드 아이템 스위치는 새 설치만 꺼짐. 값이 없는 기존 설정은 서버(mods.on 기본 켜짐)와 같게 켜 둔다(다음 저장에 꺼짐이 굳지 않게).
   if(raw&&(!raw.mods||raw.mods.on===undefined))state.mods.on=true;
   // 1.1.0: 이 판 전 저장본의 '새로 구현한 칸'은 서버가 안 읽던 화면 기본값이다. 서버(settingsVer 110 전)와 같은 '지금 결과' 값으로 바꿔 보여 준다.
-  if(raw&&!(raw.settingsVer>=110))legacy110(state);state.settingsVer=110;
+  if(raw&&!(raw.settingsVer>=110))legacy110(state);
+  // 1.1.0(#73): 레이드마다 일부만 — 옛 저장본에 없던 개수는 서버가 읽던 값(무기 30·부착물 150·장구류 30, 기타 0, 의상 전부)으로.
+  if(raw&&!(raw.settingsVer>=110)){const rm=raw.mods||{};[['weapons',30],['attachments',150],['equipment',30]].forEach(([k,v])=>{if(rm[k]===undefined)state.mods[k]=v;});if(rm.other===undefined)state.mods.other=0;if(rm.clothingCount===undefined)state.mods.clothingCount=300;}
+  state.settingsVer=110;
   // 1.1.0(#69): 옛 설정의 끈 모드 한 목록(mods.disabledSources)은 모든 탭에 그대로 옮긴다(결과 같음). 이후엔 탭마다 따로.
   if(!(raw&&raw.mods&&raw.mods.disabledBy&&typeof raw.mods.disabledBy==='object')){const old=Array.isArray(raw?.mods?.disabledSources)?raw.mods.disabledSources:[];state.mods.disabledBy={weapons:[...old],equipment:[...old],attachments:[...old],other:[...old]};}
   ['weapons','equipment','attachments','other'].forEach(k=>{if(!Array.isArray(state.mods.disabledBy[k]))state.mods.disabledBy[k]=[];});delete state.mods.disabledSources;

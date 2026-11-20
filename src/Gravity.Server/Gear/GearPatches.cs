@@ -88,7 +88,7 @@ public static class GearRuntime
 
     public static void NewRaid(GearSettings g, int seed)
     {
-        Raid = GearRaid.Pick(Items, g.ModSubset, g.ModWeapons, g.ModEquipment, g.ModAttachments, seed);
+        Raid = GearRaid.Pick(Items, g.ModSubset, g.ModWeapons, g.ModEquipment, g.ModAttachments, g.ModOther, g.ModClothing, seed);
         Stats.Clear();
         Dressed = 0;
     }
@@ -184,7 +184,7 @@ public class GearFilterPatch : AbstractPatch
             if (id == null) return;
             var role = g.RoleFor(id);
             // 1.0.5: 장비 스위치가 꺼진 봇(기본 스캐브)도 의상 탭 설정은 따른다.
-            if (!role.On) { GearClothing.Apply(baseBotNode, g, id, GearRuntime.Items); return; }
+            if (!role.On) { GearClothing.Apply(baseBotNode, g, id, GearRuntime.Items, GearRuntime.Raid); return; }
             var group = GearDefaults.GroupOf(id);
             var rnd = Random.Shared;
             int? lvl = botGenerationDetails.IsPmc ? GearRuntime.PmcLevel ?? botGenerationDetails.BotLevel : null;

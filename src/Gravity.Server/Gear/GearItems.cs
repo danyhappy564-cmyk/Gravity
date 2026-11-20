@@ -34,6 +34,8 @@ public sealed class GearItems
     public IReadOnlyList<string> ModWeapons { get; }
     public IReadOnlyList<string> ModEquipment { get; }
     public IReadOnlyList<string> ModAttachments { get; }
+    /// <summary>1.1.0(#73): 기타 모드 아이템(의약품·수류탄·음식·전리품). 탄약은 무기를 따라가므로 판마다 고르지 않는다.</summary>
+    public IReadOnlyList<string> ModOther { get; } = [];
     /// <summary>1.0.5 의상 탭: 모드 옷(Body·Feet) 목록.</summary>
     public IReadOnlyList<ClothingItem> Clothing { get; init; } = [];
     /// <summary>1.0.9: 봇 원본 표의 부품 목록(부모 id → 칸 → 후보). USEC·BEAR 표가 먼저, 거기 없는 부모만 나머지 봇 표 합집합.
@@ -69,6 +71,7 @@ public sealed class GearItems
         ModEquipment = Mods(s => s != "mods" && !WeaponSlots.Contains(s) && !s.Contains('/')).Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section=="armor").Select(kv=>kv.Key))
             .Where(id => info[id].Slot != "belt").Distinct().Order(StringComparer.Ordinal).ToArray();
         ModAttachments = Mods(s => s == "mods").Concat(info.Where(kv=>kv.Value.Available&&kv.Value.Mod&&kv.Value.Section is "parts" or "plates").Select(kv=>kv.Key)).Distinct().Order(StringComparer.Ordinal).ToArray();
+        ModOther = info.Where(kv => kv.Value.Mod && kv.Value.Available && kv.Value.Section is "meds" or "loot").Select(kv => kv.Key).Order(StringComparer.Ordinal).ToArray();
     }
 
     /// <summary>TierOf가 실제로 쓴 비교 묶음과 그 안의 가격 순위. 없으면 null.</summary>
@@ -94,18 +97,57 @@ public sealed class GearRaid
     public int Weapons { get; }
     public int Equipment { get; }
     public int Attachments { get; }
+    /// <summary>1.1.0: 뽑은 모드 무기가 꼭 달아야 하는 모드 부품(필수 칸)으로 자동 포함한 수.</summary>
+    public int Required { get; init; }
+    public int Other { get; init; }
+    /// <summary>1.1.0: 이번 판 모드 의상(id). null = 의상 수 제한 없음.</summary>
+    public HashSet<string>? Clothing { get; init; }
 
     public GearRaid(HashSet<string>? allowed, int w, int e, int a) { Allowed = allowed; Weapons = w; Equipment = e; Attachments = a; }
 
+    /// <summary>1.0.x 호출 모양: 기타 0개, 의상 제한 없음.</summary>
     public static GearRaid Pick(GearItems items, bool subset, int weapons, int equipment, int attachments, int seed)
+        => Pick(items, subset, weapons, equipment, attachments, 0, -1, seed);
+
+    /// <param name="clothing">이번 판 모드 의상 수. 음수 = 제한 없음.</param>
+    public static GearRaid Pick(GearItems items, bool subset, int weapons, int equipment, int attachments, int other, int clothing, int seed)
     {
-        if (!subset) return new GearRaid(null, items.ModWeapons.Count, items.ModEquipment.Count, items.ModAttachments.Count);
+        if (!subset) return new GearRaid(null, items.ModWeapons.Count, items.ModEquipment.Count, items.ModAttachments.Count) { Other = items.ModOther.Count };
         var rnd = new Random(seed ^ 0x6EA2);
         IEnumerable<string> Take(IReadOnlyList<string> all, int n) => all.OrderBy(_ => rnd.Next()).Take(Math.Max(0, n));
         var w = Take(items.ModWeapons, weapons).ToList();
         var e = Take(items.ModEquipment, equipment).ToList();
-        var a = Take(items.ModAttachments, attachments).ToList();
-        return new GearRaid([.. w, .. e, .. a], w.Count, e.Count, a.Count);
+        // 1.1.0(#73): 뽑은 모드 무기·장비의 필수 칸 모드 부품은 개수와 별도로 넣는다 — 없으면 수신기·총열이 빠진 총이 되거나 총이 빠졌다.
+        var need = RequiredMods(items, w.Concat(e));
+        var a = Take(items.ModAttachments.Where(x => !need.Contains(x)).ToList(), attachments).ToList();
+        var o = Take(items.ModOther, other).ToList();
+        HashSet<string>? cl = clothing < 0 ? null : Take(items.Clothing.Select(x => x.Id).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList(), clothing).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return new GearRaid([.. w, .. e, .. need, .. a, .. o], w.Count, e.Count, a.Count) { Required = need.Count, Other = o.Count, Clothing = cl };
+    }
+
+    /// <summary>부모들의 필수 칸(RequiredSlots) 후보 중 모드 아이템을 끝까지 따라가 모은다(봇 표 → 호환 목록 순, 최대 2000개).</summary>
+    public static HashSet<string> RequiredMods(GearItems items, IEnumerable<string> roots)
+    {
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var q = new Queue<string>(roots);
+        while (q.Count > 0 && found.Count < 2000)
+        {
+            var id = q.Dequeue();
+            if (!seen.Add(id)) continue;
+            var req = items.Info.GetValueOrDefault(id)?.RequiredSlots;
+            if (req == null || req.Count == 0) continue;
+            items.DonorMods.TryGetValue(id, out var donor);
+            items.CompatibleMods.TryGetValue(id, out var compat);
+            foreach (var slot in req)
+            {
+                string[]? cands = donor != null && donor.TryGetValue(slot, out var d) && d.Length > 0 ? d : compat != null && compat.TryGetValue(slot, out var c) ? c : null;
+                if (cands == null) continue;
+                foreach (var x in cands)
+                    if (items.Info.TryGetValue(x, out var xi) && xi.Mod && found.Add(x)) q.Enqueue(x);
+            }
+        }
+        return found;
     }
 
     public bool ModAllowed(string id) => Allowed == null || Allowed.Contains(id);
