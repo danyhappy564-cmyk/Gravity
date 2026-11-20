@@ -2489,7 +2489,8 @@ function presetTouched(p){
   }else if(GEAR_KEYS.includes(k)||k==='tierData'||k==='tierOwn')markEdited();else return;
   schedulePresetSync();
 }
-function schedulePresetSync(){clearTimeout(presetTimer);presetTimer=setTimeout(()=>{const c=customPresets.find(x=>x.id===state.preset);if(c)c.snap=pickKeys(state,RAID_KEYS);const t=customTierPresets.find(x=>x.id===state.tierPreset);if(t){t.tiers=clone(state.gear.tiers);t.data=clone(state.tierData);t.gearSnap=pickKeys(state,GEAR_KEYS);}if(typeof libSync==='function')libSync();renderShell();},300);}
+function presetSyncNow(){const c=customPresets.find(x=>x.id===state.preset);if(c)c.snap=pickKeys(state,RAID_KEYS);const t=customTierPresets.find(x=>x.id===state.tierPreset);if(t){t.tiers=clone(state.gear.tiers);t.data=clone(state.tierData);t.gearSnap=pickKeys(state,GEAR_KEYS);}if(typeof libSync==='function')libSync();renderShell();}
+function schedulePresetSync(){clearTimeout(presetTimer);presetTimer=setTimeout(presetSyncNow,300);}
 function writeSettingRaw(p,v,auto=false){
   const impact=isSpawnMap()&&batch.length&&p.startsWith('maps.'+mapSel+'.')&&!BATCH_SKIP.includes(p.split('.')[2])?batchCapture(p):null;
   {const m=/^tierData\.([^.]+)\.(\d+)\.(weapons|armor|ammo|meds|parts)\.([^.]+)\.[0-9a-f]{24}$/.exec(p);if(m)materialize(m[1],+m[2],m[3],m[4]);}
@@ -2659,7 +2660,7 @@ document.addEventListener('click',e=>{
   if(d.batch){batchLastChange=null;batchCopyPlan=null;const i=batch.indexOf(d.batch);if(i>=0)batch.splice(i,1);else batch.push(d.batch);rerender();return;}
   const a=d.act,arg=d.arg;if(!a)return;
   if(a==='save'){saveToServer();}
-  else if(a==='revert'){state=clone(saved);toast(u('revertedT'));rerender();}
+  else if(a==='revert'){clearTimeout(presetTimer);state=clone(saved);presetSyncNow();toast(u('revertedT'));rerender();} // 1.1.0: 편집 때 바로 따라 저장된 '내 프리셋'도 저장된 설정으로 되돌린다
   else if(a==='reroll'){seed++;refreshLive();}
   else if(a==='tOwn'){markEdited();state.tierData[tRole]=clone(state.tierData[grpOf(tRole)]);state.tierOwn[tRole]=true;tBot=tRole;toast(fmt(tr(T('{b} 전용 표를 만들었습니다 (그룹 표를 복사)','Created own table for {b}')),{b:roleName(tRole)}));rerender();}
   else if(a==='tUnown'){markEdited();delete state.tierData[tRole];delete state.tierOwn[tRole];tBot=grpOf(tRole);if(tCopyTo===tRole)tCopyTo=tableKeys().find(x=>x!==tBot);toast(tr(T('그룹 표로 되돌렸습니다','Back to group table')));rerender();}
@@ -2692,7 +2693,7 @@ document.addEventListener('click',e=>{
   else if(a==='capFix'){const [mid,i]=String(d.v||'').split('|'),m=mapById(mid),t=m&&capTips(m)[+i];if(t)capFixApply(mid,t.fix);rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
   else if(a==='capFixAll'){if(mapById(d.v))capFixAll(d.v);rerender();if(tlPopKey)openPop(tlPopKey,null,true);}
   else if(a==='capAutoAll'){const on=d.v==='1';MAPS.forEach(m=>writeSetting(`maps.${m.id}.capAuto`,on));rerender();}
-  else if(a==='refreshRaid'){Promise.all([fetch('api/meta').then(r=>r.json()),fetch('api/lastraid').then(r=>r.json())]).then(([m,l])=>{serverMeta=m;if(m&&m.version){UI.mock=T(m.version,m.version);const vb=document.querySelector('[data-k="mock"]');if(vb)vb.textContent=m.version;}lastRaid=l;rerender();}).catch(e=>toast(tr(T('새로고침 실패: ','Refresh failed: '))+e.message));}
+  else if(a==='refreshRaid'||a==='refreshMeta'){Promise.all([fetch('api/meta').then(r=>r.json()),fetch('api/lastraid').then(r=>r.json())]).then(([m,l])=>{serverMeta=m;if(m&&m.version){UI.mock=T(m.version,m.version);const vb=document.querySelector('[data-k="mock"]');if(vb)vb.textContent=m.version;}lastRaid=l;rerender();}).catch(e=>toast(tr(T('새로고침 실패: ','Refresh failed: '))+e.message));}
   else if(a==='orbitRecommend'){const O=serverMeta&&serverMeta.orbit,w=Math.round(O&&O.installed?Math.max(O.sleepDistance||0,O.wakeDistance||0)+10:260);state.orbit.extractRefillMode='infinite';state.orbit.refillAfterExtract=state.orbit.extractRefillCap>0;state.orbit.nearAsGhost=true;state.near.minDist=Math.max(state.near.minDist,w);state.near.maxDist=Math.max(state.near.maxDist,state.near.minDist+80);toast(fmt(tr(T('ORBIT 권장값을 적용했습니다 (근처 보충 거리 {w}m 이상). 저장을 눌러야 적용됩니다.','Applied ORBIT-friendly values (near-player ≥ {w} m). Save to apply.')),{w}));rerender();}
   else if(a==='attCopyAll'){const D=state.tierData[tBot][tierSel],src=clone(attFor(tBot,tierSel,atWeapon));[...Object.keys(D.weapons.primaryShort||{}),...Object.keys(D.weapons.primaryLong||{}),...Object.keys(D.weapons.holster||{})].forEach(w=>{if(w!==atWeapon)D.attach[w]=clone(src);});toast(tr(T('이 티어의 모든 무기에 적용했습니다','Applied to every weapon in this tier')));rerender();}
   else if(a==='tierImportDemo'){const data=clone(state.tierData);data.pmc[5].weapons.primaryLong.epic_scar=25;data.pmc[5].weapons.primaryLong.ghost_gun=10;data.pmc[6].weapons.primaryLong.epic_scar=30;const obj={format:'gravity-tier-preset',version:1,name:"Friend's chad tiers",exportedAt:new Date().toISOString(),tiers:state.gear.tiers,tables:data,ownTables:[],items:{...tierModItems(data),epic_scar:{source:'Epic Gun Pack',code:'9ec9ac395c1f0e9a7b3d2e6f'},ghost_gun:{source:'Ghost Arms',code:'7a1f00c35c1f0e9a7b3d2e6f'}}};importTierJson(JSON.stringify(obj),'friend-chads.json');}
