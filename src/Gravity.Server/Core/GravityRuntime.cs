@@ -104,6 +104,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
 
     /// <summary>지금 맵 표에 걸린 Base(MapVariants가 판마다 바꿔 끼움, kb 1.28). 시험에서는 null.</summary>
     public Func<string, LocationBase?>? CurrentBase { get; set; }
+    /// <summary>1.1.0(#67) SPT BTR 맵 표(templates.locationServices.BTRServerSettings.ServerMapBTRSettings).</summary>
+    public Dictionary<string, SPTarkov.Server.Core.Models.Eft.Common.Tables.ServerMapBtrsettings>? BtrTable { get; set; }
 
     /// <summary>DB Base의 깊은 복제(개발 페이지 시뮬레이션용). 시험에서는 null.</summary>
     public Func<string, LocationBase?>? CloneBase { get; set; }
@@ -240,6 +242,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             var s = seed ?? Random.Shared.Next(1, int.MaxValue);
             var b = BuildRaid(id, loc, cfg, info, raidSec, simStart, s, hasClient, scavRaid, realRaid: true);
             if (Detect.Ruaf) Gravity.Factions.RuafLink.ApplyRadius(cfg.Ruaf is { Managed: true } ru ? ru.CheckpointRadius : 0);
+            // 1.1.0(#67) BTR: 레이드 시작 응답이 이 표를 그대로 싣는다(삼림·스트리트만).
+            Gravity.Spawn.BtrControl.Apply(BtrTable, cfg.Btr);
             var plan = b.Plan;
             LastOtherPmc = b.OtherPmc;
             if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv, Orbit);

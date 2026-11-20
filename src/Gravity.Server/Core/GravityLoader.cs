@@ -60,6 +60,7 @@ public class GravityLoader(
             BossProgress = Gravity.Spawn.BossProgress.Load(Path.Combine(paths.ConfigDir, "boss-progress.json")),
             Verbose = DiagLog.Verbose(m => logger.Info(m)),
             CurrentBase = id => locations.GetLocation(id)?.Base,
+            BtrTable = templates.LocationServices?.BtrServerSettings?.ServerMapBTRSettings,
             CloneBase = id => locations.GetLocation(id)?.Base is { } b ? cloner.Clone(b) : null,
             MaxBotCap = botConfig.MaxBotCap,
             BotCfg = botConfig,
@@ -114,6 +115,8 @@ public class GravityLoader(
         foreach (var m in catalog.All.Where(m => m.HasVariant && m.OriginalPmcZones == null))
             logger.Warning($"{GravityInfo.Tag} {m.Id}: {L.T("SPT 원본 구역을 못 읽어 웹의 원본 배치 편집을 비활성화합니다", "could not read the SPT original zones; original-layout zone editing is disabled in the web UI")}");
         if (sptData == null) logger.Warning($"{GravityInfo.Tag} {L.T("SPT_Data 폴더를 못 찾아 다른 모드 PMC 구분·연구소 게이트 복원을 끕니다", "SPT_Data folder not found; other-mod PMC detection and Labs gate restore are off")}");
+        // 1.1.0(#67) BTR 빈도: 켠 경우 서버 시작 때도 한 번(레이드마다 다시 맞춘다).
+        Gravity.Spawn.BtrControl.Apply(GravityRuntime.Instance.BtrTable, store.Current.Btr);
         RaidStartPatch.Activity = activity;
         // 1.1.0 RUAF 검문소 반경: RUAF가 클라에 보내는 메모리 설정을 레이드 시작 때 웹 값으로(0 = RUAF 값).
         if (detect.Ruaf)

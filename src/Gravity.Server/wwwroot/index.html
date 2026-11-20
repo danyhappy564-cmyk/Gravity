@@ -755,11 +755,11 @@ function makeDefaults(){
     client:{preload:6,perFrame:1,perf:'balanced',pmcAnywhere:false},
     orbit:{extractRefillMode:'infinite',extractRefillCap:20,refillAfterExtract:true,nearAsGhost:false,respectTakeover:true,ghostCount:true},
     diag:{log:'summary',report:true,botLog:false},
-    eventsOwner:'auto',svmOwn:{boss:'gravity'},triggers:{},lab:{blackoutLink:'boost',blackoutMult:3},compat:{otherPmc:'keep',lockWithQuestingBots:false,variantMods:[]},
+    eventsOwner:'auto',svmOwn:{boss:'gravity'},btr:{on:false,woods:{chance:100,min:180,max:360},streets:{chance:100,min:300,max:600}},triggers:{},lab:{blackoutLink:'boost',blackoutMult:3},compat:{otherPmc:'keep',lockWithQuestingBots:false,variantMods:[]},
     blacklist:{entries:[{id:'59e690b686f7746c9f75e848',bots:['scavs']},{id:'5c110624d174af029e69734c',bots:['all']},{id:'5c1d0efb86f7744baf2e7b7b',bots:['all']}],scavPenCap:40,blockDev:true,blockQuest:true},
     dev:{markers:false,zones:false,overlay:false,verbose:false},settingsVer:110,tierPreset:'auto',tierOwn:{},tierData:tierDataDefaults()};
 }
-const RAID_KEYS=['spawn','near','maps','bosses','bossCommon','bossProg','bossDiff','weeklyBoss','specials','factions','events','eventsOwner','svmOwn','lab'];
+const RAID_KEYS=['spawn','near','maps','bosses','bossCommon','bossProg','bossDiff','weeklyBoss','specials','factions','events','eventsOwner','svmOwn','lab','btr'];
 const GEAR_KEYS=['gear','roles','weapons','mods'];
 const pickKeys=(o,ks)=>Object.fromEntries(ks.filter(k=>o&&o[k]!==undefined).map(k=>[k,clone(o[k])]));
 let DEFAULTS=makeDefaults();
@@ -1507,8 +1507,11 @@ const spawnCommon={desc:T('모든 맵에 적용되는 기본 흐름입니다.','
       +`<button class="mini-btn" data-nav="tiers">${tr(T('장비 티어 · 봇 레벨 기준','Gear tiers · bot level rules'))} →</button>`);
   const labPmc=mid==='labyrinth'?card(T('미궁 PMC','Labyrinth PMCs'),sw('spawn.allowPmcLabyrinth',T('미궁에도 PMC 스폰','PMCs on the Labyrinth'),T('게임 기본은 미궁에 PMC가 없습니다. 켜면 시작 PMC·보충 PMC가 다른 맵처럼 나옵니다(미궁은 PMC 구역이 없어 게임 스폰 지점을 씁니다).','The game has no PMCs on the Labyrinth by default. On = starting and refill PMCs like other maps (uses game spawn points, since the Labyrinth has no PMC zones).'))
       +`<p class="small muted" style="margin:4px 0 0">${tr(state.spawn.allowPmcLabyrinth?T('지금: 미궁에 PMC가 나옵니다.','Now: PMCs spawn on the Labyrinth.'):T('지금: 미궁에 PMC가 나오지 않습니다(스캐브·보스만).','Now: no PMCs on the Labyrinth (scavs and bosses only).'))}</p>`):'';
-  if(section){if(section==='shared')return shared;const bodies={flow,scav,dist,hotspot,limits,near:P.near.render(mid,true)};return spawnCard(mid,section,bodies[section]||'');}
-  const controls=`<div class="grid g2">${labPmc}${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${mid&&tlEdit?'':spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}</div>`;
+  // 1.1.0(#67) BTR: 원래 나오는 삼림·스트리트만. 꺼짐 = SPT 값 그대로.
+  const btrMaps=[['woods','Woods',T('삼림','Woods')],['streets','TarkovStreets',T('타르코프 스트리트','Streets of Tarkov')]].filter(()=>!mid); // 공통 화면에만(맵 화면은 칸 경로가 맵 쪽으로 바뀜)
+  const btrCard=btrMaps.length?card(T('BTR (삼림 · 스트리트)','BTR (Woods · Streets)'),sw('btr.on',T('Gravity가 BTR 빈도 정하기','Gravity sets BTR frequency'),T('끄면 SPT 원래 값(삼림 100%·3~6분, 스트리트 100%·5~10분)을 씁니다. BTR이 원래 나오는 두 맵만 바꾸고 다른 맵에는 넣지 않습니다.','Off = SPT values (Woods 100%, 3–6 min; Streets 100%, 5–10 min). Only the two maps that have a BTR; never added elsewhere.'))+btrMaps.map(([k,,name])=>`<div class="cap" style="margin-top:8px">${tr(name)}</div>`+slider('btr.'+k+'.chance',T('나올 확률','Spawn chance'),T('레이드마다 BTR이 나올 확률입니다.','Chance the BTR appears each raid.'),{dis:!state.btr.on})+range('btr.'+k+'.min','btr.'+k+'.max',T('나오는 시각 (레이드 시작 뒤)','Appears at (after raid start)'),T('이 범위 안 무작위 시각에 나옵니다.','Appears at a random time in this range.'),{min:0,max:1800,step:30,unit:UI.sec,dis:!state.btr.on})).join(''),{icon:'⛟'}):'';
+  if(section){if(section==='shared')return shared+btrCard;const bodies={flow,scav,dist,hotspot,limits,near:P.near.render(mid,true)};return spawnCard(mid,section,bodies[section]||'');}
+  const controls=`<div class="grid g2">${labPmc}${spawnCard(mid,'flow',flow)}${spawnCard(mid,'scav',scav)}${spawnCard(mid,'dist',dist)}${spawnCard(mid,'hotspot',hotspot)}${mid&&tlEdit?'':spawnCard(mid,'limits',limits)}${spawnCard(mid,'near',P.near.render(mid,true))}${shared}${btrCard}</div>`;
   return controlsOnly?controls:header+controls+'</div>';
 }};
 

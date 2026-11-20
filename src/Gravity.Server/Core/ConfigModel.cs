@@ -195,6 +195,8 @@ public sealed record GravityConfig(
     public Gravity.Spawn.BossProgSettings BossProg { get; init; } = new();
     /// <summary>1.1.0 클라이언트·개발자 화면(client.*, dev.*).</summary>
     public ClientOptions ClientOpts { get; init; } = new();
+    /// <summary>1.1.0(#67) BTR 빈도(삼림·스트리트만, 꺼짐 = SPT 그대로).</summary>
+    public Gravity.Spawn.BtrSettings Btr { get; init; } = new();
     public Gravity.Spawn.BossDiffDist BossDiff { get; init; } = new();
     public bool SvmBossKeep { get; init; }
 
@@ -455,6 +457,7 @@ public static partial class ConfigModel
             BossDiff = new Gravity.Spawn.BossDiffDist(r.Num("bossDiff.easy", 0, 0, 100), r.Num("bossDiff.normal", 60, 0, 100), r.Num("bossDiff.hard", 30, 0, 100), r.Num("bossDiff.imp", 10, 0, 100)),
             SvmBossKeep = r.Str("svmOwn.boss", "gravity", "gravity", "svm") == "svm",
             // 1.1.0: 봇 미리 만들어 두기는 판 110 전 저장본(화면 기본 6)이면 0(1.0.9처럼 안 함).
+            Btr = new Gravity.Spawn.BtrSettings(r.Bool("btr.on", false), Btr(r, "btr.woods.", Gravity.Spawn.BtrSettings.WoodsDefault), Btr(r, "btr.streets.", Gravity.Spawn.BtrSettings.StreetsDefault)),
             ClientOpts = new ClientOptions((int)r.Num("client.perFrame", 1, 1, 5),
                 r.Num("settingsVer", 0, 0, 999) >= 110 ? (int)r.Num("client.preload", 6, 0, 20) : 0, r.Bool("client.pmcAnywhere", false),
                 r.Bool("dev.markers", false), r.Bool("dev.zones", false), r.Bool("dev.overlay", false), r.Bool("dev.verbose", false))
@@ -620,6 +623,12 @@ public static partial class ConfigModel
             MaxRespawnScav = (int)r.Num(sp + "maxRespawn.scav", 0, 0, 500)
         };
         return spawn;
+    }
+
+    private static Gravity.Spawn.BtrMap Btr(Reader r, string p, Gravity.Spawn.BtrMap d)
+    {
+        var min = r.Num(p + "min", d.MinSec, 0, 3600);
+        return new Gravity.Spawn.BtrMap(r.Num(p + "chance", d.Chance, 0, 100), min, Math.Max(min, r.Num(p + "max", d.MaxSec, 0, 3600)));
     }
 
     private static NearSettings ReadNear(Reader r)
