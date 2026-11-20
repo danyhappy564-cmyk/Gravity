@@ -2737,7 +2737,7 @@ window.addEventListener('beforeunload',e=>{if(changes().length){e.preventDefault
 Object.keys(P).forEach(k=>{const keep=page;page=k;try{P[k].render();}catch(err){console.error(k,err);}page=keep;});
 
 /* ================= 실제 서버 연결 ================= */
-const NOT_LIVE=new Set(['client']);
+const NOT_LIVE=new Set();
 const DROP_LABEL={noPoint:T('지점 없음','No spawn point'),expired:T('대기 만료','Queue expired'),groupCap:T('그룹 제한','Group limit'),cap:T('하드 스톱 뒤 PMC 분대','PMC squads after hard stop'),scavCap:T('상한에 막힌 스캐브 차례','Scav turns blocked by cap'),nearCap:T('상한에 막힌 근처 자리','Near slots blocked by cap'),lateEscort:T('늦게 나와 버린 PMC 대원(명)','Late PMC followers dropped (bots)'),total:T('레이드 전체 봇 총량에 막힘','Blocked by total bots per raid')};
 function fmtAt(v){if(!v)return '-';const d=new Date(v);return isNaN(d)?'-':d.toLocaleString(lang==='en'?'en-US':'ko-KR');}
 function clientCard(){
