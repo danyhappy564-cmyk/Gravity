@@ -970,6 +970,8 @@ function specGroups(m){const ents=mapEntries(m),lane=specLane(m),ids=[...new Set
     if(ents){timed=mine.filter(e=>!e.trigger).map(e=>({t:win?win[0]:e.time<0?0:e.time/60,t1:win?win[1]:null,chance:ex?e.chance:c,size:escSize(e.escort)+1,dim:!kept||(ex?e.chance:c)<=0}));
       if(!ex&&!mine.some(e=>!e.trigger)&&c>0)timed=[{t:win?win[0]:0,t1:win?win[1]:null,chance:c,size:sp.max||1,dim:false,fresh:true}];}
     else if(lane.some(x=>x[2]===id&&x[3]==='orig'))timed=[{t:win?win[0]:0,t1:win?win[1]:null,chance:ex?null:c,size:ex?3:(sp.max||1),dim:!kept}];
+    // 1.1.0: 같은 시각 무리(등대 로그 8무리가 모두 0분)는 버블 하나로 묶어 '×N · 최소~최대%'로 — 겹쳐 그려 글자가 뭉개지던 것.
+    if(timed.length>1){const mg=[];timed.forEach(b=>{const o=mg.find(x=>Math.abs(x.t-b.t)<0.25&&x.t1===b.t1);if(o){o.n++;o.size+=b.size;if(b.chance!=null){o.lo=Math.min(o.lo,b.chance);o.hi=Math.max(o.hi,b.chance);}o.dim=o.dim&&b.dim;o.fresh=o.fresh&&b.fresh;}else mg.push({...b,n:1,lo:b.chance,hi:b.chance});});timed=mg;}
     const trig=ex?trigGroups(m,mine).map(g=>({...g,dim:!kept})):[];
     const xl=lane.find(x=>x[2]===id&&x[3]==='extra'),extra=ex&&xl&&c>0?{chance:c,count:Math.max(1,sp.extraCount||1),t0:sp.xFrom||0,t1:Math.max(sp.xFrom||0,sp.xTo||0),fresh:ents?!mine.length:false}:null;
     const sum=[timed.length?fmt(tr(T('원래 {n}','orig {n}')),{n:timed.length}):'',trig.length?fmt(tr(T('레버 {n}','trigger {n}')),{n:trig.reduce((a,g)=>a+g.n,0)}):'',extra?fmt(tr(T('추가 {n} · {p}%','extra {n} · {p}%')),{n:extra.count,p:extra.chance}):''].filter(Boolean).join(' · ');
@@ -985,9 +987,9 @@ function tlChips(list,x0,y,W,L,R,ed,col){const per=Math.max(1,Math.floor((W-L-R)
   txt=`${trigLabel(g.trig)}${g.n>1?' ×'+g.n:''} · ${boss?tr(T('보스 설정','boss setting')):(off?0:g.chance)+'%'}${g.swap?' → '+spawnRoleName(g.swap):''}`;
   return `<g${ed?` data-pop="${pop}" class="tlc"`:''} opacity="${g.dim||off?.4:1}"><rect x="${cx}" y="${cy-10}" width="${TL_CHIP-6}" height="20" rx="6" fill="${col}" fill-opacity=".16" stroke="${col}" stroke-opacity=".55"/><text x="${cx+7}" y="${cy+4}" fill="#e8eefa" font-size="11">${esc(txt.length>26?txt.slice(0,25)+'…':txt)}<title>${esc(spawnRoleName(g.role)+' · '+trigLabel(g.trig)+' · '+g.n+' · '+(off?'0% ('+tr(T('원래 스폰 유지 꺼짐','original spawns off'))+')':g.chance+'%'))}</title></text></g>`;}).join('');}
 function specLaneSvg(g,x,y0,h,ed,L,W,R){const sp=state.specials[g.id];let s='',row=0;const bubble=(t,yy,ch,size,dim,col,drag,label)=>{const r=5+Math.min(7,size);
-    return `<g opacity="${dim?.38:1}"><circle cx="${x(t)}" cy="${yy}" r="${r}" fill="${col}" fill-opacity=".85" stroke="#e3edff" stroke-opacity=".5"${drag&&ed?` data-drag="${drag}" class="tlc tld"`:ed?` data-pop="spec|${g.id}" class="tlc"`:''}><title>${esc(label)}</title></circle>${ch!=null?`<text x="${x(t)+r+3}" y="${yy+4}" fill="#cfdcf5" font-size="11">${ch}%</text>`:''}</g>`;};
+    return `<g opacity="${dim?.38:1}"><circle cx="${x(t)}" cy="${yy}" r="${r}" fill="${col}" fill-opacity=".85" stroke="#e3edff" stroke-opacity=".5"${drag&&ed?` data-drag="${drag}" class="tlc tld"`:ed?` data-pop="spec|${g.id}" class="tlc"`:''}><title>${esc(label)}</title></circle>${ch!=null?`<text x="${x(t)+r+3}" y="${yy+4}" fill="#cfdcf5" font-size="11">${typeof ch==='string'?ch:ch+'%'}</text>`:''}</g>`;};
   const timedRow=yy=>g.timed.map((b,i)=>(b.t1!=null&&b.t1>b.t?`<line x1="${x(b.t)}" x2="${x(b.t1)}" y1="${yy}" y2="${yy}" stroke="${g.col}" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/>`:'')
-    +bubble(b.t,yy,b.chance,b.size,b.dim,b.fresh?'#7fd1b9':g.col,i===0?'spec|'+g.id:'',fmt(tr(T('{n} · {t}분 · {p}%','{n} · {t} min · {p}%')),{n:tr(g.name),t:(+b.t).toFixed(1),p:b.chance??'?'}))).join('');
+    +bubble(b.t,yy,b.n>1?(b.lo===b.hi?b.lo+'%':b.lo+'~'+b.hi+'%')+' ×'+b.n:b.chance,b.size,b.dim,b.fresh?'#7fd1b9':g.col,i===0?'spec|'+g.id:'',b.n>1?fmt(tr(T('{n} · {t}분 · 무리 {k}개 · 각 {a}~{b}%','{n} · {t} min · {k} groups · {a}–{b}% each')),{n:tr(g.name),t:(+b.t).toFixed(1),k:b.n,a:b.lo??'?',b:b.hi??'?'}):fmt(tr(T('{n} · {t}분 · {p}%','{n} · {t} min · {p}%')),{n:tr(g.name),t:(+b.t).toFixed(1),p:b.chance??'?'}))).join('');
   const extraRow=yy=>{const e=g.extra;if(!e)return '';const xs=[];for(let i=0;i<e.count;i++)xs.push(e.t1>e.t0?e.t0+(e.t1-e.t0)*(e.count===1?0:i/(e.count-1)):e.t0);
     return (e.t1>e.t0?`<line x1="${x(e.t0)}" x2="${x(e.t1)}" y1="${yy}" y2="${yy}" stroke="#c4a7ff" stroke-opacity=".45" stroke-width="4" stroke-linecap="round"/>`:'')+xs.map((t,i)=>bubble(t,yy,i===0?e.chance:null,Math.max(1,sp.extraMax||1),false,'#c4a7ff',i===0?'specx|'+g.id:'',fmt(tr(T('추가 무리 {i}/{n} · {p}%','Extra group {i}/{n} · {p}%')),{i:i+1,n:e.count,p:e.chance}))).join('');};
   const sub=(yy,txt)=>`<text x="${L-8}" y="${yy+4}" fill="#8f9bb0" font-size="11" text-anchor="end">${tr(txt)}</text>`;
@@ -2568,7 +2570,8 @@ function libSync(){if(!serverMeta||!libReady||libBusy)return;const j=JSON.string
   const done=(ok,err)=>{libBusy=false;if(ok){libSaved=j;if(delToast){toast(fmt(tr(T('"{n}" 프리셋을 지웠습니다(서버에 저장됨).','Deleted "{n}" (saved on the server).')),{n:delToast}));delToast=null;}}else toast(tr(T('프리셋 저장 실패(다음 변경 때 다시 저장): ','Preset save failed (will retry on next change): '))+err);if(ok)libSync();};
   fetch('api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({library:JSON.parse(j)})}).then(r=>r.json()).then(x=>{if(x.login)needLogin(x.login);done(!!x.ok,x.error||'');}).catch(e=>done(false,e.message));}
 document.addEventListener('click',e=>{
-  if(!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
+  // 1.1.0: 설정 창이 다시 그려져 누른 칸이 문서에서 떨어져 나간 클릭(직접 입력칸 등)은 바깥 클릭이 아님 — 미궁·파르티잔 트리거 창이 닫히며 값이 안 바뀌던 것.
+  if(e.target.isConnected&&!e.target.closest('#tlpop')&&!(e.target.closest&&e.target.closest('[data-pop]')))closePop();
   const to=e.target.closest&&e.target.closest('[data-tlopen]');if(to){tlToggle(to.dataset.tlopen);rerender();return;}
   const pe=e.target.closest('[data-pop]');if(pe){if(Date.now()-tlDragEnd>250)openPop(pe.dataset.pop,e);return;}
   // 1.0.7: 특수 봇 시각 버블(끌기 손잡이)을 끌지 않고 누르면 그 특수 봇 설정 창을 연다.
