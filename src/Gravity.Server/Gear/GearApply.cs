@@ -490,6 +490,10 @@ public static class GearApply
             if (gd == null) return;
             if(table.Pools.TryGetValue("meds/"+key,out var custom))
                 gd.Whitelist=custom.Where(kv=>kv.Value>0&&!c.Blocked(kv.Key)&&c.Info(kv.Key)?.Section=="meds").ToDictionary(kv=>(MongoId)kv.Key,kv=>kv.Value);
+            // SPT AdjustGenerationChances는 bot.json 설정의 화이트리스트를 봇 복제본에 참조째 넣고, 전리품 캐시도 첫 봇의 목록을 참조로 보관한다.
+            // 병렬 봇 생성에서 공용 사전을 고치면 사전이 깨져(Count 음수) 그 역할 봇 생성이 서버 재시작까지 모두 실패하므로 이 봇 전용 사본만 고친다.
+            else if (gd.Whitelist != null)
+                gd.Whitelist = new Dictionary<MongoId, double>(gd.Whitelist);
             // 개수별 고정 목록(화이트리스트)에서도 막힌 것을 뺀다.
             if (gd.Whitelist != null)
                 foreach (var mid in gd.Whitelist.Keys.ToList())
