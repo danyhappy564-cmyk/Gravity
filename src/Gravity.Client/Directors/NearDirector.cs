@@ -272,6 +272,7 @@ namespace Gravity.Client.Directors
         {
             if (st.ScavBuilt) return;
             st.ScavBuilt = true;
+            PmcZones.EnsurePoints(c);
             int id = 0, zones = 0;
             foreach (var z in spawner.SpawnZones(false))
             {
@@ -281,7 +282,7 @@ namespace Gravity.Client.Directors
                 zones++;
                 for (int i = 0; i < sps.Length; i++)
                 {
-                    if (sps[i] == null) continue;
+                    if (sps[i] == null || PointNav.IsBad(sps[i])) continue; // 1.1.1 길 검사
                     id++;
                     st.ScavCands.Add(new Candidate(id, PmcZones.V(sps[i].Position), false));
                     st.ScavZone[id] = z;

@@ -28,16 +28,18 @@ namespace Gravity.Client.Patches
             var spawner = bc?.BotSpawner;
             if (bc == null || spawner == null) return false;
 
-            IEnumerable<ISpawnPoint> all = (spawner.BossSpawner?._spawnSystem as SpawnSystem)?._spawnPoints
-                ?? (IEnumerable<ISpawnPoint>)SpawnPointsCollection.CreateFromScene();
+            var all = new List<ISpawnPoint>((spawner.BossSpawner?._spawnSystem as SpawnSystem)?._spawnPoints
+                ?? (IEnumerable<ISpawnPoint>)SpawnPointsCollection.CreateFromScene());
             c.PointsBuilt = true;
             // 게임은 생성 지점의 CorePointId로 봇의 AI 이동망 시작점을 정한다(BotCreatorClient.CreateBot). 그 점이 없으면 시작점이 비어
             // 분대장 순찰 시작(BotPathFinderCorePoints.GoToPosition)에서 예외가 나고 분대원이 안 붙는다(1.0 점검: 그라운드 제로 시작 PMC 12명 중 3명).
             // 플레이어 전용 지점에 흔하다(공장·그라운드 제로는 전부). 그런 지점은 가장 가까운 시작점(MaxCoreDist m 안)을 이어 주고, 없으면 후보에서 뺀다.
             var holder = bc.CoversData?.AICorePointsHolder;
             var cores = holder?.CorePoints;
+            // 1.1.1: 실제 NavMesh로 길 없음·큰 길과 끊긴 지점을 먼저 가린다(INBOX #84·#85). 그런 지점은 아래 후보 어디에도 넣지 않는다.
+            PointNav.Build(c, all, cores);
 
-            int id = 0, players = 0, bots = 0, noCore = 0, linked = 0, spread = 0;
+            int id = 0, players = 0, bots = 0, noCore = 0, linked = 0, spread = 0, navBad = 0;
             bool wantSpread = c.S.WavePoints == "spread" || c.S.PmcAnywhere;
             PathChecked = 0;
             foreach (var p in all)
@@ -48,6 +50,7 @@ namespace Gravity.Client.Patches
                 bool pmc = cat.ContainBotPmcCategory();
                 bool scav = wantSpread && cat.ContainBotCategory();
                 if (!player && !pmc && !scav) continue;
+                if (PointNav.IsBad(p)) { navBad++; continue; }
                 if (holder != null && cores is { Count: > 0 } && holder.GetCorePoint(p.CorePointId) == null)
                 {
                     var near = NearestCore(cores, p.Position);
@@ -71,7 +74,7 @@ namespace Gravity.Client.Patches
                 list.Add(cand);
                 if (player) players++; else bots++;
             }
-            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개(경로 확인 {PathChecked})" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : "")
+            Log.Info($"{c.S.MapId} PMC 후보 지점 {id}개(플레이어 {players}, 봇 PMC {bots}), 구역 {c.ZonePoints.Count}개" + (linked > 0 ? $", AI 이동망 시작점 이어 줌 {linked}개(경로 확인 {PathChecked})" : "") + (noCore > 0 ? $", 가까운 시작점 없어 제외 {noCore}개" : "") + (navBad > 0 ? $", 길 검사로 제외 {navBad}개" : "")
                 + (wantSpread ? $", 맵 전체 배치 후보 {spread}개(구역 {c.SpreadPoints.Count}개, 저격 구역 제외)" : ""));
             return true;
         }

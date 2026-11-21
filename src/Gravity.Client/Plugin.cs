@@ -74,6 +74,8 @@ namespace Gravity.Client
                 Enable(new PmcZoneOrderPatch());
                 Enable(new PmcZoneOrderPerfectPosPatch());
                 Enable(new PmcPointsPatch());
+                // 1.1.1 스캐브류 지점: 길 검사·사람 거리·시야로 다시 거름(INBOX #84·#85)
+                Enable(new ScavPointFilterPatch());
                 Enable(new PmcTrySpawnPatch());
                 Enable(new PmcCapDelayPatch());
                 // 게임 자체 상한 검사(BotBossSpawn.Spawn 안 CheckOnMax)도 Gravity 분대는 상한 제외 팩션을 빼고 본다(1.0, Codex 검토 1번)

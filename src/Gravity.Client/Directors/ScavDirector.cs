@@ -441,23 +441,28 @@ namespace Gravity.Client.Directors
         {
             if (st.ZonesBuilt) return;
             st.ZonesBuilt = true;
-            int points = 0;
+            Patches.PmcZones.EnsurePoints(c); // 1.1.1 길 검사(PointNav)를 먼저
+            int points = 0, bad = 0;
+            var buf = new List<Vec3>();
             foreach (var z in spawner.SpawnZones(false))
             {
                 if (z == null) continue;
                 if (c.IsZoneDisabled(z.NameZone)) continue;
                 var sps = z.SpawnPoints;
                 if (sps == null || sps.Length == 0) continue;
-                var pos = new Vec3[sps.Length];
+                buf.Clear();
                 for (int i = 0; i < sps.Length; i++)
                 {
+                    if (sps[i] == null) continue;
+                    if (Patches.PointNav.IsBad(sps[i])) { bad++; continue; }
                     var p = sps[i].Position;
-                    pos[i] = new Vec3(p.x, p.y, p.z);
+                    buf.Add(new Vec3(p.x, p.y, p.z));
                 }
-                st.Zones.Add(new KeyValuePair<BotZone, Vec3[]>(z, pos));
-                points += pos.Length;
+                if (buf.Count == 0) continue; // 지점이 전부 길 검사에 걸린 구역은 고르지 않는다
+                st.Zones.Add(new KeyValuePair<BotZone, Vec3[]>(z, buf.ToArray()));
+                points += buf.Count;
             }
-            Log.Info($"{c.S.MapId} 스캐브 구역 {st.Zones.Count}개(저격 제외), 지점 {points}개");
+            Log.Info($"{c.S.MapId} 스캐브 구역 {st.Zones.Count}개(저격 제외), 지점 {points}개" + (bad > 0 ? $", 길 검사로 뺀 지점 {bad}개" : ""));
         }
 
         /// <summary>살아 있는 사람 플레이어 위치를 버퍼에 담고(재사용), 살아 있는 스캐브(assault 역할 봇) 수를 돌려준다.
