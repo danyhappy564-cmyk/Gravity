@@ -121,7 +121,10 @@ public class GearMagPatch : AbstractPatch
             var ammo = generatedWeaponResult.ChosenAmmoTemplate;
             if (GearRuntime.Templates?.GetValueOrDefault(ammo) is not { } t) return;
             var slots = new HashSet<EquipmentSlots> { EquipmentSlots.TacticalVest, EquipmentSlots.Pockets, EquipmentSlots.Backpack };
-            foreach (var n in w.LooseStacks(Random.Shared, t.Properties?.StackMaxSize ?? 0))
+            // 1.1.2: 한 칸 크기 기준 = EFT 기본(원본 items.json, 기본값) 또는 게임 값(SVM 등이 바꾼 값 그대로).
+            var (vs, vc) = GearRuntime.VanillaAmmo.Lookup(ammo.ToString(), t.Properties?.Caliber);
+            var stack = w.LooseStackBase(t.Properties?.StackMaxSize ?? 0, vs, vc);
+            foreach (var n in w.LooseStacks(Random.Shared, stack))
             {
                 var id = new MongoId();
                 var r = helper.AddItemWithChildrenToEquipmentSlot(botId, slots, id, ammo,

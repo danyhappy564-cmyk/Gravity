@@ -35,6 +35,8 @@ public static class GearRuntime
     /// <summary>1.1.0 티어 귀중품(귀중품·정보 아이템)·열쇠/카드 후보 id. 로더가 SPT 템플릿에서 채운다.</summary>
     public static IReadOnlyList<string> ValuableIds { get; set; } = [];
     public static IReadOnlyList<string> KeyIds { get; set; } = [];
+    /// <summary>1.1.2 SPT 원본 탄약 한 칸 크기(낱개 탄약 'EFT 기본' 기준). 로더가 items.json에서 채운다.</summary>
+    public static VanillaAmmo VanillaAmmo { get; set; } = VanillaAmmo.Empty;
 
     /// <summary>템플릿 부모 사슬로 귀중품·열쇠 후보를 만든다(퀘스트 템 제외).</summary>
     public static void BuildExtraPools(IReadOnlyDictionary<MongoId, TemplateItem> templates)

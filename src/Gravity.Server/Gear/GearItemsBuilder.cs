@@ -18,14 +18,37 @@ public static class GearItemsBuilder
     private static readonly HashSet<string> PlateSlotNames = ["front_plate", "back_plate", "left_side_plate", "right_side_plate"];
 
     /// <summary>SPT 원본 items.json의 아이템 id(모드 아이템 구분용). 못 읽으면 null(모드 구분 끔).</summary>
-    public static HashSet<string>? VanillaIds(string? sptDataDir)
+    public static HashSet<string>? VanillaIds(string? sptDataDir) => ReadVanilla(sptDataDir).Ids;
+
+    private const string AmmoBase = "5485a8684bdc2da71d8b4567";
+
+    /// <summary>
+    /// SPT 원본 items.json 한 번 읽기: 아이템 id와 1.1.2 탄약 원본 한 칸 크기(StackMaxSize, 구경별 최대값 포함).
+    /// 디스크 원본이라 SVM 등이 메모리에서 바꾼 값이 아니다. 못 읽으면 (null, 빈 표).
+    /// </summary>
+    public static (HashSet<string>? Ids, VanillaAmmo Ammo) ReadVanilla(string? sptDataDir)
     {
-        if (sptDataDir == null) return null;
+        if (sptDataDir == null) return (null, VanillaAmmo.Empty);
         var p = System.IO.Path.Combine(sptDataDir, "database", "templates", "items.json");
-        if (!File.Exists(p)) return null;
+        if (!File.Exists(p)) return (null, VanillaAmmo.Empty);
         using var fs = File.OpenRead(p);
         using var doc = JsonDocument.Parse(fs);
-        return doc.RootElement.EnumerateObject().Select(o => o.Name.ToLowerInvariant()).ToHashSet();
+        var ids = new HashSet<string>();
+        var byId = new Dictionary<string, int>(StringComparer.Ordinal);
+        var byCal = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var o in doc.RootElement.EnumerateObject())
+        {
+            var id = o.Name.ToLowerInvariant();
+            ids.Add(id);
+            var v = o.Value;
+            if (v.ValueKind != JsonValueKind.Object || !v.TryGetProperty("_parent", out var par) || par.ValueKind != JsonValueKind.String || par.GetString() != AmmoBase) continue;
+            if (!v.TryGetProperty("_props", out var props) || props.ValueKind != JsonValueKind.Object) continue;
+            if (!props.TryGetProperty("StackMaxSize", out var st) || st.ValueKind != JsonValueKind.Number || !st.TryGetInt32(out var n) || n <= 0) continue;
+            byId[id] = n;
+            if (props.TryGetProperty("Caliber", out var cal) && cal.ValueKind == JsonValueKind.String && cal.GetString() is { Length: > 0 } c)
+                byCal[c] = Math.Max(byCal.GetValueOrDefault(c), n);
+        }
+        return (ids, new VanillaAmmo(byId, byCal));
     }
 
     /// <summary>1.0.5: SPT 원본 customization.json의 외형 id(모드 옷 구분용). 못 읽으면 null(의상 목록 끔).</summary>
