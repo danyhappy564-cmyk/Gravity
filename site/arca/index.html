@@ -35,7 +35,7 @@
       <span>Gravity<small>SPT 4.1 · MOD</small></span>
     </a>
     <nav class="main-nav" aria-label="주요 메뉴" data-label-ko="주요 메뉴" data-label-en="Main navigation">
-      <a href="#new"><span class="ko">1.1.0</span><span class="en" lang="en">1.1.0</span></a>
+      <a href="#new"><span class="ko">1.1.1</span><span class="en" lang="en">1.1.1</span></a>
       <a href="#flow"><span class="ko">흐름</span><span class="en" lang="en">Flow</span></a>
       <a href="#spawn"><span class="ko">스폰</span><span class="en" lang="en">Spawns</span></a>
       <a href="#bosses"><span class="ko">보스·특수 봇</span><span class="en" lang="en">Bosses</span></a>
@@ -56,7 +56,7 @@
   <section class="hero wrap" id="top" aria-labelledby="hero-title">
     <div class="hero-grid">
       <div>
-        <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.1.0 · SPT 4.1</span></p>
+        <p class="eyebrow"><span class="ko">SPT 봇 스폰·장비 관리</span><span class="en" lang="en">Bot spawns &amp; loadouts for SPT</span><span class="version">v1.1.1 · SPT 4.1</span></p>
         <h1 id="hero-title">Gravity<span>.</span></h1>
         <p class="hero-lead"><span class="ko">레이드에 <b>누가, 언제, 어디서, 무엇을 들고</b> 나오는지 한 곳에서 정합니다.</span><span class="en" lang="en">Decide <b>who</b> shows up in your raids, <b>when, where, and with what gear</b>, all in one place.</span></p>
         <p class="hero-context"><span class="ko">서버와 클라이언트로 이루어진 모드입니다. 게임 서버가 켜져 있을 때 브라우저로 여는 웹 화면에서 모든 설정을 하고, 저장하면 다음 레이드부터 적용됩니다. 설정 파일을 직접 열어 고칠 필요가 없습니다.</span><span class="en" lang="en">A server and client mod. Everything is set on a web page you open in your browser while the game server runs; save, and it applies from the next raid. No config files to edit by hand.</span></p>
@@ -90,9 +90,10 @@
   <!-- 1.0.6 새 기능 -->
   <section class="section wrap" id="new" aria-labelledby="new-title">
     <div class="section-heading">
-      <div><p class="kicker"><span class="ko">1.0.6 ~ 1.1.0에서 달라진 점</span><span class="en" lang="en">New in 1.0.6 – 1.1.0</span></p>
-        <h2 id="new-title"><span class="ko">조준경과 탄약,<br>웹 설정이 모두 게임에.</span><span class="en" lang="en">Scopes, ammo, and<br>every web setting in game.</span></h2></div>
-      <p><span class="ko">이전 판 설정 파일은 그대로 읽히고, 새 칸은 기본값이면 이전 판과 같은 결과입니다. 1.1.0의 낱개 탄약(기본 켜짐)과 근처 보충 시야 수정만 바로 적용됩니다. <b>서버와 클라이언트는 꼭 함께 1.1.0으로</b> 바꾸십시오.</span><span class="en" lang="en">Settings from earlier versions load as they are, and new options give the same result at their defaults. Only 1.1.0's loose ammo (on by default) and the near-spawn sight fix apply right away. <b>Update server and client to 1.1.0 together.</b></span></p>
+      <div><p class="kicker"><span class="ko">1.0.6 ~ 1.1.1에서 달라진 점</span><span class="en" lang="en">New in 1.0.6 – 1.1.1</span></p>
+        <h2 id="new-title"><span class="ko">갇히는 자리는 빼고,<br>눈앞 스폰은 멀리.</span><span class="en" lang="en">No more stuck spawns,<br>no scavs in your face.</span></h2></div>
+      <p><span class="ko">이전 판 설정 파일은 그대로 읽히고, 새 칸은 기본값이면 이전 판과 같은 결과입니다. 1.1.0의 낱개 탄약(기본 켜짐)과 근처 보충 시야 수정만 바로 적용됩니다. <b>서버와 클라이언트는 1.1.x끼리</b> 맞추십시오. 1.1.0과 1.1.1은 섞어 써도 되지만, 1.0.x와는 맞지 않습니다. 1.1.1에서 바뀐 것은 클라이언트에 있으니 클라이언트는 꼭 1.1.1로 바꾸십시오.</span><span class="en" lang="en">Settings from earlier versions load as they are, and new options give the same result at their defaults. Only 1.1.0's loose ammo (on by default) and the near-spawn sight fix apply right away. <b>Keep server and client on 1.1.x.</b> 1.1.0 and 1.1.1 mix fine, but 1.0.x does not. The 1.1.1 changes are in the client, so make sure the client is 1.1.1.</span></p>
+      <p><span class="ko"><b>1.1.1</b>: 봇이 갇히는 자리나 사람 바로 앞에 나오던 것을 줄였습니다. 레이드를 시작할 때 맵의 실제 봇 이동 경로로 스폰 지점을 한 번 검사해, 가까이에 길이 없거나 순찰 경로와 끊겼거나 웅크려야 하는 낮은 통로로만 나갈 수 있는 지점에는 봇을 올리지 않습니다. 공장 가운데 탱크 옆 구덩이(봇이 웅크린 채 못 나오던 곳)는 따로 막았습니다. 스캐브(저격 스캐브 포함)는 모든 사람에게서 <b>스캐브 거리</b> 이상 떨어지고 보이지 않는 지점을 먼저 고릅니다. 없으면 거리 절반(안 보이는 지점), 그다음 스캐브 거리 이상인 보이는 지점 순으로 고르고, 그것도 없으면 잠시 미뤘다가 다시 고릅니다. 서버가 시간에 맞춰 내보내는 스캐브 무리에도 같은 검사가 적용됩니다.</span><span class="en" lang="en"><b>1.1.1</b>: fewer bots stuck in bad spots or appearing right in front of you. At raid start every spawn point is checked once against the map's real bot navigation, and points with no walkable ground nearby, points cut off from patrol routes, and points whose only way out is a crouch-height gap no longer get bots. The pit by the tanks in the middle of Factory, where bots got stuck crouching, is blocked outright. Scavs (marksmen included) first pick points at least the <b>scav distance</b> from every player and out of sight, then half that distance (still out of sight), then the full distance even if in view; if nothing fits, the spawn waits briefly and tries again. Timed scav waves from the server get the same check.</span></p>
       <p><span class="ko"><b>1.1.0</b>: <a href="#faq-scope">고티어 봇 총에 조준경이 빠지던 것</a>(조준경 마운트 굴림, SPT 봇 표의 빈 부품 표)을 고치고, <a href="#faq-ammo">낱개 탄약</a>이 기본으로 켜집니다. 웹 화면에 있었지만 게임에 적용되지 않던 설정(대용량 탄창 제한·조준경/전술 장치 개수·밤 손전등·맵별 무기 성향·보스 점증·근처 보충 간격·보충 상한 등)을 모두 실제로 적용했고, 근처 보충의 <b>시야 안에도 스폰 허용</b>이 거꾸로 동작하던 것과 M700·모신·G36 일부가 탄창 없이 나오던 것도 고쳤습니다. <a href="#faq-btr">BTR 빈도</a>, 무기·장비·부품·기타 탭별 모드 아이템 끄기, <b>레이드마다 일부만</b>의 종류별 개수(무기·장구류·부착물·기타·의상), 게임 화면 표시·지금 넣어 보기(개발 · 확인)가 들어갔고, <a href="#faq-fika-cc">Fika 호스트·세관 클래식</a>과 함께 쓸 수 있습니다. 타임라인 설정 창의 직접 입력칸, 진단 새로고침 버튼, 되돌리기도 고쳤습니다.</span><span class="en" lang="en"><b>1.1.0</b>: fixes <a href="#faq-scope">high-tier bot guns missing scopes</a> (scope mount rolls, empty part tables in SPT bot data) and turns <a href="#faq-ammo">loose ammo</a> on by default. Settings that were on the web page but never reached the game (large-mag limit, scope/tactical caps, night flashlight, per-map weapon range, boss progression, near-spawn delay, respawn caps and more) now all apply, near spawns' <b>Allow spawning in sight</b> no longer works backwards, and some M700s, Mosins and G36s no longer come without a magazine. Adds <a href="#faq-btr">BTR frequency</a>, per-tab mod item switches, separate <b>Per-raid subset</b> counts (weapons, gear, attachments, other, clothing), an on-screen display and Spawn now (Dev &amp; testing), and works with <a href="#faq-fika-cc">Fika hosts and Customs Classic</a>. Typing into timeline popups, the Diagnostics Refresh button and Revert are fixed too.</span></p>
       <p><span class="ko"><b>1.0.9</b>: <a href="#faq-scav-raid-start">"시작만" PMC 방식에서 스캐브 레이드 PMC가 0명이던 것</a>을 고치고 남김 방식 <b>남은 시간</b>을 넣었습니다. <a href="#faq-mod-items">모드 아이템 전체 스위치</a>(새 설치는 꺼짐, 기존 설정은 켜짐 그대로)와 <a href="#faq-weapon-parts">바닐라 총 부품 조합 개선</a>이 들어갔습니다.</span><span class="en" lang="en"><b>1.0.9</b>: fixes <a href="#faq-scav-raid-start">scav raids getting zero PMCs with the "start only" PMC style</a> and adds the <b>Time left</b> keep mode. Adds a <a href="#faq-mod-items">master switch for mod items</a> (off on fresh installs, existing settings stay on) and <a href="#faq-weapon-parts">more natural parts on vanilla guns</a>.</span></p>
       <p><span class="ko"><b>1.0.8</b>: <a href="#faq-scav-lean">스캐브 몰림</a>, <a href="#faq-wave-points">웨이브 PMC 맵 전체 배치</a>, <a href="#faq-total-cap">레이드 전체 봇 총량</a>을 넣고, <a href="#faq-late-escort">분대가 겹치거나 대원이 늦게 같은 자리에 나오던 것</a>을 고쳤습니다. 새 칸은 기본값이면 1.0.7과 같은 결과입니다.</span><span class="en" lang="en"><b>1.0.8</b>: adds <a href="#faq-scav-lean">scav lean</a>, <a href="#faq-wave-points">whole-map wave PMCs</a> and <a href="#faq-total-cap">total bots per raid</a>, and fixes <a href="#faq-late-escort">overlapping squads and late followers appearing in the same spot</a>. New options give the same result as 1.0.7 at their defaults.</span></p>
@@ -706,7 +707,7 @@
 </main>
 
 <footer class="site-footer"><div class="wrap footer-inner">
-  <span>Gravity 1.1.0 · SPT 4.1 · MIT · <span class="ko">제작</span><span class="en" lang="en">by</span> R_F</span>
+  <span>Gravity 1.1.1 · SPT 4.1 · MIT · <span class="ko">제작</span><span class="en" lang="en">by</span> R_F</span>
   <a href="#top"><span class="ko">맨 위로</span><span class="en" lang="en">Back to top</span> <span aria-hidden="true">↑</span></a>
 </div></footer>
 </body>
