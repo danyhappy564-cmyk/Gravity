@@ -78,6 +78,8 @@ namespace Gravity.Client
                 Enable(new ScavPointFilterPatch());
                 Enable(new PmcTrySpawnPatch());
                 Enable(new PmcCapDelayPatch());
+                // 웨이브 하나 = 무리 하나: 같은 구역·같은 진영 분대가 게임 무리 배정에서 한 무리로 합쳐지지 않게
+                Enable(new PmcSquadGroupPatch());
                 // 게임 자체 상한 검사(BotBossSpawn.Spawn 안 CheckOnMax)도 Gravity 분대는 상한 제외 팩션을 빼고 본다(1.0, Codex 검토 1번)
                 Enable(new BossSpawnScopePatch());
                 Enable(new CheckOnMaxPatch());
