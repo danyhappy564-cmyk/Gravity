@@ -17,9 +17,9 @@
 
 ## Changelog
 
-The full changelog (43 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-005.md`](changelog/CHANGELOG-005.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (44 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-005.md`](changelog/CHANGELOG-005.md)). Per-release summaries: [Releases](../../releases).
 
-# Gravity 1.1.1
+# Gravity 1.1.2
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
@@ -59,6 +59,8 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 If you open the page from another PC or a Fika/LAN address (anything other than 127.0.0.1 on the server PC), log in with an SPT web admin account using the **SPT login** button at the top before saving — the same SPT login used by SAIN and other mod web pages. Opened on the server PC at 127.0.0.1, no login is needed.
 
 Use **1.0.3 or later within the 1.0.x series** for both server and client. Mixing with 1.0.2 or older is unsupported. Starting scavs are prepared together at the configured delay: 0 min prepares them during loading; the default delay is 4 min. Starting PMC squads prepare their members during loading, with up to 60 seconds of additional waiting. Map capacity, group limits, or unavailable spawn points can leave some bots in the existing queue and delay activation.
+
+**1.1.2:** Near-player spawns never ran on a Fika headless host; they now take turns around the connected human players. Single-player is unchanged. Client-only change; settings carry over.
 
 **1.1.1:** Fewer bots stuck in bad spots or appearing right in front of you. At raid start, each spawn point is checked once against the map's real bot navigation. Points with no walkable ground nearby, points cut off from patrol routes, and points whose only way out is a crouch-height gap no longer get bots. The pit by the tanks in the middle of Factory, where bots got stuck crouching, is blocked outright. Scavs (including marksmen) now spawn first at points that are at least the scav distance from every player and out of sight. If there are none, half the distance is allowed, still out of sight. Next comes a point at the full scav distance even if it is in view. If there is still nothing, the spawn waits briefly and tries again. Timed scav waves from the server get the same check. Any 1.1.x server and client work together.
 

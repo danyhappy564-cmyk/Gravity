@@ -10,7 +10,9 @@ using UnityEngine;
 namespace Gravity.Client.Directors
 {
     /// <summary>
-    /// F8 근처 보충: 사람 플레이어(GameWorld.MainPlayer)에서 [Near.MinDist, Near.MaxDist] 띠 안의 지점에 봇을 넣는다.
+    /// F8 근처 보충: 사람 플레이어에서 [Near.MinDist, Near.MaxDist] 띠 안의 지점에 봇을 넣는다.
+    /// 기준 사람(1.1.2): 살아 있는 사람(GameWorld.AllAlivePlayersList 중 IsAI 아님)을 차례마다 돌아가며 고른다. 혼자면 늘 그 사람(1.1.1의 MainPlayer와 같음).
+    /// Fika 헤드리스는 MainPlayer가 없어(GitHub #6 로그 'MainPlayer is null') 1.1.1까지 근처 보충이 한 번도 돌지 않았다.
     /// NonWavesPatch가 매 프레임 부르지만 일은 레이드 시간 2초에 한 번만 한다(Ruling 9). 봇은 지우지 않는다(ORBIT 호환).
     /// 스캐브 관리(Scav.Managed)와 상관없이 Near.On이면 돈다(연구소처럼 스캐브가 바닐라인 맵에서도).
     /// - 언제·무엇: NearSchedule.Tick(경과 초, BotsController._maxCount, AliveLoadingDelayedBotsCount)이 낸 자리(NearSlot) 목록.
@@ -69,6 +71,10 @@ namespace Gravity.Client.Directors
             public readonly Queue<NearSlot> Pending = new Queue<NearSlot>();
             public float NextRelease;
 
+            // 1.1.2 기준 사람 돌려 쓰기(PickHuman)
+            public readonly List<Player> Humans = new List<Player>();
+            public int Turn;
+
             public State(NearSchedule schedule) => Schedule = schedule;
         }
 
@@ -97,8 +103,8 @@ namespace Gravity.Client.Directors
 
             var gw = Singleton<GameWorld>.Instance;
             if (gw == null) return;
-            var player = gw.MainPlayer;
-            if (player == null || player.HealthController == null || !player.HealthController.IsAlive) return;
+            var player = PickHuman(gw, st, due);
+            if (player == null) return;
 
             Vector3 pp = player.Position;
             var playerPos = new Vec3(pp.x, pp.y, pp.z);
@@ -242,6 +248,32 @@ namespace Gravity.Client.Directors
             for (int i = 0; i < pool.Count; i++)
                 if (pool[i].Id == id) return pool[i].Pos;
             return default;
+        }
+
+        /// <summary>
+        /// 1.1.2 근처 보충 기준 사람: 살아 있는 사람(IsAI 아님) 중 하나. 새 차례(advance)마다 다음 사람으로 넘어가고,
+        /// 봇 사이 간격으로 나중에 내는 자리는 그때의 같은 순번 사람 기준이다. 목록에 아무도 없으면 MainPlayer(살아 있을 때만), 그것도 없으면 null.
+        /// </summary>
+        private static Player? PickHuman(GameWorld gw, State st, bool advance)
+        {
+            var humans = st.Humans;
+            humans.Clear();
+            var alive = gw.AllAlivePlayersList;
+            if (alive != null)
+                for (int i = 0; i < alive.Count; i++)
+                {
+                    var p = alive[i];
+                    if (p == null || p.IsAI) continue;
+                    if (p.HealthController == null || !p.HealthController.IsAlive) continue;
+                    humans.Add(p);
+                }
+            if (humans.Count == 0)
+            {
+                var main = gw.MainPlayer;
+                return main != null && main.HealthController != null && main.HealthController.IsAlive ? main : null;
+            }
+            if (advance) st.Turn = (st.Turn + 1) & int.MaxValue;
+            return humans[st.Turn % humans.Count];
         }
 
         /// <summary>눈 위치: 카메라 뼈("Cam") → 머리 뼈 → 발 위치 + 1.6m 순.</summary>
