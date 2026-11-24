@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Gravity.Shared</RootNamespace>
     <AssemblyName>Gravity.Shared</AssemblyName>
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
   </PropertyGroup>
 
 </Project>

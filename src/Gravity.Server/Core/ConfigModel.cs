@@ -195,6 +195,8 @@ public sealed record GravityConfig(
     public Gravity.Spawn.BossProgSettings BossProg { get; init; } = new();
     /// <summary>1.1.0 클라이언트·개발자 화면(client.*, dev.*).</summary>
     public ClientOptions ClientOpts { get; init; } = new();
+    /// <summary>1.1.3 UNTAR 관리(RUAF와 같은 모양). 설정 판 113 전 저장본은 관리 끔(그 전에는 웹 값이 적용되지 않았음).</summary>
+    public FactionSettings? Untar { get; init; }
     /// <summary>1.1.0 이번 판에서 다른 모드(변형 맵)가 맡는 보스 역할. Gravity는 이 역할 항목을 건드리지 않고 새로 넣지도 않는다.</summary>
     public IReadOnlySet<string> BossKeepRoles { get; init; } = new HashSet<string>();
     /// <summary>1.1.0(#67) BTR 빈도(삼림·스트리트만, 꺼짐 = SPT 그대로).</summary>
@@ -433,6 +435,12 @@ public static partial class ConfigModel
             Kind(fr + "patrol.", 45, 2, 3, 6, 5, 28), Kind(fr + "checkpoint.", 45, 2, 3, 4, 0, 0), Kind(fr + "hunt.", 20, 1, 3, 4, 0, 0),
             r.Str(fr + "style", "waves", "waves", "start"))
         { CheckpointRadius = r.Num("settingsVer", 0, 0, 999) >= 110 ? r.Num(fr + "checkpoint.radius", 0, 0, 60) : 0 };
+        // 1.1.3: UNTAR. 판 113 전 저장본의 관리·값은 서버가 읽지 않던 것이라 관리 끔으로 시작(업데이트하자마자 옛 값이 적용되지 않게).
+        const string fu = "factions.untar.";
+        var ver113 = r.Num("settingsVer", 0, 0, 999) >= 113;
+        var untar = new FactionSettings(ver113 && r.Bool(fu + "managed", false), r.Bool(fu + "shareCap", false), FacMaps(fu + "maps"),
+            Kind(fu + "patrol.", 45, 2, 3, 6, 5, 28), Kind(fu + "checkpoint.", 45, 2, 3, 4, 0, 0), Kind(fu + "hunt.", 20, 1, 3, 4, 0, 0),
+            r.Str(fu + "style", "waves", "waves", "start"));
         const string fb = "factions.blackdiv.";
         var bdT0 = r.Num(fb + "bd.tMin", 10, 0, 100);
         var bdMin = (int)r.Num(fb + "bd.huntMin", 3, 1, 10);
@@ -454,10 +462,12 @@ public static partial class ConfigModel
             ReadTriggers(r), r.Bool("weeklyBoss", true), ReadStats(r))
         {
             // 1.1.0: 판 110 전 저장본의 bossProg.on(화면 기본 켜짐)은 서버가 안 읽던 값 → 꺼짐으로.
-            BossProg = new Gravity.Spawn.BossProgSettings(r.Num("settingsVer", 0, 0, 999) >= 110 && r.Bool("bossProg.on", true),
+            // 1.1.3: 기본 꺼짐. 판 113 전 저장본은 한 번 꺼짐(켜진 줄 모르고 쓰던 사람이 대부분, 사용자 11-25).
+            BossProg = new Gravity.Spawn.BossProgSettings(ver113 && r.Bool("bossProg.on", false),
                 r.Num("bossProg.step", 10, 1, 50), r.Num("bossProg.min", 20, 0, 100), r.Num("bossProg.max", 100, 0, 100), r.Bool("bossProg.regressive", false)),
             BossDiff = new Gravity.Spawn.BossDiffDist(r.Num("bossDiff.easy", 0, 0, 100), r.Num("bossDiff.normal", 60, 0, 100), r.Num("bossDiff.hard", 30, 0, 100), r.Num("bossDiff.imp", 10, 0, 100)),
             SvmBossKeep = r.Str("svmOwn.boss", "gravity", "gravity", "svm") == "svm",
+            Untar = untar,
             // 1.1.0: 봇 미리 만들어 두기는 판 110 전 저장본(화면 기본 6)이면 0(1.0.9처럼 안 함).
             Btr = new Gravity.Spawn.BtrSettings(r.Bool("btr.on", false), Btr(r, "btr.woods.", Gravity.Spawn.BtrSettings.WoodsDefault), Btr(r, "btr.streets.", Gravity.Spawn.BtrSettings.StreetsDefault)),
             ClientOpts = new ClientOptions((int)r.Num("client.perFrame", 1, 1, 5),

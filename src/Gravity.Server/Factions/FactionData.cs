@@ -8,6 +8,19 @@ namespace Gravity.Factions;
 /// <summary>RUAF 설정 파일의 맵 하나: 순찰 구역, 좌표가 있는 검문소 구역, RUAF 사냥 구역(쉼표 묶음).</summary>
 public sealed record RuafMap(string[] PatrolZones, string[] CheckpointZones, string? HuntZones);
 
+/// <summary>1.1.3 UNTAR 설정 파일의 맵 하나: 순찰 구역, 검문소 구역(UNTAR 클라가 이 이름으로 검문소 좌표를 찾음), 레이더 사냥 구역(쉼표 묶음, 없으면 null).</summary>
+public sealed record UntarMap(string[] PatrolZones, string[] CheckpointZones, string? HuntZones);
+
+/// <summary>1.1.3 UNTAR 무리 구성 규칙(설정 patrols·checkpoints 절): 크기가 넘으면 이 확률로 장교·두 번째 리더.</summary>
+public sealed record UntarSquadRule(int MinOfficerSize, int MinSecondLeaderSize, double OfficerChance, double SecondLeaderChance)
+{
+    public static readonly UntarSquadRule PatrolDefault = new(4, 5, 35, 50);
+    public static readonly UntarSquadRule CheckpointDefault = new(3, 3, 45, 50);
+}
+
+/// <summary>1.1.3 UNTAR 설정 파일 전체(읽기 전용).</summary>
+public sealed record UntarConfig(IReadOnlyDictionary<string, UntarMap> Maps, UntarSquadRule Patrol, UntarSquadRule Checkpoint);
+
 /// <summary>
 /// 0.4 팩션 관리·다른 모드 PMC 구분에 쓰는 읽기 전용 자료. 서버 시작 때 한 번 채운다.
 /// 다른 모드의 설정 파일과 SPT 원본 파일을 읽기만 하고, 다른 모드의 코드는 부르지 않는다(Blackout 정전 여부만 리플렉션으로 읽음).
@@ -18,6 +31,8 @@ public sealed class FactionData
 
     /// <summary>RUAF 설정의 맵(=모드 기본 맵)별 구역.</summary>
     public IReadOnlyDictionary<string, RuafMap> Ruaf { get; init; } = new Dictionary<string, RuafMap>();
+    /// <summary>1.1.3 UNTAR 설정(맵별 구역·무리 구성). 없으면 null.</summary>
+    public UntarConfig? Untar { get; init; }
     /// <summary>BlackDiv 설정의 사냥조 맵(=모드 기본 맵).</summary>
     public IReadOnlyList<string> BlackDivMaps { get; init; } = [];
     /// <summary>Blackout 설정의 정전 확률(%). 없으면 null.</summary>
@@ -59,6 +74,28 @@ public sealed class FactionData
             d[map.ToLowerInvariant()] = new RuafMap(Strings(m["patrol"]?["patrolZones"]), cps, Str(m["hunt"]?["hunts"]?["ruaf"]?["huntZones"]));
         }
         return d;
+    }
+
+    /// <summary>1.1.3 UNTAR config.jsonc → 맵별 구역·무리 구성. 형식이 틀린 맵은 건너뛴다. 꺼 둔 종류(enable*=false)는 구역을 비운다.</summary>
+    public static UntarConfig ReadUntar(string jsonc)
+    {
+        var root = ParseJsonc(jsonc);
+        var d = new Dictionary<string, UntarMap>(StringComparer.OrdinalIgnoreCase);
+        static bool On(JsonNode? n) => n is not JsonValue v || !v.TryGetValue<bool>(out var b) || b;
+        if (root?["locations"] is JsonObject locs)
+            foreach (var (map, node) in locs)
+            {
+                if (node is not JsonObject m) continue;
+                var patrol = On(m["patrol"]?["enablePatrols"]) ? Strings(m["patrol"]?["patrolZones"]) : [];
+                var cps = On(m["checkpoint"]?["enableCheckpoints"]) && m["checkpoint"]?["checkpointZones"] is JsonArray ca
+                    ? ca.OfType<JsonObject>().Select(z => Str(z["checkpointZone"])).OfType<string>().Where(z => z.Length > 0).ToArray() : [];
+                var hunt = On(m["hunt"]?["enableHunts"]) ? Str(m["hunt"]?["hunts"]?["raider"]?["huntZones"]) : null;
+                d[map.ToLowerInvariant()] = new UntarMap(patrol, cps, string.IsNullOrWhiteSpace(hunt) ? null : hunt);
+            }
+        UntarSquadRule Rule(JsonNode? n, UntarSquadRule def) => n is not JsonObject o ? def : new(
+            (int)(Num(o["minOfficerSize"]) ?? def.MinOfficerSize), (int)(Num(o["minSecondLeaderSize"]) ?? def.MinSecondLeaderSize),
+            Num(o["officerChance"]) ?? def.OfficerChance, Num(o["secondLeaderChance"]) ?? def.SecondLeaderChance);
+        return new UntarConfig(d, Rule(root?["patrols"], UntarSquadRule.PatrolDefault), Rule(root?["checkpoints"], UntarSquadRule.CheckpointDefault));
     }
 
     /// <summary>BlackDiv config.jsonc → 사냥조 맵.</summary>
@@ -114,6 +151,8 @@ public sealed class FactionData
 
         var ruafDir = Folder("ruafcomehome");
         var ruaf = ruafDir != null && Read(modsDir, ruafDir, "config.jsonc") is { } rj ? Try(L.T("RUAF 설정", "RUAF config"), () => ReadRuaf(rj)) : null;
+        var untarDir = Folder("untargh") ?? Folder("tacticaltoaster");
+        var untar = untarDir != null && Read(modsDir, untarDir, "config.jsonc") is { } uj ? Try(L.T("UNTAR 설정", "UNTAR config"), () => ReadUntar(uj)) : null;
         var bdDir = Folder("blackdiv");
         var bd = bdDir != null && Read(modsDir, bdDir, "config.jsonc") is { } bj ? Try(L.T("BlackDiv 설정", "BlackDiv config"), () => ReadBlackDivMaps(bj)) : null;
         var boDir = folders.FirstOrDefault(f => f.Equals("Blackout", StringComparison.OrdinalIgnoreCase)) ?? Folder("blackout");
@@ -145,7 +184,7 @@ public sealed class FactionData
 
         return new FactionData
         {
-            Ruaf = ruaf ?? new Dictionary<string, RuafMap>(), BlackDivMaps = bd ?? [], BlackoutChance = boChance,
+            Ruaf = ruaf ?? new Dictionary<string, RuafMap>(), Untar = untar, BlackDivMaps = bd ?? [], BlackoutChance = boChance,
             BlackoutNow = BlackoutReader(), LabGateVanilla = gates, SptPmc = sptPmc
         };
     }

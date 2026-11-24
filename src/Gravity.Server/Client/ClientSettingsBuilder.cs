@@ -15,7 +15,7 @@ public static class ClientSettingsBuilder
         BuildNear(ConfigModel.Default().Near));
 
     public static ClientRaidSettings Build(GravityConfig cfg, MapInfo map, SpawnPlan plan, bool managed,
-        bool ruafInstalled = false, bool blackDivInstalled = false, OrbitInfo? orbit = null)
+        bool ruafInstalled = false, bool blackDivInstalled = false, OrbitInfo? orbit = null, bool untarInstalled = false)
     {
         var s = cfg.SpawnFor(map.Id);
         var ms = cfg.MapFor(map.Id);
@@ -73,7 +73,7 @@ public static class ClientSettingsBuilder
                 sc.Curve, raid, sim, isList ? ScavListDto(ms, raid) : null, isList ? ms.ScavListJitterSec : 0,
                 isList || ms.ScavStyle == "start" ? 0 : sc.LeanWave, isList || ms.ScavStyle == "start" ? 0 : sc.LeanBots),
             // 좁은 맵(공장·미궁)은 ORBIT 수면 거리 밖 지점이 없어 근처 보충이 전부 버려진다(11-09 공장 판 noPoint 5) → 거리 보정 안 함.
-            inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled),
+            inf, refill, BuildNear(cfg.NearFor(map.Id), ConfigModel.Small(map.Id) ? null : orbit, cfg.OrbitOrDefault.NearAsGhost), Gravity.Factions.FactionRaid.CapExcludeRoles(cfg, ruafInstalled, blackDivInstalled, untarInstalled),
             cfg.OrbitOrDefault.RefillMode != "off" && cfg.OrbitOrDefault.ExtractRefillCap > 0, cfg.ClientOpts.Verbose ? "verbose" : cfg.DiagOrDefault.Log, scavWeights,
             cfg.OrbitOrDefault.RefillMode, cfg.OrbitOrDefault.ExtractRefillCap,
             ExcludedZones(ms.Zones, map.PmcZones, map.ScavZones),
@@ -81,7 +81,7 @@ public static class ClientSettingsBuilder
             plan.Groups.Select(g => g.Size).ToArray(),
             // 계획 분대 웨이브는 TriggerId에 이 표식을 단다(RaidSpawnApplier): 클라가 Gravity 분대만 보정·예약하게(4차 재검토 2번)
             Gravity.Shared.WaveMark.Prefix,
-            CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled),
+            CapsDto(s.CapsOrDefault, ruafInstalled, blackDivInstalled, untarInstalled),
             // 1.0.1: 시작 분대 번호(WaveMark 끝 번호)와 "플레이어 시작 지점만" 스위치
             plan.Groups.Select((g, i) => (g, i)).Where(x => x.g.IsStart).Select(x => x.i).ToArray(), s.StartPlayerOnly, s.WavePoints, s.TotalCap,
             s.MaxRespawnPmc > 0 ? s.MaxRespawnPmc : -1, s.MaxRespawnScav > 0 ? s.MaxRespawnScav : -1,
@@ -123,10 +123,10 @@ public static class ClientSettingsBuilder
         ms.ScavList.Where(w => w.TMin * 60 < raidSec).Select(w => new ScavWaveDto(w.TMin * 60, w.Min, w.Max)).ToArray();
 
     /// <summary>상한 표 → 클라 자료(1.0).</summary>
-    internal static Gravity.Shared.CapTableDto CapsDto(CapTable t, bool ruafInstalled, bool blackDivInstalled) =>
+    internal static Gravity.Shared.CapTableDto CapsDto(CapTable t, bool ruafInstalled, bool blackDivInstalled, bool untarInstalled = false) =>
         new(t.PmcReserve, t.PmcGroups,
             Gravity.Shared.CapKinds.Table.ToDictionary(k => k, k => new Gravity.Shared.CapKindDto(t.For(k).Mode, t.For(k).Max)),
-            Gravity.Factions.FactionRaid.FactionRoleSet(ruafInstalled, blackDivInstalled).ToArray());
+            Gravity.Factions.FactionRaid.FactionRoleSet(ruafInstalled, blackDivInstalled, untarInstalled).ToArray());
 
     /// <summary>
     /// 클라에 보낼 끈 구역. 서버 웨이브(RaidSpawnApplier.Zones·PmcZoneFor)와 같은 규칙: 한 종류(PMC·스캐브)의 구역을

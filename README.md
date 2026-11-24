@@ -17,9 +17,9 @@
 
 ## 변경 이력
 
-전체 변경 이력 47개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-005.md`](changelog/CHANGELOG-005.md)). 릴리즈별 요약은 [Releases](../../releases).
+전체 변경 이력 51개는 [`changelog/`](changelog/) 폴더에 10개씩 나눠 있습니다 (번호가 클수록 최신, 최신 파일: [`CHANGELOG-006.md`](changelog/CHANGELOG-006.md)). 릴리즈별 요약은 [Releases](../../releases).
 
-# Gravity 1.1.2
+# Gravity 1.1.3
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-후원하기-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 

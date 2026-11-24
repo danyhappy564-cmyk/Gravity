@@ -91,6 +91,7 @@ public class GravityWeb : IHttpListener
                             activeVariants = rt.ActiveVariants?.OrderBy(id => id).ToArray(),
                             client = ClientBody(rt),
                             weekly = rt.Weekly == null ? null : new { role = rt.Weekly.Role, map = rt.Weekly.Map },
+                            ppes = PpesBody(),
                             events = new
                             {
                                 owner = Gravity.Events.GravityEventLoader.ResolvedOwner,
@@ -101,7 +102,8 @@ public class GravityWeb : IHttpListener
                             {
                                 ruaf = new { installed = rt.Detect.Ruaf, maps = rt.Factions.Ruaf.Keys.ToArray(),
                                     checkpointMaps = rt.Factions.Ruaf.Where(kv => kv.Value.CheckpointZones.Length > 0).Select(kv => kv.Key).ToArray() },
-                                untar = new { installed = rt.Detect.Untar },
+                                untar = new { installed = rt.Detect.Untar, maps = rt.Factions.Untar?.Maps.Keys.ToArray() ?? [],
+                                    checkpointMaps = rt.Factions.Untar?.Maps.Where(kv => kv.Value.CheckpointZones.Length > 0).Select(kv => kv.Key).ToArray() ?? [] },
                                 blackdiv = new { installed = rt.Detect.BlackDiv, maps = rt.Factions.BlackDivMaps },
                                 blackout = new { installed = rt.Factions.BlackoutChance != null, chance = rt.Factions.BlackoutChance, now = rt.Factions.BlackoutNow() },
                                 otherPmc = rt.LastOtherPmc, pmcSigMaps = rt.Factions.SptPmc.Count
@@ -213,6 +215,15 @@ public class GravityWeb : IHttpListener
     }
 
     /// <summary>`api/meta`의 client 칸: 마지막 Hello 기준. 클라가 한 번도 안 왔으면 version은 null.</summary>
+    /// <summary>1.1.3 PPES 설정 요약(웹 보스·특수 봇·팩션 화면 안내용). 요청마다 읽는다(작은 파일, 사용자가 PPES 화면에서 바꾼 것을 바로 보이게).</summary>
+    internal static object PpesBody()
+    {
+        var mods = GravityWebPaths.Paths?.ModDir is { } d ? Path.GetDirectoryName(d) : null;
+        var p = Gravity.Core.PpesInfo.Read(mods);
+        return new { installed = p.Installed, configRead = p.ConfigRead, events = p.Events, rotation = p.Rotation,
+            seasonalRotation = p.SeasonalRotation, spawnEdits = p.SpawnEdits, active = p.Active };
+    }
+
     internal static JsonObject ClientBody(GravityRuntime rt)
     {
         var s = rt.Sessions;

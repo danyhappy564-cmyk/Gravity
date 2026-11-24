@@ -203,7 +203,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         }
         var otherPmc = RaidSpawnApplier.Apply(loc, plan, cfg, info, hasClient, Factions.SptPmc.GetValueOrDefault(id));
         // 팩션을 보스보다 먼저: 되살린 연구소 게이트 레이더도 특수 봇 설정을 받게 한다.
-        var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones);
+        var facNote = Gravity.Factions.FactionRaid.Apply(loc, cfg, id, s, raidSec - simStart, Factions, Detect.Ruaf, Detect.BlackDiv, info.PmcZones, Detect.Untar);
         RaidSpawnApplier.ApplyBosses(loc, cfg, id, s, raidSec - simStart, Catalog.BossTemplates, Weekly, realRaid ? BossProgress : null);
         if (realRaid && cfg.BossProg.On) BossProgress.Save();
         // 1.0.6: 트리거 스폰(레버·탈출구·게임 이벤트) 조절은 BlackDiv 게이트·특수 봇 처리 뒤에 남은 항목에만.
@@ -218,7 +218,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         if (specAdded > 0)
             evNote = (evNote != null ? evNote + " / " : "") + L.T($"특수 봇 무리 {specAdded}개 넣음", $"added {specAdded} special-bot groups");
         // 상한 표(1.0): 모든 항목을 다 고친 뒤 종류별 상한 무시 표시를 맞춘다(팩션·이벤트·다른 모드 항목 포함)
-        Gravity.Spawn.CapApplier.Apply(loc, cfg.SpawnFor(id).CapsOrDefault, Gravity.Factions.FactionRaid.FactionRoleSet(Detect.Ruaf, Detect.BlackDiv));
+        Gravity.Spawn.CapApplier.Apply(loc, cfg.SpawnFor(id).CapsOrDefault, Gravity.Factions.FactionRaid.FactionRoleSet(Detect.Ruaf, Detect.BlackDiv, Detect.Untar));
         return new RaidBuild(plan, info, pmcWhy, scavNote, otherPmc, facNote, evNote);
     }
 
@@ -254,7 +254,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             Gravity.Spawn.BtrControl.Apply(BtrTable, cfg.Btr);
             var plan = b.Plan;
             LastOtherPmc = b.OtherPmc;
-            if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv, Orbit);
+            if (hasClient) LastClientSettings[id] = ClientSettingsBuilder.Build(cfg, info, plan, true, Detect.Ruaf, Detect.BlackDiv, Orbit, Detect.Untar);
             var summary = plan.Summary + (variant ? L.T(" / 변형 맵", " / map variant") : "") + (b.PmcWhy != null ? L.T($" / PMC 항목 안 넣음({b.PmcWhy})", $" / no PMC entries ({b.PmcWhy})") : "") + b.ScavNote
                 + (b.OtherPmc > 0 ? L.T($" / 다른 모드 PMC 항목 {b.OtherPmc}개 유지", $" / kept {b.OtherPmc} other-mod PMC entries") : "")
                 + (b.FacNote != null ? " / " + b.FacNote : "") + (b.EvNote != null ? " / " + b.EvNote : "") + (gearNote != null ? " / " + gearNote : "");
@@ -329,6 +329,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             if (RaidSpawnApplier.BossRoleToId.TryGetValue(bn, out var bid)) bosses.Add(bid);
             else if (ConfigModel.SpecialRoles.FirstOrDefault(kv => kv.Value == bn).Key is { } sid) specials.Add(sid);
             else if (Gravity.Factions.FactionRaid.RuafRoles.Contains(bn)) specials.Add("ruaf");
+            else if (Gravity.Factions.FactionRaid.UntarRoles.Contains(bn)) specials.Add("untar");
             else if (Gravity.Factions.FactionRaid.BlackDivRoles.Contains(bn)) specials.Add(bn.Equals("bossWedge", StringComparison.OrdinalIgnoreCase) ? "wedge" : "blackdiv");
             else specials.Add(bn);
         }
@@ -350,6 +351,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
         var special = ConfigModel.SpecialRoles.FirstOrDefault(kv => kv.Value == role).Key;
         if (special is not null) return special;
         if (Gravity.Factions.FactionRaid.RuafRoles.Contains(role)) return "ruaf";
+        if (Gravity.Factions.FactionRaid.UntarRoles.Contains(role)) return "untar";
         if (Gravity.Factions.FactionRaid.BlackDivRoles.Contains(role)) return role.Equals("bossWedge", StringComparison.OrdinalIgnoreCase) ? "wedge" : "blackdiv";
         return role;
     }
