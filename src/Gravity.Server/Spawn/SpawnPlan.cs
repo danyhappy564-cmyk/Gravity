@@ -3,7 +3,12 @@ namespace Gravity.Spawn;
 /// <summary>맵 기본 정보(서버 로드 때 DB에서 모음). BasePmc·BaseScav는 바닐라 레이드 한 판 기준 인원.</summary>
 public sealed record MapInfo(string Id, int BasePmc, int BaseScav, int DbRaidSec, string[] PmcZones, string[] ScavZones);
 
-public sealed record PmcGroup(int TimeSec, bool Usec, int Size, string Difficulty, bool IsStart);
+/// <summary>Difficulty = 분대장 난이도. Escorts = 대원(Size − 1명)마다 따로 뽑은 난이도(대원마다 난이도 켬), null = 분대 전체가 Difficulty 하나.</summary>
+public sealed record PmcGroup(int TimeSec, bool Usec, int Size, string Difficulty, bool IsStart, string[]? Escorts = null)
+{
+    /// <summary>로그용 난이도 표기: 분대장 난이도, 대원 난이도가 따로 있으면 뒤에 (+대원들).</summary>
+    public string DifficultyText() => Escorts is { Length: > 0 } e ? $"{Difficulty} (+{string.Join(",", e)})" : Difficulty;
+}
 
 /// <summary>IsStart: 설정한 시작 지연 시각에 함께 준비하는 시작 스캐브 묶음입니다.</summary>
 public sealed record ScavWave(int TimeMinSec, int TimeMaxSec, int SlotsMin, int SlotsMax, bool IsStart = false);

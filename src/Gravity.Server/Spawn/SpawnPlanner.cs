@@ -17,6 +17,8 @@ public static class SpawnPlanner
     {
         var rnd = new Random(seed);
         var s = cfg.SpawnFor(map.Id);
+        // 대원 난이도 전용 난수: 시드에서 정해져 프로세스가 달라도 같고, 메인 난수 열을 건드리지 않는다.
+        var escortRnd = s.DiffPerMember ? new Random(unchecked(seed * 7919 + 104729)) : null;
         var ms = cfg.MapFor(map.Id);
         var startPct = s.StartPmcPct;
         var intervalMin = s.IntervalMin;
@@ -139,7 +141,7 @@ public static class SpawnPlanner
                 foreach (var size in fit)
                 {
                     if (isStart && size > 1) startSquads++;
-                    groups.Add(new PmcGroup(time(), rnd.NextDouble() * 100 < s.UsecPct, size, Pick(DiffNames, s.Diff, rnd), isStart));
+                    groups.Add(new PmcGroup(time(), rnd.NextDouble() * 100 < s.UsecPct, size, Pick(DiffNames, s.Diff, rnd), isStart, PickEscorts(size, s.Diff, escortRnd)));
                 }
                 lost += l;
             }
@@ -250,9 +252,14 @@ public static class SpawnPlanner
     {
         var rnd = new Random(unchecked(seed * 31 + 7));
         var s = cfg.Spawn;
+        var escortRnd = s.DiffPerMember ? new Random(unchecked(seed * 6007 + 13)) : null;
         var list = new List<Gravity.Shared.RefillGroup>();
         for (var i = 0; i < count; i++)
-            list.Add(new Gravity.Shared.RefillGroup(rnd.NextDouble() * 100 < s.UsecPct, PickSize(s.Squad, rnd), Pick(DiffNames, s.Diff, rnd)));
+        {
+            var usec = rnd.NextDouble() * 100 < s.UsecPct;
+            var size = PickSize(s.Squad, rnd);
+            list.Add(new Gravity.Shared.RefillGroup(usec, size, Pick(DiffNames, s.Diff, rnd), PickEscorts(size, s.Diff, escortRnd)));
+        }
         return list;
     }
 
@@ -292,6 +299,18 @@ public static class SpawnPlanner
     }
 
     private static string Pick(string[] names, double[] w, Random rnd) => names[Math.Min(names.Length - 1, PickIndex(w, rnd))];
+
+    /// <summary>
+    /// 대원마다 난이도(spawn.diffPerMember): 대원(크기 − 1명)마다 분대 난이도와 같은 비율에서 따로 뽑는다.
+    /// 끄면(rnd = null)·1인 분대면 null이라 분대 전체가 분대장 난이도 하나다. 시각·크기·진영을 뽑는 난수와 따로 쓰므로 켜고 꺼도 그 값은 그대로다.
+    /// </summary>
+    private static string[]? PickEscorts(int size, double[] diff, Random? rnd)
+    {
+        if (rnd is null || size <= 1) return null;
+        var escorts = new string[size - 1];
+        for (var i = 0; i < escorts.Length; i++) escorts[i] = Pick(DiffNames, diff, rnd);
+        return escorts;
+    }
 
     /// <summary>그룹 개수 제한(레이드 전체 기준). 넘치면 더 작은 허용 크기로 나누거나(split) 뺀다(drop).</summary>
     internal sealed class CapTracker(GroupCap gc)

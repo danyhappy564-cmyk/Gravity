@@ -44,6 +44,8 @@ public sealed record SpawnSettings(
     // 1.1.0 보충 상한(spawn.maxRespawn.*): 시작 봇 뒤 Gravity가 레이드 중 다시 넣는 PMC·스캐브 최대 인원(0 = 제한 없음).
     public int MaxRespawnPmc { get; init; }
     public int MaxRespawnScav { get; init; }
+    // 1.1.0 대원마다 난이도(spawn.diffPerMember, 모든 맵 공통): 켜면 분대장은 분대 난이도, 대원은 난이도 비율에서 따로 뽑는다. 꺼짐 = 분대 전체가 같은 난이도.
+    public bool DiffPerMember { get; init; }
 
     // 1.0.8 TotalCap(INBOX #61): 레이드 전체에서 활성화되는 봇 누적 수 상한(0 = 끔). 닿으면 Gravity가 내는 스폰만 멈춘다.
     // 보스·트리거·이벤트·다른 모드 봇은 세기만 하고 막지 않으며, 이미 생성 중인 분대의 대원도 막지 않는다. 사람은 세지 않는다.
@@ -632,7 +634,8 @@ public static partial class ConfigModel
             StartGroupMaxSize = v110 ? (int)r.Num(sp + "startGroup.maxSize", 5, 1, 5) : 5,
             StartGroupMaxCount = v110 ? (int)r.Num(sp + "startGroup.maxCount", 0, 0, 10) : 0,
             MaxRespawnPmc = (int)r.Num(sp + "maxRespawn.pmc", 0, 0, 200),
-            MaxRespawnScav = (int)r.Num(sp + "maxRespawn.scav", 0, 0, 500)
+            MaxRespawnScav = (int)r.Num(sp + "maxRespawn.scav", 0, 0, 500),
+            DiffPerMember = r.Bool(sp + "diffPerMember", false)
         };
         return spawn;
     }
@@ -722,7 +725,7 @@ public static partial class ConfigModel
             var p when p.StartsWith("spawn.protect.", StringComparison.Ordinal) || p.StartsWith("spawn.spacing.", StringComparison.Ordinal) || p is "spawn.pmcDist" or "spawn.scavDist" => "dist",
             "spawn.placement" or "spawn.hotspotShare" or "spawn.hotspotBoost" or "spawn.wavePoints" => "hotspot",
             var p when p.StartsWith("spawn.groupCap.", StringComparison.Ordinal) || p.StartsWith("spawn.caps.", StringComparison.Ordinal) || p == "spawn.totalCap" => "limits",
-            var p when p.StartsWith("spawn.squad.", StringComparison.Ordinal) || p.StartsWith("spawn.diff.", StringComparison.Ordinal) || p is "spawn.usecPct" or "spawn.allowPmcLabyrinth" or "spawn.allowScavLab" => "common",
+            var p when p.StartsWith("spawn.squad.", StringComparison.Ordinal) || p.StartsWith("spawn.diff.", StringComparison.Ordinal) || p is "spawn.usecPct" or "spawn.diffPerMember" or "spawn.allowPmcLabyrinth" or "spawn.allowScavLab" => "common",
             _ => "flow"
         };
 

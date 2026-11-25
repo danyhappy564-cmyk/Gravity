@@ -1,6 +1,7 @@
 using Gravity.Core;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
+using SPTarkov.Server.Core.Utils.Json;
 
 namespace Gravity.Spawn;
 
@@ -45,16 +46,18 @@ public static class RaidSpawnApplier
         {
             var g = plan.Groups[i];
             var side = g.Usec ? "pmcUSEC" : "pmcBEAR";
+            var supports = PmcSupports(g, side);
             bosses.Add(new BossLocationSpawn
             {
                 BossName = side, BossEscortType = side, BossChance = 100,
                 BossDifficulty = g.Difficulty, BossEscortDifficulty = g.Difficulty,
-                BossEscortAmount = (g.Size - 1).ToString(), BossZone = PmcZoneFor(info.PmcZones, ms, i),
+                // 대원마다 난이도: 대원은 전부 Supports 항목이 맡으므로 기본 호위 수는 0(게임은 둘을 더해 EscortCount를 만든다).
+                BossEscortAmount = supports == null ? (g.Size - 1).ToString() : "0", BossZone = PmcZoneFor(info.PmcZones, ms, i),
                 IsBossPlayer = false, IsRandomTimeSpawn = false, Time = Math.Max(1, g.TimeSec),
                 // TriggerName이 비어 있으면 게임은 TriggerId를 보지 않는다(타이머 웨이브): Gravity 분대 표식으로 쓴다(4차 재검토 2번)
                 TriggerId = Gravity.Shared.WaveMark.For(info.Id, plan.Seed, i), TriggerName = "", Delay = 0, ForceSpawn = false,
                 IgnoreMaxBots = g.IsStart ? s.IgnoreCapStart : s.IgnoreCapWaves,
-                Supports = null!, SpawnMode = Modes, SptId = "gravity"
+                Supports = supports!, SpawnMode = Modes, SptId = "gravity"
             });
         }
 
@@ -104,6 +107,17 @@ public static class RaidSpawnApplier
         }
         return otherKept;
     }
+
+    /// <summary>
+    /// 대원마다 난이도(PmcGroup.Escorts): 대원을 난이도별로 묶어 게임의 Supports 항목(역할·난이도 하나·인원)으로 만든다.
+    /// 게임은 항목마다 BotCreationData 하나를 같은 spawnParams로 만들어 한 분대로 묶는다. 대원 난이도가 없으면(꺼짐·1인) null = 예전 BossEscortAmount 경로.
+    /// </summary>
+    internal static List<BossSupport>? PmcSupports(PmcGroup g, string side) =>
+        g.Escorts is not { Length: > 0 } escorts ? null
+        : escorts.GroupBy(d => d).Select(d => new BossSupport
+        {
+            BossEscortType = side, BossEscortAmount = d.Count().ToString(), BossEscortDifficulty = new ListOrT<string>([d.Key], null)
+        }).ToList();
 
     /// <summary>보스 켜기·확률·맵 끄기. 설정에 없는 역할(팩션·이벤트·모드 보스)은 건드리지 않는다.</summary>
     private static readonly string[] Diffs = ["easy", "normal", "hard", "impossible"];

@@ -321,8 +321,9 @@ namespace Gravity.Client.Directors
                     Log.InfoOnce("ScavDirector.RaidGroupCap:" + c.S.Seed, $"{c.S.MapId} 레이드 전체 그룹 제한에 걸린 보충 분대({size}명)는 넣지 않음");
                     return PmcResult.Unavailable;
                 }
-                groups[st.RefillIndex] = g = g with { Size = parts[0] };
-                for (int i = parts.Count - 1; i >= 1; i--) groups.Insert(st.RefillIndex + 1, g with { Size = parts[i] });
+                var whole = g;
+                groups[st.RefillIndex] = g = whole.Slice(0, parts[0]);
+                for (int i = 1, at = parts[0]; i < parts.Count; at += parts[i], i++) groups.Insert(st.RefillIndex + i, whole.Slice(at, parts[i]));
                 Log.Verbose($"{c.S.MapId} 레이드 전체 그룹 제한: 보충 분대 {size}명 → {string.Join("+", parts)}명으로 나눔");
                 size = parts[0];
             }
