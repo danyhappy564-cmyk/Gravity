@@ -106,7 +106,7 @@ public sealed record MapSettings(
     double PmcDist, double ScavDist, bool StartScav, IReadOnlyDictionary<string, double> ZoneWeights, bool Variant = true,
     string ScavStyle = "waves", IReadOnlyDictionary<string, double>? ScavZoneWeights = null, ZoneLayout? ZonesAlt = null,
     CardOverrides? Cards = null, SpawnSettings? CardSpawn = null, NearSettings? CardNear = null,
-    IReadOnlyList<ScavListWave>? ScavWaves = null, double ScavListJitterSec = 20)
+    IReadOnlyList<ScavListWave>? ScavWaves = null, double ScavListJitterSec = 20, bool ScavVanilla = false)
 {
     /// <summary>1.0.6 스캐브 웨이브 목록(scavStyle=list). 시각순, 최대 60개. 없으면 빈 목록.</summary>
     public IReadOnlyList<ScavListWave> ScavList => ScavWaves ?? [];
@@ -214,6 +214,9 @@ public sealed record GravityConfig(
     public CompatSettings CompatOrDefault => Compat ?? new CompatSettings(false, []);
 
     public MapSettings MapFor(string id) => Maps.TryGetValue(id, out var m) ? m : ConfigModel.DefaultMap(id);
+
+    /// <summary>Gravity가 이 맵 스캐브를 내는지: 연구소는 allowScavLab일 때만, 1.1.4 maps.&lt;맵&gt;.scavVanilla면 안 냄(바닐라 웨이브·자동 스폰 그대로).</summary>
+    public bool GravityScavs(string id) => (id != "laboratory" || Spawn.AllowScavLab) && !MapFor(id).ScavVanilla;
 
     /// <summary>켜진 카드만 맵 값으로 합친다. 다른 카드는 항상 최신 공통 값을 따른다.</summary>
     public SpawnSettings SpawnFor(string id)
@@ -346,7 +349,8 @@ public static partial class ConfigModel
                 mr.Bool("spawn.scav.startOn", true), zoneW, r.Bool(p + "variant", DefaultVariant(id)),
                 r.Str(p + "scavStyle", "waves", "waves", "infinite", "start", "list"), scavZoneW, new ZoneLayout(altOn, altPmc, altScav),
                 new CardOverrides(mr.CardOn("scav"), mr.CardOn("near"), mr.CardOn("dist"), mr.CardOn("hotspot"), mr.CardOn("limits")),
-                effective, ReadNear(mr), ReadScavList(r, p), r.Num(p + "scavListJitter", 20, 0, 120));
+                effective, ReadNear(mr), ReadScavList(r, p), r.Num(p + "scavListJitter", 20, 0, 120),
+                r.Bool(p + "scavVanilla", false)); // 1.1.4 이 맵 스캐브는 바닐라에 맡김
         }
 
         var bosses = new Dictionary<string, BossSettings>();

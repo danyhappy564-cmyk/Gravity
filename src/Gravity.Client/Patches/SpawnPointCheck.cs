@@ -279,6 +279,7 @@ namespace Gravity.Client.Patches
             if (result == null || result.Count == 0 || maxCount <= 0 || data == null || zone == null) return; // 바닐라가 못 고른 호출은 그대로
             var c = RaidContext.Current;
             if (c == null) return;
+            if (c.S.Scav == null || !c.S.Scav.Managed) return; // 1.1.4: 스캐브를 바닐라에 맡긴 맵(scavVanilla·연구소 기본)은 지점도 바닐라 그대로
             if (data._profileData == null || !data._profileData.TryGetRole(out var role, out _) || !ScavRole(role)) return;
             PmcZones.EnsurePoints(c);
 

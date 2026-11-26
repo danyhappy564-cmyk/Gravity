@@ -102,8 +102,8 @@ public static class SpawnPlanner
         }
 
         // 3) 스캐브(무한 보충 방식이 아닐 때 따로 계획)
-        if (map.Id != "laboratory" || s.AllowScavLab) PlanScavs();
-        else scav.Clear(); // 인원 방식도 연구소 스캐브 허용 스위치를 우회하지 않습니다.
+        if (cfg.GravityScavs(map.Id)) PlanScavs();
+        else scav.Clear(); // 인원 방식도 연구소 스캐브 허용 스위치·맵별 스캐브 바닐라(1.1.4)를 우회하지 않습니다.
 
         // 4) 스캐브 레이드 시작 지연: 이른 항목 빼고 시각을 당긴다
         if (simStartSec > 0)

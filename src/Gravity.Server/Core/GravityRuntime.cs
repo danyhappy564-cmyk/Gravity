@@ -195,7 +195,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
                 $"scav raid: kept {keep.Count} of {plan.Groups.Count} PMC groups ({how})");
             plan = plan with { Groups = keep };
         }
-        if (hasClient && cfg.MapFor(id).ScavStyle == "list" && (id != "laboratory" || cfg.Spawn.AllowScavLab))
+        if (hasClient && cfg.MapFor(id).ScavStyle == "list" && cfg.GravityScavs(id))
         {
             var wl = Client.ClientSettingsBuilder.ScavListDto(cfg.MapFor(id), raidSec);
             scavNote += " / " + L.T($"스캐브 웨이브 목록 {wl.Length}개(총 {wl.Sum(w => w.Min)}~{wl.Sum(w => w.Max)}마리)",
@@ -334,7 +334,7 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             else specials.Add(bn);
         }
         // 클라 스캐브 관리 조건은 ClientSettingsBuilder와 같다(연구소는 allowScavLab일 때만, 방식과 상관없이).
-        var scavManaged = hasClient && (id != "laboratory" || cfg.Spawn.AllowScavLab);
+        var scavManaged = hasClient && cfg.GravityScavs(id);
         var scav = b.Plan.ScavWaves.Sum(w => w.SlotsMax)
             + (!scavManaged ? 0 : cfg.MapFor(id).ScavStyle switch
             {

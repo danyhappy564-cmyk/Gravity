@@ -62,7 +62,8 @@ public static class RaidSpawnApplier
         }
 
         // 스캐브 웨이브: 클라가 있을 때만 갈아 끼운다(시작 스캐브가 0개여도 바닐라 assault는 지운다).
-        var manageScavs = hasClient;
+        // 1.1.4: 이 맵 스캐브를 바닐라에 맡기면(scavVanilla) 원래 웨이브·최소 인원을 그대로 둔다.
+        var manageScavs = hasClient && !ms.ScavVanilla;
         var waves = (loc.Waves ?? []).Where(w => !manageScavs
             || (w.WildSpawnType != WildSpawnType.assault && (s.Scav.StartMarksman || w.WildSpawnType != WildSpawnType.marksman))).ToList();
         var startZones = scavZones.Split(',', StringSplitOptions.RemoveEmptyEntries);

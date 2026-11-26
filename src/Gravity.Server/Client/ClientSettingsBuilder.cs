@@ -58,7 +58,8 @@ public static class ClientSettingsBuilder
         }
 
         // 연구소는 바닐라에 일반 스캐브가 없다: allowScavLab(기본 false)이 꺼져 있으면 클라 스캐브 관리를 끈다(바닐라 그대로).
-        var scavManaged = managed && (map.Id != "laboratory" || s.AllowScavLab);
+        // 1.1.4: 맵별 '스캐브는 바닐라에 맡기기'(scavVanilla)도 같다 — 클라 ScavDirector·스캐브 지점 필터가 꺼진다.
+        var scavManaged = managed && cfg.GravityScavs(map.Id);
         // 1.0.6 웨이브 목록: 옛 클라는 Style "start"로 시작 스캐브만(채우기 안 함), 새 클라는 List대로 낸다.
         var isList = ms.ScavStyle == "list";
 

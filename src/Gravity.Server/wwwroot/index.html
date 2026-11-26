@@ -733,7 +733,7 @@ function makeDefaults(){
   MAPS.forEach(m=>{const z={};ZONES[m.id].forEach(x=>z[x.id]={on:true,w:x.w});
     maps[m.id]={ovr:{flow:false,scav:false,near:false,dist:false,hotspot:false,limits:false},override:false,style:['labyrinth'].includes(m.id)?'infinite':'waves',scavStyle:'waves',inf:{delay:45,batch:2,pmcShare:50,jitter:30},start:{scav:true},raidSet:m.base,
       startPmcPct:35,interval:6,waveMin:2,waveMax:4,early:1.2,mid:1,late:.6,original:true,variant:m.id!=='lighthouse',
-      cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,capOn:false,capAuto:false,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,zones:z,zonesAlt:{}};});
+      cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,capOn:false,capAuto:false,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,scavVanilla:false,zones:z,zonesAlt:{}};});
   const bosses={};BOSSES.forEach(b=>{const mm={},zz={};MAPS.forEach(m=>{mm[m.id]=b.maps.includes(m.id);zz[m.id]=b.zones[m.id]?[...b.zones[m.id]]:['default'];});
     bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'dist',maps:mm,zones:zz,mapChance:{}};});
   const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],tFrom:0,tTo:0,xFrom:0,xTo:0};
@@ -1514,7 +1514,8 @@ P.dashboard={desc:T('지금 설정이 레이드에서 어떻게 보일지 요약
 function flowPath(mid,p){return mid&&cardFor(p)?localPath(mid,p):p;}
 function scopedControls(mid){
   // 1.1.4: 공통을 따르는 카드의 칸도 막지 않는다 — 바꾸면 writeSetting이 '이 맵만 / 모든 맵' 막대를 띄운다(ovrAsk).
-  const opt=(p,o={})=>({...o,val:ovrAsk&&mid&&ovrAsk.mid===mid&&ovrAsk.path===flowPath(mid,p)?ovrAsk.value:fieldValue(mid,p),dis:!!o.dis});
+  // 1.1.4: 그 맵 스캐브를 바닐라에 맡기면(scavVanilla) 스캐브 카드 칸은 흐리게(쓰이지 않음).
+  const opt=(p,o={})=>({...o,val:ovrAsk&&mid&&ovrAsk.mid===mid&&ovrAsk.path===flowPath(mid,p)?ovrAsk.value:fieldValue(mid,p),dis:!!o.dis||!!(mid&&cardFor(p)==='scav'&&state.maps[mid]&&state.maps[mid].scavVanilla)});
   return {
     slider:(p,l,t,o={})=>slider(flowPath(mid,p),l,t,opt(p,o)),
     range:(a,b,l,t,o={})=>range(flowPath(mid,a),flowPath(mid,b),l,t,{...opt(a,o),values:[fieldValue(mid,a),fieldValue(mid,b)]}),
@@ -1530,7 +1531,9 @@ function spawnCard(mid,id,body){
   const on=mid&&cardOn(mid,id),maps=MAPS.filter(m=>cardOn(m.id,id));
   const scope=mid?sw(`maps.${mid}.ovr.${id}`,on?T('이 맵만','This map only'):T('공통 값 사용','Use shared values'),T('켜면 지금 공통 값을 복사합니다. 끄면 다시 공통 값을 따릅니다.','On copies current shared values. Off follows shared values again.')):
     `<details class="spawn-scope" data-card-maps="${id}"><summary>${fmt(tr(T('{n}개 맵이 따로 설정함','{n} maps use their own values')),{n:maps.length})}</summary><div class="chips">${maps.map(m=>`<button class="mini-btn" data-spawn-tab="${m.id}">${esc(mname(m.id))}</button>`).join('')||tr(T('없음','None'))}</div></details>`;
-  return card(CARD_NAMES[id],scope+(mid&&ovrAsk&&ovrAsk.mid===mid&&ovrAsk.card===id?ovrAskBar():'')+body,{cls:mid&&!on&&!previewRendering?'shared-card':''});
+  const van=mid&&id==='scav'&&state.maps[mid]?sw(`maps.${mid}.scavVanilla`,T('이 맵 스캐브는 바닐라에 맡기기','Leave this map’s scavs to vanilla'),T('켜면 Gravity가 이 맵 스캐브를 내지 않습니다. 원래 스캐브 웨이브·자동 스폰·스폰 지점을 그대로 씁니다(퀘스트 구역에 스캐브가 잘 안 나올 때 등). PMC·보스·특수 봇은 계속 Gravity가 맡습니다.','On = Gravity does not spawn scavs on this map; the original scav waves, auto-spawns and spawn points are used (e.g. when a quest area gets too few scavs). PMCs, bosses and special bots stay with Gravity.'))
+    +(state.maps[mid].scavVanilla?notice(T('이 맵 스캐브는 바닐라가 냅니다. 아래 스캐브 칸은 쓰이지 않습니다.','Scavs on this map are vanilla; the scav settings below are not used.'),'flat'):''):'';
+  return card(CARD_NAMES[id],van+scope+(mid&&ovrAsk&&ovrAsk.mid===mid&&ovrAsk.card===id?ovrAskBar():'')+body,{cls:mid&&!on&&!previewRendering?'shared-card':''});
 }
 /** 맵 탭에서 공통 값 칸을 바꾸려 할 때: 이 맵만 따로 / 모든 맵 공통 / 취소. */
 function ovrAskBar(){const q=ovrAsk;if(!q)return '';const others=MAPS.filter(m=>m.id!==q.mid&&cardOn(m.id,q.card)).length;
