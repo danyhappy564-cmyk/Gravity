@@ -2310,12 +2310,13 @@ function tierDist(my,who){const g=state.gear,d=Array(7).fill(0),st=clampN((g.sta
   return d;}
 const distBar=d=>`<div class="tdist">${d.map((x,i)=>x>0.004?`<span style="width:${(x*100).toFixed(2)}%;background:${TCOL[i]}" title="T${i+1} ${Math.round(x*100)}%">${x>=0.08?'T'+(i+1)+' '+Math.round(x*100)+'%':''}</span>`:'').join('')}</div>`;
 /** 1.1.5: ①(티어 방식)→②(장비 고르는 범위)를 한 줄로. 미리보기 '내 레벨'(lvPrev) 기준 PMC. */
-function tierFlowLine(){const g=state.gear,my=lvPrev,d=tierDist(my,'pmc');let t=0;d.forEach((x,k)=>{if(x>d[t])t=k;});
-  const others=d.map((x,k)=>[k,x]).filter(([k,x])=>k!==t&&x>=0.05).map(([k,x])=>'T'+(k+1)+' '+Math.round(x*100)+'%');
-  const T1=t+1,rg=g.tierRange||'exact';
-  const gear=rg==='near'?fmt(tr(T('각 봇은 자기 티어와 한 티어 아래 장비 (예: T{b} 봇 → T{a}~T{b})','each bot wears its tier and one below (e.g. T{b} bot → T{a}–T{b})')),{a:Math.max(1,T1-1),b:T1}):rg==='all'?fmt(tr(T('각 봇은 자기 티어 이하 전부, 낮을수록 드물게 (예: T{b} 봇 → T1~T{b})','each bot wears its tier and all below, lower = rarer (e.g. T{b} bot → T1–T{b})')),{b:T1}):fmt(tr(T('각 봇은 자기 티어 장비만 (예: T{b} 봇 → T{b} 장비)','each bot wears its own tier only (e.g. T{b} bot → T{b} gear)')),{b:T1});
-  const step1=g.tierMode==='fixed'?fmt(tr(T('모든 봇 T{t}','every bot T{t}')),{t:T1}):fmt(tr(T('봇은 주로 T{t} ({p}%)','bots mostly T{t} ({p}%)')),{t:T1,p:Math.round(d[t]*100)})+(others.length?' · '+tr(T('가끔','sometimes'))+' '+others.join(', '):'');
-  return `<div class="hint" style="margin-top:12px;line-height:1.7"><b>${tr(T('지금 설정이면','With these settings'))}</b> — Lv ${my} PMC: ① ${step1} → ② ${gear}<br><span class="muted small">${tr(T('레벨은 ①에서만 씁니다. ②는 ①에서 나온 티어를 기준으로 장비만 고릅니다. 장비 표·프리셋 표에 직접 넣은 아이템은 ②와 상관없이 표대로 나옵니다. 내 레벨은 아래 ‘봇 레벨 기준’ 미리보기에서 바꿉니다.','Level is used only in ①. ② picks gear from the tier ① gave. Items placed in a gear or preset table always follow the table. Change your level in the ‘Bot level’ preview below.'))}</span></div>`;}
+function tierFlowLine(){const g=state.gear,my=lvPrev,d=tierDist(my,'pmc'),rg=g.tierRange||'exact';
+  const mix=d.map((x,k)=>[k,x]).filter(([,x])=>x>=0.01).sort((a,b)=>b[0]-a[0]).map(([k,x])=>'T'+(k+1)+' '+Math.round(x*100)+'%').join(' · ');
+  const meet=g.tierMode==='fixed'?fmt(tr(T('모든 PMC가 T{t}입니다','every PMC is T{t}')),{t:Math.max(g.startTier||1,g.fixedTier)}):mix;
+  const wear=rg==='near'?tr(T('봇마다 자기 티어와 한 티어 아래 장비를 섞어 입습니다 (T3 봇이면 T2~T3).','Each bot mixes its own tier with one tier below (a T3 bot wears T2–T3).'))
+    :rg==='all'?tr(T('봇마다 자기 티어 이하 장비를 섞어 입고, 낮은 티어일수록 드뭅니다 (T3 봇이면 T1~T3).','Each bot mixes its tier and all lower tiers, lower ones rarer (a T3 bot wears T1–T3).'))
+    :tr(T('봇마다 자기 티어 장비를 한 벌로 입습니다 (T3 봇이면 총·방탄복·헬멧 모두 T3).','Each bot wears a full set of its own tier (a T3 bot: weapon, armor and helmet all T3).'));
+  return `<div class="hint" style="margin-top:12px;line-height:1.7"><b>${fmt(tr(T('Lv {l}인 내가 만나는 PMC:','PMCs I meet at Lv {l}:')),{l:my})}</b> ${meet}<br>${wear}<br><span class="muted small">${tr(T('장비 표·프리셋 표에 직접 넣은 아이템은 표대로 나옵니다. 내 레벨은 아래 ‘봇 레벨 기준’ 미리보기에서 바꿉니다.','Items placed in a gear or preset table follow the table. Change your level in the ‘Bot level’ preview below.'))}</span></div>`;}
 function lvSummary(){const v=state.gear.lv;return v.pick==='fixed'?`Lv ${v.fixMin}–${v.fixMax}`:v.pick==='flat'?fmt(tr(T('내 레벨 −{b} ~ +{a}','my level −{b} to +{a}')),{b:v.below,a:v.above}):tr(T('내 티어마다 따로','per my tier'));}
 function lvPreview(){const my=lvPrev,mt=tierOfLv(my),g=state.gear;
   const row=who=>{const [lo,hi]=lvRange(my,who);return `<div style="margin-top:10px"><div class="ctl-h"><span><b>${tr(who==='pmc'?T('PMC','PMCs'):T('스캐브','Scavs'))}</b></span><span class="val">${tr(T('봇 레벨','bot level'))} ${lo}–${hi}${g.tierMode==='fixed'?' · '+tr(T('고정','fixed'))+' T'+g.fixedTier:''}</span></div>${distBar(tierDist(my,who))}</div>`;};
