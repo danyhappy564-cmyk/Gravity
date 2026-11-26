@@ -79,7 +79,8 @@ select:focus{border-color:var(--primary)}
 .nav-cap{font-size:10px;letter-spacing:1.6px;color:#5f6b80;font-weight:650;padding:14px 12px 8px}
 .nav-cap:first-child{padding-top:0}
 .nav-btn{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:#a9b3c4;text-align:left;padding:9px 12px;margin:2px 0;border-radius:8px;font-size:13px;transition:background .15s,color .15s}
-.navsearch{position:relative;margin:0 0 10px}.navsearch input{width:100%;padding:8px 30px 8px 10px;border-radius:8px;border:1px solid #263042;background:#0b0f16;color:#dfe6f1;font-size:13px}.navsearch input:focus{outline:none;border-color:var(--gold)}.navsearch kbd{position:absolute;right:8px;top:7px;font-size:11px;color:#6d7890;border:1px solid #2a3446;border-radius:4px;padding:0 5px;pointer-events:none}.navres{margin-top:6px;max-height:60vh;overflow-y:auto;overflow-x:hidden;border:1px solid #263042;border-radius:8px;background:#0d121a}.sres{display:flex;gap:8px;align-items:flex-start;width:100%;border:0;background:none;color:#cdd6e4;text-align:left;padding:7px 9px;font-size:12.5px;border-bottom:1px solid #18202c}.sres:last-child{border-bottom:0}.sres:hover,.sres.on{background:#18212e}.sres .ic{width:16px;flex:none;color:var(--gold);text-align:center}.sres small{display:block;color:#7c879b;font-size:11px;margin-top:1px}.sres small.advtag{display:inline;color:#b79cff}.flash{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px;transition:outline-color .3s}
+.navsearch{position:relative;margin:0 0 10px}.navsearch input{width:100%;padding:8px 30px 8px 10px;border-radius:8px;border:1px solid #263042;background:#0b0f16;color:#dfe6f1;font-size:13px}.navsearch input:focus{outline:none;border-color:var(--gold)}.navsearch kbd{position:absolute;right:8px;top:7px;font-size:11px;color:#6d7890;border:1px solid #2a3446;border-radius:4px;padding:0 5px;pointer-events:none}.navres{margin-top:6px;max-height:60vh;overflow-y:auto;overflow-x:hidden;border:1px solid #263042;border-radius:8px;background:#0d121a}.sres{display:flex;gap:8px;align-items:flex-start;width:100%;border:0;background:none;color:#cdd6e4;text-align:left;padding:7px 9px;font-size:12.5px;border-bottom:1px solid #18202c}.sres:last-child{border-bottom:0}.sres:hover,.sres.on{background:#18212e}.sres .ic{width:16px;flex:none;color:var(--gold);text-align:center}.sres small{display:block;color:#7c879b;font-size:11px;margin-top:1px}.sres small.advtag{display:inline;color:#b79cff}.qseg{flex-wrap:wrap}.qseg small{font-size:10px}.qvals{margin-top:10px}.qvals ul{margin:6px 0 0 18px;line-height:1.7}.linkish{background:none;border:0;color:#9cc2ff;padding:0;cursor:pointer;text-decoration:underline dotted;font:inherit}
+.flash{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px;transition:outline-color .3s}
 .nav-btn:hover{background:#ffffff08;color:var(--text)}
 .nav-btn .ic{width:18px;text-align:center;opacity:.8}
 .nav-btn.on{background:linear-gradient(90deg,#6ea8ff26,#6ea8ff06);color:#d8e6ff;box-shadow:inset 3px 0 var(--primary)}
@@ -1409,7 +1410,8 @@ function selectPage(id,tab){
 }
 function restoreNavigation(){
   if(DEMO){tlOpen={'spec:raiders':true,'spec:rogues':true};selectPage('spawn','bigmap');return;}
-  const raw=location.hash.replace(/^#\/?/,'')||readLocal('gravity.page','dashboard'),[id,tab]=raw.split('/');
+  // 1.1.4: 처음 여는 사람(저장된 페이지 없음)은 빠른 설정부터
+  const raw=location.hash.replace(/^#\/?/,'')||readLocal('gravity.page','quick'),[id,tab]=raw.split('/');
   const savedTab=readLocal('gravity.spawnTab','all');
   if(mapById(savedTab))mapSel=savedTab;
   selectPage(id,tab??(id==='spawn'?savedTab:undefined));
@@ -1435,7 +1437,56 @@ function ppesNote(){const pp=serverMeta&&serverMeta.ppes;if(!pp||!pp.installed)r
 const spawnOff=()=>spawnLocked()?conflictNotice():!state.modules.spawn?notice(T('스폰 모듈이 꺼져 있습니다. 값은 저장되지만 적용되지 않습니다.','Spawn module is off. Values are kept but not applied.'),'warn'):'';
 const gearOff=()=>apbsDemo?conflictNotice():!state.modules.gear?notice(T('장비 모듈이 꺼져 있습니다.','Loadout module is off.'),'warn'):'';
 
-P.quick={desc:T('자주 바꾸는 값을 단계 버튼 몇 개로 한 번에 맞춥니다. 세부 값은 각 페이지에서 고칩니다.','Set the most-changed values with a few step buttons. Fine-tune on each page.'),render(){return notice(T('준비 중입니다.','Coming soon.'));}};
+/* ================= 1.1.4 빠른 설정 =================
+   자주 바꾸는 값 6가지를 단계 버튼으로 한 번에 맞춘다. 단계 = 기본값(makeDefaults)에 배율이나 정해진 값.
+   공통 값만 바꾼다(맵 탭에서 '이 맵만 따로'를 켠 맵은 그 맵 값 그대로). 지금 값이 어느 단계와도 안 맞으면 '사용자 지정'. */
+const qClamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const qScale=m=>d=>({'spawn.scav.softCap':qClamp(Math.round(d.spawn.scav.softCap*m),0,60),'spawn.waveMin':qClamp(Math.round(d.spawn.waveMin*m),1,20),'spawn.waveMax':qClamp(Math.round(d.spawn.waveMax*m),1,20),'spawn.startPmcPct':qClamp(Math.round(d.spawn.startPmcPct*m),0,100)});
+const qFlow=(e,m,l)=>()=>({'spawn.intensity.early':e,'spawn.intensity.mid':m,'spawn.intensity.late':l});
+const qDiff=(e,n,h,i)=>()=>({'spawn.diff.easy':e,'spawn.diff.normal':n,'spawn.diff.hard':h,'spawn.diff.imp':i});
+/** 장비 수준: 티어 끝 레벨에 배율(크면 같은 레벨에서 낮은 티어). T1 시작 1, T7 끝 100, 다음 티어 시작 = 앞 티어 끝 + 1. */
+const qGear=m=>d=>{const o={},n=d.gear.tiers.length;let prev=0;
+  d.gear.tiers.forEach((t,i)=>{const lo=prev+1,mx=i===n-1?100:qClamp(Math.round(t.max*m),lo,100-(n-1-i));o['gear.tiers.'+i+'.min']=lo;o['gear.tiers.'+i+'.max']=mx;prev=mx;});return o;};
+/** 보스 빈도: 기본 확률에 배율(100 넘지 않음). 기본 100%인 보스(즈랴치 등 원래 늘 나오는 보스)는 그대로. */
+const qBoss=m=>d=>Object.fromEntries(Object.entries(d.bosses).filter(([,b])=>typeof b.chance==='number'&&b.chance<100).map(([id,b])=>['bosses.'+id+'.chance',qClamp(Math.round(b.chance*m),0,100)]));
+const qPerf=(cap,near)=>d=>({'spawn.botCap':cap==null?d.spawn.botCap:cap,'near.on':near==null?d.near.on:near});
+const QUICK=[
+  {id:'bots',icon:'☻',label:T('봇 인원','Bot count'),desc:T('스캐브 동시 수(소프트 캡)·웨이브 인원·시작 PMC 비율을 함께 늘리고 줄입니다.','Scales the scav soft cap, wave size and starting PMC share together.'),
+   levels:[[T('매우 적게','Very few'),qScale(.5)],[T('적게','Few'),qScale(.75)],[T('보통','Normal'),qScale(1)],[T('많이','Many'),qScale(1.25)],[T('매우 많이','Very many'),qScale(1.5)]]},
+  {id:'flow',icon:'⌁',label:T('레이드 흐름','Raid flow'),desc:T('레이드를 셋으로 나눈 초반·중반·후반 웨이브 강도입니다.','Wave strength across the early, middle and late raid.'),
+   levels:[[T('초반 몰림','Front-loaded'),qFlow(1.6,.9,.4)],[T('약간 초반','Slightly early'),qFlow(1.2,1,.6)],[T('고르게','Even'),qFlow(1,1,1)],[T('후반까지','Into the late raid'),qFlow(.8,1,1.2)]]},
+  {id:'diff',icon:'◎',label:T('봇 난이도','Bot difficulty'),desc:T('봇 난이도 비율(쉬움·보통·어려움·불가능)입니다.','Bot difficulty mix (easy · normal · hard · impossible).'),
+   levels:[[T('쉬움','Easy'),qDiff(50,40,10,0)],[T('약간 쉬움','Slightly easy'),qDiff(25,55,20,0)],[T('보통','Normal'),qDiff(10,50,30,10)],[T('어려움','Hard'),qDiff(0,30,50,20)],[T('매우 어려움','Very hard'),qDiff(0,10,40,50)]]},
+  {id:'gear',icon:'◇',label:T('봇 장비 수준','Bot gear level'),desc:T('티어마다 플레이어 레벨 구간을 넓히거나 좁힙니다. 좋게 하면 같은 레벨에서 더 높은 티어 장비가 나옵니다.','Widens or narrows each tier’s player-level range. Better = higher-tier gear at the same level.'),
+   levels:[[T('낮게','Low'),qGear(1.4)],[T('약간 낮게','Slightly low'),qGear(1.2)],[T('보통','Normal'),qGear(1)],[T('좋게','Good'),qGear(.8)],[T('매우 좋게','Very good'),qGear(.6)]]},
+  {id:'boss',icon:'★',label:T('보스 빈도','Boss frequency'),desc:T('보스마다 등장 확률에 배율을 곱합니다. 기본 100%인 보스는 그대로입니다.','Multiplies each boss’s chance. Bosses at 100% by default stay as they are.'),
+   levels:[[T('드물게','Rare'),qBoss(.5)],[T('보통','Normal'),qBoss(1)],[T('자주','Often'),qBoss(1.5)],[T('매우 자주','Very often'),qBoss(2)]]},
+  {id:'perf',icon:'⚙',label:T('성능','Performance'),desc:T('모든 맵 동시 봇 상한과 근처 보충을 줄여 프레임을 아낍니다. 품질 = 맵마다 게임 기본 상한.','Lowers the bot cap for every map and turns off near refill to save frames. Quality = each map’s game default cap.'),
+   levels:[[T('품질','Quality'),qPerf(null,null)],[T('균형','Balanced'),qPerf(24,false)],[T('성능','Performance'),qPerf(18,false)]]}
+];
+const quickDef=id=>QUICK.find(q=>q.id===id);
+const qSame=(a,b)=>typeof a==='number'&&typeof b==='number'?Math.abs(a-b)<1e-9:a===b;
+/** 지금 값이 정확히 맞는 단계(없으면 -1). */
+function quickLevel(id){const q=quickDef(id),d=DEFAULTS;return q.levels.findIndex(([,f])=>Object.entries(f(d)).every(([p,v])=>qSame(get(p),v)));}
+/** 기본값이 해당하는 단계(버튼에 '기본' 표시). */
+function quickDefaultLevel(id){const q=quickDef(id),d=DEFAULTS;return q.levels.findIndex(([,f])=>Object.entries(f(d)).every(([p,v])=>qSame(get(p,d),v)));}
+/** 단계를 적용한다. 지금 값이 어느 단계에도 안 맞으면(직접 고친 값) 덮어쓰기 전에 묻는다. 취소면 false, 아무것도 안 바뀜. */
+function quickApply(id,level){const q=quickDef(id),lv=q&&q.levels[level];if(!lv)return false;
+  const vals=lv[1](DEFAULTS),changed=Object.entries(vals).filter(([p,v])=>!qSame(get(p),v));
+  if(!changed.length)return true;
+  if(quickLevel(id)<0){const ask=fmt(tr(T('직접 고친 값 {n}개를 "{l}" 단계 값으로 바꿉니다. 계속할까요?','This replaces {n} hand-tuned value(s) with the "{l}" step. Continue?')),{n:changed.length,l:tr(lv[0])});
+    if(typeof confirm==='function'&&!confirm(ask))return false;}
+  changed.forEach(([p,v])=>writeSetting(p,v));return true;}
+P.quick={desc:T('자주 바꾸는 값을 단계 버튼 몇 개로 한 번에 맞춥니다. 세부 값은 각 페이지에서 고치고, 아래 "바꾸는 값"을 누르면 그 칸으로 갑니다.','Set the most-changed values with a few step buttons. Fine-tune on each page — click a value under "What this changes" to go there.'),render(){
+  const pre=card(T('프리셋으로 시작','Start from a preset'),`<p class="muted small">${tr(T('위쪽 막대에서 레이드 프리셋(스폰·보스 등)과 장비 프리셋(티어·봇 장비)을 먼저 고른 뒤, 아래 조절로 다듬으십시오. 여기서는 모든 맵 공통 값만 바꿉니다. 스폰 › 맵 탭에서 "이 맵만 따로"를 켠 맵은 그 맵 값을 그대로 씁니다.','Pick a raid preset (spawns, bosses…) and a loadout preset (tiers, bot gear) in the top bar first, then fine-tune below. Only shared values change here; maps with "set separately" on (Spawns › map tab) keep their own.'))}</p>
+    <div class="chips" style="margin-top:10px">${pill(tr(T('레이드 프리셋','Raid preset'))+': '+esc(presetName(state.preset)),'blue')}${pill(tr(T('장비 프리셋','Loadout preset'))+': '+esc(gearPresetName(state.tierPreset)),'blue')}<button class="mini-btn" data-nav="raidpresets">${tr(T('프리셋 보기','Browse presets'))} →</button></div>`,{icon:'❖',nofold:true});
+  const row=q=>{const cur=quickLevel(q.id),def=quickDefaultLevel(q.id),vals=q.levels[Math.max(cur,0)][1](DEFAULTS),paths=Object.keys(vals);
+    const btns=q.levels.map(([l],i)=>`<button data-quick="${q.id}|${i}" class="${i===cur?'on':''}">${tr(l)}${i===def?` <small class="muted">${tr(T('기본','default'))}</small>`:''}</button>`).join('');
+    const list=paths.map(p=>`<li><button class="linkish" data-jump="${p}">${esc(labelFor(p))}</button> <span class="mono muted">${esc(String(get(p)))}</span></li>`).join('');
+    const extra=q.id==='boss'&&state.bossCommon&&state.bossCommon.on?notice(T('보스 › "모든 보스 같은 확률"이 켜져 있어 보스마다 확률은 지금 쓰이지 않습니다.','Bosses › "One chance for all" is on, so per-boss chances are not used right now.'),'warn'):'';
+    return card(q.label,`<div class="seg qseg">${btns}</div>${cur<0?`<p style="margin-top:8px">${pill(tr(T('사용자 지정','Custom')),'gold')} <span class="muted small">${tr(T('직접 고친 값이 있습니다. 단계를 누르면 확인 뒤 바꿉니다.','Some values were tuned by hand. Picking a step asks first.'))}</span></p>`:''}${extra}
+      <details class="qvals"><summary class="small muted">${fmt(tr(T('이 버튼이 바꾸는 값 {n}개','What this changes: {n} value(s)')),{n:paths.length})}</summary><ul class="small">${list}</ul></details>`,{icon:q.icon,desc:q.desc,nofold:true});};
+  return `<div class="stack">${pre}<div class="grid g2">${QUICK.map(row).join('')}</div></div>`;}};
 P.dashboard={desc:T('지금 설정이 레이드에서 어떻게 보일지 요약합니다. 맵 카드를 누르면 그 맵 설정으로 갑니다.','A summary of how raids will play. Click a map card to edit it.'),render(){
   const est=MAPS.map(m=>[m,estimate(m)]),cnt=k=>MAPS.filter(m=>state.maps[m.id].style===k).length;
   const avg=est.filter(([,e])=>e).map(([,e])=>(e.pmin+e.pmax)/2),avgP=avg.length?Math.round(avg.reduce((a,b)=>a+b,0)/avg.length):0;
@@ -2793,6 +2844,8 @@ document.addEventListener('click',e=>{
   if(d.tslot){tSlot=d.tslot;if(pickOpen)pickOpen=tSec+'|'+tSlot;pq='';rerender();return;}
   if(d.aslot){attSlot=d.aslot;if(pickOpen)pickOpen=attSlot==='count'?'':'attach|'+attSlot;pq='';rerender();return;}
   if(d.sres!==undefined){navSearchGo(+d.sres);return;}
+  if(d.quick){const [qid,ql]=d.quick.split('|');if(quickApply(qid,+ql)){updateSavebar();rerender();}return;}
+  if(d.jump){jumpTo(d.jump);return;}
   if(d.subtab){selectPage(page,d.subtab);tFull=false;closePop();render();window.scrollTo(0,0);return;}
   if(d.nav){selectPage(d.nav);tFull=false;closePop();$('#drawer').classList.remove('open');render();window.scrollTo(0,0);return;}
   if(d.mode){mode=d.mode;rerender();return;}
