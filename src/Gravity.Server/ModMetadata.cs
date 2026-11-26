@@ -44,6 +44,6 @@ public static class L
 
 public static class GravityInfo
 {
-    public const string Version = "1.1.3";
+    public const string Version = "1.1.4";
     public const string Tag = "[Gravity]";
 }
