@@ -23,6 +23,8 @@ public sealed class GearContext
     public string? Map { get; init; }
     public bool Night { get; init; }
     public RoleGear Role => Settings.RoleFor(Pick.RoleId);
+    /// <summary>1.1.5 이 봇의 장비 고르는 범위(봇별 설정이 global이면 전체 설정).</summary>
+    public string TierRange => Role.TierRange is "exact" or "near" or "all" ? Role.TierRange : Settings.TierRange;
     /// <summary>1.0.7 PackNStrap: 벨트 아이템이 있어 완장 칸을 Gravity가 정하는지.</summary>
     public bool BeltManaged { get; set; }
     /// <summary>1.0.7 PackNStrap: 이 봇의 완장 칸 벨트 목록. null = 벨트 안 참.</summary>
@@ -151,6 +153,9 @@ public static class GearApply
                     }
                     if (drop) { pool.Remove(mid); removed++; }
                 }
+                // 1.1.5 장비 후보 범위(gear.tierRange): 자동 티어 아이템 중 봇 티어(near는 한 단계 아래까지)보다 낮은 것은 뺀다.
+                // 사람이 표에 무게를 직접 준 아이템은 그대로 둔다. 다 빠지면 남은 것 중 가장 가까운 아래 티어만 남긴다(스캐브처럼 원래 목록이 낮은 봇).
+                if (managed && c.TierRange != "all") RangeFilter(pool, slot, table, c);
                 // 1.1.5(1차 하네스 F-plate): 앞·뒤판 칸에 이 티어 등급 범위([FMin,FMax]) 판이 하나도 안 들어가는 방탄복·리그는 뺀다.
                 // 그대로 두면 판 거르기가 '가장 가까운 등급'으로 대체해 T5에 3급 판, T1에 5급 옆판이 들어간다. 다른 후보가 남을 때만 뺀다.
                 if (slot is "ArmorVest" or "TacticalVest" && GearRuntime.Templates is { } tp)
@@ -422,6 +427,27 @@ public static class GearApply
             foreach (var m in cand) set.Add(m);
         }
         return (orig.Count - set.Count, true);
+    }
+
+    /// <summary>범위가 좁아 후보가 이만큼보다 적으면 바로 아래 티어를 하나씩 더한다(스캐브·레이더처럼 원래 목록이 작은 봇이 한 총만 드는 일 방지, 1차 하네스).</summary>
+    internal static int MinRangeCandidates = 3;
+
+    internal static void RangeFilter(Dictionary<MongoId, double> pool, string slot, GearTable table, GearContext c)
+    {
+        int lo = c.TierRange == "near" ? c.Pick.Tier - 1 : c.Pick.Tier;
+        var below = pool.Where(kv => kv.Value > 0).Select(kv => kv.Key)
+            .Where(m => c.Info(m.ToString()) is { } inf && GearPools.Weight(table, inf, m.ToString(), slot) == null && c.TierOf(slot, m.ToString()) < lo).ToList();
+        if (below.Count == 0) return;
+        int kept = pool.Count(kv => kv.Value > 0) - below.Count;
+        // 아래 티어를 가까운 것부터 묶음째 되살려 후보가 MinRangeCandidates 이상(또는 하나라도 있게) 되게 한다.
+        var back = new HashSet<MongoId>();
+        foreach (var grp in below.GroupBy(m => c.TierOf(slot, m.ToString())).OrderByDescending(gp => gp.Key))
+        {
+            if (kept >= MinRangeCandidates) break;
+            foreach (var m in grp) back.Add(m);
+            kept += grp.Count();
+        }
+        foreach (var m in below) if (!back.Contains(m)) pool.Remove(m);
     }
 
     internal static void DropWrongCaliberMags(HashSet<MongoId> set, string weaponId, IReadOnlyDictionary<MongoId, TemplateItem> tpls)

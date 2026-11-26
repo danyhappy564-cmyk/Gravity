@@ -28,6 +28,8 @@ public sealed record RoleGear(bool On, string Mode, int Tier, int Offset, double
     public bool SkipBack { get; init; }
     /// <summary>뒤판 등급을 앞판 이하로(SPT LimitPlateClassToFrontPlateClass). SPT는 PMC만 켬.</summary>
     public bool LimitClass { get; init; }
+    /// <summary>1.1.5 이 봇의 장비 고르는 범위: global = 장비 티어 화면 설정(gear.tierRange) 따름, 아니면 exact·near·all.</summary>
+    public string TierRange { get; init; } = "global";
     /// <summary>전리품에 열쇠·키카드를 허용(끄면 목록에서 뺌).</summary>
     public bool Keys { get; init; } = true;
     /// <summary>퀘스트 전용 템 허용(전역 퀘스트 템 금지가 꺼져 있을 때만 의미).</summary>
@@ -109,6 +111,9 @@ public sealed record GearSettings(
     public bool SplitAmmo { get; init; }
     /// <summary>1.1.0 계절 외형: 끄면 SPT 크리스마스 봇 외형 바꾸기를 하지 않는다.</summary>
     public bool Seasonal { get; init; } = true;
+    /// <summary>1.1.5 자동 티어 장비 후보 범위: exact = 봇 티어 아이템만, near = 봇 티어와 한 단계 아래, all = 봇 티어 이하 전부(낮을수록 적게, 1.1.4까지).
+    /// 표에 사람이 직접 넣은 아이템(무게 지정)은 이 범위와 상관없이 그대로 쓴다.</summary>
+    public string TierRange { get; init; } = "exact";
     /// <summary>1.1.0 무기 화면의 낱개 탄약·대용량 탄창·부품 개수·밤 손전등·맵별 무기 성향.</summary>
     public Gravity.Gear.WeaponExtras Weapons { get; init; } = new();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
@@ -289,7 +294,8 @@ public static partial class ConfigModel
                 Keys = !v110 || r.Bool(p + "keys", id == "scav"), Quest = !v110 || r.Bool(p + "quest", d.On),
                 Meds = r.Bool(p + "meds", true), Reroll = v110 ? r.Num(p + "reroll", d.On ? 20 : 0, 0, 100) : 0,
                 TopOn = v110 && r.Bool(p + "topload.on", d.On || id.StartsWith("boss_") || id.StartsWith("f_")),
-                TopChance = r.Num(p + "topload.chance", d.On ? 40 : 30, 0, 100), TopPct = r.Num(p + "topload.pct", 30, 1, 100)
+                TopChance = r.Num(p + "topload.chance", d.On ? 40 : 30, 0, 100), TopPct = r.Num(p + "topload.pct", 30, 1, 100),
+                TierRange = r.Str(p + "tierRange", "global", "global", "exact", "near", "all")
             };
         }
 
@@ -355,6 +361,7 @@ public static partial class ConfigModel
             ModOther = (int)r.Num("mods.other", 0, 0, 1000), ModClothing = (int)r.Num("mods.clothingCount", -1, -1, 500),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),
-            Weapons = Gravity.Gear.WeaponExtras.Read(r), SplitAmmo = v110 && r.Bool(g + "splitAmmo", true), Seasonal = r.Bool(g + "seasonal", true) };
+            Weapons = Gravity.Gear.WeaponExtras.Read(r), SplitAmmo = v110 && r.Bool(g + "splitAmmo", true), Seasonal = r.Bool(g + "seasonal", true),
+            TierRange = r.Str(g + "tierRange", "exact", "exact", "near", "all") };
     }
 }
