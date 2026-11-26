@@ -195,3 +195,5 @@ td:first-child { min-width: 9.5em; }
 .faq details[open] summary::after { content: "−"; }
 .faq details p { color: var(--muted); margin: 0 0 16px; }
 .sub-heading { font-size: 15px; font-weight: 700; color: var(--blue); letter-spacing: .08em; text-transform: uppercase; margin: 40px 0 0; }
+/* 1.1.4: FAQ 답 안 설정 바로가기는 웹 설정 화면에서만 링크(사이트에서는 평범한 글자) */
+.faq a[data-jump]{color:inherit;text-decoration:none}
