@@ -79,6 +79,7 @@ select:focus{border-color:var(--primary)}
 .nav-cap{font-size:10px;letter-spacing:1.6px;color:#5f6b80;font-weight:650;padding:14px 12px 8px}
 .nav-cap:first-child{padding-top:0}
 .nav-btn{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:#a9b3c4;text-align:left;padding:9px 12px;margin:2px 0;border-radius:8px;font-size:13px;transition:background .15s,color .15s}
+.navsearch{position:relative;margin:0 0 10px}.navsearch input{width:100%;padding:8px 30px 8px 10px;border-radius:8px;border:1px solid #263042;background:#0b0f16;color:#dfe6f1;font-size:13px}.navsearch input:focus{outline:none;border-color:var(--gold)}.navsearch kbd{position:absolute;right:8px;top:7px;font-size:11px;color:#6d7890;border:1px solid #2a3446;border-radius:4px;padding:0 5px;pointer-events:none}.navres{margin-top:6px;max-height:60vh;overflow-y:auto;overflow-x:hidden;border:1px solid #263042;border-radius:8px;background:#0d121a}.sres{display:flex;gap:8px;align-items:flex-start;width:100%;border:0;background:none;color:#cdd6e4;text-align:left;padding:7px 9px;font-size:12.5px;border-bottom:1px solid #18202c}.sres:last-child{border-bottom:0}.sres:hover,.sres.on{background:#18212e}.sres .ic{width:16px;flex:none;color:var(--gold);text-align:center}.sres small{display:block;color:#7c879b;font-size:11px;margin-top:1px}.sres small.advtag{display:inline;color:#b79cff}.flash{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px;transition:outline-color .3s}
 .nav-btn:hover{background:#ffffff08;color:var(--text)}
 .nav-btn .ic{width:18px;text-align:center;opacity:.8}
 .nav-btn.on{background:linear-gradient(90deg,#6ea8ff26,#6ea8ff06);color:#d8e6ff;box-shadow:inset 3px 0 var(--primary)}
@@ -494,6 +495,7 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
   </div>
 </header>
 <aside class="drawer" id="drawer">
+  <div class="navsearch"><input type="search" id="navSearch" autocomplete="off" spellcheck="false"><kbd>/</kbd><div id="navResults" class="navres" hidden></div></div>
   <nav id="nav"></nav>
   <div class="drawer-foot"><div><span class="dot"></span><span data-k="offline"></span></div><div class="mono" id="hostLabel">127.0.0.1:6969/gravity</div><div data-k="ver"></div></div>
 </aside>
@@ -2442,6 +2444,133 @@ function renderNav(){
     return `<hr class="nav-sep"><details class="nav-group" data-nav-group="${i}" ${open?'open':''}><summary class="nav-cap">${tr(cap)}</summary>${list.map(btn).join('')}</details>`;}).join('')
     +`<hr class="nav-sep"><button class="nav-btn nav-faq ${page===NAV_FAQ[0]?'on':''}" data-nav="${NAV_FAQ[0]}"><span class="ic">${NAV_FAQ[1]}</span>${tr(NAV_FAQ[2])}</button>`;}
 
+/* ================= 1.1.4 설정 검색 =================
+   사이드바 맨 위 검색 칸(/ 또는 Ctrl+K). 모든 페이지·탭을 고급 모드로 한 번씩 그려 입력 칸(data-p·data-segp·data-flip)을 모으고,
+   칸 이름(한/영)·카드 제목·도움말·페이지 이름으로 찾는다. 결과를 누르면 그 페이지·탭으로 가서 칸을 반짝인다(고급 칸이면 고급 모드로). */
+const PAGE_TABS={
+  spawn:{get:()=>spawnTab,set:v=>{spawnTab=v;if(v!=='all')mapSel=v;},vals:()=>['all',...MAPS.map(m=>m.id)],name:v=>v==='all'?T('모든 맵(공통)','All maps (shared)'):mapById(v).name},
+  bosses:{get:()=>bossSel,set:v=>bossSel=v,vals:()=>BOSSES.map(b=>b.id),name:v=>BOSSES.find(b=>b.id===v).name},
+  specials:{get:()=>specSel,set:v=>specSel=v,vals:()=>SPECIALS.map(x=>x[0]),name:v=>SPECIALS.find(x=>x[0]===v)[1]},
+  factions:{get:()=>facSel,set:v=>facSel=v,vals:()=>FACTIONS.map(f=>f.id),name:v=>FACTIONS.find(f=>f.id===v).name},
+  tiers:{get:()=>tierSel,set:v=>tierSel=+v,vals:()=>state.gear.tiers.map((_,i)=>i),name:v=>T('T'+(+v+1),'T'+(+v+1))},
+  roles:{get:()=>roleSel,set:v=>roleSel=v,vals:()=>ROLE_GROUPS.flatMap(([,items])=>items.map(x=>x[0])),name:v=>T(roleName(v),roleName(v))},
+  items:{get:()=>modTab,set:v=>modTab=v,vals:()=>Object.keys(MODS),name:v=>T(v,v)},
+  // 티어 편집기는 봇마다 아이템 표라 색인하지 않고, 모든 표 공통인 '상한 · 방탄판' 구역(T1~T7)만 찾는다.
+  tieredit:{get:()=>tSec+'|'+tierSel,set:v=>{const [a,b]=String(v).split('|');tSec=a;tierSel=+b||0;},vals:()=>state.gear.tiers.map((_,i)=>'rules|'+i),name:v=>{const i=+String(v).split('|')[1]+1;return T('T'+i+' 상한 · 방탄판','T'+i+' caps & plates');}}
+};
+// 색인하지 않는 페이지: 아이템 하나하나가 칸인 표(검색 결과를 덮어 버린다). 페이지 자체는 찾는다.
+const IDX_SKIP=['faq','itemtiers'];
+const SEARCH_SYN=[['상한','cap','limit','최대','max'],['수류탄','grenade','nade'],['체력','health','hp'],['난이도','difficulty'],['탄약','ammo','round'],['스캐브','scav'],['보스','boss'],['확률','chance'],['인원','size','count']];
+let IDX_SINK=null,searchIdx=null,searchIdxLang='',navQ='',navHits=[],navCur=0;
+const stripTags=h=>String(h).replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\s+/g,' ').trim();
+/** 그린 HTML 글자에서 입력 칸을 꺼낸다: 경로, 고급 여부(조상 중 .adv), 가장 가까운 카드 제목, 같은 칸(.ctl)의 도움말. */
+function scanControls(html){
+  const out=[],st=[],VOID=/^(input|br|img|hr|meta|link|source|wbr|col|area)$/i,re=/<(\/?)([a-zA-Z][\w-]*)([^>]*)>|([^<]+)/g;let m,h2=null;
+  const near=f=>{for(let i=st.length-1;i>=0;i--)if(f(st[i]))return st[i];return null;};
+  while((m=re.exec(html))){
+    if(m[4]!==undefined){if(h2!==null)h2+=m[4];continue;}
+    const close=m[1]==='/',tag=m[2].toLowerCase(),at=m[3]||'';
+    if(close){if(tag==='h2'&&h2!==null){const c=near(x=>x.card);if(c&&!c.title)c.title=stripTags(h2).replace(/^[^\p{L}\p{N}]+/u,'');h2=null;}
+      const i=st.map(x=>x.tag).lastIndexOf(tag);if(i<0)continue;
+      for(const x of st.splice(i))if(x.ctl&&x.items.length)x.items.forEach(e=>{if(!e.desc)e.desc=x.tip||'';});continue;}
+    const a=k=>{const r=new RegExp('\\s'+k+'="([^"]*)"').exec(at);return r?r[1]:null;},cls=' '+(a('class')||'')+' ';
+    const own={tag,adv:/ adv /.test(cls),card:/ card /.test(cls),ctl:/ ctl /.test(cls),title:'',items:[],tip:''};
+    const tip=a('data-tip');if(tip){const c=near(x=>x.ctl);if(c)c.tip=stripTags(tip);}
+    const p=a('data-p')||a('data-segp')||a('data-flip');
+    if(p){const card=near(x=>x.card),e={path:p,adv:own.adv||st.some(x=>x.adv),card:card?card.title:'',desc:''};out.push(e);const c=own.ctl?own:near(x=>x.ctl);if(c)c.items.push(e);}
+    if(tag==='h2')h2='';
+    if(!VOID.test(tag)&&!/\/\s*$/.test(at))st.push(own);
+  }
+  return out;
+}
+/** 모든 페이지·탭을 그려 색인을 만든다. 지금 페이지·탭·모드는 그대로 돌려 놓는다. 언어가 바뀌면 다시 만든다. */
+function buildSearchIndex(){
+  const keep={page,mode,FOLD},tabs=Object.fromEntries(Object.entries(PAGE_TABS).map(([k,t])=>[k,t.get()])),mapKeep=mapSel,out=[],seen=new Set();
+  const pages=[...NAV.flatMap(([,items])=>items.map(x=>x[0]))];
+  const add=e=>{const k=e.kind+'|'+e.page+'|'+e.path;if(seen.has(k))return;seen.add(k);out.push(e);};
+  const pageText=id=>{const t=navTitle(id);return t?t.ko+' '+t.en:id;};
+  try{
+    for(const id of pages){
+      const pt=navTitle(id),pd=P[id]&&P[id].desc;
+      add({kind:'page',page:id,tab:null,path:'',label:pt,desc:pd?tr(pd):'',adv:false,card:'',text:(pt?pt.ko+' '+pt.en:'')+' '+(pd?pd.ko+' '+pd.en:'')});
+      if(id==='spawn')MAPS.forEach(mp=>add({kind:'page',page:'spawn',tab:mp.id,path:'',label:T(pt.ko+' · '+mp.name.ko,pt.en+' · '+mp.name.en),desc:'',adv:false,card:'',text:pageText(id)+' '+mp.name.ko+' '+mp.name.en+' '+mp.id}));
+      if(IDX_SKIP.includes(id)||!P[id])continue;
+      const tb=PAGE_TABS[id],vals=tb?tb.vals():[null];
+      for(const v of vals){
+        if(tb)tb.set(v);page=id;
+        let advHtml='',easyHtml='';
+        try{FOLD=null;mode='adv';advHtml=P[id].render();FOLD=null;mode='easy';easyHtml=P[id].render();}catch(_){continue;}
+        const easyPaths=new Set(scanControls(easyHtml).filter(e=>!e.adv).map(e=>e.path));
+        for(const c of scanControls(advHtml)){
+          const lab=REG[c.path]||null,tabName=tb&&v!=='all'&&c.path.split('.').includes(String(v).split('|').pop())?tb.name(v):null; // 탭과 상관없는 공통 칸에는 탭 이름을 붙이지 않는다
+          add({kind:'set',page:id,tab:tb?v:null,path:c.path,label:lab,labelText:lab?'':labelFor(c.path),desc:c.desc,card:c.card,adv:c.adv||!easyPaths.has(c.path),tabName,
+            text:(lab?lab.ko+' '+lab.en:labelFor(c.path))+' '+c.card+' '+c.desc+' '+pageText(id)+(tabName?' '+tabName.ko+' '+tabName.en:'')+' '+c.path});
+        }
+      }
+    }
+  }finally{
+    Object.entries(tabs).forEach(([k,v])=>PAGE_TABS[k].set(v));mapSel=mapKeep;page=keep.page;mode=keep.mode;FOLD=keep.FOLD;
+  }
+  for(const [gk,ge,items] of FAQ_DATA)for(const [id,qk,qe,ak,ae] of items)
+    add({kind:'faq',page:'faq',tab:null,path:id,label:T(qk,qe),desc:stripTags(lang==='en'?ae:ak).slice(0,140),adv:false,card:'',text:gk+' '+ge+' '+qk+' '+qe+' '+stripTags(ak)+' '+stripTags(ae)});
+  out.forEach(e=>{e.lc=e.text.toLowerCase();e.ns=e.lc.replace(/\s+/g,'');});
+  searchIdx=out;searchIdxLang=idxKey();return out;
+}
+// 언어·서버 정보(설치된 모드·아이템 목록)가 바뀌면 색인을 다시 만든다.
+const idxKey=()=>lang+'|'+(serverMeta?1:0)+'|'+(GEAR_CATALOG?GEAR_CATALOG.length:0);
+// 검색 칸에 들어가면 미리 만들어 둔다(첫 글자 때 멈칫하지 않게).
+document.addEventListener('focusin',e=>{if(e.target&&e.target.id==='navSearch'&&(!searchIdx||searchIdxLang!==idxKey()))setTimeout(()=>{try{buildSearchIndex();}catch(_){}} ,0);});
+const entryLabel=e=>e.label?tr(e.label):e.labelText||e.path;
+/** 찾기: 띄어쓰기로 나눈 낱말을 모두(동의어 중 하나라도) 포함한 항목. 칸 이름(지금 언어) 맞음 > 다른 언어 이름 > 카드·도움말. 맵 탭 사본은 뒤로. 최대 30개. */
+function searchSettings(q){
+  const words=String(q||'').toLowerCase().split(/\s+/).filter(Boolean);if(!words.length)return [];
+  if(!searchIdx||searchIdxLang!==idxKey())buildSearchIndex();
+  const alts=words.map(w=>{const g=SEARCH_SYN.filter(s=>s.some(x=>x===w||(w.length>1&&x.startsWith(w))));return [...new Set([w,...g.flat()])];});
+  const hit=(s,list)=>list.some(x=>s.includes(x)||s.replace(/\s+/g,'').includes(x.replace(/\s+/g,'')));
+  const res=[];
+  for(const e of searchIdx){
+    if(!alts.every(list=>hit(e.lc,list)))continue;
+    const cur=entryLabel(e).toLowerCase(),other=e.label?(lang==='en'?e.label.ko:e.label.en).toLowerCase():'';
+    let sc=0;alts.forEach(list=>{sc+=hit(cur,list)?4:hit(other,list)?3:hit((e.card||'').toLowerCase(),list)?2:1;});
+    if(cur.replace(/\s+/g,'').includes(words.join('')))sc+=3;
+    alts.forEach(list=>{if(list.some(x=>(' '+cur).includes(' '+x)))sc+=1;});
+    if(e.kind==='page')sc+=1;if(e.tab&&e.tab!=='all'&&e.kind==='set')sc-=2;if(e.page==='dashboard')sc-=1;
+    res.push([sc,res.length,e]);
+  }
+  // 같은 칸의 탭별 사본(맵 13개·티어 7개·보스마다)은 점수가 가장 높은 하나만 남기고 몇 곳 더 있는지 적는다.
+  const groups=new Map(),outL=[];
+  for(const r of res.sort((x,y)=>y[0]-x[0]||x[1]-y[1])){const e=r[2],k=e.kind==='set'&&e.tab!=null?e.page+'|'+entryLabel(e)+'|'+e.card:null;
+    if(k&&groups.has(k)){groups.get(k).more++;continue;}const c={...e,more:0};if(k)groups.set(k,c);outL.push(c);}
+  return outL.slice(0,30);
+}
+/** 검색 결과(또는 바로가기)로 가기: 페이지·탭을 고르고 다시 그린 뒤 그 칸을 화면 가운데로 옮겨 2초 반짝인다. 고급 칸인데 쉬운 모드면 고급으로 바꾼다. */
+function jumpTo(e){
+  if(!e)return;
+  if(typeof e==='string')e=(searchIdx||buildSearchIndex()).find(x=>x.kind==='set'&&x.path===e)||{kind:'set',page:pageOfPath(e),tab:null,path:e,adv:true};
+  closePop();tFull=false;
+  if(e.kind==='faq'){faqQ='';selectPage('faq');render();const d=document.querySelector(`[data-faq="${e.path}"]`);if(d){d.open=true;flashEl(d);}return;}
+  if(e.adv&&mode==='easy'){mode='adv';toast(tr(T('고급 칸이라 고급 모드로 바꿨습니다.','Switched to Advanced mode to show this setting.')));}
+  selectPage(e.page);if(e.tab!=null&&PAGE_TABS[e.page])PAGE_TABS[e.page].set(e.tab);
+  render();
+  if(!e.path){window.scrollTo(0,0);return;}
+  const q=['data-p','data-segp','data-flip'].map(k=>`[${k}="${e.path}"]`).join(','),el=document.querySelector('#main')&&document.querySelector('#main').querySelector&&document.querySelector('#main').querySelector(q);
+  if(el){for(let d=el.closest&&el.closest('details');d;d=d.parentElement&&d.parentElement.closest('details'))d.open=true;flashEl(el.closest('.ctl')||el);}
+}
+/** 경로만 아는 바로가기(FAQ 답 안 링크 등)용: 경로 앞부분으로 페이지를 고른다. */
+function pageOfPath(p){const h=String(p).split('.')[0];return ({spawn:'spawn',maps:'spawn',near:'spawn',bosses:'bosses',bossCommon:'bosses',specials:'specials',factions:'factions',events:'events',gear:'tiers',roles:'roles',stats:'botstats',weapons:'weapons',mods:'items',blacklist:'blacklist',client:'client',orbit:'orbit',compat:'diag',dev:'dev'})[h]||'dashboard';}
+function flashEl(el){if(!el)return;if(el.scrollIntoView)el.scrollIntoView({block:'center'});if(el.classList){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2000);}}
+const KIND_IC={set:'⚙',page:'▤',faq:'?'};
+function renderNavResults(){
+  const box=$('#navResults');if(!box)return;
+  navHits=searchSettings(navQ);if(navCur>=navHits.length)navCur=0;
+  if(!navQ.trim()){box.hidden=true;box.innerHTML='';return;}
+  box.hidden=false;
+  box.innerHTML=navHits.length?navHits.map((e,i)=>{const where=e.kind==='faq'?tr(NAV_FAQ[2]):[tr(navTitle(e.page)),e.tabName?tr(e.tabName):'',e.card].filter(Boolean).join(' › ');
+    return `<button class="sres${i===navCur?' on':''}" data-sres="${i}"><span class="ic">${KIND_IC[e.kind]}</span><span><b>${esc(entryLabel(e))}</b>${e.adv?` <small class="advtag">${tr(T('고급','Adv'))}</small>`:''}${e.more?` <small class="advtag" style="color:#7c879b">${fmt(tr(T('+{n}곳','+{n} more')),{n:e.more})}</small>`:''}<small>${esc(where)}</small></span></button>`;}).join('')
+    :`<p class="muted small" style="padding:8px">${tr(T('찾는 설정이 없습니다. 다른 낱말(예: 상한, 수류탄, 보스)로 찾아 보십시오.','Nothing found. Try another word (e.g. cap, grenade, boss).'))}</p>`;
+}
+function navSearchGo(i){const e=navHits[i];if(!e)return;navQ='';const inp=$('#navSearch');if(inp)inp.value='';renderNavResults();$('#drawer').classList.remove('open');jumpTo(e);}
+
 /** 1.0.5: 다른 PC에서 열었고 SPT 웹 관리자로 로그인하지 않아 저장이 막힌 상태 — 서버가 알려 준 SPT 로그인 주소로 안내한다. */
 let writeLogin=null;
 function needLogin(url){writeLogin=url||'/login?returnUrl=%2Fgravity%2F';const b=$('#loginbar');if(!b)return;b.hidden=false;
@@ -2450,6 +2579,7 @@ function applyServerWrite(w){if(w&&w.ok===false)needLogin(w.login);}
 function renderShell(){
   if(writeLogin)needLogin(writeLogin);
   document.documentElement.lang=lang;document.querySelectorAll('[data-k]').forEach(el=>el.textContent=u(el.dataset.k));
+  {const ns=$('#navSearch');if(ns)ns.placeholder=tr(T('설정 찾기…','Find a setting…'));}
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
   document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.lang===lang));
   $('#presetSel').innerHTML=`<optgroup label="${tr(T('기본 제공 (잠금)','Built-in (locked)'))}">`+PRESETS.map(p=>`<option value="${p.id}">${tr(p.name)} · ${tr(T('잠금','locked'))}</option>`).join('')+'</optgroup>'+(customPresets.length?`<optgroup label="${tr(T('내 프리셋','My presets'))}">`+customPresets.map(p=>`<option value="${p.id}">${esc(showName(p.name))}</option>`).join('')+'</optgroup>':'');
@@ -2546,6 +2676,7 @@ function apply(el,final){
 document.addEventListener('input',e=>{const el=e.target;
   if(el.dataset.itemSearch){itemQuery=el.value;itemFetchSequence++;itemResults=[];itemError='';clearTimeout(itemTimer);itemTimer=setTimeout(fetchManualItems,250);return;}
   if(el.id==='itSearch'){itQ=el.value;itMore=0;const pos=el.selectionStart;render();const n=$('#itSearch');if(n){n.focus();n.setSelectionRange(pos,pos);}return;}
+  if(el.id==='navSearch'){navQ=el.value;navCur=0;renderNavResults();return;}
   if(el.id==='faqSearch'){faqQ=el.value;const pos=el.selectionStart;render();const n=$('#faqSearch');if(n){n.focus();n.setSelectionRange(pos,pos);}return;}
   if(el.id==='modSearch'){modSearch=el.value;const pos=el.selectionStart;render();const n=$('#modSearch');n.focus();n.setSelectionRange(pos,pos);return;}
   if(el.id==='ioBox'){ioText=el.value;return;}
@@ -2584,6 +2715,11 @@ document.addEventListener('dragover',e=>{if(dragTier==null)return;const t=e.targ
 const endDrag=()=>{dragTier=null;document.body.classList.remove('tdrag');document.querySelectorAll('.dropover').forEach(x=>x.classList.remove('dropover'));};
 document.addEventListener('drop',e=>{if(dragTier==null)return;const t=e.target.closest&&e.target.closest('[data-drop]');if(!t){endDrag();return;}e.preventDefault();const d=t.dataset.drop;if(d.startsWith('tier:'))copyTierTo(tBot,+d.slice(5));else copyTierTo(d,dragTier);endDrag();});
 document.addEventListener('dragend',endDrag);
+// 1.1.4: / 또는 Ctrl+K = 설정 찾기 칸으로. 칸 안에서는 ↑↓로 고르고 Enter로 가기, Esc로 지우기.
+document.addEventListener('keydown',e=>{const t=e.target,typing=t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName||'')||t.isContentEditable);
+  if(t&&t.id==='navSearch'){if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(navHits.length){navCur=(navCur+(e.key==='ArrowDown'?1:-1)+navHits.length)%navHits.length;renderNavResults();}}
+    else if(e.key==='Enter'){e.preventDefault();navSearchGo(navCur);}else if(e.key==='Escape'){navQ='';t.value='';renderNavResults();t.blur();}return;}
+  if((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K'))){const n=$('#navSearch');if(n){e.preventDefault();$('#drawer').classList.add('open');n.focus();n.select();}}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tFull){tFull=false;document.body.classList.remove('noscroll');render();}});
 function rerender(){const y=window.scrollY;render();window.scrollTo(0,y);if(tlPopKey)openPop(tlPopKey,null,true);libSync();}
@@ -2632,6 +2768,7 @@ document.addEventListener('click',e=>{
   if(d.grpon!=null){const items=ROLE_GROUPS[+d.grpon][1],all=items.every(([id])=>state.roles[id].on);items.forEach(([id])=>state.roles[id].on=!all);rerender();return;}
   if(d.tslot){tSlot=d.tslot;if(pickOpen)pickOpen=tSec+'|'+tSlot;pq='';rerender();return;}
   if(d.aslot){attSlot=d.aslot;if(pickOpen)pickOpen=attSlot==='count'?'':'attach|'+attSlot;pq='';rerender();return;}
+  if(d.sres!==undefined){navSearchGo(+d.sres);return;}
   if(d.nav){selectPage(d.nav);tFull=false;closePop();$('#drawer').classList.remove('open');render();window.scrollTo(0,0);return;}
   if(d.mode){mode=d.mode;rerender();return;}
   if(d.lang){lang=d.lang==='en'?'en':'ko';writeLocal('gravity.lang',lang);rerender();return;}
