@@ -1369,23 +1369,43 @@ function svmNotice(pg){if(!SVM.on)return '';const a=[];
 function statBox(m){const e=estimate(m);if(!e)return '';return `<div class="kv"><div><b>${e.pmin}–${e.pmax}</b><small>${tr(T('예상 PMC (레이드 전체)','Expected PMCs'))}</small></div><div><b>${e.smin}–${e.smax}</b><small>${tr(T('예상 스캐브','Expected scavs'))}</small></div><div><b>${e.bosses.length}</b><small>${tr(T('나올 수 있는 보스','Possible bosses'))}</small></div><div><b>${raidOf(m)}${u('min_')}${m.src&&state.spawn.raid.mode==='detect'?`<span class="src">${m.src}</span>`:''}</b><small>${tr(state.spawn.raid.mode==='detect'?T('감지된 레이드 시간','Detected raid time'):T('Gravity가 정한 레이드 시간','Raid time set by Gravity'))}</small></div></div>`;}
 
 /* ================= pages ================= */
+// 1.1.4: 메뉴 22→16. 이름이 비슷한 화면은 한 페이지의 탭으로 합쳤다(SUBS). 옛 주소·저장된 마지막 페이지는 PAGE_ALIAS로 새 자리에 연다.
 const NAV=[
- [T('레이드','RAID'),[['dashboard','◈',T('한눈에','Overview')],['spawn','⌁',T('스폰','Spawns')],['bosses','★',T('보스','Bosses')],['specials','✦',T('특수 봇','Special bots')],['factions','⚑',T('팩션 모드','Faction mods')],['events','✷',T('이벤트','Events')],['raidpresets','❖',T('레이드 프리셋','Raid presets')]]],
- [T('장비','LOADOUT'),[['tiers','◇',T('장비 티어','Gear tiers')],['itemtiers','▦',T('아이템 티어','Item tiers')],['tieredit','✎',T('티어 편집기','Tier editor')],['roles','☰',T('봇별 장비','Per-bot gear')],['botstats','♥',T('봇 체력 · 스킬','Bot health & skills')],['weapons','⌖',T('무기 구성','Weapon build')],['items','▤',T('모드 아이템','Mod items')],['blacklist','⊘',T('블랙리스트','Blacklist')],['gearpresets','❖',T('장비 프리셋','Loadout presets')]]],
- [T('시스템','SYSTEM'),[['client','⚙',T('게임 안 동작','In-game')],['orbit','◎',T('ORBIT 연동','ORBIT link')],['diag','⊙',T('호환 · 진단','Compatibility')],['dev','⌘',T('개발 · 확인','Dev & testing')],['presets','⇄',T('전체 백업','Full backup')]]]
+ [T('시작','START'),[['quick','⚡',T('빠른 설정','Quick setup')],['dashboard','◈',T('한눈에','Overview')]]],
+ [T('레이드','RAID'),[['spawn','⌁',T('스폰','Spawns')],['bosses','★',T('보스','Bosses')],['specials','✦',T('특수 봇','Special bots')],['factions','⚑',T('팩션 모드','Faction mods')],['events','✷',T('이벤트','Events')]]],
+ [T('장비','LOADOUT'),[['tiers','◇',T('장비 티어','Gear tiers')],['roles','☰',T('봇별 장비','Per-bot gear')],['botstats','♥',T('봇 체력 · 스킬','Bot health & skills')],['weapons','⌖',T('무기 구성','Weapon build')],['items','▤',T('모드 아이템','Mod items')],['blacklist','⊘',T('블랙리스트','Blacklist')]]],
+ [T('시스템','SYSTEM'),[['client','⚙',T('게임 안 동작','In-game')],['diag','⊙',T('호환 · 진단','Compatibility')],['presets','❖',T('프리셋 · 백업','Presets & backup')]]]
 ];
+/** 합친 페이지의 탭: [탭 키, 그 탭을 그리는 기존 페이지(P의 키), 탭 이름]. 첫 탭이 기본. */
+const SUBS={
+  tiers:[['levels','tiers',T('레벨 · 상한','Levels & caps')],['items','itemtiers',T('아이템 티어','Item tiers')],['table','tieredit',T('봇별 아이템 표','Per-bot item table')]],
+  presets:[['raid','raidpresets',T('레이드 프리셋','Raid presets')],['gear','gearpresets',T('장비 프리셋','Loadout presets')],['backup','presets',T('전체 백업','Full backup')]],
+  diag:[['compat','diag',T('호환 · 진단','Compatibility')],['dev','dev',T('개발 · 확인','Dev & testing')]],
+  client:[['game','client',T('게임 안 동작','In-game')],['orbit','orbit',T('ORBIT 연동','ORBIT link')]]
+};
+const PAGE_ALIAS={itemtiers:['tiers','items'],tieredit:['tiers','table'],raidpresets:['presets','raid'],gearpresets:['presets','gear'],dev:['diag','dev'],orbit:['client','orbit']};
+let subTab='',subMem=(()=>{try{const o=JSON.parse(readLocal('gravity.subTab','{}'));return o&&typeof o==='object'?o:{};}catch(_){return {};}})();
+/** 지금 화면을 실제로 그리는 기존 페이지 키(합친 페이지면 고른 탭의 것). */
+function curUnit(){const sb=SUBS[page];return sb?(sb.find(x=>x[0]===subTab)||sb[0])[1]:page;}
+const subLabel=(pg,k)=>{const x=(SUBS[pg]||[]).find(y=>y[0]===k);return x?x[2]:null;};
+/** 합친 페이지 위 탭 막대. ORBIT 탭은 ORBIT이 깔렸을 때(또는 지금 그 탭일 때)만. */
+function tabBar(pg){const sb=SUBS[pg];if(!sb)return '';
+  const show=sb.filter(([k])=>!(pg==='client'&&k==='orbit')||subTab==='orbit'||!serverMeta||(serverMeta.orbit&&serverMeta.orbit.installed));
+  return `<div class="tabs subtabs">${show.map(([k,,l])=>`<button data-subtab="${k}" class="${k===subTab?'on':''}">${tr(l)}</button>`).join('')}</div>`;}
 // 1.0.7: 사이드바 맨 아래 황금 테두리 FAQ — 소개 페이지 FAQ로 이어 준다(사용자 11-15).
 const NAV_FAQ=['faq','?',T('자주 묻는 질문','FAQ')];
 const SITE_URL='https://danyhappy564-cmyk.github.io/Gravity/',FORGE_ISSUES='https://sp-mod.com/mod/3360/gravity#issues';
 const siteLink=(anchor='')=>SITE_URL+'?lang='+(lang==='en'?'en':'ko')+(anchor?'#'+anchor:'');
-const navTitle=id=>{if(id===NAV_FAQ[0])return NAV_FAQ[2];for(const [,items] of NAV)for(const [i,,t] of items)if(i===id)return t;};
+const navTitle=id=>{if(id===NAV_FAQ[0])return NAV_FAQ[2];for(const [,items] of NAV)for(const [i,,t] of items)if(i===id)return t;for(const sb of Object.values(SUBS))for(const [,u,l] of sb)if(u===id)return l;};
 const P={};
 function selectPage(id,tab){
   if(id==='flow'||id==='near'){id='spawn';tab='all';}
   else if(id==='maps'){id='spawn';tab=tab??mapSel;}
+  else if(PAGE_ALIAS[id])[id,tab]=PAGE_ALIAS[id];
   page=id==='spawn'||id===NAV_FAQ[0]||NAV.some(([,items])=>items.some(([k])=>k===id))?id:'dashboard';
-  if(tab!==undefined)spawnTab=tab==='all'||mapById(tab)?tab:'all';
-  if(page==='spawn'&&spawnTab!=='all')mapSel=spawnTab;
+  if(page==='spawn'){if(tab!==undefined)spawnTab=tab==='all'||mapById(tab)?tab:'all';if(spawnTab!=='all')mapSel=spawnTab;}
+  const sb=SUBS[page];
+  if(sb){const ok=k=>k!=null&&sb.some(x=>x[0]===k);subTab=ok(tab)?tab:ok(subMem[page])?subMem[page]:sb[0][0];subMem[page]=subTab;}else subTab='';
 }
 function restoreNavigation(){
   if(DEMO){tlOpen={'spec:raiders':true,'spec:rogues':true};selectPage('spawn','bigmap');return;}
@@ -1395,8 +1415,8 @@ function restoreNavigation(){
   selectPage(id,tab??(id==='spawn'?savedTab:undefined));
 }
 function persistNavigation(){
-  writeLocal('gravity.page',page);writeLocal('gravity.spawnTab',spawnTab);
-  const hash='#'+page+(page==='spawn'?'/'+spawnTab:'');
+  writeLocal('gravity.page',page);writeLocal('gravity.spawnTab',spawnTab);writeLocal('gravity.subTab',JSON.stringify(subMem));
+  const hash='#'+page+(page==='spawn'?'/'+spawnTab:SUBS[page]?'/'+subTab:'');
   if(location.hash!==hash&&window.history)window.history.replaceState(null,'',hash);
 }
 window.addEventListener('hashchange',()=>{restoreNavigation();closePop();render();});
@@ -1415,6 +1435,7 @@ function ppesNote(){const pp=serverMeta&&serverMeta.ppes;if(!pp||!pp.installed)r
 const spawnOff=()=>spawnLocked()?conflictNotice():!state.modules.spawn?notice(T('스폰 모듈이 꺼져 있습니다. 값은 저장되지만 적용되지 않습니다.','Spawn module is off. Values are kept but not applied.'),'warn'):'';
 const gearOff=()=>apbsDemo?conflictNotice():!state.modules.gear?notice(T('장비 모듈이 꺼져 있습니다.','Loadout module is off.'),'warn'):'';
 
+P.quick={desc:T('자주 바꾸는 값을 단계 버튼 몇 개로 한 번에 맞춥니다. 세부 값은 각 페이지에서 고칩니다.','Set the most-changed values with a few step buttons. Fine-tune on each page.'),render(){return notice(T('준비 중입니다.','Coming soon.'));}};
 P.dashboard={desc:T('지금 설정이 레이드에서 어떻게 보일지 요약합니다. 맵 카드를 누르면 그 맵 설정으로 갑니다.','A summary of how raids will play. Click a map card to edit it.'),render(){
   const est=MAPS.map(m=>[m,estimate(m)]),cnt=k=>MAPS.filter(m=>state.maps[m.id].style===k).length;
   const avg=est.filter(([,e])=>e).map(([,e])=>(e.pmin+e.pmax)/2),avgP=avg.length?Math.round(avg.reduce((a,b)=>a+b,0)/avg.length):0;
@@ -1803,8 +1824,8 @@ P.tiers={desc:T('플레이어 레벨에 따라 7단계로 나눈 장비 수준�
       +slider('gear.fixedTier',T('고정 티어','Fixed tier'),'',{min:1,max:7,unit:'',dis:g.tierMode!=='fixed'})+slider('gear.startTier',T('가장 낮은 티어','Lowest tier'),T('이보다 낮은 티어는 쓰지 않습니다.','Never below this tier.'),{min:1,max:7,unit:'',adv:true}),{icon:'◇'})}
    ${card(T('공통','Global'),sw('gear.splitAmmo',T('상탄 / 하탄 분리','Split loaded / spare ammo'),T('총에 꽂힌 탄창은 장전 탄 관통 상한, 여분 탄창·낱개 탄·보안 컨테이너 탄은 티어마다 정한 예비 탄 관통 상한 안에서 고릅니다. 끄면 모두 장전 탄과 같은 탄입니다.','The magazine in the gun uses the loaded-ammo pen cap; spare mags, loose rounds and secure-container ammo use each tier’s spare-ammo pen cap. Off = all the same round as loaded.'))+sw('gear.thermalsT7',T('T7 열화상 조준경','Thermal scopes on T7'),'',{adv:true})+sw('gear.seasonal',T('계절 외형','Seasonal outfits'),'')+sw('gear.noQuest',T('퀘스트 전용 템 금지','No quest-only items'),T('카파 등 퀘스트 보상 템을 봇이 들고 나오지 않게.','Bots never carry quest rewards.')),{icon:'⋯'})}</div>
    ${lvCard()}
-   ${card(T('티어 편집기','Tier editor'),`<p class="muted small">${tr(T('봇마다 T1~T7에 들고 나올 무기·방어구·탄약·의약품·부착물을 정하는 화면은 따로 뺐습니다. 어떤 봇에 Gravity 장비를 쓸지도 거기 왼쪽 봇 목록에서 켜고 끕니다.','The per-bot T1–T7 item editor has its own page. Turn bots on/off from its bot list.'))}</p><div class="chips" style="margin:10px 0">${ROLE_GROUPS.map(([cap,items])=>pill(tr(cap)+' '+items.filter(([id])=>state.roles[id].on).length+'/'+items.length,'blue')).join('')}</div><button class="btn pri" data-nav="tieredit">✎ ${tr(T('티어 편집기 열기','Open tier editor'))} →</button>`,{icon:'✎'})}
-   ${card(T('장비 프리셋','Loadout presets'),`<p class="muted small">${tr(T('T1~T7 값, 티어 편집기 표, 봇별 장비·무기 구성·모드 아이템 설정을 묶은 프리셋은 장비 프리셋 페이지에서 고르고 저장합니다.','Loadout presets (tiers, editor tables, per-bot gear, weapon build, mod items) live on their own page.'))} ${tr(T('지금','Now'))}: <b>${esc(gearPresetName(state.tierPreset))}</b></p><button class="btn pri" data-nav="gearpresets" style="margin-top:10px">❖ ${tr(T('장비 프리셋 열기','Open loadout presets'))} →</button>`,{icon:'❖'})}
+   ${card(T('봇별 아이템 표','Per-bot item table'),`<p class="muted small">${tr(T('봇마다 T1~T7에 들고 나올 무기·방어구·탄약·의약품·부착물은 위 "봇별 아이템 표" 탭에서 정합니다. 어떤 봇에 Gravity 장비를 쓸지도 그 탭 왼쪽 봇 목록에서 켜고 끕니다.','The per-bot T1–T7 items are set on the "Per-bot item table" tab above. Turn bots on/off from its bot list.'))}</p><div class="chips" style="margin:10px 0">${ROLE_GROUPS.map(([cap,items])=>pill(tr(cap)+' '+items.filter(([id])=>state.roles[id].on).length+'/'+items.length,'blue')).join('')}</div><button class="btn pri" data-nav="tieredit">✎ ${tr(T('봇별 아이템 표 열기','Open per-bot item table'))} →</button>`,{icon:'✎'})}
+   ${card(T('장비 프리셋','Loadout presets'),`<p class="muted small">${tr(T('T1~T7 값, 봇별 아이템 표, 봇별 장비·무기 구성·모드 아이템 설정을 묶은 프리셋은 시스템 › 프리셋 · 백업 › 장비 프리셋 탭에서 고르고 저장합니다.','Loadout presets (tiers, item tables, per-bot gear, weapon build, mod items) are on System › Presets & backup › Loadout presets.'))} ${tr(T('지금','Now'))}: <b>${esc(gearPresetName(state.tierPreset))}</b></p><button class="btn pri" data-nav="gearpresets" style="margin-top:10px">❖ ${tr(T('장비 프리셋 열기','Open loadout presets'))} →</button>`,{icon:'❖'})}
   </div>`;}};
 
 P.roles={desc:T('봇 종류마다 장비 적용 여부와 티어, 방탄판·탄약·내구도 규칙을 따로 정합니다.','Per bot type: whether Gravity dresses it, its tier, plates, ammo and durability rules.'),render(){
@@ -2010,7 +2031,7 @@ P.gearpresets={desc:T('T1~T7 값, 티어 편집기 표, 봇별 장비·무기 �
     return `<section class="card preset${cur(p.id)?' cur':''}${p.credit?' credited':''}"><div class="card-h"><div><h2>${tr(p.name)}</h2><p>${tr(p.desc)}</p>${p.credit?`<p class="small credit">♥ ${tr(p.credit)}</p>`:''}</div>${cur(p.id)?pill(tr(T('사용 중','In use')),'blue'):pill(tr(T('기본 제공','Built-in')))}</div>${p.chips?`<div class="chips">${p.chips.map(c=>pill(tr(c),'gold')).join('')}</div>`:kpi(tiers,mods)}<div class="acts"><button class="btn pri" data-gp="apply|${p.id}">${tr(T('적용','Apply'))}</button><button class="btn" data-gp="dup|${p.id}">${tr(T('복제','Duplicate'))}</button></div></section>`;}).join('');
   const custom=customTierPresets.map(p=>`<section class="card preset${cur(p.id)?' cur':''}"><div class="card-h"><div><h2>${esc(showName(p.name))}</h2><p>${tr(p.gearSnap?T('내 장비 프리셋','My loadout preset'):T('내 티어 프리셋 (티어·편집기 표만)','My tier preset (tiers and tables only)'))}</p></div>${cur(p.id)?pill(tr(T('사용 중','In use')),'blue'):''}</div>${kpi(p.tiers,(p.gearSnap&&p.gearSnap.mods)||state.mods)}<div class="acts"><button class="btn pri" data-gp="apply|${p.id}">${tr(T('적용','Apply'))}</button><button class="btn" data-gp="rename|${p.id}">${tr(T('이름 바꾸기','Rename'))}</button><button class="btn" data-gp="export|${p.id}">${tr(T('내보내기','Export'))}</button><button class="btn danger" data-gp="del|${p.id}">${tr(T('삭제','Delete'))}</button></div></section>`).join('');
   const ed=state.tierPreset==='edited'?notice(T('지금 장비 설정은 프리셋에서 고친 상태입니다(프리셋으로 저장 안 함). "현재 장비 설정 저장"으로 내 프리셋을 만들 수 있습니다.','Loadout was edited from a preset (not saved as a preset). Use "Save current loadout" to keep it.'),'warn'):'';
-  return `<div class="stack">${gearOff()}${notice(T('장비 프리셋은 장비 메뉴(장비 티어·봇 레벨 기준·티어 편집기·봇별 장비·무기 구성·모드 아이템) 값만 바꿉니다. 블랙리스트는 프리셋과 상관없이 그대로 유지됩니다.','Loadout presets only change the Loadout menu. The blacklist always stays as it is.'),'flat')}${ed}${presetDiv(T('기본 제공 프리셋','Built-in presets'))}<div class="grid g3">${builtin}</div>${presetDiv(T('내 프리셋','My presets'),true,(page==='gearpresets'?customTierPresets:customPresets).length)}<div class="grid g3">${custom}
+  return `<div class="stack">${gearOff()}${notice(T('장비 프리셋은 장비 메뉴(장비 티어·봇 레벨 기준·티어 편집기·봇별 장비·무기 구성·모드 아이템) 값만 바꿉니다. 블랙리스트는 프리셋과 상관없이 그대로 유지됩니다.','Loadout presets only change the Loadout menu. The blacklist always stays as it is.'),'flat')}${ed}${presetDiv(T('기본 제공 프리셋','Built-in presets'))}<div class="grid g3">${builtin}</div>${presetDiv(T('내 프리셋','My presets'),true,(curUnit()==='gearpresets'?customTierPresets:customPresets).length)}<div class="grid g3">${custom}
    <section class="card preset" style="border-style:dashed;justify-content:center;align-items:center;text-align:center"><p class="muted small">${tr(T('지금 장비 설정을 새 프리셋으로','Save current loadout as a preset'))}</p><button class="btn pri" data-act="tierSave">＋ ${tr(T('현재 장비 설정 저장','Save current loadout'))}</button></section></div>
    ${card(T('가져오기 · 내보내기','Import · export'),`<p class="muted small">${tr(T('파일 이름 예: Gravity-tiers-내프리셋.json · 안에는 프리셋 이름, T1~T7 레벨·상한, 봇별 표, 장비 메뉴 설정, 쓰인 모드 아이템 목록(출처 모드)이 들어 있습니다. 받은 파일에 내가 없는 모드 아이템이 있으면 빼고 적용합니다.','File e.g. Gravity-tiers-mine.json: name, tier levels/caps, per-bot tables, loadout settings and the mod items used. Items from mods you lack are skipped on import.'))}</p><div class="sw-row" style="margin-top:10px"><button class="btn" data-act="tierExport">⇩ ${tr(T('현재 장비 설정을 JSON 파일로','Export current loadout'))}</button><button class="btn pri" data-act="tierImport">⇧ ${tr(T('JSON 파일 가져오기','Import .json'))}</button>${state.tierPreset==='auto'?`<button class="mini-btn" data-act="autoRebuild">${tr(T('설치된 아이템으로 다시 만들기','Rebuild from installed items'))}</button>`:''}</div>`,{icon:'⇄'})}
   </div>`;}};
@@ -2439,8 +2460,7 @@ function conflictNotice(){const a=[];
 /* ================= render ================= */
 function renderNav(){
   const btn=([id,ic,t])=>`<button class="nav-btn ${page===id?'on':''}" data-nav="${id}"><span class="ic">${ic}</span>${tr(t)}${id==='spawn'?`<span class="badge">${MAPS.filter(m=>Object.keys(CARD_FIELDS).some(k=>cardOn(m.id,k))||state.maps[m.id].style==='infinite').length||''}</span>`:''}${id==='factions'?`<span class="badge">${FACTIONS.filter(f=>state.factions[f.id].managed).length||''}</span>`:''}${id==='diag'&&qbDemo?'<span class="badge" style="color:var(--red)">!</span>':''}</button>`;
-  const top=NAV[0][1].find(x=>x[0]==='dashboard');
-  $('#nav').innerHTML=btn(top)+NAV.map(([cap,items],i)=>{const list=items.filter(x=>x[0]!=='dashboard'),open=readLocal('gravity.nav.'+i,'1')!=='0'||list.some(x=>x[0]===page);
+  $('#nav').innerHTML=NAV[0][1].map(btn).join('')+NAV.slice(1).map(([cap,list],i)=>{const open=readLocal('gravity.nav.'+i,'1')!=='0'||list.some(x=>x[0]===page);
     return `<hr class="nav-sep"><details class="nav-group" data-nav-group="${i}" ${open?'open':''}><summary class="nav-cap">${tr(cap)}</summary>${list.map(btn).join('')}</details>`;}).join('')
     +`<hr class="nav-sep"><button class="nav-btn nav-faq ${page===NAV_FAQ[0]?'on':''}" data-nav="${NAV_FAQ[0]}"><span class="ic">${NAV_FAQ[1]}</span>${tr(NAV_FAQ[2])}</button>`;}
 
@@ -2485,31 +2505,33 @@ function scanControls(html){
 }
 /** 모든 페이지·탭을 그려 색인을 만든다. 지금 페이지·탭·모드는 그대로 돌려 놓는다. 언어가 바뀌면 다시 만든다. */
 function buildSearchIndex(){
-  const keep={page,mode,FOLD},tabs=Object.fromEntries(Object.entries(PAGE_TABS).map(([k,t])=>[k,t.get()])),mapKeep=mapSel,out=[],seen=new Set();
+  const keep={page,mode,FOLD,subTab},tabs=Object.fromEntries(Object.entries(PAGE_TABS).map(([k,t])=>[k,t.get()])),mapKeep=mapSel,out=[],seen=new Set();
   const pages=[...NAV.flatMap(([,items])=>items.map(x=>x[0]))];
-  const add=e=>{const k=e.kind+'|'+e.page+'|'+e.path;if(seen.has(k))return;seen.add(k);out.push(e);};
+  // 그릴 단위: [메뉴 페이지, 탭 키, 그 탭을 그리는 기존 페이지, 탭 이름]
+  const units=pages.flatMap(id=>SUBS[id]?SUBS[id].map(([k,un,l])=>[id,k,un,l]):[[id,null,id,null]]);
+  const add=e=>{const k=e.kind+'|'+e.page+'|'+(e.sub||'')+'|'+e.path+(e.path?'':'|'+(e.tab||''));if(seen.has(k))return;seen.add(k);out.push(e);};
   const pageText=id=>{const t=navTitle(id);return t?t.ko+' '+t.en:id;};
   try{
-    for(const id of pages){
-      const pt=navTitle(id),pd=P[id]&&P[id].desc;
-      add({kind:'page',page:id,tab:null,path:'',label:pt,desc:pd?tr(pd):'',adv:false,card:'',text:(pt?pt.ko+' '+pt.en:'')+' '+(pd?pd.ko+' '+pd.en:'')});
-      if(id==='spawn')MAPS.forEach(mp=>add({kind:'page',page:'spawn',tab:mp.id,path:'',label:T(pt.ko+' · '+mp.name.ko,pt.en+' · '+mp.name.en),desc:'',adv:false,card:'',text:pageText(id)+' '+mp.name.ko+' '+mp.name.en+' '+mp.id}));
-      if(IDX_SKIP.includes(id)||!P[id])continue;
-      const tb=PAGE_TABS[id],vals=tb?tb.vals():[null];
+    for(const [id,sub,un,sl] of units){
+      const pt=navTitle(id),pd=P[un]&&P[un].desc,ptxt=pageText(id)+(sl?' '+sl.ko+' '+sl.en:'');
+      add({kind:'page',page:id,sub,unit:un,tab:null,path:'',label:sl?T(pt.ko+' › '+sl.ko,pt.en+' › '+sl.en):pt,desc:pd?tr(pd):'',adv:false,card:'',text:ptxt+' '+(pd?pd.ko+' '+pd.en:'')});
+      if(id==='spawn')MAPS.forEach(mp=>add({kind:'page',page:'spawn',sub:null,unit:'spawn',tab:mp.id,path:'',label:T(pt.ko+' · '+mp.name.ko,pt.en+' · '+mp.name.en),desc:'',adv:false,card:'',text:ptxt+' '+mp.name.ko+' '+mp.name.en+' '+mp.id}));
+      if(IDX_SKIP.includes(un)||!P[un])continue;
+      const tb=PAGE_TABS[un],vals=tb?tb.vals():[null];
       for(const v of vals){
-        if(tb)tb.set(v);page=id;
+        if(tb)tb.set(v);page=id;subTab=sub||'';
         let advHtml='',easyHtml='';
-        try{FOLD=null;mode='adv';advHtml=P[id].render();FOLD=null;mode='easy';easyHtml=P[id].render();}catch(_){continue;}
+        try{FOLD=null;mode='adv';advHtml=P[un].render();FOLD=null;mode='easy';easyHtml=P[un].render();}catch(_){continue;}
         const easyPaths=new Set(scanControls(easyHtml).filter(e=>!e.adv).map(e=>e.path));
         for(const c of scanControls(advHtml)){
           const lab=REG[c.path]||null,tabName=tb&&v!=='all'&&c.path.split('.').includes(String(v).split('|').pop())?tb.name(v):null; // 탭과 상관없는 공통 칸에는 탭 이름을 붙이지 않는다
-          add({kind:'set',page:id,tab:tb?v:null,path:c.path,label:lab,labelText:lab?'':labelFor(c.path),desc:c.desc,card:c.card,adv:c.adv||!easyPaths.has(c.path),tabName,
-            text:(lab?lab.ko+' '+lab.en:labelFor(c.path))+' '+c.card+' '+c.desc+' '+pageText(id)+(tabName?' '+tabName.ko+' '+tabName.en:'')+' '+c.path});
+          add({kind:'set',page:id,sub,unit:un,tab:tb?v:null,path:c.path,label:lab,labelText:lab?'':labelFor(c.path),desc:c.desc,card:c.card,adv:c.adv||!easyPaths.has(c.path),tabName,subName:sl,
+            text:(lab?lab.ko+' '+lab.en:labelFor(c.path))+' '+c.card+' '+c.desc+' '+ptxt+(tabName?' '+tabName.ko+' '+tabName.en:'')+' '+c.path});
         }
       }
     }
   }finally{
-    Object.entries(tabs).forEach(([k,v])=>PAGE_TABS[k].set(v));mapSel=mapKeep;page=keep.page;mode=keep.mode;FOLD=keep.FOLD;
+    Object.entries(tabs).forEach(([k,v])=>PAGE_TABS[k].set(v));mapSel=mapKeep;page=keep.page;mode=keep.mode;FOLD=keep.FOLD;subTab=keep.subTab;
   }
   for(const [gk,ge,items] of FAQ_DATA)for(const [id,qk,qe,ak,ae] of items)
     add({kind:'faq',page:'faq',tab:null,path:id,label:T(qk,qe),desc:stripTags(lang==='en'?ae:ak).slice(0,140),adv:false,card:'',text:gk+' '+ge+' '+qk+' '+qe+' '+stripTags(ak)+' '+stripTags(ae)});
@@ -2550,7 +2572,7 @@ function jumpTo(e){
   closePop();tFull=false;
   if(e.kind==='faq'){faqQ='';selectPage('faq');render();const d=document.querySelector(`[data-faq="${e.path}"]`);if(d){d.open=true;flashEl(d);}return;}
   if(e.adv&&mode==='easy'){mode='adv';toast(tr(T('고급 칸이라 고급 모드로 바꿨습니다.','Switched to Advanced mode to show this setting.')));}
-  selectPage(e.page);if(e.tab!=null&&PAGE_TABS[e.page])PAGE_TABS[e.page].set(e.tab);
+  selectPage(e.page,e.sub!=null?e.sub:undefined);const tb=PAGE_TABS[e.unit||e.page];if(e.tab!=null&&tb)tb.set(e.tab);
   render();
   if(!e.path){window.scrollTo(0,0);return;}
   const q=['data-p','data-segp','data-flip'].map(k=>`[${k}="${e.path}"]`).join(','),el=document.querySelector('#main')&&document.querySelector('#main').querySelector&&document.querySelector('#main').querySelector(q);
@@ -2558,6 +2580,7 @@ function jumpTo(e){
 }
 /** 경로만 아는 바로가기(FAQ 답 안 링크 등)용: 경로 앞부분으로 페이지를 고른다. */
 function pageOfPath(p){const h=String(p).split('.')[0];return ({spawn:'spawn',maps:'spawn',near:'spawn',bosses:'bosses',bossCommon:'bosses',specials:'specials',factions:'factions',events:'events',gear:'tiers',roles:'roles',stats:'botstats',weapons:'weapons',mods:'items',blacklist:'blacklist',client:'client',orbit:'orbit',compat:'diag',dev:'dev'})[h]||'dashboard';}
+// (orbit·dev는 selectPage가 PAGE_ALIAS로 합친 페이지 탭으로 바꾼다)
 function flashEl(el){if(!el)return;if(el.scrollIntoView)el.scrollIntoView({block:'center'});if(el.classList){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2000);}}
 const KIND_IC={set:'⚙',page:'▤',faq:'?'};
 function renderNavResults(){
@@ -2565,7 +2588,7 @@ function renderNavResults(){
   navHits=searchSettings(navQ);if(navCur>=navHits.length)navCur=0;
   if(!navQ.trim()){box.hidden=true;box.innerHTML='';return;}
   box.hidden=false;
-  box.innerHTML=navHits.length?navHits.map((e,i)=>{const where=e.kind==='faq'?tr(NAV_FAQ[2]):[tr(navTitle(e.page)),e.tabName?tr(e.tabName):'',e.card].filter(Boolean).join(' › ');
+  box.innerHTML=navHits.length?navHits.map((e,i)=>{const where=e.kind==='faq'?tr(NAV_FAQ[2]):[tr(navTitle(e.page)),e.subName?tr(e.subName):'',e.tabName?tr(e.tabName):'',e.card].filter(Boolean).join(' › ');
     return `<button class="sres${i===navCur?' on':''}" data-sres="${i}"><span class="ic">${KIND_IC[e.kind]}</span><span><b>${esc(entryLabel(e))}</b>${e.adv?` <small class="advtag">${tr(T('고급','Adv'))}</small>`:''}${e.more?` <small class="advtag" style="color:#7c879b">${fmt(tr(T('+{n}곳','+{n} more')),{n:e.more})}</small>`:''}<small>${esc(where)}</small></span></button>`;}).join('')
     :`<p class="muted small" style="padding:8px">${tr(T('찾는 설정이 없습니다. 다른 낱말(예: 상한, 수류탄, 보스)로 찾아 보십시오.','Nothing found. Try another word (e.g. cap, grenade, boss).'))}</p>`;
 }
@@ -2588,9 +2611,10 @@ function renderShell(){
   $('#gearPresetSel').value=state.tierPreset;document.body.classList.toggle('easy',mode==='easy');renderNav();
 }
 function render(){
-  if(page==='flow'||page==='maps'||page==='near')selectPage(page);
-  persistNavigation();renderShell();const pg=P[page];$('#main').classList.toggle('wide',page==='tieredit');
-  $('#main').innerHTML=`<div class="crumb">${u('settings')} / ${tr(navTitle(page))}</div><div class="head"><div><h1>${tr(navTitle(page))}</h1><p>${tr(pg.desc)}</p></div></div><div id="modeNote"></div>${liveBanner(page)}${svmNotice(page)}${pg.render()}<div id="advNote"></div>`;
+  if(page==='flow'||page==='maps'||page==='near'||PAGE_ALIAS[page])selectPage(page);
+  if(SUBS[page]&&!SUBS[page].some(x=>x[0]===subTab))selectPage(page);
+  persistNavigation();renderShell();const unit=curUnit(),pg=P[unit],sl=SUBS[page]?subLabel(page,subTab):null;$('#main').classList.toggle('wide',unit==='tieredit');
+  $('#main').innerHTML=`<div class="crumb">${u('settings')} / ${tr(navTitle(page))}${sl?' › '+tr(sl):''}</div><div class="head"><div><h1>${tr(navTitle(page))}</h1><p>${tr(pg.desc)}</p></div></div>${tabBar(page)}<div id="modeNote"></div>${liveBanner(unit)}${svmNotice(unit)}${pg.render()}<div id="advNote"></div>`;
   const n=$('#main').querySelectorAll('.adv').length,easy=mode==='easy';
   try{document.documentElement.style.setProperty('--advtxt',JSON.stringify(tr(T('고급','Advanced'))));}catch(_){}
   $('#modeNote').innerHTML=`<div class="mode-note ${easy?'easy':'adv'}"><b>${tr(easy?T('쉬운 모드','Easy mode'):T('고급 모드','Advanced mode'))}</b><span>${tr(easy?T('자주 쓰는 칸만 보입니다.','Only the common settings are shown.'):T('모든 칸이 보입니다. 보라색 "고급" 표시가 붙은 칸은 쉬운 모드에서 숨겨집니다.','Every setting is shown. Ones marked "Advanced" in purple are hidden in Easy mode.'))}${n?' '+fmt(tr(easy?T('이 페이지에 숨겨진 고급 칸 {n}개.','{n} advanced settings hidden on this page.'):T('이 페이지의 고급 칸 {n}개.','{n} advanced settings on this page.')),{n}):''}</span>${easy?(n?`<button class="mini-btn" data-act="toAdv">${u('showAdv')}</button>`:''):`<button class="mini-btn" data-act="toEasy">${tr(T('쉬운 모드로','Back to Easy'))}</button>`}</div>`;
@@ -2769,6 +2793,7 @@ document.addEventListener('click',e=>{
   if(d.tslot){tSlot=d.tslot;if(pickOpen)pickOpen=tSec+'|'+tSlot;pq='';rerender();return;}
   if(d.aslot){attSlot=d.aslot;if(pickOpen)pickOpen=attSlot==='count'?'':'attach|'+attSlot;pq='';rerender();return;}
   if(d.sres!==undefined){navSearchGo(+d.sres);return;}
+  if(d.subtab){selectPage(page,d.subtab);tFull=false;closePop();render();window.scrollTo(0,0);return;}
   if(d.nav){selectPage(d.nav);tFull=false;closePop();$('#drawer').classList.remove('open');render();window.scrollTo(0,0);return;}
   if(d.mode){mode=d.mode;rerender();return;}
   if(d.lang){lang=d.lang==='en'?'en':'ko';writeLocal('gravity.lang',lang);rerender();return;}
