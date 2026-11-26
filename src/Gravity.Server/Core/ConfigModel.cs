@@ -44,7 +44,7 @@ public sealed record SpawnSettings(
     // 1.1.0 보충 상한(spawn.maxRespawn.*): 시작 봇 뒤 Gravity가 레이드 중 다시 넣는 PMC·스캐브 최대 인원(0 = 제한 없음).
     public int MaxRespawnPmc { get; init; }
     public int MaxRespawnScav { get; init; }
-    // 1.1.0 대원마다 난이도(spawn.diffPerMember, 모든 맵 공통): 켜면 분대장은 분대 난이도, 대원은 난이도 비율에서 따로 뽑는다. 꺼짐 = 분대 전체가 같은 난이도.
+    // 1.1.4(PR #5) 대원마다 난이도(spawn.diffPerMember, 모든 맵 공통): 켜면 분대장은 분대 난이도, 대원은 난이도 비율에서 따로 뽑는다. 꺼짐 = 분대 전체가 같은 난이도.
     public bool DiffPerMember { get; init; }
 
     // 1.0.8 TotalCap(INBOX #61): 레이드 전체에서 활성화되는 봇 누적 수 상한(0 = 끔). 닿으면 Gravity가 내는 스폰만 멈춘다.
