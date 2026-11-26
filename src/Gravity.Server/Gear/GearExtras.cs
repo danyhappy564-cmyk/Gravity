@@ -160,6 +160,27 @@ public static class GearExtras
         return dropped;
     }
 
+    /// <summary>
+    /// 1.1.5(1차 하네스 F-cap): SPT는 예비 탄창 수 가중치를 총마다 적용해(AddWeaponAndMagazinesToInventory) 총이 둘이면 상한의 두 배까지 나온다.
+    /// 화면 설명대로 '봇 전체' 상한에 맞춰 넘친 예비 탄창(탄 포함)을 뺀다. 주무기에 맞지 않는 탄창부터 빼고, 총에 꽂힌 탄창·보안 컨테이너는 건드리지 않는다.
+    /// </summary>
+    public static int TrimSpareMags(List<Item> items, string? equipmentId, int cap, Func<string, bool> isMag, Func<MongoId, TemplateItem?> tpl)
+    {
+        if (string.IsNullOrEmpty(equipmentId) || cap < 0) return 0;
+        var sc = items.FirstOrDefault(i => i.ParentId == equipmentId && i.SlotId == "SecuredContainer");
+        var hidden = sc == null ? new HashSet<string>() : Subtree(items, sc.Id.ToString());
+        var spare = items.Where(i => i.SlotId != "mod_magazine" && !hidden.Contains(i.Id.ToString()) && isMag(i.Template.ToString())).ToList();
+        if (spare.Count <= cap) return 0;
+        var primary = items.FirstOrDefault(i => i.ParentId == equipmentId && i.SlotId == "FirstPrimaryWeapon");
+        var fits = new HashSet<MongoId>();
+        if (primary != null && tpl(primary.Template)?.Properties?.Slots is { } ps)
+            foreach (var sl in ps.Where(x => x.Name == "mod_magazine"))
+                foreach (var f in sl.Properties?.Filters ?? []) foreach (var m in f.Filter ?? []) fits.Add(m);
+        var drop = spare.OrderBy(m => fits.Contains(m.Template) ? 1 : 0).Take(spare.Count - cap).ToList();
+        foreach (var m in drop) { var ids = Subtree(items, m.Id.ToString()); items.RemoveAll(i => ids.Contains(i.Id.ToString())); }
+        return drop.Count;
+    }
+
     private static readonly string[] HeadTargets = ["Earpiece", "Eyewear", "FaceCover"];
     private static readonly HashSet<string> HeadSlots = ["Headwear", "Earpiece", "Eyewear", "FaceCover"];
 

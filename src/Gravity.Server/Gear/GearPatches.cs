@@ -435,6 +435,10 @@ public class GearBotPatch : AbstractPatch
             // 1.1.5: 헬멧 부품이 막거나 충돌하는 헤드셋·안경·얼굴 가리개, 리그가 막는 방탄복 빼기 — 모드가 지운 원래 제한도 봇에는 적용(WearRules, #93)
             if (GearRuntime.Templates is { } ht)
                 GearExtras.DropHeadClashes(__result.Inventory.Items, __result.Inventory.Equipment?.ToString(), t => WearRules.For(t, x => ht.GetValueOrDefault(x)));
+            // 1.1.5: 예비 탄창은 봇 전체 기준 티어 상한(SPT는 총마다 적용)
+            if (GearRuntime.Templates is { } mt)
+                GearExtras.TrimSpareMags(__result.Inventory.Items, __result.Inventory.Equipment?.ToString(), caps.Mags,
+                    id => GearRuntime.Items.Info.GetValueOrDefault(id) is { Section: "parts", Slot: "magazine" }, t => mt.GetValueOrDefault(t));
             if (GearRuntime.LogBots) Gravity.Core.DiagLog.GearLine(BotLine(pick, __result));
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }

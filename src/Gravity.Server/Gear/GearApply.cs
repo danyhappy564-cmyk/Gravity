@@ -151,6 +151,14 @@ public static class GearApply
                     }
                     if (drop) { pool.Remove(mid); removed++; }
                 }
+                // 1.1.5(1차 하네스 F-plate): 앞·뒤판 칸에 이 티어 등급 범위([FMin,FMax]) 판이 하나도 안 들어가는 방탄복·리그는 뺀다.
+                // 그대로 두면 판 거르기가 '가장 가까운 등급'으로 대체해 T5에 3급 판, T1에 5급 옆판이 들어간다. 다른 후보가 남을 때만 뺀다.
+                if (slot is "ArmorVest" or "TacticalVest" && GearRuntime.Templates is { } tp)
+                {
+                    var bad = pool.Where(kv => kv.Value > 0 && !PlateRangeFits(kv.Key, caps, tp, c)).Select(kv => kv.Key).ToList();
+                    if (bad.Count > 0 && bad.Count < pool.Count(kv => kv.Value > 0))
+                        foreach (var m in bad) { pool.Remove(m); removed++; }
+                }
                 if (!userSlot && (pool.Count == 0 || pool.Values.All(v => v <= 0)))
                 {
                     // 다 빠졌으면: 막히지 않은 것 중 가장 낮은 티어만 원래 무게로 되살린다.
@@ -233,6 +241,23 @@ public static class GearApply
         }
         // 1.1.0: 표 안 부품 중 칸 표가 없는 것은 다른 봇 표로 메운다(TRG M10 조준경 마운트 등).
         if(inv?.Mods!=null)GearCompatibility.FillHoles(inv.Mods,c.Items,c.Blocked);
+        // 1.1.5(1차 하네스 F-plate): 봇 원래 표의 판 칸에 이 티어 등급 범위 판이 하나도 없으면(SPT 레이더 Kirasa-N 앞판 = AR500 LP 3급뿐 등),
+        // 그 방탄복이 실제로 받는 판 중 범위 안 것을 더한다. 안 그러면 거르기가 '가장 가까운 등급'으로 대체해 T5 레이더가 3급 판을 단다.
+        if (inv?.Mods != null)
+            foreach (var (parentId, slots) in inv.Mods)
+            {
+                if (slots == null || !c.Items.CompatibleMods.TryGetValue(parentId.ToString(), out var compat)) continue;
+                foreach (var (slotName, set) in slots)
+                {
+                    var n = slotName.ToLowerInvariant();
+                    bool front = n is "front_plate" or "back_plate", side = n is "left_side_plate" or "right_side_plate";
+                    if ((!front && !side) || set == null || !compat.TryGetValue(slotName, out var all)) continue;
+                    int lo = front ? caps.FMin : caps.SMin, hi = front ? caps.FMax : caps.Side;
+                    bool In(string id) => c.Info(id) is { Plate: true } i && i.ArmorClass >= lo && i.ArmorClass <= hi;
+                    if (set.Any(m => In(m.ToString()))) continue;
+                    foreach (var id in all.Where(id => In(id) && !c.Blocked(id))) set.Add(new MongoId(id));
+                }
+            }
         if (inv?.Mods != null)
             foreach (var (parentId, slots) in inv.Mods)
             {
@@ -278,6 +303,9 @@ public static class GearApply
     /// </summary>
     public static (int Removed, bool Restored) FilterModSet(HashSet<MongoId> set, string slotName, GearContext c, bool required = false, string? parentId = null)
     {
+        // 1.1.5(1차 하네스 A-slot): 총의 약실이 받는 탄과 하나도 겹치지 않는 탄창은 뺀다(다른 후보가 남을 때만).
+        // SalcosArmory는 .300 BLK AK 탄창을 5.45 AK 탄창 칸에도 넣어, 봇이 .300 탄창에 5.45 탄을 채운 채 들고 나왔다.
+        if (slotName == "mod_magazine" && parentId != null && GearRuntime.Templates is { } tp) DropWrongCaliberMags(set, parentId, tp);
         var before = set.ToList();
         var res = FilterCore(set, slotName, c);
         if (set.Count > 0 || !required || before.Count == 0) return res;
@@ -394,6 +422,42 @@ public static class GearApply
             foreach (var m in cand) set.Add(m);
         }
         return (orig.Count - set.Count, true);
+    }
+
+    internal static void DropWrongCaliberMags(HashSet<MongoId> set, string weaponId, IReadOnlyDictionary<MongoId, TemplateItem> tpls)
+    {
+        if (!tpls.TryGetValue(new MongoId(weaponId), out var w) || w.Properties?.Chambers is not { } ch) return;
+        var ok = ch.SelectMany(x => x.Properties?.Filters ?? []).SelectMany(f => f.Filter ?? []).ToHashSet();
+        if (ok.Count == 0) return;
+        bool Fits(MongoId m) => !tpls.TryGetValue(m, out var mt) || mt.Properties?.Cartridges is not { } cs
+            || cs.SelectMany(x => x.Properties?.Filters ?? []).SelectMany(f => f.Filter ?? []).Any(ok.Contains)
+            || !cs.SelectMany(x => x.Properties?.Filters ?? []).SelectMany(f => f.Filter ?? []).Any();
+        var bad = set.Where(m => !Fits(m)).ToList();
+        if (bad.Count > 0 && bad.Count < set.Count) foreach (var m in bad) set.Remove(m);
+    }
+
+    /// <summary>판 칸이 없거나(소프트 방탄·일반 리그), 앞·뒤판 칸마다 [FMin,FMax] 안 판을 하나 이상 받고 옆판 칸마다 [SMin,Side] 안 판을 받으면 true.</summary>
+    internal static bool PlateRangeFits(MongoId carrier, TierCaps caps, IReadOnlyDictionary<MongoId, TemplateItem> tpls, GearContext c)
+    {
+        if (!tpls.TryGetValue(carrier, out var t) || t.Properties?.Slots == null) return true;
+        foreach (var slot in t.Properties.Slots)
+        {
+            var n = slot.Name?.ToLowerInvariant();
+            bool front = n is "front_plate" or "back_plate", side = n is "left_side_plate" or "right_side_plate";
+            if (!front && !side) continue;
+            int lo = front ? caps.FMin : caps.SMin, hi = front ? caps.FMax : caps.Side;
+            bool any = false, anyPlate = false;
+            foreach (var f in slot.Properties?.Filters ?? [])
+                foreach (var p in f.Filter ?? [])
+                {
+                    var info = c.Info(p.ToString());
+                    if (info == null || !info.Plate) continue;
+                    anyPlate = true;
+                    if (info.ArmorClass >= lo && info.ArmorClass <= hi) { any = true; break; }
+                }
+            if (anyPlate && !any) return false;
+        }
+        return true;
     }
 
     /// <summary>1.1.0: 판 목록을 이 등급 이하로. 다 빠지면 가장 낮은 등급 판만 남긴다.</summary>

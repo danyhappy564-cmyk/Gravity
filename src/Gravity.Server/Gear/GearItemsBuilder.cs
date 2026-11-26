@@ -129,7 +129,10 @@ public static class GearItemsBuilder
                 PlatePositions = positions.TryGetValue(id,out var pos) ? pos.Order(StringComparer.Ordinal).ToArray() : [],
                 Source = GearItemSource.Resolve(id,vanilla,sources), Name = t.Name,
                 Caliber = pr?.Caliber ?? pr?.AmmoCaliber ?? "",
+                // 1.1.5(1차 하네스): 수류탄·지뢰 파편 템플릿(shrapnel_F1 등)은 구경이 9x18PM인 '탄'이라 저티어 9x18 탄으로 뽑혔다. 실제 탄이 아니므로 뺀다.
+                // KS-23 Shrapnel-10/25(patron_23x75_shrapnel_*)는 진짜 탄이라 이름이 shrapnel로 '시작'하는 것만 뺀다.
                 Available = string.Equals(t.Type, "Item", StringComparison.OrdinalIgnoreCase)
+                            && !(t.Name ?? "").StartsWith("shrapnel", StringComparison.OrdinalIgnoreCase)
             };
         }
         var pools = new List<(string, string)>();
