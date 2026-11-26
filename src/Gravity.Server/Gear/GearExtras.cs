@@ -104,32 +104,58 @@ public static class GearExtras
     /// 그래서 FAST Ears + ComTac, 바이저(안경 막음) + 안경 같은 조합이 나온다. 머리 장비끼리 막거나(Blocks*) 충돌(ConflictingItems)하면
     /// 헤드셋·안경·얼굴 가리개 쪽을 통째로(달린 것까지) 뺀다. 뺀 칸 이름을 돌려준다.
     /// </summary>
-    public static List<string> DropHeadClashes(List<Item> items, string? equipmentId, Func<MongoId, TemplateItem?> tpl)
+    public static List<string> DropHeadClashes(List<Item> items, string? equipmentId, Func<MongoId, WearRule?> rule)
     {
         var dropped = new List<string>();
         if (string.IsNullOrEmpty(equipmentId)) return dropped;
+        Item? Top(string slot) => items.FirstOrDefault(i => i.ParentId == equipmentId && i.SlotId == slot);
+        bool Clash(IEnumerable<Item> a, IEnumerable<Item> b, string targetSlot)
+        {
+            var bl = b.ToList();
+            foreach (var o in a)
+            {
+                var r = rule(o.Template);
+                if (r != null && r.Blocks(targetSlot)) return true;
+                foreach (var m in bl)
+                    if (r?.Conflicts.Contains(m.Template) == true || rule(m.Template)?.Conflicts.Contains(o.Template) == true) return true;
+            }
+            return false;
+        }
+        List<Item> Tree(Item top) { var ids = Subtree(items, top.Id.ToString()); return items.Where(x => ids.Contains(x.Id.ToString())).ToList(); }
+
         foreach (var slot in HeadTargets)
         {
-            var root = items.FirstOrDefault(i => i.ParentId == equipmentId && i.SlotId == slot);
+            var root = Top(slot);
             if (root == null) continue;
-            var mine = Subtree(items, root.Id.ToString());
-            var rootT = tpl(root.Template);
-            var others = items.Where(i => i.ParentId == equipmentId && i.SlotId is { } s && HeadSlots.Contains(s) && i != root)
-                .SelectMany(h => items.Where(x => Subtree(items, h.Id.ToString()).Contains(x.Id.ToString()))).ToList();
-            bool clash = others.Any(o =>
-            {
-                var ot = tpl(o.Template);
-                if (ot?.Properties is { } op && Blocks(op, slot)) return true;
-                foreach (var m in items.Where(x => mine.Contains(x.Id.ToString())))
-                {
-                    var mt = tpl(m.Template);
-                    if (mt?.Properties?.ConflictingItems?.Contains(o.Template) == true || ot?.Properties?.ConflictingItems?.Contains(m.Template) == true) return true;
-                }
-                return false;
-            });
-            if (!clash || rootT == null) continue;
-            items.RemoveAll(i => mine.Contains(i.Id.ToString()));
+            var mine = Tree(root);
+            var otherTops = HeadSlots.Where(s => s != slot).Select(Top).Where(t => t != null).Select(t => t!).ToList();
+            var others = otherTops.SelectMany(Tree).ToList();
+            // 남이 이 칸을 막거나, 이쪽이 이미 차 있는 다른 머리 칸을 막거나(CQCM 마스크 → 헬멧), 서로 충돌하면 이쪽을 뺀다
+            bool blocksOther = mine.Any(m => rule(m.Template) is { } r && otherTops.Any(t => r.Blocks(t.SlotId!)));
+            if (!blocksOther && !Clash(others, mine, slot)) continue;
+            items.RemoveAll(i => mine.Contains(i));
             dropped.Add(slot);
+        }
+        // 헬멧 안 부품끼리 충돌(FAST 안면 보호대 ↔ SLAAP 판 등): 나중 부품을 통째로 뺀다. 헬멧 기본 방탄 칸(Helmet_*)은 건드리지 않는다.
+        if (Top("Headwear") is { } hw)
+        {
+            var parts = Tree(hw).Where(x => x != hw && x.SlotId?.StartsWith("Helmet_", StringComparison.OrdinalIgnoreCase) != true).ToList();
+            for (int i = 0; i < parts.Count; i++)
+                for (int j = i + 1; j < parts.Count; j++)
+                {
+                    var (x, y) = (parts[i], parts[j]);
+                    if (!items.Contains(x) || !items.Contains(y)) continue;
+                    if (rule(x.Template)?.Conflicts.Contains(y.Template) != true && rule(y.Template)?.Conflicts.Contains(x.Template) != true) continue;
+                    var yt = Tree(y);
+                    items.RemoveAll(k => yt.Contains(k));
+                    dropped.Add("Headwear/" + y.SlotId);
+                }
+        }
+        // 방탄 리그가 막거나 충돌하는 방탄복(SVM EquipRigsWithArmors 대비): 방탄복 쪽을 뺀다(리그에는 탄창·약이 들어 있음).
+        if (Top("ArmorVest") is { } vest && Top("TacticalVest") is { } rig)
+        {
+            var vt = Tree(vest);
+            if (Clash(Tree(rig), vt, "ArmorVest")) { items.RemoveAll(i => vt.Contains(i)); dropped.Add("ArmorVest"); }
         }
         return dropped;
     }
@@ -137,13 +163,6 @@ public static class GearExtras
     private static readonly string[] HeadTargets = ["Earpiece", "Eyewear", "FaceCover"];
     private static readonly HashSet<string> HeadSlots = ["Headwear", "Earpiece", "Eyewear", "FaceCover"];
 
-    private static bool Blocks(TemplateItemProperties p, string slot) => slot switch
-    {
-        "Earpiece" => p.BlocksEarpiece == true,
-        "Eyewear" => p.BlocksEyewear == true,
-        "FaceCover" => p.BlocksFaceCover == true,
-        _ => false
-    };
 
     /// <summary>id와 그 아래 모든 아이템 id.</summary>
     private static HashSet<string> Subtree(List<Item> items, string id)
