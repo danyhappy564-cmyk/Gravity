@@ -28,7 +28,27 @@ namespace Gravity.Shared
     /// <summary>FirstDelaySec(1.0): PMC 첫 보충 시각(클라 경과 초, 스캐브 레이드 지연을 뺀 값). 옛 서버는 null — 이때는 예전 동작.</summary>
     public sealed record InfDto(double DelaySec, int Batch, double PmcShare, double Jitter, double? FirstDelaySec = null);
 
-    public sealed record RefillGroup(bool Usec, int Size, string Difficulty);
+    /// <summary>
+    /// 보충 PMC 분대 하나. Difficulty = 분대장 난이도. Escorts = 대원(Size − 1명)마다 따로 뽑은 난이도(대원마다 난이도 켬, spawn.diffPerMember):
+    /// null이면 분대 전체가 Difficulty 하나(꺼짐·1인 분대·옛 서버).
+    /// </summary>
+    public sealed record RefillGroup(bool Usec, int Size, string Difficulty, string[]? Escorts = null)
+    {
+        /// <summary>
+        /// 분대원 순서(분대장 → 대원)에서 start부터 count명만 떼어 낸 분대. 크기를 나눌 때 대원 난이도가 어긋나지 않게 쓴다:
+        /// 떼어 낸 첫 사람이 그 분대의 분대장 난이도가 된다. Escorts가 없으면 크기만 바꾼다.
+        /// </summary>
+        public RefillGroup Slice(int start, int count)
+        {
+            if (Escorts == null) return this with { Size = count };
+            string At(int member) => member == 0 ? Difficulty : Escorts[member - 1];
+            var leader = At(start);
+            if (count <= 1) return new RefillGroup(Usec, count, leader);
+            var escorts = new string[count - 1];
+            for (int i = 0; i < escorts.Length; i++) escorts[i] = At(start + 1 + i);
+            return new RefillGroup(Usec, count, leader, escorts);
+        }
+    }
 
     public sealed record NearDto(
         bool On, double FirstDelay, double Interval, double MinDist, double MaxDist, double Spacing,

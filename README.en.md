@@ -31,7 +31,7 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 
 **Spawn module**
 
-- PMCs: starting squads plus waves or continuous refills, squad-size mix, faction mix, difficulty and level range, stop near the end of the raid.
+- PMCs: starting squads plus waves or continuous refills, squad-size mix, faction mix, difficulty and level range (optional: `Roll difficulty per member`, off by default — when off, the whole squad shares one difficulty), stop near the end of the raid.
 - Scavs: starting count, active/quiet cycles, map caps (one shared value or per map), protection radius around the player for refills, **intensity over the raid** (early/mid/late multipliers, e.g. the reverse of PMCs: more scavs later).
 - Bosses and special bots (sniper scavs, Raiders, Rogues, Cultists, …): chance, count and timing on a timeline; 0 means they never appear. Bosses can have a **chance per map** (empty = the boss's default/shared chance).
 - Special bots can be added to maps that don't have them (e.g. Raiders or Rogues on Customs). Extra Raider/Rogue groups get a group count and early/mid/late weights.

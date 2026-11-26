@@ -173,8 +173,8 @@ namespace Gravity.Shared
             var g = groups[index];
             int fit = FitPmc(g.Size, cap);
             if (fit >= g.Size) return false;
-            groups[index] = g with { Size = fit };
-            groups.Insert(index + 1, g with { Size = g.Size - fit });
+            groups[index] = g.Slice(0, fit);
+            groups.Insert(index + 1, g.Slice(fit, g.Size - fit));
             return true;
         }
         public static int RoomForScavs(int cap, int occupied, int excluded, int held, int pmcReserve) =>

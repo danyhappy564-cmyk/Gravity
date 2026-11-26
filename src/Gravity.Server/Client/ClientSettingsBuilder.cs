@@ -99,16 +99,26 @@ public static class ClientSettingsBuilder
         if (n <= 0) return [];
         var count = new Dictionary<(string, string), int>();
         int left = n;
-        void Add(bool usec, string diff, int size)
+        void Count(bool usec, string diff, int take)
         {
-            if (left <= 0) return;
             var k = (usec ? "pmcUSEC" : "pmcBEAR", string.IsNullOrEmpty(diff) ? "normal" : diff);
-            var take = Math.Min(left, Math.Max(1, size));
             count[k] = count.GetValueOrDefault(k) + take;
             left -= take;
         }
-        foreach (var g in plan.Groups.Where(g => !g.IsStart).OrderBy(g => g.TimeSec)) Add(g.Usec, g.Difficulty, g.Size);
-        foreach (var g in refill) Add(g.Usec, g.Difficulty, g.Size);
+        // 대원마다 난이도(escorts): 분대장은 분대 난이도, 대원은 각자 난이도로 센다. 없으면 분대 전체가 같은 난이도.
+        void Add(bool usec, string diff, int size, string[]? escorts)
+        {
+            if (left <= 0) return;
+            if (escorts == null)
+            {
+                Count(usec, diff, Math.Min(left, Math.Max(1, size)));
+                return;
+            }
+            Count(usec, diff, 1);
+            for (var i = 0; i < escorts.Length && i + 1 < Math.Max(1, size) && left > 0; i++) Count(usec, escorts[i], 1);
+        }
+        foreach (var g in plan.Groups.Where(g => !g.IsStart).OrderBy(g => g.TimeSec)) Add(g.Usec, g.Difficulty, g.Size, g.Escorts);
+        foreach (var g in refill) Add(g.Usec, g.Difficulty, g.Size, g.Escorts);
         return count.Select(kv => new PreloadDto(kv.Key.Item1, kv.Key.Item2, kv.Value)).OrderBy(p => p.Role).ThenBy(p => p.Difficulty).ToArray();
     }
 

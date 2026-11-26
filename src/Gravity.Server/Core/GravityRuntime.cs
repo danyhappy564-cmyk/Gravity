@@ -261,8 +261,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             Last = new LastRaid(DateTime.Now, summary, plan, null);
             info_($"{GravityInfo.Tag} {summary}");
             foreach (var g in plan.Groups)
-                Verbose($"{GravityInfo.Tag} {id} PMC " + L.T($"{(g.IsStart ? "시작" : "웨이브")} {g.TimeSec}초 {(g.Usec ? "USEC" : "BEAR")} {g.Size}명 {g.Difficulty}",
-                    $"{(g.IsStart ? "start" : "wave")} {g.TimeSec}s {(g.Usec ? "USEC" : "BEAR")} x{g.Size} {g.Difficulty}"));
+                Verbose($"{GravityInfo.Tag} {id} PMC " + L.T($"{(g.IsStart ? "시작" : "웨이브")} {g.TimeSec}초 {(g.Usec ? "USEC" : "BEAR")} {g.Size}명 {g.DifficultyText()}",
+                    $"{(g.IsStart ? "start" : "wave")} {g.TimeSec}s {(g.Usec ? "USEC" : "BEAR")} x{g.Size} {g.DifficultyText()}"));
             foreach (var e in loc.BossLocationSpawn ?? [])
                 if (e.BossName is { } bn && !MapCatalog.IsPmc(e))
                     Verbose($"{GravityInfo.Tag} {id} " + L.T($"보스·특수 {bn} 확률 {e.BossChance ?? 0:0}% 구역 {(string.IsNullOrEmpty(e.BossZone) ? "(아무 데)" : e.BossZone)} 시각 {e.Time ?? -1:0}",
@@ -378,7 +378,8 @@ public sealed class GravityRuntime(GravityConfigStore store, MapCatalog catalog,
             entries = (loc.BossLocationSpawn ?? []).Select(e => new
             {
                 role = e.BossName, chance = e.BossChance, zone = e.BossZone, time = e.Time, escorts = e.BossEscortAmount,
-                escortType = e.BossEscortType, difficulty = e.BossDifficulty
+                escortType = e.BossEscortType, difficulty = e.BossDifficulty,
+                supports = e.Supports?.Select(sp => new { type = sp.BossEscortType, amount = sp.BossEscortAmount, difficulty = sp.BossEscortDifficulty })
             }).ToList()
         };
     }
