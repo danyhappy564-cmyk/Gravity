@@ -177,6 +177,39 @@ public class GravityWeb : IHttpListener
                             { ManualTier = gear?.ItemTier.TryGetValue(i.Id, out var t) == true ? t : null }),
                             clothing = Gravity.Gear.GearRuntime.Items.Clothing.Select(c => new { id = c.Id, source = c.Source, part = c.Part, sides = c.Sides }) });
                         return;
+                    case ("lang", "GET"):
+                        await Send(res, 200, new { langs = GravityWebPaths.Paths is { } lp0 ? LangStore.List(lp0.LangDir) : new List<LangStore.LangInfo>() });
+                        return;
+                    case ("lang/file", "GET"):
+                    {
+                        var lf = GravityWebPaths.Paths is { } lp1 ? LangStore.Read(lp1.LangDir, req.Query["code"].ToString()) : null;
+                        if (lf == null) { await Send(res, 404, new { error = "없는 언어 파일 / No such language file" }); return; }
+                        res.StatusCode = 200;
+                        res.ContentType = "application/json; charset=utf-8";
+                        await res.WriteAsync(lf.ToJsonString(), Encoding.UTF8, cancellationToken);
+                        return;
+                    }
+                    case ("lang", "POST"):
+                    {
+                        if (!await WriteAccess.CheckAsync(context)) { await Send(res, 403, Denied); return; }
+                        if (GravityWebPaths.Paths is not { } lp) { await Send(res, 503, new { ok = false, error = "모드 폴더를 모릅니다" }); return; }
+                        if (req.ContentLength > LangStore.MaxBytes) { await Send(res, 413, new { ok = false, error = "너무 큽니다 / Too large" }); return; }
+                        JsonNode? ln;
+                        try { ln = await ReadJson(req, LangStore.MaxBytes, cancellationToken); }
+                        catch (InvalidDataException) { await Send(res, 413, new { ok = false, error = "너무 큽니다 / Too large" }); return; }
+                        catch (JsonException ex) { await Send(res, 400, new { ok = false, error = "JSON 형식 오류 / Bad JSON: " + ex.Message }); return; }
+                        var err = LangStore.Save(lp.LangDir, req.Query["code"].ToString().ToLowerInvariant(), ln);
+                        await Send(res, err == null ? 200 : 400, new { ok = err == null, error = err });
+                        return;
+                    }
+                    case ("lang/names", "GET"):
+                    {
+                        var spt = req.Query["spt"].ToString();
+                        Dictionary<string, string>? db = null;
+                        if (LangStore.ValidSpt(spt)) try { db = Gravity.Gear.GearRuntime.Locale?.Invoke(spt); } catch { /* 없는 언어 */ }
+                        await Send(res, db != null ? 200 : 404, new { names = LangStore.ItemNames(db) });
+                        return;
+                    }
                     case ("lastraid", "GET"):
                         await Send(res, 200, LastRaidBody(rt));
                         return;

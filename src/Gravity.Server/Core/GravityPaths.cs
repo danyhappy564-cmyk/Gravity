@@ -12,4 +12,6 @@ public sealed class GravityPaths(string modDir)
     public string PresetsFile => Path.Combine(ConfigDir, "presets.json");
     /// <summary>레이드 보고·봇 장비 기록(0.6 진단).</summary>
     public string ReportsDir => Path.Combine(ConfigDir, "reports");
+    /// <summary>사용자 번역 파일(1.1.5 언어 팩).</summary>
+    public string LangDir => Path.Combine(ModDir, "lang");
 }
