@@ -452,6 +452,7 @@ public class GearBotPatch : AbstractPatch
             if (id == null) return;
             var rule = st.RuleFor(BotStats.GroupOfId(id), BotStats.TierOf(cfg.Gear, id, dressedTier, bot.Info?.Level ?? 1));
             if (rule != null) BotStats.Apply(bot, rule);
+            BotStats.ApplyMult(bot, st.MultFor(id)); // 1.1.4 봇 종류별 체력 배율: 티어 체력 뒤에 곱함(1이면 그대로)
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
     }

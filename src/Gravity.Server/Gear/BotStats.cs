@@ -10,11 +10,16 @@ public sealed record StatRule(string Health, double HealthMult, string Skills, i
     public bool Changes => Health != "orig" || Skills != "orig";
 }
 
-/// <summary>티어(T1~T7)별 규칙 + 규칙을 따를 봇 묶음.</summary>
-public sealed record BotStatsSettings(IReadOnlyList<StatRule> Tiers, IReadOnlyDictionary<string, bool> Groups)
+/// <summary>티어(T1~T7)별 규칙 + 규칙을 따를 봇 묶음 + 1.1.4 봇 종류(웹 봇 id)별 체력 배율(1이 아닌 것만, 0.5~3).</summary>
+public sealed record BotStatsSettings(IReadOnlyList<StatRule> Tiers, IReadOnlyDictionary<string, bool> Groups, IReadOnlyDictionary<string, double>? RoleMultOrNull = null)
 {
     public static readonly BotStatsSettings Default = new(Enumerable.Repeat(StatRule.Original, 7).ToArray(), BotStats.Groups.ToDictionary(g => g, _ => true));
-    public bool Any => Tiers.Any(t => t.Changes) && Groups.Values.Any(on => on);
+    private static readonly IReadOnlyDictionary<string, double> NoMult = new Dictionary<string, double>();
+    public IReadOnlyDictionary<string, double> RoleMult => RoleMultOrNull ?? NoMult;
+    public bool Any => (Tiers.Any(t => t.Changes) && Groups.Values.Any(on => on)) || RoleMult.Count > 0;
+
+    /// <summary>그 봇 종류의 체력 배율(없으면 1).</summary>
+    public double MultFor(string id) => RoleMult.TryGetValue(id, out var m) ? m : 1;
 
     /// <summary>그 묶음·티어(0~6)의 규칙. 묶음이 꺼져 있거나 바꿀 것이 없으면 null.</summary>
     public StatRule? RuleFor(string group, int tier)
@@ -88,6 +93,20 @@ public static class BotStats
                 s.Progress = g.Skills == "level"
                     ? Math.Clamp(g.SkillLevel * 100.0, 0, CommonSkill.MaxSkillProgress)
                     : Math.Clamp(s.Progress * g.SkillPct / 100.0, 0, CommonSkill.MaxSkillProgress);
+        return true;
+    }
+
+    /// <summary>1.1.4: 모든 부위 최대·현재 체력에 배율을 곱한다(티어 규칙 뒤에 한 번 더). 1이면 false.</summary>
+    public static bool ApplyMult(BotBase bot, double mult)
+    {
+        if (Math.Abs(mult - 1) < 1e-9 || bot.Health?.BodyParts is not { } parts) return false;
+        foreach (var part in parts.Values)
+        {
+            if (part?.Health is not { } h) continue;
+            var max = Math.Max(1, Math.Round((h.Maximum ?? 0) * mult));
+            h.Current = Math.Clamp(Math.Round((h.Current ?? max) * mult), 1, max);
+            h.Maximum = max;
+        }
         return true;
     }
 }

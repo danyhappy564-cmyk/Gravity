@@ -81,6 +81,7 @@ select:focus{border-color:var(--primary)}
 .nav-btn{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:#a9b3c4;text-align:left;padding:9px 12px;margin:2px 0;border-radius:8px;font-size:13px;transition:background .15s,color .15s}
 .navsearch{position:relative;margin:0 0 10px}.navsearch input{width:100%;padding:8px 30px 8px 10px;border-radius:8px;border:1px solid #263042;background:#0b0f16;color:#dfe6f1;font-size:13px}.navsearch input:focus{outline:none;border-color:var(--gold)}.navsearch kbd{position:absolute;right:8px;top:7px;font-size:11px;color:#6d7890;border:1px solid #2a3446;border-radius:4px;padding:0 5px;pointer-events:none}.navres{margin-top:6px;max-height:60vh;overflow-y:auto;overflow-x:hidden;border:1px solid #263042;border-radius:8px;background:#0d121a}.sres{display:flex;gap:8px;align-items:flex-start;width:100%;border:0;background:none;color:#cdd6e4;text-align:left;padding:7px 9px;font-size:12.5px;border-bottom:1px solid #18202c}.sres:last-child{border-bottom:0}.sres:hover,.sres.on{background:#18212e}.sres .ic{width:16px;flex:none;color:var(--gold);text-align:center}.sres small{display:block;color:#7c879b;font-size:11px;margin-top:1px}.sres small.advtag{display:inline;color:#b79cff}.qseg{flex-wrap:wrap}.qseg small{font-size:10px}.qvals{margin-top:10px}.qvals ul{margin:6px 0 0 18px;line-height:1.7}.linkish{background:none;border:0;color:#9cc2ff;padding:0;cursor:pointer;text-decoration:underline dotted;font:inherit}
 .ovrask{border:1px solid var(--gold);background:#1c1a12;border-radius:10px;padding:10px 12px;margin:8px 0 10px;font-size:13px}.ovrask .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.headsw .ctl{margin:0;padding:0;border:0}.capnote{margin:-4px 0 10px}.shared-card .ctl{opacity:.8}
+.rmult{border-top:1px solid var(--line);padding:8px 0}.rmult summary{cursor:pointer;font-weight:600;padding:4px 0}
 .flash{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px;transition:outline-color .3s}
 .nav-btn:hover{background:#ffffff08;color:var(--text)}
 .nav-btn .ic{width:18px;text-align:center;opacity:.8}
@@ -717,7 +718,8 @@ const spreadText=r=>r&&r.mode==='spread'&&r.spread?tr(T('분포','Spread'))+' '+
 // 봇 티어 = Gravity가 입힌 장비 티어, 아니면 봇별 장비의 티어 방식(고정·분포 = 고정 티어, 레벨 따라가기 = 레벨의 티어). 묶음 체크로 따를 봇을 고른다.
 const STAT_GROUPS=[['scav',T('스캐브 (저격·AI 플레이어 스캐브 포함)','Scavs (incl. snipers & AI player scavs)')],['pmc',T('PMC','PMCs')],['special',T('특수 봇 · 팩션','Special bots & factions')],['boss',T('보스','Bosses')],['follower',T('호위','Followers')]];
 const statRule0=()=>({health:'orig',healthMult:1,skills:'orig',skillLevel:1,skillPct:100});
-const statDefaults=()=>({tiers:Object.fromEntries([1,2,3,4,5,6,7].map(t=>[t,statRule0()])),groups:Object.fromEntries(STAT_GROUPS.map(([g])=>[g,true]))});
+// 1.1.4 roleMult: 봇 종류(봇별 장비 id)별 체력 배율, 티어 체력 뒤에 곱함(1 = 그대로).
+const statDefaults=()=>({tiers:Object.fromEntries([1,2,3,4,5,6,7].map(t=>[t,statRule0()])),groups:Object.fromEntries(STAT_GROUPS.map(([g])=>[g,true])),roleMult:Object.fromEntries(ROLES.map(r=>[r.id,1]))});
 const statText=o=>[o.health==='pmc'?tr(T('체력 440','440 HP')):o.health==='mult'?tr(T('체력','HP'))+' ×'+(+o.healthMult).toFixed(2):'',o.skills==='level'?tr(T('스킬 레벨','skill level'))+' '+o.skillLevel:o.skills==='pct'?tr(T('스킬','skills'))+' '+o.skillPct+'%':''].filter(Boolean).join(' · ')||tr(T('원래대로','Original'));
 function roleDefaults(id){
   const pmc=id==='usec'||id==='bear',boss=id.startsWith('boss_'),fol=id.startsWith('f_'),fac=['ruaf','untar','blackdiv','wedge'].includes(id);
@@ -1918,7 +1920,11 @@ P.botstats={desc:T('봇 티어(T1~T7)마다 체력과 일반 스킬을 정합니
     +(o.health==='mult'?slider(P+'healthMult',T('체력 배율','Health multiplier'),T('부위별 최대·현재 체력에 곱합니다.','Multiplies max and current HP of every body part.'),{min:0.5,max:3,step:0.05,unit:UI.x}):'')
     +seg(P+'skills',T('스킬','Skills'),'',[['orig',T('원래대로','Original')],['level',T('레벨 고정','Fixed level')],['pct',T('원래의 %','% of original')]])
     +(o.skills==='level'?slider(P+'skillLevel',T('스킬 레벨','Skill level'),T('근력·지구력·반동 조절 같은 일반 스킬을 모두 이 레벨로 맞춥니다.','Sets every common skill (Strength, Endurance, Recoil Control…) to this level.'),{min:0,max:51,unit:''}):o.skills==='pct'?slider(P+'skillPct',T('원래 스킬의 %','% of original skills'),'',{min:0,max:200,unit:UI.pct}):''));}).join('');
-  return `<div class="stack">${head}<div class="grid g2">${tiers}</div></div>`;}};
+  const rm=S.roleMult||{};
+  const multCard=card(T('봇 종류별 체력 배율','Health multiplier per bot type'),`<p class="muted small">${tr(T('위 티어 체력을 적용한 뒤 봇 종류마다 한 번 더 곱합니다(예: 티어 1.5배 × 여기 2배 = 3배). 1 = 그대로, 0.5~3. 위 "이 표를 따를 봇"을 꺼도 여기 배율은 적용됩니다.','Applied once more per bot type after the tier health above (e.g. tier 1.5× × 2× here = 3×). 1 = unchanged, 0.5–3. Applies even if that group is off above.'))}</p>`
+    +ROLE_GROUPS.map(([cap,items])=>{const ch=items.filter(([id])=>(rm[id]??1)!==1).length;
+      return `<details class="rmult" ${ch?'open':''}><summary>${tr(cap)}${ch?' '+pill(fmt(tr(T('{n}개 바꿈','{n} changed')),{n:ch}),'gold'):''}</summary><div class="grid g3" style="gap:0 22px">${items.map(([id,ko,en])=>slider('stats.roleMult.'+id,T(ko,en),'',{min:0.5,max:3,step:0.1,unit:UI.x})).join('')}</div></details>`;}).join(''),{icon:'♥'});
+  return `<div class="stack">${head}<div class="grid g2">${tiers}</div>${multCard}</div>`;}};
 
 P.weapons={desc:T('무기에 붙는 부품과 맵별 무기 성향을 정합니다.','Weapon builds and per-map weapon tendencies.'),render(){
   const w=state.weapons;

@@ -478,13 +478,27 @@ public static partial class ConfigModel
         };
     }
 
-    /// <summary>stats.tiers.&lt;1~7&gt;.health·healthMult·skills·skillLevel·skillPct + stats.groups.&lt;묶음&gt;(기본 켬, 1.0.6). 모르는 값은 원래대로.</summary>
+    /// <summary>stats.tiers.&lt;1~7&gt;.health·healthMult·skills·skillLevel·skillPct + stats.groups.&lt;묶음&gt;(기본 켬, 1.0.6) + stats.roleMult.&lt;봇 id&gt;(0.5~3, 1.1.4). 모르는 값은 원래대로.</summary>
     private static Gravity.Gear.BotStatsSettings ReadStats(Reader r) => new(Enumerable.Range(1, 7).Select(t =>
     {
         var p = $"stats.tiers.{t}.";
         return new Gravity.Gear.StatRule(r.Str(p + "health", "orig", "orig", "pmc", "mult"), r.Num(p + "healthMult", 1, 0.5, 3),
             r.Str(p + "skills", "orig", "orig", "level", "pct"), (int)r.Num(p + "skillLevel", 1, 0, 51), r.Num(p + "skillPct", 100, 0, 200));
-    }).ToArray(), Gravity.Gear.BotStats.Groups.ToDictionary(g => g, g => r.Bool("stats.groups." + g, true)));
+    }).ToArray(), Gravity.Gear.BotStats.Groups.ToDictionary(g => g, g => r.Bool("stats.groups." + g, true)), ReadRoleMult(r));
+
+    /// <summary>1.1.4: stats.roleMult.&lt;봇 id&gt; — 1이 아닌 것만 담는다(범위 밖은 0.5~3으로 자름).</summary>
+    private static IReadOnlyDictionary<string, double> ReadRoleMult(Reader r)
+    {
+        var d = new Dictionary<string, double>(StringComparer.Ordinal);
+        if (r.Node("stats.roleMult") is not JsonObject o) return d;
+        foreach (var (id, _) in o)
+        {
+            if (id.Length is 0 or > 64 || id.Contains('.')) continue;
+            var m = r.Num("stats.roleMult." + id, 1, 0.5, 3);
+            if (Math.Abs(m - 1) > 1e-9) d[id] = m;
+        }
+        return d;
+    }
 
     /// <summary>초반·중반·후반 배수(0~3). 칸이 하나도 없거나 모두 1이면 null(= 1.0.5와 같게 고르게).</summary>
     internal static double[]? Curve(Reader r, string p)
