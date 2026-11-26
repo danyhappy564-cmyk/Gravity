@@ -19,7 +19,7 @@
 
 The full changelog (60 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-006.md`](changelog/CHANGELOG-006.md)). Per-release summaries: [Releases](../../releases).
 
-# Gravity 1.1.4
+# Gravity 1.1.5
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/real_feels)
 
