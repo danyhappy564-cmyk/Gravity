@@ -98,4 +98,63 @@ public static class GearExtras
         }
         return n;
     }
+
+    /// <summary>
+    /// 1.1.5(1차 하네스 2026-11-27): SPT는 헤드셋·안경·얼굴 가리개를 고를 때 헬멧 본체만 보고, 헬멧에 달린 귀 보호대·바이저는 보지 않는다.
+    /// 그래서 FAST Ears + ComTac, 바이저(안경 막음) + 안경 같은 조합이 나온다. 머리 장비끼리 막거나(Blocks*) 충돌(ConflictingItems)하면
+    /// 헤드셋·안경·얼굴 가리개 쪽을 통째로(달린 것까지) 뺀다. 뺀 칸 이름을 돌려준다.
+    /// </summary>
+    public static List<string> DropHeadClashes(List<Item> items, string? equipmentId, Func<MongoId, TemplateItem?> tpl)
+    {
+        var dropped = new List<string>();
+        if (string.IsNullOrEmpty(equipmentId)) return dropped;
+        foreach (var slot in HeadTargets)
+        {
+            var root = items.FirstOrDefault(i => i.ParentId == equipmentId && i.SlotId == slot);
+            if (root == null) continue;
+            var mine = Subtree(items, root.Id.ToString());
+            var rootT = tpl(root.Template);
+            var others = items.Where(i => i.ParentId == equipmentId && i.SlotId is { } s && HeadSlots.Contains(s) && i != root)
+                .SelectMany(h => items.Where(x => Subtree(items, h.Id.ToString()).Contains(x.Id.ToString()))).ToList();
+            bool clash = others.Any(o =>
+            {
+                var ot = tpl(o.Template);
+                if (ot?.Properties is { } op && Blocks(op, slot)) return true;
+                foreach (var m in items.Where(x => mine.Contains(x.Id.ToString())))
+                {
+                    var mt = tpl(m.Template);
+                    if (mt?.Properties?.ConflictingItems?.Contains(o.Template) == true || ot?.Properties?.ConflictingItems?.Contains(m.Template) == true) return true;
+                }
+                return false;
+            });
+            if (!clash || rootT == null) continue;
+            items.RemoveAll(i => mine.Contains(i.Id.ToString()));
+            dropped.Add(slot);
+        }
+        return dropped;
+    }
+
+    private static readonly string[] HeadTargets = ["Earpiece", "Eyewear", "FaceCover"];
+    private static readonly HashSet<string> HeadSlots = ["Headwear", "Earpiece", "Eyewear", "FaceCover"];
+
+    private static bool Blocks(TemplateItemProperties p, string slot) => slot switch
+    {
+        "Earpiece" => p.BlocksEarpiece == true,
+        "Eyewear" => p.BlocksEyewear == true,
+        "FaceCover" => p.BlocksFaceCover == true,
+        _ => false
+    };
+
+    /// <summary>id와 그 아래 모든 아이템 id.</summary>
+    private static HashSet<string> Subtree(List<Item> items, string id)
+    {
+        var set = new HashSet<string> { id };
+        for (bool grew = true; grew;)
+        {
+            grew = false;
+            foreach (var i in items)
+                if (i.ParentId != null && set.Contains(i.ParentId) && set.Add(i.Id.ToString())) grew = true;
+        }
+        return set;
+    }
 }

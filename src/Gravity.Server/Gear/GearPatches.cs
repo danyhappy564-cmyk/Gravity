@@ -432,6 +432,9 @@ public class GearBotPatch : AbstractPatch
             }
             // 1.1.0: 의료품·음식 남은 양 무작위를 끈 봇은 가득 채운다.
             if (!role.Meds && GearRuntime.Templates is { } tpls) GearExtras.FillConsumables(__result.Inventory.Items, t => tpls.GetValueOrDefault(t));
+            // 1.1.5: 헬멧 부품(귀 보호대·바이저)이 막거나 충돌하는 헤드셋·안경·얼굴 가리개 빼기(1차 하네스 A-conf·A-block)
+            if (GearRuntime.Templates is { } ht)
+                GearExtras.DropHeadClashes(__result.Inventory.Items, __result.Inventory.Equipment?.ToString(), t => ht.GetValueOrDefault(t));
             if (GearRuntime.LogBots) Gravity.Core.DiagLog.GearLine(BotLine(pick, __result));
         }
         catch (Exception ex) { GearRuntime.LastError = ex.Message; }
