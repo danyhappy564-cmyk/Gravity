@@ -113,6 +113,9 @@ public sealed record GearSettings(
     public bool Seasonal { get; init; } = true;
     /// <summary>1.1.5 의상 레벨 티어(웹 gear.clothingLevel, 기본 켬): PMC 상의·하의를 래그맨 의상 요구 레벨이 속한 티어로 나눠, 봇 티어 이하 옷만 입힌다.</summary>
     public bool ClothingLevel { get; init; } = true;
+    /// <summary>1.1.5 의상 고르는 범위(웹 gear.clothingRange): exact = 봇 티어 옷만, near = 한 티어 아래까지(기본), all = 아래 티어 전부.
+    /// 어느 쪽이든 아래 티어 옷일수록 무게를 낮추고(장비와 같은 Factor), 래그맨 옷이 3벌도 안 되면 바로 아래 티어를 보탠다.</summary>
+    public string ClothingRange { get; init; } = "near";
     /// <summary>1.1.5 자동 티어 장비 후보 범위: exact = 봇 티어 아이템만, near = 봇 티어와 한 단계 아래, all = 봇 티어 이하 전부(낮을수록 적게, 1.1.4까지).
     /// 표에 사람이 직접 넣은 아이템(무게 지정)은 이 범위와 상관없이 그대로 쓴다.</summary>
     public string TierRange { get; init; } = "exact";
@@ -363,7 +366,7 @@ public static partial class ConfigModel
             ModOther = (int)r.Num("mods.other", 0, 0, 1000), ModClothing = (int)r.Num("mods.clothingCount", -1, -1, 500),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),
-            Weapons = Gravity.Gear.WeaponExtras.Read(r), SplitAmmo = v110 && r.Bool(g + "splitAmmo", true), Seasonal = r.Bool(g + "seasonal", true), ClothingLevel = r.Bool(g + "clothingLevel", true),
+            Weapons = Gravity.Gear.WeaponExtras.Read(r), SplitAmmo = v110 && r.Bool(g + "splitAmmo", true), Seasonal = r.Bool(g + "seasonal", true), ClothingLevel = r.Bool(g + "clothingLevel", true), ClothingRange = r.Str(g + "clothingRange", "near", "exact", "near", "all"),
             TierRange = r.Str(g + "tierRange", "exact", "exact", "near", "all") };
     }
 }

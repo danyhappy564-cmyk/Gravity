@@ -35,9 +35,11 @@ public static class GearClothing
     public static int Apply(BotType bot, GearContext c, Random rnd) => LevelFilter(bot, c) + Apply(bot, c.Settings, c.Pick.RoleId, c.Items, c.Raid);
 
     /// <summary>
-    /// 1.1.5 의상 레벨 티어(gear.clothingLevel): PMC(usec·bear) 상의·하의 중 래그맨 원본 의상은 요구 레벨이 속한 티어(장비 티어 레벨 구간)가
-    /// 봇 티어 이하인 것만 남긴다. 요구 레벨 표에 없는 옷(모드 옷·이벤트 옷)은 그대로 둔다(모드 옷은 의상 탭이 정함).
-    /// 남는 래그맨 옷이 없으면 가장 낮은 티어 옷을 남긴다.
+    /// 1.1.5 의상 레벨 티어(gear.clothingLevel): PMC(usec·bear) 상의·하의 중 래그맨 원본 옷은 요구 레벨이 속한 티어(장비 티어 레벨 구간)로 나눠
+    /// 봇 티어보다 높은 옷은 빼고, 고르는 범위(gear.clothingRange: exact 봇 티어만·near 한 티어 아래까지·all 아래 전부) 밖 낮은 옷도 뺀다.
+    /// 남은 옷은 아래 티어일수록 무게를 낮춘다(장비와 같은 GearApply.Factor). 래그맨 옷이 MinRangeCandidates(3)벌도 안 되면
+    /// 바로 아래 티어부터 묶음째 보탠다(티어마다 옷이 1~5벌뿐이고 T7 구간에는 없다). 그래도 없으면 가장 낮은 티어 옷을 남긴다.
+    /// 요구 레벨 표에 없는 옷(모드 옷·이벤트 옷)은 그대로 둔다(모드 옷은 의상 탭이 정함).
     /// </summary>
     /// <returns>뺀 옷 수.</returns>
     public static int LevelFilter(BotType bot, GearContext c)
@@ -45,6 +47,7 @@ public static class GearClothing
         var g = c.Settings;
         if (!g.ClothingLevel || !g.Module || bot.BotAppearance == null || c.Items.ClothingLevel.Count == 0 || g.Tiers.Count == 0) return 0;
         if (c.Pick.RoleId is not ("usec" or "bear")) return 0;
+        int bt = c.Pick.Tier, lo = g.ClothingRange switch { "all" => int.MinValue, "exact" => bt, _ => bt - 1 };
         int removed = 0;
         foreach (var pool in new[] { bot.BotAppearance.Body, bot.BotAppearance.Feet })
         {
@@ -52,14 +55,19 @@ public static class GearClothing
             var tiered = pool.Keys.Select(k => (Key: k, Lv: c.Items.ClothingLevel.TryGetValue(k.ToString(), out var lv) ? lv : -1))
                 .Where(x => x.Lv >= 0).Select(x => (x.Key, Tier: GearTier.TierOfLevel(g.Tiers, Math.Max(1, x.Lv)))).ToList();
             if (tiered.Count == 0) continue;
-            var drop = tiered.Where(x => x.Tier > c.Pick.Tier).ToList();
-            if (drop.Count == tiered.Count)
+            var keep = tiered.Where(x => x.Tier <= bt && x.Tier >= lo).ToList();
+            foreach (var grp in tiered.Where(x => x.Tier < lo).GroupBy(x => x.Tier).OrderByDescending(gp => gp.Key))
             {
-                int lo = tiered.Min(x => x.Tier);
-                drop = drop.Where(x => x.Tier > lo).ToList();
+                if (keep.Count >= GearApply.MinRangeCandidates) break;
+                keep.AddRange(grp);
             }
-            foreach (var x in drop) pool.Remove(x.Key);
-            removed += drop.Count;
+            if (keep.Count == 0) { int min = tiered.Min(x => x.Tier); keep = tiered.Where(x => x.Tier == min).ToList(); }
+            var kept = keep.ToDictionary(x => x.Key, x => x.Tier);
+            foreach (var x in tiered)
+            {
+                if (!kept.TryGetValue(x.Key, out var t)) { pool.Remove(x.Key); removed++; }
+                else pool[x.Key] = pool[x.Key] * GearApply.Factor(Math.Max(0, bt - t));
+            }
         }
         return removed;
     }
