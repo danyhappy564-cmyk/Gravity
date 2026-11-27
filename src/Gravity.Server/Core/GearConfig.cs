@@ -122,7 +122,7 @@ public sealed record GearSettings(
     public bool ModClothCheap { get; init; }
     /// <summary>1.1.5 자동 티어 장비 후보 범위: exact = 봇 티어 아이템만, near = 봇 티어와 한 단계 아래, all = 봇 티어 이하 전부(낮을수록 적게, 1.1.4까지).
     /// 표에 사람이 직접 넣은 아이템(무게 지정)은 이 범위와 상관없이 그대로 쓴다.</summary>
-    public string TierRange { get; init; } = "exact";
+    public string TierRange { get; init; } = "near";
     /// <summary>1.1.0 무기 화면의 낱개 탄약·대용량 탄창·부품 개수·밤 손전등·맵별 무기 성향.</summary>
     public Gravity.Gear.WeaponExtras Weapons { get; init; } = new();
     public RoleGear RoleFor(string id) => Roles.TryGetValue(id, out var r) ? r : GearDefaults.Role(id);
@@ -371,6 +371,6 @@ public static partial class ConfigModel
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),
             Weapons = Gravity.Gear.WeaponExtras.Read(r), SplitAmmo = v110 && r.Bool(g + "splitAmmo", true), Seasonal = r.Bool(g + "seasonal", true), ClothingLevel = r.Bool(g + "clothingLevel", true), ClothingRange = r.Str(g + "clothingRange", "near", "exact", "near", "all"), ModClothUnlockTier = (int)r.Num(g + "modClothUnlockTier", 4, 1, 7), ModClothCheap = r.Bool(g + "modClothCheap", false),
-            TierRange = r.Str(g + "tierRange", "exact", "exact", "near", "all") };
+            TierRange = r.Str(g + "tierRange", "near", "exact", "near", "all") };
     }
 }
