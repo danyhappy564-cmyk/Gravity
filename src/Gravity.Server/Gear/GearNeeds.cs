@@ -47,6 +47,14 @@ public static class GearNeeds
         return !g.ModDisabled(info);
     }
 
+    /// <summary>총 gunId가 티어 t(0~6)에서 조준경을 달 수 있는지. HasAny = 티어를 무시하면 경로가 있음, Ok = 티어 안 경로가 있음,
+    /// Lift = 티어 위 고리 수가 가장 적은 경로에서 옮겨야 할 고리(같으면 티어 합 → 가격 합이 낮은 경로).</summary>
+    internal static (bool HasAny, bool Ok, IReadOnlyList<string> Lift) ScopePath(GearSettings g, GearItems items,
+        IReadOnlyDictionary<string, int> itemTier, string gunId, int t) => new Ctx(g, items, itemTier, BlackAll(g)).ScopePath(gunId, t);
+
+    /// <summary>탐색 상한(GearCompatibility와 같은 값).</summary>
+    private const int MaxDepth = 12, MaxVisit = 512;
+
     /// <summary>프리셋 전체 판정. 정렬: 직접 티어 관련 먼저 → 티어 → 종류 → id.</summary>
     public static IReadOnlyList<Need> Check(GearSettings g, GearItems items, IReadOnlyDictionary<string, int> itemTier)
     {
@@ -59,6 +67,7 @@ public static class GearNeeds
             bool req = info.RequiredSlots is { Count: > 0 };
             if (!gun && !req) continue;
             int t = ctx.Tier(id);
+            if (gun && ctx.ScopeNeed(id, t) is { } sc) res.Add(sc);
             if (gun && ctx.AmmoNeed(id, info, t) is { } a) res.Add(a);
             if (req) res.AddRange(ctx.RequiredNeeds(id, info, t));
         }
@@ -89,6 +98,59 @@ public static class GearNeeds
         private Need Make(string kind, string id, int t, string? slot, IReadOnlyList<string> lift, string? note) =>
             new(kind, id, t + 1, slot, lift.Select(x => new NeedFix(x, Tier(x) + 1, t + 1)).ToList(), note,
                 Manual(id) || lift.Any(Manual));
+
+        private bool ScopeEnd(string id, int t)
+        {
+            if (!items.Info.TryGetValue(id, out var x) || x.Section != "parts" || x.Slot != "scope") return false;
+            bool thermal = (x.Thermal || g.ThermalAdd.Contains(id)) && !g.ThermalRemove.Contains(id);
+            if (thermal) return g.ThermalsT7 && t == 6; // 서버 ThermalOk의 판과 무관한 부분(밤 확률은 보지 않음)
+            return !x.LongScope || Caps(t).LongScope > 0;
+        }
+
+        /// <summary>
+        /// 총에서 호환 부품 표를 따라 조준경까지. 비용 = (티어 위 고리 수, 그 고리 티어 합, 가격 합)을 사전순으로 비교하는 최단 경로.
+        /// 막힌 부품은 지나가지 않는다. 깊이 12·방문 512에서 멈춘다.
+        /// </summary>
+        public (bool HasAny, bool Ok, IReadOnlyList<string> Lift) ScopePath(string gunId, int t)
+        {
+            var best = new Dictionary<string, (int C, int T, double P)>();
+            var prev = new Dictionary<string, string>();
+            var pq = new PriorityQueue<(string Id, int Depth), (int C, int T, double P)>(
+                Comparer<(int C, int T, double P)>.Create((a, b) => a.C != b.C ? a.C.CompareTo(b.C) : a.T != b.T ? a.T.CompareTo(b.T) : a.P.CompareTo(b.P)));
+            best[gunId] = (0, 0, 0);
+            pq.Enqueue((gunId, 0), (0, 0, 0));
+            int visits = 0;
+            string? end = null;
+            while (pq.TryDequeue(out var cur, out var cost))
+            {
+                if (best[cur.Id] != cost) continue; // 더 좋은 값으로 이미 처리함
+                if (cur.Id != gunId && ScopeEnd(cur.Id, t)) { end = cur.Id; break; } // 첫 조준경 = 가장 싼 경로
+                if (++visits > MaxVisit || cur.Depth >= MaxDepth) continue;
+                if (!items.CompatibleMods.TryGetValue(cur.Id, out var slots)) continue;
+                foreach (var list in slots.Values)
+                    foreach (var m in list)
+                    {
+                        if (m == gunId || !Ok(m)) continue;
+                        bool up = !TierPass(m, t);
+                        var nc = up ? (cost.C + 1, cost.T + Tier(m), cost.P + Price(m)) : cost;
+                        if (best.TryGetValue(m, out var old) && pq.Comparer.Compare(old, nc) <= 0) continue;
+                        best[m] = nc; prev[m] = cur.Id;
+                        pq.Enqueue((m, cur.Depth + 1), nc);
+                    }
+            }
+            if (end == null) return (false, false, []);
+            var lift = new List<string>();
+            for (var x = end; x != gunId; x = prev[x]) if (!TierPass(x, t)) lift.Add(x);
+            lift.Reverse();
+            return (true, lift.Count == 0, lift);
+        }
+
+        public Need? ScopeNeed(string id, int t)
+        {
+            if (!g.PartTiers) return null;
+            var (any, ok, lift) = ScopePath(id, t);
+            return any && !ok ? Make("scope", id, t, null, lift, null) : null;
+        }
 
         public Need? AmmoNeed(string id, ItemInfo gun, int t)
         {
