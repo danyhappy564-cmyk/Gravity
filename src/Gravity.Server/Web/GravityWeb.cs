@@ -175,7 +175,8 @@ public class GravityWeb : IHttpListener
                         var gear = rt.Store.Current.Gear;
                         await Send(res, 200, new { items = Gravity.Gear.GearRuntime.Catalog().Select(i => i with
                             { ManualTier = gear?.ItemTier.TryGetValue(i.Id, out var t) == true ? t : null }),
-                            clothing = Gravity.Gear.GearRuntime.Items.Clothing.Select(c => new { id = c.Id, source = c.Source, part = c.Part, sides = c.Sides }) });
+                            clothing = Gravity.Gear.GearRuntime.Items.Clothing.Select(c => new { id = c.Id, source = c.Source, part = c.Part, sides = c.Sides,
+                                kind = Gravity.Gear.GearRuntime.Items.ModClothRules.TryGetValue(c.Id, out var cr) ? cr.Kind : null, level = cr?.Level }) });
                         return;
                     case ("lang", "GET"):
                         await Send(res, 200, new { langs = GravityWebPaths.Paths is { } lp0 ? LangStore.List(lp0.LangDir) : new List<LangStore.LangInfo>() });

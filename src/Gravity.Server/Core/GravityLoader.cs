@@ -18,7 +18,7 @@ namespace Gravity.Core;
 public class GravityLoader(
     ISptLogger<GravityLoader> logger, ModHelper modHelper, LocationTable locations,
     PmcConfig pmcConfig, BotConfig botConfig, ProfileActivityService activity, SeasonalEventService seasonal, JsonUtil json,
-    TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Services.Locales.LocaleService locales,
+    TemplateTable templates, BotTable bots, GlobalTable globals, SPTarkov.Server.Core.Models.Spt.Tables.TradersTable traders, SPTarkov.Server.Core.Services.Locales.LocaleService locales,
     SPTarkov.Server.Core.Utils.Cloners.ICloner cloner, SPTarkov.Server.Core.Services.Bot.BotInventoryContainerService containers,
     SPTarkov.Server.Core.Helpers.Bot.BotGeneratorHelper botHelper, IServiceProvider services) : IOnLoad
 {
@@ -135,9 +135,10 @@ public class GravityLoader(
             Gravity.Gear.GearRuntime.VanillaAmmo = vanillaAmmo;
             var vanillaCustom = Gravity.Gear.GearItemsBuilder.VanillaCustomizationIds(sptData);
             var suitLevels = Gravity.Gear.GearItemsBuilder.VanillaSuitLevels(sptData);
+            var suitPrices = Gravity.Gear.GearItemsBuilder.VanillaSuitPrices(sptData);
             Gravity.Gear.GearRuntime.Builder = () => Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla, GravityBoot.ModsDir,
                 globals.ItemPresets.Values.Where(x => x.Encyclopedia.HasValue && x.Items != null).Select(x => (x.Encyclopedia!.Value.ToString(), x.Items!.Select(i => i.Template.ToString()))),
-                vanillaCustom, suitLevels);
+                vanillaCustom, suitLevels, Gravity.Gear.GearItemsBuilder.SuitOffers(traders.Values, templates), suitPrices);
             Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;

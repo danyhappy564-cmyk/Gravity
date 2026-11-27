@@ -94,9 +94,109 @@ public static class GearItemsBuilder
         return res;
     }
 
+    /// <summary>1.1.5: SPT 원본 래그맨 suits.json에서 (루블 값, 요구 레벨) — 레벨 2 이상·루블로 파는 옷만. 모드 옷 값으로 레벨을 추정할 때 쓴다.</summary>
+    public static List<(double Rub, int Level)> VanillaSuitPrices(string? sptDataDir)
+    {
+        var res = new List<(double, int)>();
+        if (sptDataDir == null) return res;
+        try
+        {
+            var tdir = System.IO.Path.Combine(sptDataDir, "database", "traders");
+            if (!Directory.Exists(tdir)) return res;
+            foreach (var sp in Directory.GetFiles(tdir, "suits.json", SearchOption.AllDirectories))
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllBytes(sp));
+                if (doc.RootElement.ValueKind != JsonValueKind.Array) continue;
+                foreach (var s in doc.RootElement.EnumerateArray())
+                {
+                    if (!s.TryGetProperty("requirements", out var rq) || rq.ValueKind != JsonValueKind.Object) continue;
+                    int lv = rq.TryGetProperty("profileLevel", out var pl) && pl.ValueKind == JsonValueKind.Number ? pl.GetInt32() : 0;
+                    double rub = 0;
+                    if (rq.TryGetProperty("itemRequirements", out var ir) && ir.ValueKind == JsonValueKind.Array)
+                        foreach (var x in ir.EnumerateArray())
+                            if (x.TryGetProperty("_tpl", out var tp) && tp.GetString() == Rouble && x.TryGetProperty("count", out var cn) && cn.ValueKind == JsonValueKind.Number)
+                                rub += cn.GetDouble();
+                    if (lv >= 2 && rub > 0) res.Add((rub, lv));
+                }
+            }
+        }
+        catch (Exception) { res.Clear(); }
+        return res;
+    }
+
+    public const string Rouble = "5449016a4bdc2d6f028b456f";
+
+    /// <summary>1.1.5: 지금 서버 DB(모드가 넣은 것 포함) 상인 의상 판매 → 판정용 줄. 값은 루블(다른 화폐·아이템은 핸드북 값으로 환산).</summary>
+    public static List<SuitOffer> SuitOffers(IEnumerable<Trader> traders, TemplateTable templates)
+    {
+        var hb = templates.Handbook.Items.Where(h => h.Price.HasValue).GroupBy(h => h.Id.ToString()).ToDictionary(g => g.Key, g => g.First().Price!.Value);
+        var res = new List<SuitOffer>();
+        foreach (var t in traders)
+            foreach (var s in t.Suits ?? [])
+            {
+                if (s.Requirements is not { } rq || !templates.Customization.TryGetValue(s.SuiteId, out var suite) || suite.Properties is not { } pr) continue;
+                double rub = 0;
+                foreach (var ir in rq.ItemRequirements ?? [])
+                {
+                    var tpl = ir.Tpl.ToString();
+                    rub += (ir.Count ?? 0) * (tpl == Rouble ? 1 : hb.GetValueOrDefault(tpl));
+                }
+                bool unlock = (rq.AchievementRequirements?.Count ?? 0) > 0 || (rq.QuestRequirements?.Count ?? 0) > 0;
+                int lv = (int)Math.Max(0, rq.ProfileLevel ?? 0);
+                foreach (var part in new[] { pr.Body, pr.Feet })
+                    if (part is { } p) res.Add(new SuitOffer(p.ToString(), lv, rub, unlock));
+            }
+        return res;
+    }
+
+    private static readonly Dictionary<string, string> CurrencyKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["MONEY_ROUBLES"] = Rouble, ["MONEY_EUROS"] = "569668774bdc2da2298b4568", ["MONEY_DOLLARS"] = "5696686a4bdc2da3298b456a",
+        ["RUB"] = Rouble, ["EUR"] = "569668774bdc2da2298b4568", ["USD"] = "5696686a4bdc2da3298b456a"
+    };
+
+    /// <summary>
+    /// 1.1.5: WTT 형식 모드 의상 원본 설정(&lt;모드&gt;/db/CustomClothing/**/*.json: topId·bottomId·profileLevel·price·currencyId·achievementRequirements·questRequirements).
+    /// 서버 DB의 판매 조건은 다른 모드(옷 잠금 풀기 등)가 덮어쓸 수 있어, 모드 제작자가 정한 조건을 함께 본다. 읽지 못한 파일은 건너뛴다.
+    /// </summary>
+    public static List<SuitOffer> WttSuitOffers(string? modsDir, IReadOnlyDictionary<string, double> handbook)
+    {
+        var res = new List<SuitOffer>();
+        if (modsDir == null || !Directory.Exists(modsDir)) return res;
+        foreach (var mod in Directory.GetDirectories(modsDir))
+        {
+            var dir = System.IO.Path.Combine(mod, "db", "CustomClothing");
+            if (!Directory.Exists(dir)) continue;
+            foreach (var f in Directory.GetFiles(dir, "*.json", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(File.ReadAllBytes(f), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+                    if (doc.RootElement.ValueKind != JsonValueKind.Array) continue;
+                    foreach (var e in doc.RootElement.EnumerateArray())
+                    {
+                        if (e.ValueKind != JsonValueKind.Object) continue;
+                        static int Count(JsonElement o, string k) => o.TryGetProperty(k, out var a) && a.ValueKind == JsonValueKind.Array ? a.GetArrayLength() : 0;
+                        int lv = e.TryGetProperty("profileLevel", out var pl) && pl.ValueKind == JsonValueKind.Number ? (int)Math.Max(0, pl.GetDouble()) : 0;
+                        double price = e.TryGetProperty("price", out var pr) && pr.ValueKind == JsonValueKind.Number ? pr.GetDouble() : 0;
+                        var cur = e.TryGetProperty("currencyId", out var cu) && cu.ValueKind == JsonValueKind.String ? cu.GetString() ?? Rouble : Rouble;
+                        if (CurrencyKeys.TryGetValue(cur, out var tpl)) cur = tpl;
+                        double rub = price * (cur == Rouble ? 1 : handbook.GetValueOrDefault(cur));
+                        bool unlock = Count(e, "achievementRequirements") > 0 || Count(e, "questRequirements") > 0;
+                        foreach (var key in new[] { "topId", "bottomId" })
+                            if (e.TryGetProperty(key, out var id) && id.ValueKind == JsonValueKind.String && id.GetString() is { Length: 24 } pid)
+                                res.Add(new SuitOffer(pid, lv, rub, unlock));
+                    }
+                }
+                catch (Exception) { /* 형식이 다른 파일은 건너뜀 */ }
+            }
+        }
+        return res;
+    }
+
     public static GearItems Build(TemplateTable templates, BotTable bots, HashSet<string>? vanilla, string? modsDir = null,
         IEnumerable<(string Item, IEnumerable<string> Parts)>? defaultPresets = null, HashSet<string>? vanillaCustomization = null,
-        IReadOnlyDictionary<string, int>? suitLevels = null)
+        IReadOnlyDictionary<string, int>? suitLevels = null, IEnumerable<SuitOffer>? suitOffers = null, IReadOnlyList<(double Rub, int Level)>? vanillaSuitPrices = null)
     {
         var tpls = templates.Items;
         var prices = templates.Prices;
@@ -211,7 +311,10 @@ public static class GearItemsBuilder
         var donors = BuildDonors(bots.Types.Where(kv => kv.Value?.BotInventory?.Mods != null).Select(kv => (kv.Key,
             (IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>>)kv.Value!.BotInventory!.Mods!.Where(m => m.Value != null).ToDictionary(m => m.Key.ToString(),
                 m => (IReadOnlyDictionary<string, string[]>)m.Value.Where(s => s.Value != null).ToDictionary(s => s.Key, s => s.Value.Select(x => x.ToString()).ToArray())))));
-        return new GearItems(info, pools,compatibility) { Clothing = GearClothing.Build(custom, vanillaCustomization, sources), DonorMods = donors, ClothingLevel = suitLevels ?? new Dictionary<string, int>() };
+        var clothing = GearClothing.Build(custom, vanillaCustomization, sources);
+        return new GearItems(info, pools,compatibility) { Clothing = clothing, DonorMods = donors, ClothingLevel = suitLevels ?? new Dictionary<string, int>(),
+            ModClothRules = suitOffers == null ? new Dictionary<string, ModClothRule>()
+                : GearClothing.ModRules(clothing, suitOffers.Concat(WttSuitOffers(modsDir, hb)), vanillaSuitPrices ?? []) };
     }
 
     private static readonly HashSet<string> PmcTypes = new(StringComparer.OrdinalIgnoreCase) { "usec", "bear", "pmcUSEC", "pmcBEAR" };
