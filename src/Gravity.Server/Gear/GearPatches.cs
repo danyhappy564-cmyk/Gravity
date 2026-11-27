@@ -162,7 +162,8 @@ public class GearLevelPatch : AbstractPatch
             var id = GearTier.RoleId(botGenerationDetails.Role, true, botGenerationDetails.Side);
             if (id == null || !g.RoleFor(id).On) return;
             var rnd = Random.Shared;
-            int L = GearTier.RandomLevel(g, botGenerationDetails.PlayerLevel ?? 1, false, rnd);
+            // 1.1.6 예시 봇: 고정한 티어의 레벨 구간에서 레벨을 고른다.
+            int L = GearSample.PreviewTier.Value is int pt ? GearSample.LevelFor(g, pt, rnd) : GearTier.RandomLevel(g, botGenerationDetails.PlayerLevel ?? 1, false, rnd);
             if (GearRuntime.ExpTable.Length > 0) L = Math.Min(L, GearRuntime.ExpTable.Length);
             __result = new RandomisedBotLevelResult { Level = L, Exp = GearRuntime.ExpFor(L, rnd) };
             GearRuntime.PmcLevel = L;

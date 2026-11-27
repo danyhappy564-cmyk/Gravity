@@ -20,6 +20,14 @@ public static class GearSample
     public static readonly AsyncLocal<int?> PreviewTier = new();
     public static IServiceProvider? Services { get; set; }
 
+    /// <summary>예시 봇 레벨: 그 티어의 레벨 구간(장비 티어 › 레벨 · 상한)에서 고른다. 티어만 고정하고 레벨을 따로 뽑으면 "레벨 21인 T5 봇"처럼 실제 레이드와 다른 예시가 나온다.</summary>
+    public static int LevelFor(Gravity.Core.GearSettings g, int tier0, Random rnd)
+    {
+        var c = g.Tiers[Math.Clamp(tier0, 0, g.Tiers.Count - 1)];
+        int lo = Math.Max(1, c.Min), hi = Math.Max(lo, c.Max);
+        return rnd.Next(lo, hi + 1);
+    }
+
     /// <summary>웹 역할 키 → SPT 봇 종류.</summary>
     public static string? RoleOf(string key) => key switch
     {
