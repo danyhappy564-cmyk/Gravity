@@ -71,7 +71,7 @@ public static class GearSample
             {
                 Conditions = [new GenerateCondition { Role = spt, Limit = n, Difficulty = "normal" }]
             });
-            return (200, new { bots = bots.Take(n).Select(b => Summarize(b, GearRuntime.Items)).ToList() });
+            return (200, new { bots = bots.OfType<BotBase>().Take(n).Select(b => Summarize(b, GearRuntime.Items)).ToList() });
         }
         catch (Exception ex) { return (500, new { error = ex.Message }); }
         finally { PreviewTier.Value = null; }
