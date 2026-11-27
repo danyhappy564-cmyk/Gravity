@@ -26,6 +26,7 @@ public class GravityLoader(
     {
         try { L.Use(locales.GetDesiredServerLocale()); } catch { /* 윈도우 언어 그대로 */ }
         GravityBoot.Ensure(modHelper);
+        Gravity.Gear.GearSample.Services = services;
         var paths = GravityBoot.Paths!;
         GravityWebPaths.Paths = paths;
         var store = GravityBoot.Store!;

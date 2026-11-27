@@ -86,6 +86,29 @@ public static class GearNeeds
         return res;
     }
 
+    /// <summary>1.1.6 묶음으로 옮기기: 총에서 호환 부품 표를 따라 닿는 부품(Section parts) 전부. 막힌 것은 지나가지도 않는다. 깊이 12, max개까지.</summary>
+    public static IReadOnlyList<string> Parts(GearSettings g, GearItems items, string gunId, int max = 2000)
+    {
+        var black = BlackAll(g);
+        var seen = new HashSet<string> { gunId };
+        var res = new List<string>();
+        var q = new Queue<(string Id, int Depth)>();
+        q.Enqueue((gunId, 0));
+        while (q.Count > 0 && res.Count < max)
+        {
+            var (cur, depth) = q.Dequeue();
+            if (depth >= MaxDepth || !items.CompatibleMods.TryGetValue(cur, out var slots)) continue;
+            foreach (var list in slots.Values)
+                foreach (var m in list)
+                {
+                    if (!seen.Add(m) || !Usable(g, items, black, m)) continue;
+                    if (items.Info.TryGetValue(m, out var i) && i.Section == "parts") { res.Add(m); if (res.Count >= max) return res; }
+                    q.Enqueue((m, depth + 1));
+                }
+        }
+        return res;
+    }
+
     /// <summary>프리셋 전체 판정. 정렬: 직접 티어 관련 먼저 → 티어 → 종류 → id.</summary>
     public static IReadOnlyList<Need> Check(GearSettings g, GearItems items, IReadOnlyDictionary<string, int> itemTier)
     {

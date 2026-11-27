@@ -192,14 +192,17 @@ public class GearFilterPatch : AbstractPatch
             var group = GearDefaults.GroupOf(id);
             var rnd = Random.Shared;
             int? lvl = botGenerationDetails.IsPmc ? GearRuntime.PmcLevel ?? botGenerationDetails.BotLevel : null;
-            int tier = GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd);
+            // 1.1.6 예시 봇: 미리보기 생성이면 그 티어로 고정한다.
+            var preview = GearSample.PreviewTier.Value;
+            int tier = preview ?? GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd);
             // 1.1.0 장비 다시 굴리기: 이 확률로 한 번 더 굴려 높은 쪽을 쓴다.
-            if (role.Reroll > 0 && rnd.NextDouble() * 100 < role.Reroll) tier = Math.Max(tier, GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd));
+            if (preview == null && role.Reroll > 0 && rnd.NextDouble() * 100 < role.Reroll) tier = Math.Max(tier, GearTier.Pick(g, role, group, botGenerationDetails.PlayerLevel ?? 1, lvl, rnd));
             var pick = new GearPick(id, group, tier, botGenerationDetails.IsPmc);
             var night = GearRuntime.Night(sessionId);
             var ctx = GearApply.Context(g, pick, GearRuntime.Items, GearRuntime.Raid, night, rnd, botGenerationDetails.Location);
             GearApply.Apply(baseBotNode, ctx, night, rnd);
             GearRuntime.Current = ctx;
+            if (preview != null) return; // 미리보기 봇은 이번 판 통계에 넣지 않는다
             GearRuntime.Stats.AddOrUpdate(group, _ => { var a = new int[7]; a[pick.Tier] = 1; return a; }, (_, a) => { Interlocked.Increment(ref a[pick.Tier]); return a; });
             Interlocked.Increment(ref GearRuntime.Dressed);
         }

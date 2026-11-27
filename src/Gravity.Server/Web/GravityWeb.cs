@@ -185,6 +185,25 @@ public class GravityWeb : IHttpListener
                     case ("gear/check", "POST"):
                         await GearJudge(req, res, CheckBody, cancellationToken);
                         return;
+                    case ("gear/parts", "GET"):
+                    {
+                        var g = Gravity.Gear.GearRuntime.Active();
+                        var pid = req.Query["id"].ToString().ToLowerInvariant();
+                        if (g == null) { await Send(res, 200, new { off = true }); return; }
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(pid, "^[0-9a-f]{24}$")) { await Send(res, 400, new { error = "id 형식 오류 / Bad id" }); return; }
+                        await Send(res, 200, new { parts = Gravity.Gear.GearNeeds.Parts(g, Gravity.Gear.GearRuntime.Items, pid) });
+                        return;
+                    }
+                    case ("gear/sample", "POST"):
+                    {
+                        JsonNode? sb;
+                        try { sb = await ReadJson(req, 4096, cancellationToken); }
+                        catch (Exception) { await Send(res, 400, new { error = "JSON 형식 오류 / Bad JSON" }); return; }
+                        int Num(string k, int d) => sb?[k] is JsonValue v && v.TryGetValue<int>(out var x) ? x : d;
+                        var (st2, ob2) = await Gravity.Gear.GearSample.Run(sb?["role"]?.ToString() ?? "", Num("tier", 0), Num("n", 3));
+                        await Send(res, st2, ob2);
+                        return;
+                    }
                     case ("lang", "GET"):
                         await Send(res, 200, new { langs = GravityWebPaths.Paths is { } lp0 ? LangStore.List(lp0.LangDir) : new List<LangStore.LangInfo>() });
                         return;
