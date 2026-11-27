@@ -62,8 +62,41 @@ public static class GearItemsBuilder
         return doc.RootElement.EnumerateObject().Select(o => o.Name.ToLowerInvariant()).ToHashSet();
     }
 
+    /// <summary>1.1.5 의상 레벨: SPT 원본 래그맨 suits.json + customization.json에서 Body·Feet id → 요구 프로필 레벨(가장 낮은 값).
+    /// 원본 파일만 읽으므로 모드가 더한 의상은 들어가지 않는다. 못 읽으면 빈 표(의상 레벨 끔과 같음).</summary>
+    public static Dictionary<string, int> VanillaSuitLevels(string? sptDataDir)
+    {
+        var res = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (sptDataDir == null) return res;
+        try
+        {
+            var cp = System.IO.Path.Combine(sptDataDir, "database", "templates", "customization.json");
+            var tdir = System.IO.Path.Combine(sptDataDir, "database", "traders");
+            if (!File.Exists(cp) || !Directory.Exists(tdir)) return res;
+            using var cdoc = JsonDocument.Parse(File.ReadAllBytes(cp));
+            foreach (var sp in Directory.GetFiles(tdir, "suits.json", SearchOption.AllDirectories))
+            {
+                using var sdoc = JsonDocument.Parse(File.ReadAllBytes(sp));
+                if (sdoc.RootElement.ValueKind != JsonValueKind.Array) continue;
+                foreach (var s in sdoc.RootElement.EnumerateArray())
+                {
+                    if (!s.TryGetProperty("suiteId", out var sid) || sid.ValueKind != JsonValueKind.String) continue;
+                    int lv = s.TryGetProperty("requirements", out var rq) && rq.ValueKind == JsonValueKind.Object
+                        && rq.TryGetProperty("profileLevel", out var pl) && pl.ValueKind == JsonValueKind.Number ? Math.Max(0, pl.GetInt32()) : 0;
+                    if (!cdoc.RootElement.TryGetProperty(sid.GetString()!, out var suite) || !suite.TryGetProperty("_props", out var pr)) continue;
+                    foreach (var part in new[] { "Body", "Feet" })
+                        if (pr.TryGetProperty(part, out var pid) && pid.ValueKind == JsonValueKind.String && pid.GetString() is { Length: > 0 } id)
+                            res[id] = res.TryGetValue(id, out var old) ? Math.Min(old, lv) : lv;
+                }
+            }
+        }
+        catch (Exception) { res.Clear(); }
+        return res;
+    }
+
     public static GearItems Build(TemplateTable templates, BotTable bots, HashSet<string>? vanilla, string? modsDir = null,
-        IEnumerable<(string Item, IEnumerable<string> Parts)>? defaultPresets = null, HashSet<string>? vanillaCustomization = null)
+        IEnumerable<(string Item, IEnumerable<string> Parts)>? defaultPresets = null, HashSet<string>? vanillaCustomization = null,
+        IReadOnlyDictionary<string, int>? suitLevels = null)
     {
         var tpls = templates.Items;
         var prices = templates.Prices;
@@ -178,7 +211,7 @@ public static class GearItemsBuilder
         var donors = BuildDonors(bots.Types.Where(kv => kv.Value?.BotInventory?.Mods != null).Select(kv => (kv.Key,
             (IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>>)kv.Value!.BotInventory!.Mods!.Where(m => m.Value != null).ToDictionary(m => m.Key.ToString(),
                 m => (IReadOnlyDictionary<string, string[]>)m.Value.Where(s => s.Value != null).ToDictionary(s => s.Key, s => s.Value.Select(x => x.ToString()).ToArray())))));
-        return new GearItems(info, pools,compatibility) { Clothing = GearClothing.Build(custom, vanillaCustomization, sources), DonorMods = donors };
+        return new GearItems(info, pools,compatibility) { Clothing = GearClothing.Build(custom, vanillaCustomization, sources), DonorMods = donors, ClothingLevel = suitLevels ?? new Dictionary<string, int>() };
     }
 
     private static readonly HashSet<string> PmcTypes = new(StringComparer.OrdinalIgnoreCase) { "usec", "bear", "pmcUSEC", "pmcBEAR" };

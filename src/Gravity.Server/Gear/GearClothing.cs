@@ -32,7 +32,37 @@ public static class GearClothing
     private static string? SideOf(string roleId) => roleId switch { "usec" => "usec", "bear" => "bear", "scav" => "savage", _ => null };
 
     /// <returns>바꾼 항목 수(더함 + 뺌 + 무게 고침).</returns>
-    public static int Apply(BotType bot, GearContext c, Random rnd) => Apply(bot, c.Settings, c.Pick.RoleId, c.Items, c.Raid);
+    public static int Apply(BotType bot, GearContext c, Random rnd) => LevelFilter(bot, c) + Apply(bot, c.Settings, c.Pick.RoleId, c.Items, c.Raid);
+
+    /// <summary>
+    /// 1.1.5 의상 레벨 티어(gear.clothingLevel): PMC(usec·bear) 상의·하의 중 래그맨 원본 의상은 요구 레벨이 속한 티어(장비 티어 레벨 구간)가
+    /// 봇 티어 이하인 것만 남긴다. 요구 레벨 표에 없는 옷(모드 옷·이벤트 옷)은 그대로 둔다(모드 옷은 의상 탭이 정함).
+    /// 남는 래그맨 옷이 없으면 가장 낮은 티어 옷을 남긴다.
+    /// </summary>
+    /// <returns>뺀 옷 수.</returns>
+    public static int LevelFilter(BotType bot, GearContext c)
+    {
+        var g = c.Settings;
+        if (!g.ClothingLevel || !g.Module || bot.BotAppearance == null || c.Items.ClothingLevel.Count == 0 || g.Tiers.Count == 0) return 0;
+        if (c.Pick.RoleId is not ("usec" or "bear")) return 0;
+        int removed = 0;
+        foreach (var pool in new[] { bot.BotAppearance.Body, bot.BotAppearance.Feet })
+        {
+            if (pool == null) continue;
+            var tiered = pool.Keys.Select(k => (Key: k, Lv: c.Items.ClothingLevel.TryGetValue(k.ToString(), out var lv) ? lv : -1))
+                .Where(x => x.Lv >= 0).Select(x => (x.Key, Tier: GearTier.TierOfLevel(g.Tiers, Math.Max(1, x.Lv)))).ToList();
+            if (tiered.Count == 0) continue;
+            var drop = tiered.Where(x => x.Tier > c.Pick.Tier).ToList();
+            if (drop.Count == tiered.Count)
+            {
+                int lo = tiered.Min(x => x.Tier);
+                drop = drop.Where(x => x.Tier > lo).ToList();
+            }
+            foreach (var x in drop) pool.Remove(x.Key);
+            removed += drop.Count;
+        }
+        return removed;
+    }
 
     /// <summary>장비 티어를 안 고치는 봇(역할 장비 스위치 꺼짐, 기본 스캐브)도 의상만은 적용한다(Codex 1.0.5 검토 2번).</summary>
     public static int Apply(BotType bot, GearSettings settings, string roleId, GearItems items, GearRaid? raid = null)

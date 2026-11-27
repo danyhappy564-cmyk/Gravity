@@ -488,7 +488,9 @@ public class GearBotPatch : AbstractPatch
         var wname = weapon == null ? "-" : (GearRuntime.NameOf(weapon) ?? weapon) + (items.Info.GetValueOrDefault(weapon)?.Mod == true ? "*" : "");
         // 1.0.9 측정: 주무기 아래(부모 사슬) 부품 수와 조준경 여부(마운트 위 조준경 포함)
         var (parts, scope) = WeaponParts(bot.Inventory?.Items, weaponItem, items);
-        string Src(MongoId? id) => id is { } m ? items.Clothing.FirstOrDefault(c => c.Id == m.ToString())?.Source ?? "vanilla" : "-";
+        // 1.1.5 래그맨 원본 옷이면 요구 레벨(Lv18)을 함께 남겨 의상 레벨 티어를 레이드 기록으로 확인할 수 있게 한다.
+        string Src(MongoId? id) => id is { } m ? items.Clothing.FirstOrDefault(c => c.Id == m.ToString())?.Source
+            ?? (items.ClothingLevel.TryGetValue(m.ToString(), out var lv) ? "vanilla Lv" + lv : "vanilla") : "-";
         string On(bool b) => b ? "O" : "-";
         return $"{pick.RoleId}\tT{pick.Tier + 1}\tLv{bot.Info?.Level ?? 0}\t{wname}\t{L.T("방탄", "armor")} {armor:0}"
             + $"\t{L.T("방탄복", "vest")} {On(vest)}\t{L.T("헤드셋", "ear")} {On(ear)}\t{L.T("앞뒤판", "plate")} {On(plate)}"

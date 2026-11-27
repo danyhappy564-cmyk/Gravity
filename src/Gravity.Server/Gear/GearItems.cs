@@ -38,6 +38,8 @@ public sealed class GearItems
     public IReadOnlyList<string> ModOther { get; } = [];
     /// <summary>1.0.5 의상 탭: 모드 옷(Body·Feet) 목록.</summary>
     public IReadOnlyList<ClothingItem> Clothing { get; init; } = [];
+    /// <summary>1.1.5 의상 레벨: SPT 원본 래그맨 의상(suits.json)이 쓰는 Body·Feet id → 그 의상 요구 프로필 레벨(가장 낮은 값). 모드 옷은 없다.</summary>
+    public IReadOnlyDictionary<string, int> ClothingLevel { get; init; } = new Dictionary<string, int>();
     /// <summary>1.0.9: 봇 원본 표의 부품 목록(부모 id → 칸 → 후보). USEC·BEAR 표가 먼저, 거기 없는 부모만 나머지 봇 표 합집합.
     /// 봇 표에 없던 총을 넣을 때 "맞는 부품 전부"(CompatibleMods) 대신 쓴다(GearCompatibility.AddMissing).</summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string[]>> DonorMods { get; init; } = new Dictionary<string, IReadOnlyDictionary<string, string[]>>();

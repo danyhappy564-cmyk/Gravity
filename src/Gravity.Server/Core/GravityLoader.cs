@@ -134,9 +134,10 @@ public class GravityLoader(
             var (vanilla, vanillaAmmo) = Gravity.Gear.GearItemsBuilder.ReadVanilla(sptData);
             Gravity.Gear.GearRuntime.VanillaAmmo = vanillaAmmo;
             var vanillaCustom = Gravity.Gear.GearItemsBuilder.VanillaCustomizationIds(sptData);
+            var suitLevels = Gravity.Gear.GearItemsBuilder.VanillaSuitLevels(sptData);
             Gravity.Gear.GearRuntime.Builder = () => Gravity.Gear.GearItemsBuilder.Build(templates, bots, vanilla, GravityBoot.ModsDir,
                 globals.ItemPresets.Values.Where(x => x.Encyclopedia.HasValue && x.Items != null).Select(x => (x.Encyclopedia!.Value.ToString(), x.Items!.Select(i => i.Template.ToString()))),
-                vanillaCustom);
+                vanillaCustom, suitLevels);
             Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
             Gravity.Gear.GearRuntime.Activity = activity;
