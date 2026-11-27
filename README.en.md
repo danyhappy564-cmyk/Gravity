@@ -17,7 +17,7 @@
 
 ## Changelog
 
-The full changelog (60 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-006.md`](changelog/CHANGELOG-006.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (70 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-007.md`](changelog/CHANGELOG-007.md)). Per-release summaries: [Releases](../../releases).
 
 # Gravity 1.1.5
 
@@ -47,6 +47,10 @@ A server + client mod for SPT **4.1**. It decides in one place **who spawns, whe
 - **Per-bot item table** (Gear tiers › Per-bot item table tab): per tier, the items and their share, counts and chances, caps and plates, attachments, and a **Tier summary** tab showing what that tier actually carries.
 - Attachments follow tiers too. If every part that fits a gun is above the tier, the lowest-tier one is used, so guns never come out bare (can be turned off in Weapon build).
 - Mod items: on/off per installed mod, use only part of them each raid, PMC-only.
+- **Outfit level tiers** (PMCs only): each Ragman outfit gets a tier from its required level, and bots wear outfits that match their tier. Mod outfits get a tier from their trader terms (level, price, achievement); level-1, nearly free mod outfits are skipped by default.
+- Bot health & skills: set health and common skills per tier, with a preview of original → new values for typical bots.
+- **Language packs**: translate the web UI yourself under System › Translate (item names come from SPT's own locale data).
+- Bots keep the original wear restrictions even when another mod removed them (helmet, headset, eyewear, face cover, body armor overlaps, including helmet ear covers and visors).
 - **Clothing** (Mod items → Clothing tab): PMCs and scavs wear clothes only from checked mods (matching their side; chosen per mod). Until you save it once, bot outfits are left untouched.
 - Loadout presets: **Gravity auto** and **Realistic Live-like 1.0.2** (see Credits) are built in; you can save your own.
 
