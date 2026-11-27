@@ -109,6 +109,7 @@ public class GravityWeb : IHttpListener
                                 otherPmc = rt.LastOtherPmc, pmcSigMaps = rt.Factions.SptPmc.Count
                             },
                             gear = GearBody(rt),
+                            botBase = Gravity.Gear.GearRuntime.BotBase.ToDictionary(kv => kv.Key, kv => new { hp = new[] { kv.Value.HpMin, kv.Value.HpMax }, head = kv.Value.Head, skills = kv.Value.Skills }),
                             orbit = rt.Orbit,
                             lockReason = rt.Detect.SpawnLockReason,
                             layout = rt.LastLayout,

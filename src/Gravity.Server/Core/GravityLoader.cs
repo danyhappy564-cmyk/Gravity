@@ -141,6 +141,8 @@ public class GravityLoader(
                 vanillaCustom, suitLevels, Gravity.Gear.GearItemsBuilder.SuitOffers(traders.Values, templates), suitPrices);
             Gravity.Gear.GearRuntime.Items = Gravity.Gear.GearRuntime.Builder();
             Gravity.Gear.GearRuntime.ExpTable = Gravity.Gear.GearItemsBuilder.ExpTable(globals);
+            try { Gravity.Gear.GearRuntime.BotBase = Gravity.Gear.BotBaseCatalog.Build(bots.Types.Select(kv => new KeyValuePair<string, SPTarkov.Server.Core.Models.Eft.Common.Tables.BotType?>(kv.Key.ToString(), kv.Value))); }
+            catch (Exception ex) { logger.Warning($"{GravityInfo.Tag} bot base preview: {ex.Message}"); }
             Gravity.Gear.GearRuntime.Activity = activity;
             Gravity.Gear.GearRuntime.Templates = templates.Items;
             Gravity.Gear.GearRuntime.BuildExtraPools(templates.Items);

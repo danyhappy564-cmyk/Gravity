@@ -21,6 +21,8 @@ public static class GearRuntime
     public static IReadOnlyDictionary<MongoId, TemplateItem>? Templates { get; set; }
     /// <summary>레벨별 경험치(SPT globals). PMC 레벨을 바꿀 때 경험치도 맞춘다.</summary>
     public static int[] ExpTable { get; set; } = [];
+    /// <summary>1.1.5 봇 체력·스킬 미리보기용 원래 값(웹 봇 id → 체력·스킬). 웹 meta.botBase.</summary>
+    public static IReadOnlyDictionary<string, BotBaseInfo> BotBase { get; set; } = new Dictionary<string, BotBaseInfo>();
     public static ProfileActivityService? Activity { get; set; }
     /// <summary>봇 수납 칸 목록(SPT 싱글턴, 로더가 채움). 1.0.7 PackNStrap 벨트를 수납 칸으로 등록할 때 쓴다.</summary>
     public static BotInventoryContainerService? Containers { get; set; }
