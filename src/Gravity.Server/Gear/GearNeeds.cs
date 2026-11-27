@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Gravity.Core;
 
 namespace Gravity.Gear;
@@ -54,6 +56,35 @@ public static class GearNeeds
 
     /// <summary>탐색 상한(GearCompatibility와 같은 값).</summary>
     private const int MaxDepth = 12, MaxVisit = 512;
+
+    /// <summary>티어 변경(change, 0 = 자동으로) 전후 판정 비교. Added = 바꾼 뒤에만 있는 문제, Fixed = 바꾸기 전에만 있던 문제.</summary>
+    public static (IReadOnlyList<Need> Added, IReadOnlyList<Need> Fixed) Diff(GearSettings g, GearItems items,
+        IReadOnlyDictionary<string, int> itemTier, IReadOnlyDictionary<string, int> change)
+    {
+        var after = new Dictionary<string, int>(itemTier);
+        foreach (var (id, n) in change) { if (n is >= 1 and <= 7) after[id] = n; else after.Remove(id); }
+        var before = Check(g, items, itemTier);
+        var now = Check(g, items, after);
+        var bk = before.Select(n => n.Key).ToHashSet();
+        var ak = now.Select(n => n.Key).ToHashSet();
+        return (now.Where(n => !bk.Contains(n.Key)).ToList(), before.Where(n => !ak.Contains(n.Key)).ToList());
+    }
+
+    private static readonly Regex IdRx = new("^[0-9a-f]{24}$", RegexOptions.Compiled);
+
+    /// <summary>웹이 보낸 {id: 티어} 맵. 객체가 아니거나 max개를 넘으면 null. 형식이 틀린 항목(id·0~7 정수 아님)은 뺀다.</summary>
+    public static Dictionary<string, int>? ParseTierMap(JsonNode? node, int max = 20000)
+    {
+        if (node is not JsonObject o || o.Count > max) return null;
+        var res = new Dictionary<string, int>();
+        foreach (var (k, v) in o)
+        {
+            var id = k.ToLowerInvariant();
+            if (!IdRx.IsMatch(id) || v is not JsonValue jv || !jv.TryGetValue<int>(out var n) || n is < 0 or > 7) continue;
+            res[id] = n;
+        }
+        return res;
+    }
 
     /// <summary>프리셋 전체 판정. 정렬: 직접 티어 관련 먼저 → 티어 → 종류 → id.</summary>
     public static IReadOnlyList<Need> Check(GearSettings g, GearItems items, IReadOnlyDictionary<string, int> itemTier)

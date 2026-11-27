@@ -179,6 +179,12 @@ public class GravityWeb : IHttpListener
                             clothing = Gravity.Gear.GearRuntime.Items.Clothing.Select(c => new { id = c.Id, source = c.Source, part = c.Part, sides = c.Sides,
                                 kind = Gravity.Gear.GearRuntime.Items.ModClothRules.TryGetValue(c.Id, out var cr) ? cr.Kind : null, level = cr?.Level }) });
                         return;
+                    case ("gear/needs", "POST"):
+                        await GearJudge(req, res, NeedsBody, cancellationToken);
+                        return;
+                    case ("gear/check", "POST"):
+                        await GearJudge(req, res, CheckBody, cancellationToken);
+                        return;
                     case ("lang", "GET"):
                         await Send(res, 200, new { langs = GravityWebPaths.Paths is { } lp0 ? LangStore.List(lp0.LangDir) : new List<LangStore.LangInfo>() });
                         return;
@@ -230,6 +236,44 @@ public class GravityWeb : IHttpListener
         {
             await Send(res, 500, new { error = ex.Message });
         }
+    }
+
+    /// <summary>1.1.6 판정 API 공통: 본문을 읽어 판정 함수에 넘긴다(쓰기 없음 → 쓰기 권한 검사 없음).</summary>
+    private static async Task GearJudge(HttpRequest req, HttpResponse res,
+        Func<GearSettings?, Gravity.Gear.GearItems, JsonNode?, (int Status, object Body)> judge, CancellationToken ct)
+    {
+        JsonNode? nb;
+        try { nb = await ReadJson(req, MaxBody, ct); }
+        catch (InvalidDataException) { await Send(res, 413, new { error = "너무 큽니다 / Too large" }); return; }
+        catch (JsonException ex) { await Send(res, 400, new { error = "JSON 형식 오류 / Bad JSON: " + ex.Message }); return; }
+        var (st, ob) = judge(Gravity.Gear.GearRuntime.Active(), Gravity.Gear.GearRuntime.Items, nb);
+        await Send(res, st, ob);
+    }
+
+    /// <summary>1.1.6 `POST api/gear/needs` {itemTier, change} → 이 티어 변경으로 새로 생기는/풀리는 문제. 읽기 전용.</summary>
+    internal static (int Status, object Body) NeedsBody(GearSettings? g, Gravity.Gear.GearItems items, JsonNode? body)
+    {
+        if (g == null || items.Info.Count == 0) return (200, new { off = true });
+        var tiers = Gravity.Gear.GearNeeds.ParseTierMap(body?["itemTier"]);
+        var change = Gravity.Gear.GearNeeds.ParseTierMap(body?["change"]);
+        if (tiers == null || change == null) return (400, new { error = "itemTier·change 형식 오류 / Bad itemTier or change" });
+        var (added, fixd) = Gravity.Gear.GearNeeds.Diff(g, items, tiers, change);
+        return (200, new { added, @fixed = fixd });
+    }
+
+    /// <summary>1.1.6 `POST api/gear/check` {itemTier} → 프리셋 전체 문제 목록과 종류별 수. 읽기 전용.</summary>
+    internal static (int Status, object Body) CheckBody(GearSettings? g, Gravity.Gear.GearItems items, JsonNode? body)
+    {
+        if (g == null || items.Info.Count == 0) return (200, new { off = true });
+        var tiers = Gravity.Gear.GearNeeds.ParseTierMap(body?["itemTier"]);
+        if (tiers == null) return (400, new { error = "itemTier 형식 오류 / Bad itemTier" });
+        var needs = Gravity.Gear.GearNeeds.Check(g, items, tiers);
+        return (200, new
+        {
+            needs,
+            counts = new { scope = needs.Count(n => n.Kind == "scope"), ammo = needs.Count(n => n.Kind == "ammo"),
+                required = needs.Count(n => n.Kind == "required"), manual = needs.Count(n => n.Manual) }
+        });
     }
 
     /// <summary>`api/meta`의 gear 칸: 장비 모듈 상태·아이템 자료·이번 판 티어 분포.</summary>
