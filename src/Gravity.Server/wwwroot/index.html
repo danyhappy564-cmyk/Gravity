@@ -239,6 +239,8 @@ svg.tl-ed text[text-anchor=end]{paint-order:stroke;stroke:#0d131d;stroke-width:4
 .savebar .row .sp{flex:1}
 .savebar details{margin-top:6px;font-size:12px;color:var(--muted)}
 .savebar ul{margin:6px 0 0;padding-left:18px;columns:2;column-gap:30px}
+.needs-dlg{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));max-height:70vh;overflow:auto;background:#141a24;border:1px solid var(--line-2);border-radius:12px;padding:16px 18px;box-shadow:0 16px 40px #000a;z-index:85;font-size:13px}
+.needs-dlg h3{margin:0 0 6px;font-size:15px}.needs-dlg .nrow{display:block;width:100%;text-align:left;margin:4px 0}.needs-dlg .nbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 .toast{position:fixed;right:22px;bottom:22px;background:#1b2433;border:1px solid var(--line-2);border-radius:10px;padding:10px 16px;box-shadow:0 10px 30px #0008;z-index:80;font-size:13px}
 body.easy .adv{display:none!important}
 
@@ -514,6 +516,7 @@ body.tdrag .brow,body.tdrag .bg-h{background:#6ea8ff08}
 </section>
 <main id="main"></main>
 <div class="toast" id="toast" hidden></div>
+<div id="needsDlg" class="needs-dlg" hidden></div>
 <div id="tlpop" class="tlpop" hidden></div>
 <div id="tltip" class="tltip" hidden></div>
 <input type="file" id="jsonFile" accept=".json,application/json" hidden>
@@ -2268,6 +2271,60 @@ function poolView0(b,t,sec,slot){const D=state.tierData[b][t],own=(D[sec]||{})[s
 const poolAuto=(b,t,sec,slot)=>!(state.tierData[b][t].only&&!onlyExempt(sec,slot)&&(sec==='weapons'||sec==='armor'))&&!Object.keys(((state.tierData[b][t][sec]||{})[slot])||{}).length;
 /** 자동 칸을 처음 고칠 때 화면에 보이던 자동 목록을 직접 지정 표로 복사한다(나머지 아이템이 빠지지 않게). */
 function materialize(b,t,sec,slot){const D=state.tierData[b][t];D[sec]||={};if(poolAuto(b,t,sec,slot))D[sec][slot]=clone(poolView(b,t,sec,slot));return D[sec][slot];}
+/* ===== 1.1.6 티어를 바꿀 때 필요한 부품 같이 옮기기(서버 판정 api/gear/needs) ===== */
+const NEEDS_WAIT_MS=300;
+let needsAsk=null;
+/** 시험이 바꿀 수 있게 따로 둔 대기 함수. */
+let needsTimer=ms=>new Promise(r=>setTimeout(r,ms));
+const canAskNeeds=()=>!DEMO&&!!serverMeta&&typeof fetch==='function'&&!!GEAR_CATALOG;
+const NEED_KIND={scope:T('조준경 경로','Scope path'),ammo:T('탄약','Ammo'),required:T('필수 부품','Required part')};
+/** 한국어 조사: 받침 있으면 a(을), 없으면 b(를). 한글이 아니면 a(b). */
+function josa(w,a,b){const c=String(w).trim().slice(-1).charCodeAt(0);if(c>=0xAC00&&c<=0xD7A3)return (c-0xAC00)%28?a:b;return a+'('+b+')';}
+/** 아이템 티어 저장(0 = 자동으로 되돌림). */
+function saveTiers(changes){changes.forEach(({id,n})=>{writeSetting('gear.itemTier.'+id,n);if(!n&&state.gear.itemTier)delete state.gear.itemTier[id];});rerender();}
+/** 세 경로(칸 선택·티어 버튼·일괄)가 부른다. 서버가 없거나 늦거나 실패하면 묻지 않고 저장한다(편집을 막지 않음). */
+function tierChange(changes,done){
+  changes=changes.filter(c=>/^[0-9a-f]{24}$/i.test(c.id)).map(c=>({id:c.id,n:+c.n||0}));if(!changes.length)return;
+  const fin=list=>{saveTiers(list);if(done)done();};
+  if(!canAskNeeds()){fin(changes);return;}
+  const change=Object.fromEntries(changes.map(c=>[c.id,c.n]));
+  const req=Promise.resolve().then(()=>fetch('api/gear/needs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemTier:state.gear.itemTier||{},change})}))
+    .then(r=>r&&r.ok?r.json():null).catch(()=>null);
+  return Promise.race([req,needsTimer(NEEDS_WAIT_MS).then(()=>null)]).then(res=>{
+    const added=res&&Array.isArray(res.added)?res.added:[];
+    if(!added.length){fin(changes);return;}
+    const own=new Set(changes.map(c=>c.id)),picked=new Set();
+    added.filter(x=>own.has(x.itemId)).forEach(x=>(x.suggest||[]).forEach(f=>picked.add(f.id)));
+    needsAsk={changes,added,picked,done};rerender();
+  });
+}
+/** 같이 옮길 제안: id마다 가장 낮은 목표 티어. */
+function needsSuggest(list){const m=new Map();list.forEach(x=>(x.suggest||[]).forEach(f=>{const o=m.get(f.id);if(!o||f.to<o.to)m.set(f.id,{...f,kind:x.kind});}));return [...m.values()];}
+function needsAskHtml(){
+  const q=needsAsk;if(!q)return '';
+  const ci=catIndex(),nm=id=>ci[id]?esc(itemNm(ci[id])):id;
+  const own=new Set(q.changes.map(c=>c.id)),mine=q.added.filter(x=>own.has(x.itemId)),other=q.added.filter(x=>!own.has(x.itemId));
+  const one=q.changes.length===1,what=one?nm(q.changes[0].id):fmt(tr(T('{c}개','{c} items')),{c:q.changes.length});
+  const n0=q.changes[0].n,tt=n0?'T'+n0:tr(T('자동','Auto'));
+  const otherIds=[...new Set(other.map(x=>x.itemId))],names=otherIds.slice(0,5).map(nm).join(', ')+(otherIds.length>5?' '+fmt(tr(T('외 {r}개','and {r} more')),{r:otherIds.length-5}):'');
+  const otherLine=otherIds.length?`<p class="muted small">${fmt(tr(T('이 변경으로 총 {c}개가 조준경·탄약·필수 부품을 못 씁니다: {names}','With this change {c} guns lose a scope, ammo or required part: {names}')),{c:otherIds.length,names})}</p>`:'';
+  if(!mine.length){
+    const head=fmt(lang==='ko'?'{w}'+josa(what,'을','를')+' {t}로 옮기면 총 {c}개가 조준경·탄약·필수 부품을 못 씁니다':'Moving {w} to {t} leaves {c} guns without a scope, ammo or required part',{w:what,t:tt,c:otherIds.length});
+    return `<h3>${head}</h3><p class="muted small">${names}</p><div class="nbtns"><button class="btn" data-act="needsCancel">${tr(T('취소','Cancel'))}</button><button class="btn pri" data-act="needsOnly">${tr(T('그래도 옮기기','Move anyway'))}</button></div>`;
+  }
+  const head=fmt(lang==='ko'?'{w}'+josa(what,'을','를')+' {t}로 옮깁니다':'Moving {w} to {t}',{w:what,t:tt});
+  const sug=needsSuggest(mine).map(f=>`<button class="mini-btn nrow" data-needpick="${f.id}">${q.picked.has(f.id)?'☑':'☐'} ${tr(NEED_KIND[f.kind]||T('부품','Part'))} · ${nm(f.id)} (T${f.from} → T${f.to})</button>`).join('');
+  const notes=mine.filter(x=>!(x.suggest||[]).length).map(x=>{const pen=/^pen:(.+)$/.exec(x.note||'');return `<p class="muted small">${nm(x.itemId)}: ${pen?fmt(tr(T('이 티어 관통 상한 {n} 아래 탄이 없습니다. 티어를 옮겨서는 풀 수 없습니다.','No ammo under this tier\'s pen cap {n}; moving tiers cannot fix it.')),{n:esc(pen[1])}):tr(NEED_KIND[x.kind]||T('부품','Part'))}</p>`;}).join('');
+  return `<h3>${head}</h3><p class="muted small">${tr(T('그 티어에서 이 아이템에 필요한 것이 위 티어에 있습니다. 같이 옮길 것을 고르세요.','What this item needs at that tier sits in a higher tier. Pick what to move with it.'))}</p>${sug}${notes}${otherLine}
+  <div class="nbtns"><button class="btn" data-act="needsCancel">${tr(T('취소','Cancel'))}</button><button class="btn" data-act="needsOnly">${tr(T('이 아이템만','Only this item'))}</button>${sug?`<button class="btn pri" data-act="needsAll">${tr(T('같이 옮기기','Move together'))}</button>`:''}</div>`;
+}
+function needsAnswer(kind){
+  const q=needsAsk;if(!q)return;needsAsk=null;
+  if(kind==='cancel'){rerender();return;}
+  if(kind==='all'){const own=new Set(q.changes.map(c=>c.id)),extra=needsSuggest(q.added.filter(x=>own.has(x.itemId))).filter(f=>q.picked.has(f.id)&&!own.has(f.id));
+    saveTiers([...q.changes,...extra.map(f=>({id:f.id,n:f.to}))]);if(q.done)q.done();if(extra.length)toast(fmt(tr(T('{c}개를 같이 옮겼습니다','Moved {c} items along')),{c:extra.length}));return;}
+  saveTiers(q.changes);if(q.done)q.done();
+}
 function tierSelect(it){const cur=state.gear.itemTier?.[it.id]||0,cx=(GEAR_CATALOG||[]).find(x=>x.id===it.id),auto=cx?itAuto(cx):it.t;return `<select class="mini-btn tsel" data-p="gear.itemTier.${it.id}" data-t="n" title="${esc((cx?itWhy(cx)+' — ':'')+tr(T('티어를 바꾸면 그 티어 목록으로 옮겨집니다(다음 판부터 서버 적용). 자세한 근거는 아이템 티어 메뉴.','Changing the tier moves it to that tier list (applies next raid). See Item tiers for details.')))}"><option value="0" ${cur?'':'selected'}>${tr(T('자동','Auto'))} T${auto}</option>${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${cur===n?'selected':''}>T${n}</option>`).join('')}</select>`;}
 function irow(it,w,bk,sum,path){const pb=bk?[]:blPartial(it,tBot);return `<div class="irow${bk?' blk':''}"><span class="iname">${tr(it.name)}${pb.length?` <span class="pill warn" title="${tr(T('블랙리스트','Blacklist'))}">${fmt(tr(T('{b}에게는 금지','banned for {b}')),{b:pb.map(roleName).join(', ')})}</span>`:''}<small class="mono muted">${it.code}</small></span>${srcPill(it.src)}${it.x!=null?pill(tr(T('관통','Pen'))+' '+it.x,'gold'):'<span></span>'}${tierSelect(it)}${bk?`<span class="bkr">${pill(tr(bk.l),'bad')}</span>`:`<div class="ibar"><span style="width:${(w/sum*100).toFixed(0)}%"></span></div>`}<span class="ipct">${bk?'—':Math.round(w/sum*100)+'%'}</span><input type="number" min="0" max="200" value="${w}" data-p="${path}" data-t="n" title="${tr(T('가중치','Weight'))}" ${bk?'disabled':''}><button class="mini-btn" data-irm="${path}" title="${tr(T('빼기','Remove'))}">✕</button></div>`;}
 function blockSummary(st){const n=st.bl+st.mod+st.miss+st.pen+(st.tier||0);if(!n)return '';
@@ -2842,6 +2899,7 @@ function render(){
   try{document.documentElement.style.setProperty('--advtxt',JSON.stringify(tr(T('고급','Advanced'))));}catch(_){}
   $('#modeNote').innerHTML=`<div class="mode-note ${easy?'easy':'adv'}"><b>${tr(easy?T('쉬운 모드','Easy mode'):T('고급 모드','Advanced mode'))}</b><span>${tr(easy?T('자주 쓰는 칸만 보입니다.','Only the common settings are shown.'):T('모든 칸이 보입니다. 보라색 "고급" 표시가 붙은 칸은 쉬운 모드에서 숨겨집니다.','Every setting is shown. Ones marked "Advanced" in purple are hidden in Easy mode.'))}${n?' '+fmt(tr(easy?T('이 페이지에 숨겨진 고급 칸 {n}개.','{n} advanced settings hidden on this page.'):T('이 페이지의 고급 칸 {n}개.','{n} advanced settings on this page.')),{n}):''}</span>${easy?(n?`<button class="mini-btn" data-act="toAdv">${u('showAdv')}</button>`:''):`<button class="mini-btn" data-act="toEasy">${tr(T('쉬운 모드로','Back to Easy'))}</button>`}</div>`;
   $('#advNote').innerHTML=easy&&n?`<div class="morebar" style="margin-top:18px">${fmt(u('moreAdv'),{n})}<button class="mini-btn" data-act="toAdv">${u('showAdv')}</button></div>`:'';
+  {const nd=$('#needsDlg');if(nd){nd.innerHTML=needsAskHtml();nd.hidden=!needsAsk;}}
   updateSavebar();
 }
 function flatten(o,pre='',out={}){for(const[k,v]of Object.entries(o)){const p=pre?pre+'.'+k:k;if(Array.isArray(v)){if(v.length&&typeof v[0]==='object')v.forEach((x,i)=>flatten(x,p+'.'+i,out));else out[p]=v.join(',');}else if(v&&typeof v==='object')flatten(v,p,out);else out[p]=v;}return out;}
@@ -2909,6 +2967,7 @@ function apply(el,final){
   if(el.dataset.pair){const other=get(el.dataset.pair);if(el.dataset.side==='min'&&v>other){v=other;el.value=v;}if(el.dataset.side==='max'&&v<other){v=other;el.value=v;}}
   const mk=p.split('.');
   if(mk[0]==='maps'&&['zones','zonesAlt'].includes(mk[2])){const m=state.maps[mk[1]],key=mk[2];m[key]||={};m[key][mk[3]]||={on:true,w:100};}
+  if(mk[0]==='gear'&&mk[1]==='itemTier'&&mk.length===3){tierChange([{id:mk[2],n:v}]);return;}
   if(!writeSetting(p,v))return;
   if(p==='orbit.extractRefillCap')state.orbit.refillAfterExtract=state.orbit.extractRefillMode!=='off'&&v>0;
   if(mk[0]==='gear'&&mk[1]==='itemTier'&&v===0)delete state.gear.itemTier[mk[2]];
@@ -3039,8 +3098,9 @@ document.addEventListener('click',e=>{
     else if(k==='selall'){const l=itList(),all=l.length&&l.every(x=>itSel.has(x.id));l.forEach(x=>all?itSel.delete(x.id):itSel.add(x.id));}else if(k==='selnone')itSel.clear();
     else if(k==='reset'){const l=itBase().filter(itMan);if(!l.length){toast(tr(T('이 분류에는 직접 정한 아이템이 없습니다.','No manual tiers in this view.')));return;}if(!confirm(fmt(tr(T('지금 보이는 분류의 직접 지정 {n}개를 자동으로 되돌릴까요?','Reset {n} manual tiers in this view to automatic?')),{n:l.length})))return;l.forEach(x=>{writeSetting('gear.itemTier.'+x.id,0);delete state.gear.itemTier[x.id];});}
     rerender();return;}
-  if(d.itset){const [id,n]=d.itset.split('|');if(!/^[0-9a-f]{24}$/i.test(id))return;writeSetting('gear.itemTier.'+id,+n);if(!+n)delete state.gear.itemTier[id];rerender();return;}
-  if(d.itbulk!=null){const n=+d.itbulk,ids=[...itSel];ids.forEach(id=>{writeSetting('gear.itemTier.'+id,n);if(!n)delete state.gear.itemTier[id];});toast(fmt(tr(n?T('{c}개를 T{n}로 정했습니다','Set {c} items to T{n}'):T('{c}개를 자동으로 되돌렸습니다','Reset {c} items to automatic')),{c:ids.length,n}));itSel.clear();rerender();return;}
+  if(d.needpick){if(needsAsk){const s=needsAsk.picked;s.has(d.needpick)?s.delete(d.needpick):s.add(d.needpick);rerender();}return;}
+  if(d.itset){const [id,n]=d.itset.split('|');if(!/^[0-9a-f]{24}$/i.test(id))return;tierChange([{id,n:+n}]);return;}
+  if(d.itbulk!=null){const n=+d.itbulk,ids=[...itSel];itSel.clear();tierChange(ids.map(id=>({id,n})),()=>toast(fmt(tr(n?T('{c}개를 T{n}로 정했습니다','Set {c} items to T{n}'):T('{c}개를 자동으로 되돌렸습니다','Reset {c} items to automatic')),{c:ids.length,n})));if(!ids.length)rerender();return;}
   if(d.itsel){itSel.has(d.itsel)?itSel.delete(d.itsel):itSel.add(d.itsel);rerender();return;}
   if(d.segp){const v=d.v==='true'?true:d.v==='false'?false:d.v;if(!writeSetting(d.segp,v))return;if(d.segp==='orbit.extractRefillMode')state.orbit.refillAfterExtract=v!=='off'&&state.orbit.extractRefillCap>0;if(d.segp==='client.perf'&&PERF_MODES[v])Object.assign(state.client,PERF_MODES[v]);rerender();return;}
   if(d.flip){set(d.flip,!get(d.flip));rerender();return;}
@@ -3071,7 +3131,7 @@ document.addEventListener('click',e=>{
   if(d.bladd){state.blacklist.entries.push({id:d.bladd,bots:['all']});rerender();return;}
   if(d.blrm!=null){state.blacklist.entries.splice(+d.blrm,1);blOpen=-1;rerender();return;}
   if(d.batch){batchLastChange=null;batchCopyPlan=null;const i=batch.indexOf(d.batch);if(i>=0)batch.splice(i,1);else batch.push(d.batch);rerender();return;}
-  const a=d.act,arg=d.arg;if(!a)return;
+  const a=d.act,arg=d.arg;if(!a)return;if(a==='needsAll'||a==='needsOnly'||a==='needsCancel'){needsAnswer(a==='needsAll'?'all':a==='needsOnly'?'only':'cancel');return;}
   if(a==='save'){saveToServer();}
   else if(a==='revert'){clearTimeout(presetTimer);state=clone(saved);presetSyncNow();toast(u('revertedT'));rerender();} // 1.1.0: 편집 때 바로 따라 저장된 '내 프리셋'도 저장된 설정으로 되돌린다
   else if(a==='reroll'){seed++;refreshLive();}
