@@ -357,7 +357,7 @@ public static partial class ConfigModel
         HashSet<string> Ids(string path) => r.StringList(path).Where(id => id.Length == 24 && id.All(char.IsAsciiHexDigit))
             .Select(id => id.ToLowerInvariant()).ToHashSet();
         int fixedTier = (int)r.Num(g + "fixedTier", 4, 1, 7);
-        return new GearSettings(r.Bool("modules.gear", true), r.Str(g + "tierMode", "mixed", "level", "mixed", "fixed"),
+        return new GearSettings(r.Bool("modules.gear", true), r.Str(g + "tierMode", "level", "level", "mixed", "fixed"),
             fixedTier, (int)r.Num(g + "startTier", 1, 1, 7), lv, tiers, roles,
             r.Bool(g + "thermalsT7", true), r.Bool(g + "noQuest", true),
             r.Bool("weapons.stock", true), r.Bool("weapons.dust", true), r.Bool("weapons.scope", true), r.Bool("weapons.muzzle.force", false),
