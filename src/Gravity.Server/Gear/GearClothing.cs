@@ -87,10 +87,12 @@ public static class GearClothing
             if (pool == null) continue;
             var vanilla = pool.Where(kv => !mods.ContainsKey(kv.Key.ToString())).ToList();
             var baseW = (vanilla.Count > 0 ? vanilla : pool.ToList()).Select(kv => kv.Value).DefaultIfEmpty(1).Average();
-            var w = Math.Max(1, Math.Round(baseW * settings.ModMult / 100));
+            // 1.1.5: 반올림·최소 1을 없앤다. SPT 바닐라 PMC 옷 무게가 모두 1이라 반올림하면 등장 배율 150% 미만이 전부 1(=100%)이 됐다.
+            // SPT WeightedRandom은 소수 무게를 그대로 쓴다. 배율 0이면 모드 옷을 넣지 않는다.
+            var w = baseW * settings.ModMult / 100;
             var next = vanilla.ToDictionary(kv => kv.Key, kv => kv.Value);
             foreach (var m in items.Clothing)
-                if (m.Part == part && m.Sides.Contains(side) && allowed.Contains(m.Source) && (raid?.Clothing == null || raid.Clothing.Contains(m.Id))) next[new MongoId(m.Id)] = w;
+                if (w > 0 && m.Part == part && m.Sides.Contains(side) && allowed.Contains(m.Source) && (raid?.Clothing == null || raid.Clothing.Contains(m.Id))) next[new MongoId(m.Id)] = w;
             if (next.Count == 0) continue;
             var before = pool.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value);
             changed += next.Count(kv => !before.TryGetValue(kv.Key.ToString(), out var old) || old != kv.Value)
