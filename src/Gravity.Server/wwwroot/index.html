@@ -563,7 +563,7 @@ const set=(p,v)=>setIn(state,p,v);
 function rng(n){let a=n>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 
 const UI={
-  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.1.5','1.1.5'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
+  sub:T('봇 스폰 · 장비','Bot spawns · Loadouts'),mock:T('1.1.6','1.1.6'),preset:T('프리셋','Preset'),presetRaid:T('레이드 프리셋','Raid preset'),presetGear:T('장비 프리셋','Loadout preset'),easy:T('쉬움','Easy'),adv:T('고급','Advanced'),
   offline:T('오프라인 미리보기','Offline preview'),ver:T('SPT 4.1 · 서버 모드','SPT 4.1 · server mod'),
   unsaved:T('저장 안 한 변경 {n}건','{n} unsaved changes'),save:T('저장','Save'),revert:T('되돌리기','Revert'),showChanges:T('바뀐 항목 보기','Show changes'),
   savedT:T('저장했습니다. 다음 레이드부터 적용됩니다.','Saved. Applies from the next raid.'),revertedT:T('마지막 저장 상태로 되돌렸습니다','Reverted to last save'),
@@ -793,7 +793,7 @@ function makeDefaults(){
     diag:{log:'summary',report:true,botLog:false},
     eventsOwner:'auto',svmOwn:{boss:'gravity'},btr:{on:false,woods:{chance:100,min:180,max:360},streets:{chance:100,min:300,max:600}},triggers:{},lab:{blackoutLink:'boost',blackoutMult:3},compat:{otherPmc:'keep',lockWithQuestingBots:false,variantMods:[]},
     blacklist:{entries:[{id:'59e690b686f7746c9f75e848',bots:['scavs']},{id:'5c110624d174af029e69734c',bots:['all']},{id:'5c1d0efb86f7744baf2e7b7b',bots:['all']}],scavPenCap:40,blockDev:true,blockQuest:true},
-    dev:{markers:false,zones:false,overlay:false,verbose:false},settingsVer:115,tierPreset:'auto',tierOwn:{},tierData:tierDataDefaults()};
+    dev:{markers:false,zones:false,overlay:false,verbose:false},settingsVer:116,tierPreset:'auto',tierOwn:{},tierData:tierDataDefaults()};
 }
 const RAID_KEYS=['spawn','near','maps','bosses','bossCommon','bossProg','bossDiff','weeklyBoss','specials','factions','events','eventsOwner','svmOwn','lab','btr'];
 const GEAR_KEYS=['gear','roles','weapons','mods'];
@@ -3577,7 +3577,7 @@ function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeM
   // 1.1.3: 이 판 전 저장본 — 점증은 한 번 끔(기본 켜짐인 줄 모르고 쓰던 사람이 대부분), UNTAR는 그 전엔 웹 값이 적용되지 않았으므로
   // 관리 끔으로 시작하고 나오는 맵도 UNTAR 설정 기본 맵으로(서버 ConfigModel과 같은 규칙).
   if(raw&&!(raw.settingsVer>=113)){if(state.bossProg)state.bossProg.on=false;const fu=state.factions&&state.factions.untar,fd=DEFAULTS.factions.untar;if(fu&&fd){fu.managed=false;fu.maps=clone(fd.maps);}}
-  state.settingsVer=115;
+  state.settingsVer=116;
   // 1.1.0(#69): 옛 설정의 끈 모드 한 목록(mods.disabledSources)은 모든 탭에 그대로 옮긴다(결과 같음). 이후엔 탭마다 따로.
   if(!(raw&&raw.mods&&raw.mods.disabledBy&&typeof raw.mods.disabledBy==='object')){const old=Array.isArray(raw?.mods?.disabledSources)?raw.mods.disabledSources:[];state.mods.disabledBy={weapons:[...old],equipment:[...old],attachments:[...old],other:[...old]};}
   ['weapons','equipment','attachments','other'].forEach(k=>{if(!Array.isArray(state.mods.disabledBy[k]))state.mods.disabledBy[k]=[];});delete state.mods.disabledSources;
