@@ -796,16 +796,12 @@ const pickKeys=(o,ks)=>Object.fromEntries(ks.filter(k=>o&&o[k]!==undefined).map(
 let DEFAULTS=makeDefaults();
 const PRESETS=[
  {id:'default',name:T('기본','Default'),desc:T('처음 설치했을 때 값. 무난한 밀도와 리듬.','Out-of-the-box values. Balanced density and pacing.'),patch:{}},
- {id:'live',name:T('본섭 느낌','Live-like'),desc:T('초반은 조용하고 중반에 PMC가 몰립니다. 시작 스폰킬을 막습니다.','Quiet start, PMCs build up mid-raid. No spawn kills at start.'),
-  patch:{'spawn.startPmcPct':25,'spawn.interval':8,'spawn.intensity.early':.7,'spawn.intensity.mid':1.3,'spawn.intensity.late':.8,'spawn.protect.sec':150,'spawn.placement':'vanilla','spawn.scav.delay':6}},
  {id:'chaos',name:T('난전','Chaos'),desc:T('웨이브가 잦고 크며 핫스팟 위주. 레이드 내내 교전.','Frequent, larger waves around hotspots. Fights all raid long.'),
   patch:{'spawn.startPmcPct':50,'spawn.interval':4,'spawn.waveMin':3,'spawn.waveMax':6,'spawn.placement':'hotspot','spawn.intensity.late':1.2,'near.on':true,'bossCommon.on':true,'bossCommon.chance':60}},
  {id:'endless',name:T('무한 리필','Endless'),desc:T('모든 맵을 무한 보충으로. 레이드 시간을 늘려 쓰는 분께.','Every map refills endlessly. For long raids.'),
   patch:Object.fromEntries(MAPS.map(m=>['maps.'+m.id+'.style','infinite']))},
  {id:'startonly',name:T('시작 스폰만','Start spawns only'),desc:T('웨이브 없이 레이드 시작 때만 넣습니다(PMC·스캐브 모두). 조용한 레이드를 원하는 분께.','Spawn only at raid start, no waves (PMCs and scavs). For quiet raids.'),
-  patch:Object.fromEntries(MAPS.flatMap(m=>[['maps.'+m.id+'.style','start'],['maps.'+m.id+'.scavStyle','start']]))},
- {id:'light',name:T('가볍게(저사양)','Lightweight'),desc:T('웨이브와 맵 동시 상한을 줄여 프레임을 아낍니다. 모드 아이템 줄이기는 장비 → 모드 아이템에 있습니다.','Smaller waves and map caps to save frames. Fewer mod items: Loadout → Mod items.'),
-  patch:Object.assign({'spawn.waveMin':1,'spawn.waveMax':3,'spawn.interval':8,'near.on':false},Object.fromEntries(MAPS.flatMap(m=>[['maps.'+m.id+'.capOn',true],['maps.'+m.id+'.cap',Math.max(8,Math.round(DEFAULTS.maps[m.id].cap*.75))]])))}
+  patch:Object.fromEntries(MAPS.flatMap(m=>[['maps.'+m.id+'.style','start'],['maps.'+m.id+'.scavStyle','start']]))}
 ];
 let customPresets=[];
 let state=clone(DEFAULTS),saved=clone(state);
@@ -815,7 +811,9 @@ function applyPreset(id){
   RAID_KEYS.forEach(k=>{state[k]=k==='maps'?mergeInto(clone(DEFAULTS.maps),src[k]):clone(src[k]!==undefined?src[k]:DEFAULTS[k]);});normalizeMaps(src.maps);state.preset=id;
   toast(fmt(tr(T('레이드 프리셋 적용: {n}','Raid preset applied: {n}')),{n:presetName(id)}));render();
 }
-const presetName=id=>{const p=PRESETS.find(x=>x.id===id);if(p)return tr(p.name);const c=customPresets.find(x=>x.id===id);return c?showName(c.name):id;};
+/* 1.1.5: '본섭 느낌'·'가볍게' 레이드 프리셋은 뺐다(기본과 차이가 작고 이름과 다르게 동작). 그 프리셋을 쓰던 저장값은 그대로 두고 이름만 보여 준다. */
+const OLD_PRESETS={live:T('본섭 느낌 (예전 프리셋)','Live-like (old preset)'),light:T('가볍게 (예전 프리셋)','Lightweight (old preset)')};
+const presetName=id=>{const p=PRESETS.find(x=>x.id===id);if(p)return tr(p.name);const c=customPresets.find(x=>x.id===id);return c?showName(c.name):OLD_PRESETS[id]?tr(OLD_PRESETS[id]):id;};
 
 /* ================= labels ================= */
 const REG={};
