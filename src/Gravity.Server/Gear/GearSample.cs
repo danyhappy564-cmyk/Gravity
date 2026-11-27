@@ -7,7 +7,15 @@ using SPTarkov.Server.Core.Servers;
 namespace Gravity.Gear;
 
 /// <summary>예시 봇 한 명 요약(아이템 id는 웹이 카탈로그로 이름을 붙인다).</summary>
-public sealed record SampleBot(int Level, string? Weapon, string? Scope, string? Armor, int ArmorClass, string? Helmet, int HelmetClass, string? Rig);
+public sealed record SampleBot(int Level, string? Weapon, string? Scope, string? Armor, int ArmorClass, string? Helmet, int HelmetClass, string? Rig)
+{
+    /// <summary>주무기에 든 탄(약실·탄창), 주무기 아래 부품 수, 권총, 헤드셋, 가방.</summary>
+    public string? Ammo { get; init; }
+    public int Parts { get; init; }
+    public string? Pistol { get; init; }
+    public string? Headset { get; init; }
+    public string? Backpack { get; init; }
+}
 
 /// <summary>
 /// 1.1.6 티어별 예시 봇: 서버 안에서 SPT 봇 생성(BotController.Generate, 하네스가 HTTP로 부르는 것과 같은 함수)으로
@@ -27,6 +35,10 @@ public static class GearSample
         int lo = Math.Max(1, c.Min), hi = Math.Max(lo, c.Max);
         return rnd.Next(lo, hi + 1);
     }
+
+    /// <summary>웹 역할 키 → Gravity 역할 id(장비 스위치 확인용).</summary>
+    public static string? GravityRole(string key) => RoleOf(key) is { } spt
+        ? GearTier.RoleId(spt, key is "usec" or "bear", key == "bear" ? "Bear" : key == "usec" ? "Usec" : null) : null;
 
     /// <summary>웹 역할 키 → SPT 봇 종류.</summary>
     public static string? RoleOf(string key) => key switch
@@ -52,12 +64,18 @@ public static class GearSample
         int Class(Item? root) => root == null ? 0 : Below(root).Prepend(root).Select(i => Info(i)?.ArmorClass ?? 0).DefaultIfEmpty(0).Max();
 
         var weapon = Slot("FirstPrimaryWeapon");
-        var scope = weapon == null ? null : Below(weapon).FirstOrDefault(i => Info(i) is { Section: "parts", Slot: "scope" });
+        var under = weapon == null ? [] : Below(weapon).ToList();
+        var scope = under.FirstOrDefault(i => Info(i) is { Section: "parts", Slot: "scope" });
+        var ammo = under.FirstOrDefault(i => Info(i) is { Section: "ammo" });
         var rig = Slot("TacticalVest");
         var armor = Slot("ArmorVest") ?? (rig != null && Class(rig) > 0 ? rig : null);
         var helmet = Slot("Headwear");
         return new SampleBot(bot.Info?.Level ?? 0, weapon?.Template.ToString(), scope?.Template.ToString(),
-            armor?.Template.ToString(), Class(armor), helmet?.Template.ToString(), Class(helmet), rig?.Template.ToString());
+            armor?.Template.ToString(), Class(armor), helmet?.Template.ToString(), Class(helmet), rig?.Template.ToString())
+        {
+            Ammo = ammo?.Template.ToString(), Parts = under.Count(i => Info(i) is { Section: "parts" }),
+            Pistol = Slot("Holster")?.Template.ToString(), Headset = Slot("Earpiece")?.Template.ToString(), Backpack = Slot("Backpack")?.Template.ToString()
+        };
     }
 
     /// <summary>`POST api/gear/sample` {role, tier(1~7), n(1~5)}.</summary>
@@ -79,7 +97,9 @@ public static class GearSample
             {
                 Conditions = [new GenerateCondition { Role = spt, Limit = n, Difficulty = "normal" }]
             });
-            return (200, new { bots = bots.OfType<BotBase>().Take(n).Select(b => Summarize(b, GearRuntime.Items)).ToList() });
+            // 장비 스위치가 꺼진 역할은 Gravity가 입히지 않아 티어와 상관없이 원래 장비로 나온다 → 웹이 알린다.
+            bool on = GravityRole(role) is { } rid && GearRuntime.Active()!.RoleFor(rid).On;
+            return (200, new { bots = bots.OfType<BotBase>().Take(n).Select(b => Summarize(b, GearRuntime.Items)).ToList(), gravity = on });
         }
         catch (Exception ex) { return (500, new { error = ex.Message }); }
         finally { PreviewTier.Value = null; }

@@ -91,7 +91,7 @@ select:focus{border-color:var(--primary)}
 .card.faq-hero{border:1.5px solid var(--gold);background:linear-gradient(135deg,#e8b04b16,#0f141c 70%);box-shadow:0 0 0 3px #e8b04b14,0 12px 32px #00000040}.card.faq-hero h2{color:var(--gold)}.faq-hero a.btn{text-decoration:none;display:inline-flex;align-items:center}.faq-list{display:grid;gap:8px}.faq-search{display:flex;align-items:center;gap:12px}.faq-search input{flex:1;max-width:520px;border:1px solid #e8b04b55}.faq-search input:focus{border-color:var(--gold);outline:none}.faq-cap{margin:18px 0 2px;color:var(--gold);font-size:14px;font-weight:700}.faq-cap:first-child{margin-top:0}.faq-item{background:linear-gradient(180deg,#141a24,#0f141c);border:1px solid #1f2835;border-radius:10px;padding:0 16px}.faq-item[open]{border-color:#e8b04b66}.faq-item summary{cursor:pointer;padding:13px 0;font-weight:600;font-size:13.5px;list-style:none;display:flex;justify-content:space-between;gap:12px;color:var(--text)}.faq-item summary::-webkit-details-marker{display:none}.faq-item summary::after{content:'+';color:var(--gold);font-weight:800}.faq-item[open] summary::after{content:'−'}.faq-a{color:var(--muted);font-size:13px;line-height:1.7;padding-bottom:14px}.faq-a p{margin:0 0 8px}.faq-a ul{margin:4px 0 8px 18px;padding:0}.faq-a li{margin:4px 0}.faq-a b{color:var(--text)}.faq-a code{font-size:12px}
 .nav-btn.on .ic{opacity:1;color:var(--primary);text-shadow:0 0 12px #6ea8ff88}
 .nav-btn .badge.warn{color:#ffd27a;background:#ffb02022}.needrow{align-items:flex-start;border-top:1px solid #ffffff0d;padding:6px 0}.needauto summary{cursor:pointer;margin-top:8px}
-.needok{color:#7bd88f}.needbad{color:#ffb020;cursor:help}.gapbad{color:#ffb020;font-weight:650}.gaptbl th,.gaptbl td,.gaptbl td.num{text-align:center}.gaptbl th:first-child,.gaptbl td:first-child{text-align:left}
+.needok{color:#7bd88f}.needbad{color:#ffb020;cursor:help}.gapbad{color:#ffb020;font-weight:650}.sbot{border-top:1px solid #ffffff0d;padding:8px 0}.sgrid{display:grid;grid-template-columns:5.5em 1fr;gap:3px 10px;margin-top:4px}.gaptbl th,.gaptbl td,.gaptbl td.num{text-align:center}.gaptbl th:first-child,.gaptbl td:first-child{text-align:left}
 .badge{margin-left:auto;font-size:10px;color:var(--muted);background:#ffffff0a;border-radius:10px;padding:1px 7px}
 .drawer-foot{margin-top:auto;border-top:1px solid #1b2330;padding:14px 10px 0;font-size:11px;color:var(--dim);line-height:1.8}
 .drawer-foot .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-right:6px}
@@ -2386,18 +2386,32 @@ function runSample(){
   if(!canAskNeeds())return;sampleRes={loading:true};rerender();
   const role=sampleRole,tier=sampleTier;
   return Promise.resolve().then(()=>fetch('api/gear/sample',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,tier,n:5})}))
-    .then(r=>r&&r.json?r.json():null).catch(()=>null).then(res=>{
-      sampleRes=res&&Array.isArray(res.bots)?{bots:res.bots,role,tier}:{error:(res&&(res.error||(res.off&&tr(T('장비 모듈이 꺼져 있습니다','The gear module is off')))))||tr(T('뽑지 못했습니다','Could not generate'))};rerender();});
+    .then(r=>r&&r.json?r.json().catch(()=>null):null).catch(()=>({neterr:true})).then(res=>{
+      sampleRes=res&&Array.isArray(res.bots)?{bots:res.bots,role,tier,gravity:res.gravity!==false}
+        :{error:res&&res.neterr?tr(T('서버에 연결하지 못했습니다. 서버가 켜져 있는지 확인하고 다시 누르세요.','Could not reach the server. Check that it is running and try again.'))
+          :(res&&(res.error||(res.off&&tr(T('장비 모듈이 꺼져 있습니다','The gear module is off')))))||tr(T('서버가 봇을 돌려주지 않았습니다. 서버 로그를 확인하세요.','The server returned no bots. Check the server log.'))};rerender();});
 }
 function sampleHtml(){
   if(!canAskNeeds())return '';const ci=catIndex(),nm=id=>id?(ci[id]?esc(itemNm(ci[id])):esc(id)):'—';
   const roles=SAMPLE_ROLES.map(([k,l])=>`<button class="mini-btn${k===sampleRole?' on':''}" data-srole="${k}">${tr(l)}</button>`).join('');
   const tiers=[1,2,3,4,5,6,7].map(n=>`<button class="mini-btn${n===sampleTier?' on':''}" data-stier="${n}">T${n}</button>`).join('');
   const cls=n=>n>0?' ('+fmt(tr(T('{n}등급','class {n}')),{n})+')':'';
-  let body='';const r=sampleRes;
+  const r=sampleRes;
+  const it=id=>{if(!id)return '<span class="muted">—</span>';const x=ci[id];if(!x)return esc(id);const e=itEff(x),up=r&&r.tier&&e>r.tier;return `${esc(itemNm(x))} <span class="pill${up?' warn':''}" title="${esc(up?tr(T('봇 티어보다 위 아이템(봇별 아이템 표에 직접 넣었거나 서버가 보탠 것)','Above the bot tier (put in a per-bot table, or topped up by the server)')):tr(T('아이템 티어','Item tier')))}">T${e}</span>`;};
+  const row=(l,v)=>`<span class="small muted">${tr(l)}</span><span class="small">${v}</span>`;
+  let body='';
   if(r&&r.loading)body=`<p class="muted small">${tr(T('뽑는 중…','Generating…'))}</p>`;
   else if(r&&r.error)body=`<p class="small" style="color:#ffb020">${esc(r.error)}</p>`;
-  else if(r&&r.bots)body=`<p class="small muted">${fmt(tr(T('{r} T{t} · {n}명','{r} T{t} · {n} bots')),{r:tr((SAMPLE_ROLES.find(x=>x[0]===r.role)||['',T(r.role,r.role)])[1]),t:r.tier,n:r.bots.length})}</p>`+r.bots.map(b=>`<div class="sw-row needrow"><span><b>Lv${b.level}</b> · ${nm(b.weapon)}${b.scope?' + '+nm(b.scope):' <span class="muted">('+tr(T('조준경 없음','no scope'))+')</span>'}<br><span class="small muted">${tr(T('방탄복','Armor'))}: ${nm(b.armor)}${cls(b.armorClass)} · ${tr(T('헬멧','Helmet'))}: ${nm(b.helmet)}${cls(b.helmetClass)} · ${tr(T('리그','Rig'))}: ${nm(b.rig)}</span></span></div>`).join('');
+  else if(r&&r.bots){
+    const roleName=tr((SAMPLE_ROLES.find(x=>x[0]===r.role)||['',T(r.role,r.role)])[1]);
+    body=`<p class="small muted">${fmt(tr(T('{r} T{t} · {n}명','{r} T{t} · {n} bots')),{r:roleName,t:r.tier,n:r.bots.length})}</p>`
+      +(r.gravity?'':`<p class="small" style="color:#ffb020">${fmt(tr(T('{r}은(는) 봇별 장비 설정이 꺼져 있어 Gravity가 입히지 않습니다. 티어와 상관없이 게임 원래 장비로 나옵니다.','{r} has its per-bot gear switch off, so Gravity does not dress it: it uses the game\'s own gear regardless of tier.')),{r:roleName})}</p>`)
+      +r.bots.map(b=>{
+        const amm=b.ammo&&ci[b.ammo]?` · ${tr(T('탄','Ammo'))} ${it(b.ammo)} ${fmt(tr(T('관통 {p}','pen {p}')),{p:Math.round(ci[b.ammo].pen||0)})}`:'';
+        const gun=b.weapon?`${it(b.weapon)}${b.scope?' + '+it(b.scope):' <span class="muted">('+tr(T('조준경 없음','no scope'))+')</span>'}${amm} · ${fmt(tr(T('부품 {n}개','{n} parts')),{n:b.parts|0})}`:it(null);
+        return `<div class="sbot"><b>Lv${b.level}</b><div class="sgrid">${row(T('주무기','Primary'),gun)}${b.pistol?row(T('권총','Pistol'),it(b.pistol)):''}${row(T('방탄복','Armor'),it(b.armor)+cls(b.armorClass))}${row(T('헬멧','Helmet'),it(b.helmet)+cls(b.helmetClass))}${b.headset?row(T('헤드셋','Headset'),it(b.headset)):''}${row(T('리그','Rig'),it(b.rig))}${b.backpack?row(T('가방','Backpack'),it(b.backpack)):''}</div></div>`;
+      }).join('');
+  }
   return card(T('예시 봇','Example bots'),`<p class="muted small">${tr(T('서버가 지금 저장된 설정으로 봇을 실제로 뽑아 무엇을 들고 나오는지 보여 줍니다(저장하지 않은 수정은 반영 안 됨). 뽑은 봇은 레이드에 나오지 않습니다.','The server really generates bots with your saved settings and shows what they carry (unsaved edits are not used). These bots never enter a raid.'))}</p>
     <div class="sw-row">${roles}</div><div class="sw-row">${tiers}<span class="sp"></span><button class="btn pri" data-act="sampleRun">${tr(T('5명 뽑기','Generate 5'))}</button></div>${body}`,{icon:'☺'});
 }
