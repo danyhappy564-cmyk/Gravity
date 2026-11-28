@@ -93,6 +93,10 @@ public sealed record EventSettings(
     public bool NewYearsDecor { get; init; } = true;
     /// <summary>1.1.0 만우절 이벤트 보스(events.aprilfools.gnomes): 산타·밤 컬티스트·즈랴치 소환 이벤트. 끄면 만우절에만 확률 0.</summary>
     public bool AprilBots { get; init; } = true;
+    /// <summary>1.1.6 좀비 타길라(infectedTagilla, 감염 판에만): default(게임 확률 그대로)·off·set.</summary>
+    public string ZTagilla { get; init; } = "default";
+    /// <summary>1.1.6 ZTagilla=set일 때 감염 판의 좀비 타길라 확률(%).</summary>
+    public double ZTagillaChance { get; init; } = 25;
 }
 
 public sealed record InfSettings(double DelaySec, int Batch, double PmcShare, double Jitter);
@@ -418,7 +422,8 @@ public static partial class ConfigModel
             r.Bool("events.christmas.gifts", true), r.Bool("events.christmas.snow", true), r.Bool("events.christmas.gear", true),
             r.Str("events.newyears.mode", "auto", modes), r.Str("events.aprilfools.mode", "off", modes))
         {
-            NewYearsDecor = r.Bool("events.newyears.fireworks", true), AprilBots = r.Bool("events.aprilfools.gnomes", true)
+            NewYearsDecor = r.Bool("events.newyears.fireworks", true), AprilBots = r.Bool("events.aprilfools.gnomes", true),
+            ZTagilla = r.Str("events.halloween.zTagilla", "default", "default", "off", "set"), ZTagillaChance = r.Num("events.halloween.zTagillaChance", 25, 0, 100)
         };
 
         FactionKind Kind(string p, double chance, int count, int min, int max, double tMin, double tMax)

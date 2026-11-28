@@ -33,7 +33,14 @@ public static class EventRaid
             var inf = cfg.Specials?.GetValueOrDefault("infected");
             double chance = inf is { On: true } ? inf.Chance.GetValueOrDefault(mapId, 0) : ev.Zombies;
             if (rnd.NextDouble() * 100 < chance)
+            {
                 notes.Add(L.T($"감염 판(비율 {h.InfectionPercentage:0}%)", $"infected raid ({h.InfectionPercentage:0}%)"));
+                // 1.1.6 좀비 타길라: 감염 판에서만 웹 값(default면 게임 확률 그대로)
+                if (ev.ZTagilla != "default")
+                    foreach (var b in loc.BossLocationSpawn ?? [])
+                        if (string.Equals(b.BossName, "infectedTagilla", StringComparison.OrdinalIgnoreCase))
+                            b.BossChance = ev.ZTagilla == "off" ? 0 : ev.ZTagillaChance;
+            }
             else
             {
                 h.InfectionPercentage = 0;

@@ -240,7 +240,7 @@ public static partial class ConfigModel
         "boss_reshala", "boss_shturman", "boss_tagilla", "boss_glukhar", "boss_sanitar", "boss_killa", "boss_kaban",
         "boss_kollontay", "boss_zryachiy", "boss_partisan", "boss_goons",
         "f_reshala", "f_glukhar", "f_sanitar", "f_shturman", "f_kaban", "f_kollontay", "f_zryachiy",
-        "cultist", "raider", "rogue", "bloodhound", "infected", "ruaf", "untar", "blackdiv", "wedge"
+        "cultist", "raider", "rogue", "bloodhound", "ruaf", "untar", "blackdiv", "wedge"
     ];
 
     /// <summary>roles.&lt;id&gt;.spread.t1..t7(0~100). 칸이 없거나 합이 0이면 null.</summary>

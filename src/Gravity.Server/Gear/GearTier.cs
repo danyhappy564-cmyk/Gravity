@@ -102,7 +102,7 @@ public static class GearTier
         if (r.StartsWith("ruaf")) return "ruaf";
         if (r == "blackdivib") return "wedge";
         if (r.StartsWith("blackdiv")) return "blackdiv";
-        if (r.StartsWith("infected")) return "infected";
+        if (r.StartsWith("infected")) return null; // 1.1.6: 감염자(이벤트 좀비)는 장비를 건드리지 않는다
         if (r.StartsWith("sectant")) return "cultist";
         if (r.StartsWith("followergluhar")) return "f_glukhar";
         if (r.StartsWith("followerkolontay")) return "f_kollontay";
