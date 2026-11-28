@@ -59,7 +59,8 @@ public sealed class GearContext
         if (info.Mod && !Settings.ModsOn && !GearBelts.IsBelt(Items, id)) return true;
         if (info.Mod && (Settings.ModDisabled(info) || (info.Section != "ammo" && !Raid.ModAllowed(id)) || (Settings.ModPmcOnly && !Pick.Pmc))) return true;
         // 가져온 원작 프리셋 표(only): 모드 아이템은 어느 칸에서도 쓰지 않는다(부착물·탄약·소모품 포함, 모드 설정과 무관).
-        if (info.Mod && Settings.TableFor(Pick.RoleId, Pick.Tier).Only) return true;
+        // 1.1.6 #106: 모드 자동 끼우기(기본 켬)가 켜져 있으면 목록 전용 표에도 모드 아이템을 끼워 넣는다(그 총의 모드 부품도 허용). 끄면 예전처럼 막는다.
+        if (info.Mod && !Settings.ModAutoFill && Settings.TableFor(Pick.RoleId, Pick.Tier).Only) return true;
         return false;
     }
 }
