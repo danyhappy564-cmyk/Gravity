@@ -185,7 +185,7 @@ public static class GearNeeds
         private Dictionary<string, bool> _controls = [];
         private Ctx? _base;
         /// <summary>장비 목록을 볼 표(같은 부품·탄약 규칙을 쓰는 표끼리 이 Ctx를 함께 쓴다). 부품·탄약 무게는 rulesTable에서.</summary>
-        private GearTable? _equip = rulesTable;
+        private GearTable? _equip;
         public void SetTable(GearTable t) { if (!ReferenceEquals(_equip, t)) { _equip = t; _controls = []; } }
         /// <summary>표 무게를 빼고 같은 막힘 규칙만 쓰는 판정(표 0%가 경로를 막았는지 가리는 데 씀).</summary>
         private Ctx Base => _base ??= new Ctx(g, items, itemTier, black, null, onlyMods, questOff, modOff, scav);
@@ -209,9 +209,9 @@ public static class GearNeeds
         public bool? Use(string id, ItemInfo info, int t)
         {
             bool pos = false, auto = false;
-            if (_equip is { } table)
+            if ((_equip ?? rulesTable) is { } table)
             {
-                IEnumerable<string?> slots = info.EquipmentSlots.Any() ? info.EquipmentSlots : [null];
+                IEnumerable<string?> slots = info.EquipmentSlots.Any() ? info.EquipmentSlots.Select(x => (string?)x) : new string?[] { null };
                 foreach (var slot in slots)
                 {
                     bool here = true;
