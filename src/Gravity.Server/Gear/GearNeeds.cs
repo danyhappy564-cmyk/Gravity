@@ -231,7 +231,8 @@ public static class GearNeeds
             if (_memo.TryGetValue((id, t), out var l)) return l;
             l = [];
             bool gun = info.Section == "weapons" && info.Slot != "scabbard";
-            if (gun && ScopeNeed(id, t) is { } sc) l.Add(sc);
+            // 권총은 조준경 없이 나오는 게 보통이라 조준경 판정은 하지 않는다(1.1.6 실서버: 봇별 표 권총이 줄을 채움).
+            if (gun && info.Slot != "holster" && ScopeNeed(id, t) is { } sc) l.Add(sc);
             if (gun && AmmoNeed(id, info, t) is { } a) l.Add(a);
             if (info.RequiredSlots is { Count: > 0 }) l.AddRange(RequiredNeeds(id, info, t));
             return _memo[(id, t)] = l;

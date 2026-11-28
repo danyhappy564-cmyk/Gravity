@@ -2516,7 +2516,7 @@ function needLine(x,i,nm){
   const gx=catIndex()[x.itemId],auto=gx?itEff(gx):null;
   const tbl=x.table?` <span class="pill warn" title="${esc(fmt(tr(T('봇별 표에 직접 넣은 총입니다. 아이템 티어는 T{a}이지만 T{t} 표에 넣어 T{t} 봇이 T{t} 이하 부품으로 조립합니다.','Put in a per-bot table directly. Its item tier is T{a}, but it sits in the T{t} table, so T{t} bots build it from parts up to T{t}.')),{a:auto==null?'?':auto,t:x.tier}))}">${tr(T('봇별 표에 넣음','In per-bot table'))}</span>`:'';
   const who=(x.bots||[]).length?`<br><span class="small muted">${tr(T('해당 표','Tables'))}: ${esc(needBots(x))}</span>`:'';
-  return `<div class="sw-row needrow"><span><b>${nm(x.itemId)}</b> <span class="pill">T${x.tier}</span>${tbl} ${what}${who}${sug?`<br><span class="small muted">${tr(T('제안','Fix'))}: ${sug}</span>`:''}</span><span class="sp"></span>${(x.suggest||[]).length?`<button class="mini-btn" data-needfix="${i}">${tr(T('고치기','Fix'))}</button>`:''}${(x.bots||[]).length&&(x.table||x.note==='table')?`<button class="mini-btn" data-needtbl="${i}">${tr(T('봇별 표로 가기','Go to table'))}</button>`:''}<button class="mini-btn" data-needgo="${x.itemId}">${tr(T('이 아이템으로 가기','Go to item'))}</button></div>`;
+  return `<div class="sw-row needrow"><span><b>${nm(x.itemId)}</b> <span class="pill">T${x.tier}</span>${tbl} ${what}${who}${sug?`<br><span class="small muted">${tr(T('제안','Fix'))}: ${sug}</span>`:''}</span><span class="sp"></span>${(x.suggest||[]).length?`<button class="mini-btn" data-needfix="${i}">${tr(T('고치기','Fix'))}</button>`:''}${x.table&&(x.bots||[]).length&&(x.suggest||[]).length&&x.suggest.every(f=>!(state.gear.itemTier||{})[f.id])?`<button class="mini-btn" data-needadd="${i}" title="${esc(tr(T('제안한 부품을 이 총이 들어 있는 봇별 표(그 티어)의 칸에 넣습니다. 아이템 티어는 그대로라 다른 봇·티어에는 영향이 없습니다. 저장해야 적용됩니다.','Adds the suggested parts to the per-bot table (that tier) holding this gun. Item tiers stay as they are, so other bots and tiers are unaffected. Save to apply.')))}">${tr(T('봇별 표에 넣기','Add to table'))}</button>`:''}${(x.bots||[]).length&&(x.table||x.note==='table')?`<button class="mini-btn" data-needtbl="${i}">${tr(T('봇별 표로 가기','Go to table'))}</button>`:''}<button class="mini-btn" data-needgo="${x.itemId}">${tr(T('이 아이템으로 가기','Go to item'))}</button></div>`;
 }
 function needsCheckHtml(){
   if(!canAskNeeds())return '';
@@ -2535,6 +2535,13 @@ function needsCheckHtml(){
       +(auto.length?`<details class="needauto"><summary>${fmt(tr(T('자동 티어끼리 생긴 문제 {n}개','{n} problems among automatic tiers')),{n:auto.length})}</summary><p class="muted small">${tr(T('둘 다 자동 티어라 지금은 서버가 위 티어 부품을 되살려 달아 줍니다. 고치면 제안한 부품을 총의 티어로 직접 정하므로, 그 티어 봇이 더 좋은 부품을 쓸 수 있게 되고(낮은 티어가 조금 강해짐), 그 부품은 이후 자동 티어 재계산을 따르지 않습니다(아이템 티어에서 자동으로 되돌릴 수 있음).','Both are automatic, so the server currently restores the above-tier part. Fixing sets the suggested parts to the gun\'s tier: bots of that tier can use better parts (lower tiers get a bit stronger), and those parts stop following automatic tiers (you can reset them in Item tiers).'))}</p>${auto.some(([x])=>(x.suggest||[]).length)?`<div class="sw-row"><span class="sp"></span><button class="btn" data-act="needsFixAuto">${fmt(tr(T('자동 티어 문제 모두 고치기 ({c})','Fix all automatic ({c})')),{c:auto.filter(([x])=>(x.suggest||[]).length).length})}</button></div>`:''}${auto.map(([x,i])=>needLine(x,i,nm)).join('')}</details>`:'');
   }
   return card(T('프리셋 점검','Preset check'),body,{icon:'✓',right});
+}
+/** 1.1.6 #105: 표에 넣은 총의 문제를 그 표·티어 안에서 고친다(제안 부품을 표 칸에 무게로 넣음, 아이템 티어는 그대로). */
+function needsAddTable(x){
+  const ci=catIndex(),t=x.tier-1;let n=0;
+  (x.bots||[]).forEach(b=>{if(!state.tierData[b]||!state.tierData[b][t])return;(x.suggest||[]).forEach(f=>{const it=ci[f.id];if(!it)return;const sec=it.section==='ammo'?'ammo':'parts';const si=findItem(sec,it.slot,f.id);if(!si)return;const o=materialize(b,t,sec,it.slot);if(!(o[f.id]>0)){o[f.id]=wDefault(si,t);n++;}});});
+  if(n){presetTouched('tierData');markEdited();}
+  toast(n?fmt(tr(T('봇별 표에 {n}개를 넣었습니다. 저장하면 다시 점검합니다.','Added {n} items to the per-bot table. Saving re-runs the check.')),{n}):tr(T('넣을 것이 없습니다(이미 표에 있음).','Nothing to add (already in the table).')));rerender();
 }
 function needsFix(list){
   const m=new Map();list.forEach(x=>(x.suggest||[]).forEach(f=>{const o=m.get(f.id);if(o==null||f.to<o)m.set(f.id,f.to);}));
@@ -3333,6 +3340,7 @@ document.addEventListener('click',e=>{
   if(d.stier){sampleTier=Math.min(7,Math.max(1,+d.stier||1));rerender();return;}
   if(d.needfix!=null){const x=needsCheck&&needsCheck.needs&&needsCheck.needs[+d.needfix];if(x&&(x.suggest||[]).length)needsFix([x]);return;}
   if(d.needgo){needsGo(d.needgo);return;}
+  if(d.needadd!=null){const x=needsCheck&&needsCheck.needs&&needsCheck.needs[+d.needadd];if(x)needsAddTable(x);return;}
   if(d.needtbl!=null){const x=needsCheck&&needsCheck.needs&&needsCheck.needs[+d.needtbl];if(x&&(x.bots||[]).length){const k=x.bots[0];tRole=isGroup(k)?'':k;tBot=k;tierSel=x.tier-1;tSec='weapons';pickOpen='';selectPage('tieredit');rerender();}return;}
   if(d.needpick){if(needsAsk){const s=needsAsk.picked;s.has(d.needpick)?s.delete(d.needpick):s.add(d.needpick);rerender();}return;}
   if(d.itset){const [id,n]=d.itset.split('|');if(!/^[0-9a-f]{24}$/i.test(id))return;tierChange([{id,n:+n}]);return;}
