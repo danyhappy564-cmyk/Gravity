@@ -104,7 +104,11 @@ public static class GearTier
         if (r == "blackdivib") return "wedge";
         if (r.StartsWith("blackdiv")) return "blackdiv";
         if (r.StartsWith("infected")) return null; // 1.1.6: 감염자(이벤트 좀비)는 장비를 건드리지 않는다
-        if (r.StartsWith("sectant")) return "cultist";
+        if (r.StartsWith("sectant")) return r switch // 1.1.6 #106 컬티스트를 갈래마다 따로
+        {
+            "sectantpriest" => "cult_priest", "sectantpredvestnik" => "cult_predvestnik", "sectantprizrak" => "cult_prizrak", "sectantoni" => "cult_oni",
+            _ => "cult_warrior"
+        };
         if (r.StartsWith("followergluhar")) return "f_glukhar";
         if (r.StartsWith("followerkolontay")) return "f_kollontay";
         if (r.StartsWith("followerboar")) return "f_kaban";
@@ -123,7 +127,9 @@ public static class GearTier
             "bosskolontay" => "boss_kollontay",
             "bosszryachiy" => "boss_zryachiy",
             "bosspartisan" => "boss_partisan",
-            "bossknight" or "followerbigpipe" or "followerbirdeye" => "boss_goons",
+            "bossknight" => "boss_knight",
+            "followerbigpipe" => "boss_bigpipe",
+            "followerbirdeye" => "boss_birdeye",
             "followerbully" => "f_reshala",
             "followersanitar" => "f_sanitar",
             "followerkojaniy" => "f_shturman",

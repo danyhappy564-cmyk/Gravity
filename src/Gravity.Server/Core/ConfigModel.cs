@@ -137,6 +137,9 @@ public sealed record BossSettings(bool On, double Chance, IReadOnlyDictionary<st
     bool Extra = false, IReadOnlyDictionary<string, string[]>? Zones = null,
     IReadOnlyDictionary<string, double>? MapChance = null)
 {
+    /// <summary>1.1.6 #106 군즈 구성원: 빅 파이프·버드아이가 나이트와 같이 나오는지(게임 Supports 1/0). 다른 보스는 안 씀.</summary>
+    public bool BigPipe { get; init; } = true;
+    public bool BirdEye { get; init; } = true;
     /// <summary>1.1.0: 게임 기본 보스 항목을 지우고 Gravity 항목(이 맵 보스 구역 전체, 트리거 없음)만 쓴다.</summary>
     public bool NoVanilla { get; init; }
 }
@@ -310,7 +313,7 @@ public static partial class ConfigModel
 
     public static GravityConfig FromState(JsonNode? state, List<string> clamped)
     {
-        var r = new Reader(state, clamped);
+        var r = new Reader(RoleSplit.Migrate(state), clamped);
         var spawn = ReadSpawn(r);
 
         var maps = new Dictionary<string, MapSettings>();
@@ -383,7 +386,7 @@ public static partial class ConfigModel
                 r.Bool(p + "followers", true), eMin, (int)Math.Max(eMin, r.Num(p + "escMax", 0, 0, 10)),
                 tFrom, Math.Max(tFrom, r.Num(p + "tTo", 0, 0, 600)),
                 r.Str(p + "diff", "", "easy", "normal", "hard", "impossible", "random", "dist"), r.Bool(p + "extra", false), zones, mapChance)
-            { NoVanilla = r.Bool(p + "noVanilla", false) };
+            { NoVanilla = r.Bool(p + "noVanilla", false), BigPipe = r.Bool(p + "members.bigpipe", true), BirdEye = r.Bool(p + "members.birdeye", true) };
         }
 
         var specials = new Dictionary<string, SpecialSettings>();

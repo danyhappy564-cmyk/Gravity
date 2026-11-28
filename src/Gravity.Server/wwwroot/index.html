@@ -676,9 +676,12 @@ const TIER_PREVIEW=[['MP-153','PACA'],['AKS-74U','6B23-1'],['AK-74M','Trooper'],
 const ROLE_GROUPS=[
  [T('PMC','PMC'),[['usec','USEC','USEC'],['bear','BEAR','BEAR']]],
  [T('스캐브','SCAVS'),[['scav','일반 스캐브','Scav'],['marksman','저격 스캐브','Sniper scav'],['pscav','플레이어 스캐브','Player scav']]],
- [T('보스','BOSSES'),BOSSES.filter(b=>b.id!=='goons').map(b=>['boss_'+b.id,b.name.ko,b.name.en]).concat([['boss_goons','나이트 3인방','The Goons']])],
- [T('호위','FOLLOWERS'),[['f_reshala','르샬라 호위','Reshala guards'],['f_glukhar','글루하 호위','Glukhar guards'],['f_sanitar','세니타 호위','Sanitar guards'],['f_shturman','슈트르만 호위','Shturman guards'],['f_kaban','카반 호위','Kaban guards'],['f_kollontay','콜론타이 호위','Kollontay guards'],['f_zryachiy','즈랴치 호위','Zryachiy cultists']]],
- [T('특수','SPECIAL'),[['cultist','컬티스트','Cultists'],['raider','레이더','Raiders'],['rogue','로그','Rogues'],['bloodhound','블러드하운드','Bloodhounds']]],
+ [T('보스','BOSSES'),BOSSES.filter(b=>b.id!=='goons').map(b=>['boss_'+b.id,b.name.ko,b.name.en])],
+ // 1.1.6 #106(사용자): 군즈·컬티스트는 '호위'가 아니고 저마다 이름·능력이 있어 따로 정한다.
+ [T('군즈','GOONS'),[['boss_knight','나이트','Knight'],['boss_bigpipe','빅 파이프','Big Pipe'],['boss_birdeye','버드아이','Birdeye']]],
+ [T('호위','FOLLOWERS'),[['f_reshala','르샬라 호위','Reshala guards'],['f_glukhar','글루하 호위','Glukhar guards'],['f_sanitar','세니타 호위','Sanitar guards'],['f_shturman','슈트르만 호위','Shturman guards'],['f_kaban','카반 호위','Kaban guards'],['f_kollontay','콜론타이 호위','Kollontay guards']]],
+ [T('컬티스트','CULTISTS'),[['cult_priest','컬티스트 사제','Cultist priest'],['cult_warrior','컬티스트 전사','Cultist warrior'],['f_zryachiy','즈랴치 컬티스트','Zryachiy cultists'],['cult_predvestnik','선구자 (이벤트)','Harbinger (event)'],['cult_prizrak','유령 (이벤트)','Ghost (event)'],['cult_oni','오니 (이벤트)','Oni (event)']]],
+ [T('특수','SPECIAL'),[['raider','레이더','Raiders'],['rogue','로그','Rogues'],['bloodhound','블러드하운드','Bloodhounds']]],
  [T('팩션 모드','FACTION MODS'),[['ruaf','RUAF','RUAF'],['untar','UNTAR','UNTAR'],['blackdiv','블랙 디비전','Black Division'],['wedge','웨지','Wedge']]]
 ];
 /** 1.1.6 레벨이 있는(장비 티어 화면의 봇 티어·장비 고르기를 따르는) 봇 */
@@ -727,13 +730,13 @@ function attDefault(eff){const o={count:{min:Math.max(0,eff-3),max:Math.min(6,ef
 function attFor(b,t,w){const d=state.tierData[b][t];d.attach=d.attach||{};if(!d.attach[w])d.attach[w]=attDefault(t+1);return d.attach[w];}
 function allItems(){const out=[];['weapons','armor','ammo','meds','parts','look'].forEach(sec=>SLOTS[sec]||(SLOTS[sec]=[]));['weapons','armor','ammo','meds','parts','look'].forEach(sec=>SLOTS[sec].forEach(([slot,label,items])=>items.forEach(it=>out.push({...it,sec,slot,slotLabel:label}))));return out;}
 const TSECS=[['weapons',T('무기','Weapons')],['armor',T('방어구 · 장비','Armor & gear')],['ammo',T('탄약','Ammo')],['meds',T('의약품 · 투척','Meds & throwables')],['parts',T('부착물','Attachments')],['gen',T('개수 · 확률','Counts & chances')],['rules',T('상한 · 방탄판','Caps & plates')],['sum',T('티어 요약','Tier summary')]];
-const TBOTS=[['pmc',T('PMC','PMC')],['scavs',T('스캐브','Scavs')],['boss',T('보스','Bosses')],['follower',T('호위','Followers')],['special',T('특수','Special')],['faction',T('팩션 모드','Faction mods')]];
+const TBOTS=[['pmc',T('PMC','PMC')],['scavs',T('스캐브','Scavs')],['boss',T('보스','Bosses')],['goons',T('군즈','Goons')],['follower',T('호위','Followers')],['cultists',T('컬티스트','Cultists')],['special',T('특수','Special')],['faction',T('팩션 모드','Faction mods')]];
 const GEN=[['magazines',T('탄창','Magazines'),[1,3],[3,5]],['meds',T('의약품','Meds'),[0,1],[2,4]],['stims',T('주사기','Stims'),[0,0],[1,2]],['grenades',T('수류탄','Grenades'),[0,1],[2,4]],['food',T('음식','Food'),[0,1],[1,2]],['drink',T('음료','Drink'),[0,1],[1,2]],['backpackLoot',T('가방 전리품','Backpack loot'),[0,3],[4,10]],['pocketLoot',T('주머니 전리품','Pocket loot'),[0,2],[1,4]],['vestLoot',T('리그 전리품','Vest loot'),[0,2],[2,5]]];
 const CHSLOTS=[['headwear',T('헬멧','Headwear'),50,95],['earpiece',T('헤드셋','Earpiece'),15,85],['faceCover',T('얼굴','Face cover'),30,70],['armorVest',T('방탄복','Armor vest'),40,95],['armouredRig',T('방탄 리그','Armoured rig'),10,60],['backpack',T('가방','Backpack'),40,90],['holster',T('권총','Sidearm'),20,60],['eyewear',T('안경','Eyewear'),20,60],['belt',T('벨트 (PackNStrap)','Belt (PackNStrap)'),30,80]];
 /** 1.0.5: PMC 묶음만 T1 하한을 SPT 원본 usec/bear 수준으로(서버 GearDefaults.PmcChanceLo와 같은 값). */
 const PMC_CH_LO={armorVest:75,earpiece:50};
 const MODCH=[['scope',T('조준경','Scope'),40,95],['muzzle',T('머즐','Muzzle'),20,80],['tactical',T('전술 장치','Tactical'),10,70],['foregrip',T('손잡이','Foregrip'),20,75],['stock',T('개머리판','Stock'),70,100],['mount',T('마운트','Mount'),30,90]];
-function tierDataDefaults(){const out={};TBOTS.forEach(([b])=>{out[b]=[];for(let t=1;t<=7;t++){const eff=b==='scavs'?Math.max(1,t-2):b==='boss'?Math.min(7,t+1):t,d={},lerp=(a,z)=>Math.round(a+(z-a)*(eff-1)/6);
+function tierDataDefaults(){const out={};TBOTS.forEach(([b])=>{out[b]=[];for(let t=1;t<=7;t++){const eff=b==='scavs'?Math.max(1,t-2):b==='boss'||b==='goons'?Math.min(7,t+1):t,d={},lerp=(a,z)=>Math.round(a+(z-a)*(eff-1)/6);
   ['weapons','armor','ammo','meds','look'].forEach(sec=>{d[sec]={};SLOTS[sec].forEach(([slot])=>{d[sec][slot]={};});});
   d.gen={};GEN.forEach(([k,,lo,hi])=>{d.gen[k]={min:lerp(lo[0],hi[0]),max:lerp(lo[1],hi[1])};});
   d.chance={};CHSLOTS.forEach(([k,,lo,hi])=>d.chance[k]=lerp(b==='pmc'&&k in PMC_CH_LO?PMC_CH_LO[k]:lo,hi));d.mods={};MODCH.forEach(([k,,lo,hi])=>d.mods[k]=lerp(lo,hi));
@@ -765,8 +768,8 @@ function makeDefaults(){
       startPmcPct:35,interval:6,waveMin:2,waveMax:4,early:1.2,mid:1,late:.6,original:true,variant:m.id!=='lighthouse',
       cap:m.id==='labyrinth'?10:m.id.startsWith('factory')?14:m.id==='tarkovstreets'?30:24,capOn:false,capAuto:false,pmcDist:m.id.startsWith('factory')||m.id==='labyrinth'?40:m.id==='laboratory'?80:120,scavDist:m.id.startsWith('factory')||m.id==='labyrinth'?30:80,scavVanilla:false,zones:z,zonesAlt:{}};});
   const bosses={};BOSSES.forEach(b=>{const mm={},zz={};MAPS.forEach(m=>{mm[m.id]=b.maps.includes(m.id);zz[m.id]=b.zones[m.id]?[...b.zones[m.id]]:['default'];});
-    bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'dist',maps:mm,zones:zz,mapChance:{}};});
-  const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],tFrom:0,tTo:0,xFrom:0,xTo:0};
+    bosses[b.id]={on:true,chance:b.chance,escMin:b.esc[0],escMax:b.esc[1],tFrom:b.time[0],tTo:b.time[1],noVanilla:false,followers:true,extra:false,diff:'dist',maps:mm,zones:zz,mapChance:{},...(b.id==='goons'?{members:{bigpipe:true,birdeye:true}}:{})};});
+  const specials={};SPECIALS.forEach(([id,,ch,size])=>{const c={};MAPS.forEach(m=>c[m.id]=ch[m.id]||0);specials[id]={on:id!=='infected',chance:c,min:size[0],max:size[1],...(id==='cultists'?{warMin:Math.max(0,size[0]-1),warMax:Math.max(0,size[1]-1)}:{}),tFrom:0,tTo:0,xFrom:0,xTo:0};
     // 레이더·로그(ABPS식): 원래 스폰(레버·탈출구 이벤트 포함)은 그대로 두고, 맵 확률·인원은 따로 넣는 "추가 스폰"에만(기본 0% = 원래 스폰만)
     if(SPEC_EXTRA.includes(id))Object.assign(specials[id],{vanilla:true,vanillaMax:0,keep:{},extra:Object.fromEntries(MAPS.map(m=>[m.id,0])),extraMin:size[0],extraMax:size[1],extraCount:1,extraCurve:{early:1,mid:1,late:1}});});
   const factions={};FACTIONS.forEach(f=>{factions[f.id]={managed:false,style:'waves',shareCap:false,maps:Object.fromEntries(MAPS.map(m=>[m.id,f.maps.includes(m.id)])),
@@ -1869,9 +1872,14 @@ P.bosses={desc:T('보스마다 나오는 맵, 태어나는 구역, 확률, 호�
      +`<div class="sub">${tr(T('나오는 맵','Maps'))}</div><div class="tog">${MAPS.filter(m=>!previewMid||m.id===previewMid).map(m=>flipBtn(p+'maps.'+m.id,tr(m.name))).join('')}</div>`
      +bossMapChanceBox(b,bb,lock?c.chance:bb.chance,previewMid)
      +`<div class="sub">${tr(T('태어나는 구역 (여러 개면 그중 무작위)','Spawn zones (random among selected)'))}</div>${zoneBoxes}`
-     +`<div class="sub">${tr(T('호위 · 시각','Escorts · timing'))}</div>`
+     +(b.id==='goons'?`<div class="sub">${tr(T('구성원 · 같이 오는 로그 · 시각','Members · rogues · timing'))}</div>`
+       +`<p class="small muted">${tr(T('나이트·빅 파이프·버드아이는 호위가 아니라 각자 이름·능력이 있는 구성원입니다. 둘은 따로 켜고 끕니다(봇별 장비도 군즈 묶음에서 따로).','Knight, Big Pipe and Birdeye are members with their own names and abilities, not escorts. Toggle them separately (Per-bot gear has a Goons group too).'))}</p>`
+       +sw(p+'members.bigpipe',T('빅 파이프 같이 나오기','Big Pipe comes along'),'',{dis:!bb.on})+sw(p+'members.birdeye',T('버드아이 같이 나오기','Birdeye comes along'),'',{dis:!bb.on})
+       +sw(p+'followers',T('같이 오는 로그 켜기','Rogues come along'),T('게임 자료에서 나이트 항목의 호위는 로그(exUsec)입니다. 빅 파이프·버드아이와 별개입니다.','In game data the Knight entry escorts are rogues (exUsec), separate from Big Pipe and Birdeye.'))
+       +range(p+'escMin',p+'escMax',T('같이 오는 로그 수','Rogues with them'),'',{min:0,max:8,unit:UI.ppl,dis:!bb.followers})
+     :`<div class="sub">${tr(T('호위 · 시각','Escorts · timing'))}</div>`
      +sw(p+'followers',BOSSF.followers,'')
-     +range(p+'escMin',p+'escMax',T('호위 수','Escorts'),'',{min:0,max:8,unit:UI.ppl,dis:!bb.followers})
+     +range(p+'escMin',p+'escMax',T('호위 수','Escorts'),'',{min:0,max:8,unit:UI.ppl,dis:!bb.followers}))
      +range(p+'tFrom',p+'tTo',T('등장 시각 (분)','Appears at (min)'),T('0–0 = 레이드 시작 때. 범위면 그 사이 무작위.','0–0 = at start. A range = random within.'),{min:0,max:120,unit:UI.min_})
      +sw(p+'extra',BOSSF.extra,T('맵 기본 자리 외에 추가로 한 번 더 굴립니다.','Roll once more besides the default spawn.'),{adv:true})
      +sw(p+'noVanilla',BOSSF.noVanilla,T('게임 기본 보스 항목(원래 구역·트리거)을 지우고, Gravity가 이 맵 보스 구역 전체에서 새로 넣은 항목만 씁니다. 확률·호위·시각은 위 값을 따릅니다.','Removes the game’s own boss entry (original zones/triggers) and uses only a Gravity entry over all boss zones of the map, with the chance, escorts and time above.'),{adv:true}),{icon:'★',right:pill(bb.on?u('on'):u('off'),bb.on?'good':'')});
@@ -1920,7 +1928,7 @@ P.specials={desc:T('특수 봇마다 탭을 골라 맵별 등장 확률과 무�
        +range(p+'tFrom',p+'tTo',T('원래 스폰 시각 (0~0 = 원래 시각, 레버 같은 이벤트 무리는 그대로)','Original spawn time (0–0 = original; event groups unchanged)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})+range(p+'extraMin',p+'extraMax',T('추가 스폰 인원 (최대 0 = 추가 끔)','Extra group size (max 0 = no extra)'),'',{min:0,max:8,unit:UI.ppl,dis:!sp.on})+range(p+'xFrom',p+'xTo',T('추가 스폰 시각 (0~0 = 판 시작)','Extra spawn time (0–0 = raid start)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})
        +slider(p+'extraCount',T('추가 무리 수','Extra groups'),T('추가 스폰을 이 수만큼 따로 굴립니다. 시각 창 안에서 아래 비중대로 나눠 넣습니다.','Rolls this many extra groups separately, spread over the time window by the weights below.'),{min:1,max:6,unit:'',dis:!sp.on})
        +curvePresetBtns(p+'extraCurve.',sp.extraCurve,!sp.on)+`<div class="grid g3" style="gap:0 18px">${['early','mid','late'].map((k,i)=>slider(p+'extraCurve.'+k,[T('초반 비중','Early weight'),T('중반 비중','Mid weight'),T('후반 비중','Late weight')][i],'',{min:0,max:3,step:0.1,unit:UI.x,dis:!sp.on})).join('')}</div>`
-       :range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on})+(id==='infected'?'':range(p+'tFrom',p+'tTo',T('나오는 시각 (0~0 = 원래 시각)','Spawn time (0–0 = original time)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn preview-common-only" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn preview-common-only" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id],right:`<div class="headsw">${sw(p+'on',T('켜기','Enable'),T('끄면 이 특수 봇은 Gravity가 어느 맵에도 내지 않습니다.','Off = Gravity does not spawn this special bot on any map.'))}</div>`})}
+       :(id==='cultists'?range(p+'warMin',p+'warMax',T('같이 오는 전사 수 (사제 1명은 따로)','Warriors with the priest (priest counted separately)'),T('컬티스트 무리는 사제 1명과 전사 여러 명입니다. 사제와 전사는 이름·능력이 달라 봇별 장비도 컬티스트 묶음에서 따로 정합니다.','A cultist group is one priest plus warriors. They differ in name and abilities, so Per-bot gear sets them separately in the Cultists group.'),{min:0,max:7,unit:UI.ppl,dis:!sp.on}):range(p+'min',p+'max',T('무리 인원','Group size'),'',{min:1,max:8,unit:UI.ppl,dis:!sp.on}))+(id==='infected'?'':range(p+'tFrom',p+'tTo',T('나오는 시각 (0~0 = 원래 시각)','Spawn time (0–0 = original time)'),'',{min:0,max:120,unit:UI.min_,dis:!sp.on})))+`<div class="chips" style="margin-top:8px">${pill(fmt(tr(ex?T('추가 스폰 맵 {n}개','Extra on {n} maps'):T('나오는 맵 {n}개','{n} maps')),{n:on}),'blue')}<button class="mini-btn preview-common-only" data-act="specZero">${tr(T('모든 맵 0%','All maps 0%'))}</button><button class="mini-btn preview-common-only" data-act="specReset">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'✦',desc:SPEC_DESC[id],right:`<div class="headsw">${sw(p+'on',T('켜기','Enable'),T('끄면 이 특수 봇은 Gravity가 어느 맵에도 내지 않습니다.','Off = Gravity does not spawn this special bot on any map.'))}</div>`})}
    ${card(ex?T('맵별 추가 스폰 확률','Extra spawn chance per map'):T('맵별 등장 확률','Chance per map'),`<div class="grid g2" style="gap:0 26px">${maps}</div>`,{desc:ex?T('원래 스폰과 별도로 추가 무리를 이 확률로 더 넣습니다(맵 상한을 지킴). 원래 무리가 없는 맵은 다른 맵의 무리를 본떠 그 맵 보스 구역에 넣습니다("Gravity가 새로 넣음"). 0% = 추가 없음.','Adds extra groups with this chance on top of the original spawns (respects the map cap). On maps without this group, Gravity copies one from another map into that map’s boss zones ("Added by Gravity"). 0% = no extra.'):T('0% = 그 맵에 안 나옴. 원래 없는 맵은 다른 맵의 무리를 본떠 그 맵 보스 구역에 넣습니다.','0% = never on that map. On maps without this group, Gravity copies one from another map into that map’s boss zones.')})}
    ${trigCard}${otherCard}
    ${id==='infected'?notice(T('감염자는 이벤트가 켜졌을 때만 나옵니다. 이벤트 켜기는 이벤트 페이지의 담당 모드를 따릅니다.','Infected only appear while the event is active; see Events for who controls it.'),'flat'):''}
@@ -2242,7 +2250,7 @@ let tierApplySeq=0;
 /* 1.0.9: 장비 프리셋을 적용해도 모드 아이템 전체 스위치(mods.on)는 사용자가 정한 값 그대로 둔다(INBOX #64). */
 function keepModsOn(f){const on=state.mods&&state.mods.on;f();if(state.mods&&on!==undefined)state.mods.on=on;}
 function tierPresetApply(id){const seq=++tierApplySeq;const base=DEFAULTS.gear.tiers;const bp=TIER_PRESETS.find(x=>x.id===id),cs=customTierPresets.find(x=>x.id===id);
-  if(bp&&bp.file){fetch(bp.file).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(j=>{if(seq!==tierApplySeq)return;keepModsOn(()=>GEAR_KEYS.forEach(k=>{state[k]=mergeInto(clone(DEFAULTS[k]),(j.settings||{})[k]||{});}));state.gear.poolVer=2;if(Array.isArray(j.tiers)&&j.tiers.length===7)state.gear.tiers=mergeInto(clone(DEFAULTS.gear.tiers),j.tiers);state.tierData=mergeInto(tierDataDefaults(),j.tables||{});if(!((j.settings||{}).gear&&j.settings.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=clone(j.ownTables||{});state.tierPreset=id;state.gear.tiers.forEach(t=>{if(t.sMin==null)t.sMin=Math.max(1,(t.side||2)-2);});rebuildSlots();toast(fmt(tr(T('장비 프리셋 적용: {n}','Loadout preset applied: {n}')),{n:tr(bp.name)}));render();}).catch(e=>toast(tr(T('프리셋 파일을 읽지 못했습니다: ','Could not read the preset file: '))+e.message));return;}if(cs&&cs.gearSnap)keepModsOn(()=>GEAR_KEYS.forEach(k=>{if(cs.gearSnap[k]!==undefined)state[k]=mergeInto(clone(DEFAULTS[k]),cs.gearSnap[k]);}));else if(bp){keepModsOn(()=>GEAR_KEYS.forEach(k=>state[k]=clone(DEFAULTS[k])));Object.entries(bp.patch||{}).forEach(([k,v])=>setIn(state,k,v));}if(!state.gear.lv)state.gear.lv=lvDefaults();const c=customTierPresets.find(x=>x.id===id);if(c&&c.data)state.tierData=clone(c.data);if(id==='auto'||id==='default')state.tierData=tierDataDefaults();state.gear.tiers=c?clone(c.tiers):base.map((t,i,all)=>clone(TIER_PRESETS.find(x=>x.id===id).f(clone(t),i,clone(all))));state.tierPreset=id;if(cs&&!(cs.gearSnap&&cs.gearSnap.gear&&cs.gearSnap.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=Object.fromEntries(Object.keys(state.tierData).filter(k=>!isGroup(k)).map(k=>[k,true]));if(tRole&&!state.tierOwn[tRole])tBot=grpOf(tRole);else if(!isGroup(tBot)&&!state.tierOwn[tBot])tBot=grpOf(tBot);}
+  if(bp&&bp.file){fetch(bp.file).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(j=>{if(seq!==tierApplySeq)return;migrateSplit116({roles:(j.settings||{}).roles,tierOwn:j.ownTables,tierData:j.tables});keepModsOn(()=>GEAR_KEYS.forEach(k=>{state[k]=mergeInto(clone(DEFAULTS[k]),(j.settings||{})[k]||{});}));state.gear.poolVer=2;if(Array.isArray(j.tiers)&&j.tiers.length===7)state.gear.tiers=mergeInto(clone(DEFAULTS.gear.tiers),j.tiers);state.tierData=mergeInto(tierDataDefaults(),j.tables||{});if(!((j.settings||{}).gear&&j.settings.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=clone(j.ownTables||{});state.tierPreset=id;state.gear.tiers.forEach(t=>{if(t.sMin==null)t.sMin=Math.max(1,(t.side||2)-2);});rebuildSlots();toast(fmt(tr(T('장비 프리셋 적용: {n}','Loadout preset applied: {n}')),{n:tr(bp.name)}));render();}).catch(e=>toast(tr(T('프리셋 파일을 읽지 못했습니다: ','Could not read the preset file: '))+e.message));return;}if(cs&&cs.gearSnap){migrateSplit116(cs.gearSnap);}if(cs&&cs.gearSnap)keepModsOn(()=>GEAR_KEYS.forEach(k=>{if(cs.gearSnap[k]!==undefined)state[k]=mergeInto(clone(DEFAULTS[k]),cs.gearSnap[k]);}));else if(bp){keepModsOn(()=>GEAR_KEYS.forEach(k=>state[k]=clone(DEFAULTS[k])));Object.entries(bp.patch||{}).forEach(([k,v])=>setIn(state,k,v));}if(!state.gear.lv)state.gear.lv=lvDefaults();const c=customTierPresets.find(x=>x.id===id);if(c&&c.data)state.tierData=clone(c.data);if(id==='auto'||id==='default')state.tierData=tierDataDefaults();state.gear.tiers=c?clone(c.tiers):base.map((t,i,all)=>clone(TIER_PRESETS.find(x=>x.id===id).f(clone(t),i,clone(all))));state.tierPreset=id;if(cs&&!(cs.gearSnap&&cs.gearSnap.gear&&cs.gearSnap.gear.chanceVer>=2))migratePmcChance(state.tierData,state.roles);state.gear.chanceVer=2;state.tierOwn=Object.fromEntries(Object.keys(state.tierData).filter(k=>!isGroup(k)).map(k=>[k,true]));if(tRole&&!state.tierOwn[tRole])tBot=grpOf(tRole);else if(!isGroup(tBot)&&!state.tierOwn[tBot])tBot=grpOf(tBot);}
 // 1.1.4: 탄창·의약품·수류탄 개수는 봇별 표의 범위 위에 티어 상한(모든 봇 공통)이 한 번 더 걸린다 — 두 칸이 서로를 가리키게.
 const GEN_CAP={magazines:'mags',meds:'meds',grenades:'nades'};
 function genCapNote(k,t){const c=GEN_CAP[k];if(!c)return '';const v=state.gear.tiers[t]&&state.gear.tiers[t][c];
@@ -2262,7 +2270,7 @@ function plateList(ti){if(!GEAR_CATALOG)return `<p class="small muted">${tr(T('�
   const box=(title,list)=>`<details class="plate-box"><summary>${tr(title)} · ${list.length}${tr(T('종','types'))}</summary><div class="modlist">${list.map(x=>`<div class="modrow"><span>${esc(itemNm(x))}</span>${pill(tr(T('등급','Class'))+' '+x.armorClass,'gold')}${srcPill(x.source)}</div>`).join('')||`<div class="modrow muted">${tr(T('이 범위의 판이 없습니다 — 가장 가까운 등급으로 대신 넣습니다.','None in this range — the closest class is used instead.'))}</div>`}</div></details>`;
   return `<div class="plate-list">${box(fmt(tr(T('앞·뒤판 {a}~{b}등급','Front/back class {a}–{b}')),{a:t.fMin,b:t.fMax}),pick(['front_plate','back_plate'],t.fMin,t.fMax))}${box(fmt(tr(T('옆판 {a}~{b}등급','Side class {a}–{b}')),{a:t.sMin||1,b:t.side}),pick(['left_side_plate','right_side_plate'],t.sMin||1,t.side))}</div>`;}
 const findItem=(sec,slot,id)=>{const e=SLOTS[sec].find(x=>x[0]===slot);return e&&e[2].find(i=>i.id===id);};
-const GKEYS=['pmc','scavs','boss','follower','special','faction'];
+const GKEYS=['pmc','scavs','boss','goons','follower','cultists','special','faction'];
 const isGroup=k=>TBOTS.some(x=>x[0]===k);
 const grpOf=k=>isGroup(k)?k:GKEYS[ROLE_GROUPS.findIndex(([,l])=>l.some(x=>x[0]===k))];
 const grpIdx=g=>GKEYS.indexOf(g);
@@ -3262,6 +3270,7 @@ function writeSettingRaw(p,v,auto=false){
   const impact=isSpawnMap()&&batch.length&&p.startsWith('maps.'+mapSel+'.')&&!BATCH_SKIP.includes(p.split('.')[2])?batchCapture(p):null;
   {const m=/^tierData\.([^.]+)\.(\d+)\.(weapons|armor|ammo|meds|parts)\.([^.]+)\.[0-9a-f]{24}$/.exec(p);if(m)materialize(m[1],+m[2],m[3],m[4]);}
   const k=p.split('.');
+  if(p==='specials.cultists.warMin'||p==='specials.cultists.warMax'){const c=state.specials.cultists;putPath(state,p,v);c[p.endsWith('Min')?'min':'max']=(+v||0)+1;if(c.warMax<c.warMin){c.warMax=c.warMin;c.max=c.min;}return true;}
   if(k[0]!=='maps'){putPath(state,p,v);if(k[0]==='roles'&&k[2]==='mode'&&v==='spread'&&state.roles[k[1]]&&!state.roles[k[1]].spread)state.roles[k[1]].spread=spreadDefault(state.roles[k[1]].tier);return true;}
   const mid=k[1],suffix=k.slice(2).join('.'),targets=[mid,...(isSpawnMap()&&mid===mapSel&&!BATCH_SKIP.includes(k[2])?batch:[])];
   const flag=k[2]==='ovr'?k[3]:k[2]==='override'?'flow':'';
@@ -3712,6 +3721,19 @@ function normalizeMapOverrides(mid,raw={}){
 function normalizeMaps(raw={}){MAPS.forEach(m=>normalizeMapOverrides(m.id,raw[m.id]||{}));}
 /** 1.0.5: 1.0.4 이하가 저장한 장비 자료(설정·내 장비 프리셋·프리셋 파일)에서 손대지 않은 옛 PMC 기본값만 새 기본으로 — 서버 GearConfig와 같은 규칙.
  *  방탄복 40~95·헤드셋 15~85 표(PMC 묶음), USEC·BEAR 앞뒤판 90. 사용자가 고친 숫자는 그대로. */
+/** 1.1.6 #106: 옛 저장값·프리셋의 boss_goons·cultist 한 칸과 보스·특수·호위 묶음 표를 새 칸(군즈 3·컬티스트 5·즈랴치 컬티스트)에 복사한다.
+ *  서버 RoleSplit.Migrate와 같은 규칙. 새 칸이 이미 있으면 그대로 둔다. o = {roles, tierOwn, tierData, blacklist} 꼴(없는 칸은 건너뜀). */
+const GOON_IDS=['boss_knight','boss_bigpipe','boss_birdeye'],CULT_IDS=['cult_priest','cult_warrior','cult_predvestnik','cult_prizrak','cult_oni'];
+function migrateSplit116(o){if(!o)return o;const R=o.roles,O=o.tierOwn,D=o.tierData;
+  const cpRole=(f,to)=>{if(R&&R[f])to.forEach(id=>{if(R[id]==null)R[id]=clone(R[f]);});};cpRole('boss_goons',GOON_IDS);cpRole('cultist',CULT_IDS);
+  if(D){const cpOwn=(f,to)=>{if(O&&O[f]===true&&Array.isArray(D[f]))to.forEach(id=>{if(D[id]==null){D[id]=clone(D[f]);O[id]=true;}});};cpOwn('boss_goons',GOON_IDS);cpOwn('cultist',CULT_IDS);
+    if(D.goons==null&&Array.isArray(D.boss))D.goons=clone(D.boss);
+    if(D.cultists==null){if(Array.isArray(D.special))D.cultists=clone(D.special);
+      if(!(O&&O.f_zryachiy===true)&&Array.isArray(D.follower)&&D.f_zryachiy==null){D.f_zryachiy=clone(D.follower);if(O)O.f_zryachiy=true;else o.tierOwn={f_zryachiy:true};}}}
+  ((o.blacklist||{}).entries||[]).forEach(e=>{if(!Array.isArray(e.bots))return;const b=e.bots,add=[];if(b.includes('boss_goons'))add.push(...GOON_IDS);if(b.includes('cultist'))add.push(...CULT_IDS);
+    if(b.includes('boss'))add.push('goons');if(b.includes('special'))add.push(...CULT_IDS);if(b.includes('follower'))add.push('f_zryachiy');add.forEach(x=>{if(!b.includes(x))b.push(x);});});
+  if(R){delete R.boss_goons;delete R.cultist;}if(O){delete O.boss_goons;delete O.cultist;}if(D){delete D.boss_goons;delete D.cultist;}
+  return o;}
 function migratePmcChance(tierData,roles){const pmc=tierData&&tierData.pmc,nw=tierDataDefaults().pmc;
   if(Array.isArray(pmc))pmc.forEach((d,t)=>{if(!d||!d.chance||!nw[t])return;[['armorVest',40,95],['earpiece',15,85]].forEach(([k,lo,hi])=>{if(d.chance[k]===Math.round(lo+(hi-lo)*t/6))d.chance[k]=nw[t].chance[k];});});
   ['usec','bear'].forEach(id=>{const r=roles&&roles[id];if(r&&r.frontPlate===90)r.frontPlate=100;});}
@@ -3719,7 +3741,7 @@ function migratePmcChance(tierData,roles){const pmc=tierData&&tierData.pmc,nw=ti
 function legacy110(s){Object.entries(s.roles||{}).forEach(([id,r])=>{const pmc=id==='usec'||id==='bear';r.skipBack=pmc;r.limitClass=pmc;r.keys=true;r.quest=true;r.reroll=0;r.topload={...(r.topload||{}),on:false};});
   (s.gear.tiers||[]).forEach(t=>{t.valuables=0;t.keycard=0;});s.gear.splitAmmo=false;if(s.bossProg)s.bossProg.on=false;if(s.factions?.ruaf?.checkpoint)s.factions.ruaf.checkpoint.radius=0;
   if(s.spawn){s.spawn.hotspotBoost=false;s.spawn.startGroup={chance:100,maxSize:5,maxCount:0};}Object.values(s.maps||{}).forEach(m=>{if(m&&m.hotspotBoost!==undefined)m.hotspotBoost=false;});if(s.near)s.near.botDelay=0;}
-function normalizeState(raw){state=mergeInto(clone(DEFAULTS),raw||{});normalizeMaps(raw?.maps);
+function normalizeState(raw){if(raw)migrateSplit116(raw);state=mergeInto(clone(DEFAULTS),raw||{});{const c=state.specials&&state.specials.cultists;if(c&&!(raw&&raw.specials&&raw.specials.cultists&&raw.specials.cultists.warMin!=null)){c.warMin=Math.max(0,(c.min||1)-1);c.warMax=Math.max(c.warMin,(c.max||1)-1);}}normalizeMaps(raw?.maps);
   // 1.0.9: 모드 아이템 스위치는 새 설치만 꺼짐. 값이 없는 기존 설정은 서버(mods.on 기본 켜짐)와 같게 켜 둔다(다음 저장에 꺼짐이 굳지 않게).
   if(raw&&(!raw.mods||raw.mods.on===undefined))state.mods.on=true;
   // 1.1.0: 이 판 전 저장본의 '새로 구현한 칸'은 서버가 안 읽던 화면 기본값이다. 서버(settingsVer 110 전)와 같은 '지금 결과' 값으로 바꿔 보여 준다.

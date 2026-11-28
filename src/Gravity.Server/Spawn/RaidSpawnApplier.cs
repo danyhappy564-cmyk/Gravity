@@ -268,6 +268,14 @@ public static class RaidSpawnApplier
             var n = e;
             if (!b.Followers) n = n with { BossEscortAmount = "0" };
             else if (b.EscMax > 0) n = n with { BossEscortAmount = Range(b.EscMin, b.EscMax) };
+            // 1.1.6 #106: 군즈 빅 파이프·버드아이는 호위(BossEscortAmount, 로그)가 아니라 Supports 항목이다 → 구성원 스위치로 1/0.
+            if (string.Equals(e.BossName, "bossKnight", StringComparison.OrdinalIgnoreCase) && n.Supports is { } sup && sup.Any() && (!b.BigPipe || !b.BirdEye))
+                n = n with { Supports = sup.Select(s => (s.BossEscortType ?? "").ToLowerInvariant() switch
+                {
+                    "followerbigpipe" => new BossSupport { BossEscortType = s.BossEscortType, BossEscortDifficulty = s.BossEscortDifficulty, BossEscortAmount = b.BigPipe ? s.BossEscortAmount : "0" },
+                    "followerbirdeye" => new BossSupport { BossEscortType = s.BossEscortType, BossEscortDifficulty = s.BossEscortDifficulty, BossEscortAmount = b.BirdEye ? s.BossEscortAmount : "0" },
+                    _ => s
+                }).ToList() };
             if (b.TTo > 0)
             {
                 var t = (b.TFrom + rnd.NextDouble() * (b.TTo - b.TFrom)) * 60;

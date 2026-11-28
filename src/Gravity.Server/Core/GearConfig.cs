@@ -143,12 +143,15 @@ public sealed record GearSettings(
 
 public static class GearDefaults
 {
-    public static readonly string[] Groups = ["pmc", "scavs", "boss", "follower", "special", "faction"];
+    public static readonly string[] Groups = ["pmc", "scavs", "boss", "goons", "follower", "cultists", "special", "faction"];
 
     public static string GroupOf(string roleId) => roleId switch
     {
         "usec" or "bear" => "pmc",
         "scav" or "marksman" or "pscav" => "scavs",
+        "boss_knight" or "boss_bigpipe" or "boss_birdeye" => "goons", // 1.1.6 #106
+        "f_zryachiy" => "cultists",
+        _ when roleId.StartsWith("cult_") => "cultists",
         _ when roleId.StartsWith("boss_") => "boss",
         _ when roleId.StartsWith("f_") => "follower",
         "ruaf" or "untar" or "blackdiv" or "wedge" => "faction",
@@ -221,7 +224,7 @@ public static class GearDefaults
     public static int Eff(string group, int tier0) => group switch
     {
         "scavs" => Math.Max(1, tier0 + 1 - 2),
-        "boss" => Math.Min(7, tier0 + 1 + 1),
+        "boss" or "goons" => Math.Min(7, tier0 + 1 + 1),
         _ => tier0 + 1
     };
 
@@ -243,9 +246,9 @@ public static partial class ConfigModel
     [
         "usec", "bear", "scav", "marksman", "pscav",
         "boss_reshala", "boss_shturman", "boss_tagilla", "boss_glukhar", "boss_sanitar", "boss_killa", "boss_kaban",
-        "boss_kollontay", "boss_zryachiy", "boss_partisan", "boss_goons",
+        "boss_kollontay", "boss_zryachiy", "boss_partisan", "boss_knight", "boss_bigpipe", "boss_birdeye",
         "f_reshala", "f_glukhar", "f_sanitar", "f_shturman", "f_kaban", "f_kollontay", "f_zryachiy",
-        "cultist", "raider", "rogue", "bloodhound", "ruaf", "untar", "blackdiv", "wedge"
+        "cult_priest", "cult_warrior", "cult_predvestnik", "cult_prizrak", "cult_oni", "raider", "rogue", "bloodhound", "ruaf", "untar", "blackdiv", "wedge"
     ];
 
     /// <summary>roles.&lt;id&gt;.spread.t1..t7(0~100). 칸이 없거나 합이 0이면 null.</summary>
