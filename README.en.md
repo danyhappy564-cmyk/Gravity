@@ -17,7 +17,7 @@
 
 ## Changelog
 
-The full changelog (76 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-008.md`](changelog/CHANGELOG-008.md)). Per-release summaries: [Releases](../../releases).
+The full changelog (77 entries) is in the [`changelog/`](changelog/) folder, 10 per file (higher number = newer, latest: [`CHANGELOG-008.md`](changelog/CHANGELOG-008.md)). Per-release summaries: [Releases](../../releases).
 
 # Gravity 1.1.6
 
