@@ -14,7 +14,11 @@ public sealed record NeedFix(string Id, int From, int To);
 /// </summary>
 public sealed record Need(string Kind, string ItemId, int Tier, string? Slot, IReadOnlyList<NeedFix> Suggest, string? Note, bool Manual)
 {
-    public string Key => Kind + "|" + ItemId + "|" + Slot;
+    public string Key => Kind + "|" + ItemId + "|" + Slot + "|" + Tier;
+    /// <summary>이 문제가 생기는 봇별 표 키(묶음 pmc·scavs… 또는 전용 표를 켠 봇 id). Gravity가 입히는 봇(장비 스위치 켬)만.</summary>
+    public IReadOnlyList<string> Bots { get; init; } = [];
+    /// <summary>봇별 표에 무게를 넣어 직접 넣은 아이템(자동 티어와 다른 티어에서 쓰일 수 있음).</summary>
+    public bool Table { get; init; }
 }
 
 /// <summary>
@@ -109,30 +113,129 @@ public static class GearNeeds
         return res;
     }
 
-    /// <summary>프리셋 전체 판정. 정렬: 직접 티어 관련 먼저 → 티어 → 종류 → id.</summary>
+    /// <summary>
+    /// 프리셋 전체 판정(1.1.6 #105: 봇별 표 포함). Gravity가 입히는 봇마다 티어 t의 표(TableFor)로 서버와 같은 규칙을 쓴다:
+    /// 표에 무게를 넣은 총은 자동 티어가 높아도 그 표 티어에서 쓰이므로 t에서 판정(직접 티어가 t보다 높으면 서버가 빼므로 건너뜀),
+    /// 표에 없는 총은 자기 티어에서만. 부품·탄약은 표 무게 &gt; 0(직접 티어 없음)이면 티어 통과, 0이면 막힘.
+    /// 같은 표·같은 막힘 규칙은 한 번만 계산하고, 같은 줄(종류·아이템·칸·티어)은 봇 표 키를 합친다.
+    /// 정렬: 직접 정한 것(직접 티어·표에 넣음) 먼저 → 티어 → 종류 → id.
+    /// </summary>
     public static IReadOnlyList<Need> Check(GearSettings g, GearItems items, IReadOnlyDictionary<string, int> itemTier)
     {
-        var ctx = new Ctx(g, items, itemTier, BlackAll(g));
-        var res = new List<Need>();
-        foreach (var (id, info) in items.Info)
+        var cand = items.Info.Where(kv => (kv.Value.Section == "weapons" && kv.Value.Slot != "scabbard") || kv.Value.RequiredSlots is { Count: > 0 })
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal).ToList();
+        var ctxs = new Dictionary<string, Ctx>();
+        var sigs = new Dictionary<GearTable, string>(ReferenceEqualityComparer.Instance);
+        var done = new HashSet<string>();
+        var res = new Dictionary<string, Need>();
+        var bots = new Dictionary<string, SortedSet<string>>();
+        var all = BlackAll(g);
+        foreach (var roleId in ConfigModel.GearRoleIds)
         {
-            if (!ctx.Ok(id)) continue;
-            bool gun = info.Section == "weapons" && info.Slot != "scabbard";
-            bool req = info.RequiredSlots is { Count: > 0 };
-            if (!gun && !req) continue;
-            int t = ctx.Tier(id);
-            if (gun && ctx.ScopeNeed(id, t) is { } sc) res.Add(sc);
-            if (gun && ctx.AmmoNeed(id, info, t) is { } a) res.Add(a);
-            if (req) res.AddRange(ctx.RequiredNeeds(id, info, t));
+            var role = g.RoleFor(roleId);
+            if (!role.On) continue;
+            var group = GearDefaults.GroupOf(roleId);
+            string key = g.Tables.ContainsKey(roleId) ? roleId : group;
+            bool pmc = roleId is "usec" or "bear";
+            var black = GearApply.BlackFor(g, new GearPick(roleId, group, 0, pmc));
+            black.UnionWith(all);
+            bool questOff = !role.Quest, modOff = g.ModPmcOnly && !pmc, scav = group == "scavs";
+            var bsig = string.Join(",", black.Order(StringComparer.Ordinal)) + "#" + questOff + modOff + scav;
+            for (int t = 0; t < 7; t++)
+            {
+                var table = g.TableFor(roleId, t);
+                if (!sigs.TryGetValue(table, out var tsig)) sigs[table] = tsig = TableSig(table);
+                var rules = tsig + "#" + bsig + "#" + table.Only;
+                if (!done.Add(key + "#" + t + "#" + rules)) continue;
+                if (!ctxs.TryGetValue(rules, out var ctx))
+                    ctxs[rules] = ctx = new Ctx(g, items, itemTier, black, table, table.Only, questOff, modOff, scav);
+                ctx.SetTable(table);
+                foreach (var (id, info) in cand)
+                {
+                    if (!ctx.Ok(id)) continue;
+                    var use = ctx.Use(id, info, t);
+                    if (use == null) continue;
+                    foreach (var n in ctx.Judge(id, info, t))
+                    {
+                        var n2 = use.Value ? n with { Manual = true, Table = true } : n;
+                        if (res.TryGetValue(n2.Key, out var old))
+                            res[n2.Key] = old with { Manual = old.Manual || n2.Manual, Table = old.Table || n2.Table };
+                        else res[n2.Key] = n2;
+                        if (!bots.TryGetValue(n2.Key, out var bs)) bots[n2.Key] = bs = new SortedSet<string>(StringComparer.Ordinal);
+                        bs.Add(key);
+                    }
+                }
+            }
         }
-        return res.OrderByDescending(n => n.Manual).ThenBy(n => n.Tier).ThenBy(n => n.Kind, StringComparer.Ordinal)
+        return res.Values.Select(n => n with { Bots = bots[n.Key].ToList() })
+            .OrderByDescending(n => n.Manual).ThenBy(n => n.Tier).ThenBy(n => n.Kind, StringComparer.Ordinal)
             .ThenBy(n => n.ItemId, StringComparer.Ordinal).ThenBy(n => n.Slot, StringComparer.Ordinal).ToList();
     }
 
-    private sealed class Ctx(GearSettings g, GearItems items, IReadOnlyDictionary<string, int> itemTier, HashSet<string> black)
+    /// <summary>판정에 영향을 주는 표 내용(부품·탄약 무게). 무기·방어구 목록은 Use가 표마다 직접 본다.</summary>
+    private static string TableSig(GearTable t) => string.Join(";", t.Pools.Where(kv => kv.Key.StartsWith("parts/") || kv.Key.StartsWith("ammo/"))
+        .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+        .Select(kv => kv.Key + "=" + string.Join(",", kv.Value.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => x.Key + ":" + x.Value.ToString(CultureInfo.InvariantCulture)))));
+
+    private sealed class Ctx(GearSettings g, GearItems items, IReadOnlyDictionary<string, int> itemTier, HashSet<string> black,
+        GearTable? rulesTable = null, bool onlyMods = false, bool questOff = false, bool modOff = false, bool scav = false)
     {
         private Dictionary<string, List<string>>? _ammo;
-        public bool Ok(string id) => Usable(g, items, black, id);
+        private readonly Dictionary<(string, int), List<Need>> _memo = [];
+        private Dictionary<string, bool> _controls = [];
+        private Ctx? _base;
+        /// <summary>장비 목록을 볼 표(같은 부품·탄약 규칙을 쓰는 표끼리 이 Ctx를 함께 쓴다). 부품·탄약 무게는 rulesTable에서.</summary>
+        private GearTable? _equip = rulesTable;
+        public void SetTable(GearTable t) { if (!ReferenceEquals(_equip, t)) { _equip = t; _controls = []; } }
+        /// <summary>표 무게를 빼고 같은 막힘 규칙만 쓰는 판정(표 0%가 경로를 막았는지 가리는 데 씀).</summary>
+        private Ctx Base => _base ??= new Ctx(g, items, itemTier, black, null, onlyMods, questOff, modOff, scav);
+
+        /// <summary>서버 GearContext.Blocked + 표에서 0%로 막은 부품·탄약.</summary>
+        public bool Ok(string id)
+        {
+            if (!Usable(g, items, black, id)) return false;
+            if (!items.Info.TryGetValue(id, out var i)) return true;
+            if (i.Mod && (onlyMods || modOff)) return false;
+            if (i.Quest && questOff) return false;
+            return TableW(id) is not <= 0;
+        }
+
+        /// <summary>표 무게: 부품·탄약만(장비는 Use). 표가 없거나 표에 없으면 null.</summary>
+        private double? TableW(string id) => rulesTable != null && items.Info.TryGetValue(id, out var i) && i.Section is "parts" or "ammo"
+            ? GearPools.Weight(rulesTable, i, id) : null;
+        private bool TablePass(string id) => !Manual(id) && TableW(id) is > 0;
+
+        /// <summary>티어 t 봇이 이 아이템을 쓰는지: true = 표에 넣어서(그 티어에서), false = 자동(자기 티어일 때만 판정), null = 안 씀.</summary>
+        public bool? Use(string id, ItemInfo info, int t)
+        {
+            bool pos = false, auto = false;
+            if (_equip is { } table)
+            {
+                IEnumerable<string?> slots = info.EquipmentSlots.Any() ? info.EquipmentSlots : [null];
+                foreach (var slot in slots)
+                {
+                    bool here = true;
+                    if (slot != null && !_controls.TryGetValue(slot, out here)) _controls[slot] = here = GearPools.Controls(table, slot, items);
+                    var w = GearPools.Weight(table, info, id, slot, here);
+                    if (w is > 0) pos = true; else if (w == null) auto = true;
+                }
+            }
+            else auto = true;
+            if (pos) return Manual(id) && Tier(id) > t ? null : true;
+            return auto && Tier(id) == t ? false : null;
+        }
+
+        /// <summary>아이템 하나를 티어 t에서 판정(조준경·탄약·필수 칸). 같은 규칙 안에서는 한 번만 계산한다.</summary>
+        public IReadOnlyList<Need> Judge(string id, ItemInfo info, int t)
+        {
+            if (_memo.TryGetValue((id, t), out var l)) return l;
+            l = [];
+            bool gun = info.Section == "weapons" && info.Slot != "scabbard";
+            if (gun && ScopeNeed(id, t) is { } sc) l.Add(sc);
+            if (gun && AmmoNeed(id, info, t) is { } a) l.Add(a);
+            if (info.RequiredSlots is { Count: > 0 }) l.AddRange(RequiredNeeds(id, info, t));
+            return _memo[(id, t)] = l;
+        }
         public int Tier(string id) => Tier0(items, itemTier, id);
         private bool Manual(string id) => itemTier.TryGetValue(id, out var t) && t is >= 1 and <= 7;
         private double Price(string id) => items.Info.TryGetValue(id, out var i) ? i.Price : 0;
@@ -143,6 +246,7 @@ public static class GearNeeds
         {
             if (!items.Info.TryGetValue(id, out var i) || i.Section != "parts" || !g.PartTiers) return true;
             if (i.Slot == "magazine" && !Manual(id)) return true;
+            if (TablePass(id)) return true;
             return Tier(id) <= t;
         }
 
@@ -203,6 +307,7 @@ public static class GearNeeds
         {
             if (!g.PartTiers) return null;
             var (any, ok, lift) = ScopePath(id, t);
+            if (!any && rulesTable != null && Base.ScopePath(id, t).HasAny) return Make("scope", id, t, null, [], "table"); // 표 0%가 경로를 막음
             return any && !ok ? Make("scope", id, t, null, lift, null) : null;
         }
 
@@ -211,14 +316,17 @@ public static class GearNeeds
             if (gun.Caliber.Length == 0) return null;
             _ammo ??= items.Info.Where(kv => kv.Value.Section == "ammo" && Ok(kv.Key))
                 .GroupBy(kv => kv.Value.Slot).ToDictionary(gr => gr.Key, gr => gr.Select(kv => kv.Key).ToList());
-            if (!_ammo.TryGetValue(gun.Caliber, out var cand) || cand.Count == 0) return null;
-            double cap = Caps(t).Pen;
+            if (!_ammo.TryGetValue(gun.Caliber, out var cand) || cand.Count == 0)
+                return rulesTable != null && Base.HasAmmo(gun.Caliber) ? Make("ammo", id, t, null, [], "table") : null; // 표에서 그 구경 탄을 모두 0%
+            double cap = scav ? Math.Min(Caps(t).Pen, g.ScavPenCap) : Caps(t).Pen;
             var underCap = cand.Where(a => items.Info[a].Pen <= cap).ToList();
-            if (underCap.Any(a => Tier(a) <= t)) return null;
+            if (underCap.Any(a => Tier(a) <= t || TablePass(a))) return null;
             return underCap.Count > 0
                 ? Make("ammo", id, t, null, [Lowest(underCap)], null)
                 : Make("ammo", id, t, null, [], "pen:" + cap.ToString(CultureInfo.InvariantCulture));
         }
+
+        public bool HasAmmo(string caliber) => items.Info.Any(kv => kv.Value.Section == "ammo" && kv.Value.Slot == caliber && Ok(kv.Key));
 
         public IEnumerable<Need> RequiredNeeds(string id, ItemInfo info, int t)
         {

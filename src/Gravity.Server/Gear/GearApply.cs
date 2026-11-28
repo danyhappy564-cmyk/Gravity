@@ -128,17 +128,25 @@ public static class GearApply
                 if (pool == null) continue;
                 var slot = slotEnum.ToString();
                 var orig = pool.ToList();
-                bool userSlot = GearPools.Controls(table, slot, c.Items);
-                // 실제 DB에 있고 이 장비 칸에 맞는 아이템만 추가한다. DB 원본은 SPT가 만든 봇 복제본과 분리되어 있다.
-                foreach (var id in GearPools.Seeds(table,c.Items,slot))
-                    if(pool.TryAdd(id,1))addedEquipment.Add(id);
-                var candidates = pool.ToList();
+                bool controls = GearPools.Controls(table, slot, c.Items), userSlot = false;
                 bool managed = Managed.Contains(slot);
+                // 1.1.6: 첫 판은 봇별 표대로. 표에 무게를 준 아이템이 하나도 남지 않으면(모드 삭제·블랙리스트·위 티어 직접 지정)
+                // 그 칸을 비우지 않고 표 없이(아이템 티어 규칙으로) 한 번 더 거른다. 0%만 넣은 칸(Wants 거짓)은 일부러 끈 것이라 그대로 비운다.
+                for (int pass = 0; pass < 2; pass++)
+                {
+                bool useTable = pass == 0;
+                userSlot = useTable && controls;
+                if (useTable)
+                    // 실제 DB에 있고 이 장비 칸에 맞는 아이템만 추가한다. DB 원본은 SPT가 만든 봇 복제본과 분리되어 있다.
+                    foreach (var id in GearPools.Seeds(table,c.Items,slot))
+                        if(pool.TryAdd(id,1))addedEquipment.Add(id);
+                else { pool.Clear(); foreach (var (k, v) in orig) pool[k] = v; }
+                var candidates = pool.ToList();
                 foreach (var (mid, w) in candidates)
                 {
                     var id = mid.ToString();
                     var info = c.Info(id);
-                    var manualWeight = info == null ? null : GearPools.Weight(table, info, id,slot);
+                    var manualWeight = info == null || !useTable ? null : GearPools.Weight(table, info, id, slot, controls);
                     if (manualWeight.HasValue) userSlot = true;
                     bool drop = c.Blocked(id);
                     if (manualWeight is <= 0) drop = true;
@@ -155,7 +163,7 @@ public static class GearApply
                 }
                 // 1.1.5 장비 후보 범위(gear.tierRange): 자동 티어 아이템 중 봇 티어(near는 한 단계 아래까지)보다 낮은 것은 뺀다.
                 // 사람이 표에 무게를 직접 준 아이템은 그대로 둔다. 다 빠지면 남은 것 중 가장 가까운 아래 티어만 남긴다(스캐브처럼 원래 목록이 낮은 봇).
-                if (managed && c.TierRange != "all") RangeFilter(pool, slot, table, c);
+                if (managed && c.TierRange != "all") RangeFilter(pool, slot, table, c, useTable && controls);
                 // 1.1.5(1차 하네스 F-plate): 앞·뒤판 칸에 이 티어 등급 범위([FMin,FMax]) 판이 하나도 안 들어가는 방탄복·리그는 뺀다.
                 // 그대로 두면 판 거르기가 '가장 가까운 등급'으로 대체해 T5에 3급 판, T1에 5급 옆판이 들어간다. 다른 후보가 남을 때만 뺀다.
                 if (slot is "ArmorVest" or "TacticalVest" && GearRuntime.Templates is { } tp)
@@ -163,6 +171,15 @@ public static class GearApply
                     var bad = pool.Where(kv => kv.Value > 0 && !PlateRangeFits(kv.Key, caps, tp, c)).Select(kv => kv.Key).ToList();
                     if (bad.Count > 0 && bad.Count < pool.Count(kv => kv.Value > 0))
                         foreach (var m in bad) { pool.Remove(m); removed++; }
+                }
+                if (useTable && userSlot && !pool.Any(kv => kv.Value > 0) && GearPools.Wants(table, slot, c.Items))
+                {
+                    var line = $"봇별 표 칸 비어 아이템 티어로 / Table slot empty, item tiers used: {pick.RoleId} T{pick.Tier + 1} slot={slot}";
+                    DiagLog.GearLine(line);
+                    restored++;
+                    continue;
+                }
+                break;
                 }
                 if (!userSlot && (pool.Count == 0 || pool.Values.All(v => v <= 0)))
                 {
@@ -432,11 +449,11 @@ public static class GearApply
     /// <summary>범위가 좁아 후보가 이만큼보다 적으면 바로 아래 티어를 하나씩 더한다(스캐브·레이더처럼 원래 목록이 작은 봇이 한 총만 드는 일 방지, 1차 하네스).</summary>
     internal static int MinRangeCandidates = 3;
 
-    internal static void RangeFilter(Dictionary<MongoId, double> pool, string slot, GearTable table, GearContext c)
+    internal static void RangeFilter(Dictionary<MongoId, double> pool, string slot, GearTable table, GearContext c, bool onlyHere = true)
     {
         int lo = c.TierRange == "near" ? c.Pick.Tier - 1 : c.Pick.Tier;
         var below = pool.Where(kv => kv.Value > 0).Select(kv => kv.Key)
-            .Where(m => c.Info(m.ToString()) is { } inf && GearPools.Weight(table, inf, m.ToString(), slot) == null && c.TierOf(slot, m.ToString()) < lo).ToList();
+            .Where(m => c.Info(m.ToString()) is { } inf && GearPools.Weight(table, inf, m.ToString(), slot, onlyHere) == null && c.TierOf(slot, m.ToString()) < lo).ToList();
         if (below.Count == 0) return;
         int kept = pool.Count(kv => kv.Value > 0) - below.Count;
         // 아래 티어를 가까운 것부터 묶음째 되살려 후보가 MinRangeCandidates 이상(또는 하나라도 있게) 되게 한다.

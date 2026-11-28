@@ -91,7 +91,7 @@ select:focus{border-color:var(--primary)}
 .card.faq-hero{border:1.5px solid var(--gold);background:linear-gradient(135deg,#e8b04b16,#0f141c 70%);box-shadow:0 0 0 3px #e8b04b14,0 12px 32px #00000040}.card.faq-hero h2{color:var(--gold)}.faq-hero a.btn{text-decoration:none;display:inline-flex;align-items:center}.faq-list{display:grid;gap:8px}.faq-search{display:flex;align-items:center;gap:12px}.faq-search input{flex:1;max-width:520px;border:1px solid #e8b04b55}.faq-search input:focus{border-color:var(--gold);outline:none}.faq-cap{margin:18px 0 2px;color:var(--gold);font-size:14px;font-weight:700}.faq-cap:first-child{margin-top:0}.faq-item{background:linear-gradient(180deg,#141a24,#0f141c);border:1px solid #1f2835;border-radius:10px;padding:0 16px}.faq-item[open]{border-color:#e8b04b66}.faq-item summary{cursor:pointer;padding:13px 0;font-weight:600;font-size:13.5px;list-style:none;display:flex;justify-content:space-between;gap:12px;color:var(--text)}.faq-item summary::-webkit-details-marker{display:none}.faq-item summary::after{content:'+';color:var(--gold);font-weight:800}.faq-item[open] summary::after{content:'−'}.faq-a{color:var(--muted);font-size:13px;line-height:1.7;padding-bottom:14px}.faq-a p{margin:0 0 8px}.faq-a ul{margin:4px 0 8px 18px;padding:0}.faq-a li{margin:4px 0}.faq-a b{color:var(--text)}.faq-a code{font-size:12px}
 .nav-btn.on .ic{opacity:1;color:var(--primary);text-shadow:0 0 12px #6ea8ff88}
 .nav-btn .badge.warn{color:#ffd27a;background:#ffb02022}.needrow{align-items:flex-start;border-top:1px solid #ffffff0d;padding:6px 0}.needauto summary{cursor:pointer;margin-top:8px}
-.needok{color:#7bd88f}.needbad{color:#ffb020;cursor:help}.gapbad{color:#ffb020;font-weight:650}.sbot{border-top:1px solid #ffffff0d;padding:8px 0}.sgrid{display:grid;grid-template-columns:5.5em 1fr;gap:3px 10px;margin-top:4px}.gaptbl th,.gaptbl td,.gaptbl td.num{text-align:center}.gaptbl th:first-child,.gaptbl td:first-child{text-align:left}
+.needok{color:#7bd88f}.needbad{color:#ffb020;cursor:help}.gapbad{color:#ffb020;font-weight:650}.tablehow summary{cursor:pointer}.tablehow ul{margin:6px 0 0 18px;line-height:1.6}.sbot{border-top:1px solid #ffffff0d;padding:8px 0}.sgrid{display:grid;grid-template-columns:5.5em 1fr;gap:3px 10px;margin-top:4px}.gaptbl th,.gaptbl td,.gaptbl td.num{text-align:center}.gaptbl th:first-child,.gaptbl td:first-child{text-align:left}
 .badge{margin-left:auto;font-size:10px;color:var(--muted);background:#ffffff0a;border-radius:10px;padding:1px 7px}
 .drawer-foot{margin-top:auto;border-top:1px solid #1b2330;padding:14px 10px 0;font-size:11px;color:var(--dim);line-height:1.8}
 .drawer-foot .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-right:6px}
@@ -2055,7 +2055,7 @@ P.presetcheck={desc:T('지금 장비 설정을 점검합니다: 총이 자기 �
   if(!GEAR_CATALOG)return `<div class="stack">${gearOff()}${notice(T('서버에 연결하면 설치된 아이템으로 점검합니다.','Connect to the server to check with your installed items.'),'flat')}</div>`;
   needsAuto();
   return `<div class="stack">${gearOff()}${canAskNeeds()?'':notice(T('프리셋 점검·예시 봇은 서버에 연결했을 때만 됩니다.','Preset check and example bots need the server.'),'flat')}${needsCheckHtml()}${tierGapHtml()}${tierDiffHtml()}${sampleHtml()}</div>`;}};
-P.tieredit={desc:T('봇마다 T1~T7에 들고 나올 아이템과 비율을 고칩니다. 왼쪽에서 봇을 켜고 고르고, 오른쪽에서 티어와 칸을 골라 고칩니다.','Edit what each bot carries in T1–T7. Pick a bot on the left, then a tier and slot.'),render(){return `<div class="stack">${gearOff()}${tierEditor()}</div>`;}};
+P.tieredit={desc:T('봇마다 T1~T7에 들고 나올 아이템과 비율을 고칩니다. 왼쪽에서 봇을 켜고 고르고, 오른쪽에서 티어와 칸을 골라 고칩니다.','Edit what each bot carries in T1–T7. Pick a bot on the left, then a tier and slot.'),render(){return `<div class="stack">${gearOff()}${tableHowHtml()}${tableCheckNote()}${tierEditor()}</div>`;}};
 
 P.items={desc:T('모드로 추가된 무기·장비를 봇이 얼마나 쓸지 정합니다. 레이드마다 일부만 쓰면 램을 크게 아낍니다.','How much modded gear bots use. A per-raid subset saves a lot of RAM.'),render(){
   const m=state.mods,off=m.on===false,dis=off||!m.subset;
@@ -2338,13 +2338,17 @@ let needsAutoOf=null,needsTimerId=0;
 function needsAuto(){if(!canAskNeeds()||needsAutoOf===GEAR_CATALOG)return;needsAutoOf=GEAR_CATALOG;Promise.resolve().then(runNeedsCheck);}
 /** 티어를 바꾼 뒤 0.8초 모아서 다시 점검(점검 결과가 있을 때만). */
 function needsRecheck(){if(!canAskNeeds()||!needsCheck)return;clearTimeout(needsTimerId);needsTimerId=setTimeout(runNeedsCheck,800);}
-const NEED_WHY={scope:T('조준경: 이 티어 안에서 조준경까지 닿는 부품 경로가 없습니다','Scope: no part path to a scope within this tier'),ammo:T('탄약: 이 티어에 맞는 탄이 없습니다','Ammo: no matching ammo at this tier'),required:T('필수 부품({slot}): 이 티어 후보가 없습니다','Required part ({slot}): no candidate at this tier')};
-function needMark(x){
+const NEED_WHY={table:T('봇별 표에서 0%로 막아 이 총에 맞는 것이 없습니다','Blocked at 0% in the per-bot table, nothing fits this gun'),scope:T('조준경: 이 티어 안에서 조준경까지 닿는 부품 경로가 없습니다','Scope: no part path to a scope within this tier'),ammo:T('탄약: 이 티어에 맞는 탄이 없습니다','Ammo: no matching ammo at this tier'),required:T('필수 부품({slot}): 이 티어 후보가 없습니다','Required part ({slot}): no candidate at this tier')};
+/** 판정 줄이 이 봇별 표(키 b)·티어(t, 1~7)의 문제인지. bots가 없는 옛 결과는 티어만 본다. */
+function needIn(n,b,t){return n.tier===t&&(!n.bots||!n.bots.length||n.bots.includes(b));}
+function needBots(n){return (n.bots||[]).map(k=>{try{return tableName(k);}catch(_){return k;}}).join(', ');}
+function needMark(x,ctx){
   if(!x||x.section!=='weapons'||x.slot==='scabbard'||!needsCheck||!needsCheck.needs)return '';
-  const l=needsCheck.needs.filter(n=>n.itemId===x.id);
-  if(!l.length)return ` <span class="needok" title="${esc(tr(T('이 티어에서 조준경·탄약·필수 부품 문제 없음','No scope, ammo or required-part problem at this tier')))}">✔</span>`;
-  const ci=catIndex(),why=l.map(n=>fmt(tr(NEED_WHY[n.kind]||T('문제','Problem')),{slot:n.slot||''})+((n.suggest||[]).length?' → '+n.suggest.map(f=>(ci[f.id]?itemNm(ci[f.id]):f.id)+' T'+f.from).join(', '):'')).join(' / ');
-  return ` <span class="needbad" title="${esc('T'+l[0].tier+': '+why)}">⚠</span>`;
+  const l=needsCheck.needs.filter(n=>n.itemId===x.id&&(!ctx||needIn(n,ctx.b,ctx.t)));
+  if(!l.length)return ` <span class="needok" title="${esc(tr(ctx?T('이 표·티어에서 조준경·탄약·필수 부품 문제 없음','No scope, ammo or required-part problem in this table and tier'):T('이 티어에서 조준경·탄약·필수 부품 문제 없음','No scope, ammo or required-part problem at this tier')))}">✔</span>`;
+  const ci=catIndex(),why=l.map(n=>(n.note==='table'?tr(NEED_WHY.table)+' ('+tr(NEED_WHY[n.kind]||T('문제','Problem')).split(':')[0]+')':fmt(tr(NEED_WHY[n.kind]||T('문제','Problem')),{slot:n.slot||''}))+((n.suggest||[]).length?' → '+n.suggest.map(f=>(ci[f.id]?itemNm(ci[f.id]):f.id)+' T'+f.from).join(', '):'')).join(' / ');
+  const where=[...new Set(l.map(n=>'T'+n.tier+((n.bots||[]).length&&!ctx?' '+needBots(n):'')))].join(', ');
+  return ` <span class="needbad" title="${esc(where+': '+why)}">⚠</span>`;
 }
 /* 묶음 옮기기 */
 let bundleAsk=null;
@@ -2469,21 +2473,49 @@ function tierImportWarn(j){
   if(need.length)w.push(fmt(tr(T('필요한 모드 중 없는 것: {m}','Missing required mods: {m}')),{m:need.join(', ')}));
   return w.join(' · ');
 }
+/* ===== 1.1.6 봇별 표: 동작 설명 · 고친 뒤 점검 권장 ===== */
+let needsStale=false;
+function tableHowHtml(){
+  const li=x=>`<li>${tr(x)}</li>`;
+  return `<details class="card tablehow"><summary><b>ⓘ ${tr(T('봇별 표와 아이템 티어표는 이렇게 함께 동작합니다','How per-bot tables and item tiers work together'))}</b></summary><ul class="small">
+  ${li(T('봇 티어: "레벨 따라감"·고정·분포 등은 봇의 티어(T1~T7)만 정합니다. 그 봇은 그 티어 칸만 씁니다(T3 봇은 T3 칸).','Bot tier: follow level / fixed / spread only decide the bot\'s tier (T1–T7). The bot uses that tier\'s column only (a T3 bot uses T3).'))}
+  ${li(T('칸에 무게를 넣은 아이템은 아이템 티어보다 우선합니다. 자동 티어가 높아도 그 티어 봇이 씁니다. 단, 아이템 티어에서 직접 정한 티어가 이 칸보다 높으면 빠집니다.','Items given a weight here win over item tiers: bots of this tier use them even if their automatic tier is higher. An item you set manually above this tier in Item tiers is left out.'))}
+  ${li(T('비운 칸(아무것도 넣지 않음)은 아이템 티어표를 따릅니다: 그 티어 이하 아이템을 자동으로 씁니다. 원작 프리셋(목록 전용) 표도 장비 칸을 통째로 비우면 아이템 티어표를 씁니다.','An empty slot (nothing added) follows Item tiers: items up to that tier are used automatically. In imported (list-only) presets too, a fully empty equipment slot uses Item tiers.'))}
+  ${li(T('0%만 넣은 칸은 그 장비를 끈 것으로 봅니다(입히지 않음).','A slot with only 0% entries is switched off (nothing worn).'))}
+  ${li(T('넣은 아이템이 모두 못 쓰게 되면(모드 삭제·블랙리스트·꺼진 모드·위 티어로 직접 지정) 칸을 비우지 않고 아이템 티어표로 돌아갑니다.','If every item you added becomes unusable (mod removed, blacklisted, mod off, manually set above this tier), the slot falls back to Item tiers instead of staying empty.'))}
+  ${li(T('부착물·탄약은 넣은 것만 직접 정한 것입니다: 무게를 넣으면 티어와 상관없이 쓰고, 0%면 쓰지 않고, 나머지는 아이템 티어표를 따릅니다.','Attachments and ammo: only what you add is set by you. A weight means used regardless of tier, 0% means never, the rest follows Item tiers.'))}
+  ${li(T('높은 티어 총을 낮은 티어 칸에 넣으면, 그 티어 부품만으로 조준경·탄약을 못 갖출 수 있습니다. 표를 고친 뒤에는 저장하고 꼭 "프리셋 점검"을 돌리세요.','If you put a high-tier gun in a low-tier column, its scope or ammo may not be available from that tier\'s parts. After editing, save and run Preset check.'))}
+  </ul></details>`;
+}
+function tableCheckNote(){
+  if(!canAskNeeds())return '';
+  const go=`<button class="mini-btn" data-act="needsGoCheck">${tr(T('프리셋 점검으로','Open Preset check'))} →</button>`;
+  if(needsStale)return notice(T('봇별 표를 고쳤습니다. 저장하면 프리셋 점검이 다시 돌아갑니다(저장 전 수정은 점검에 반영되지 않습니다). 배포 전에는 꼭 점검 결과를 확인하세요.','You edited a per-bot table. Saving re-runs Preset check (unsaved edits are not checked). Check the result before sharing the preset.'),'warn')+`<div class="sw-row"><span class="sp"></span>${go}</div>`;
+  const c=needsCheck;if(!c||!c.needs)return '';
+  const mine=c.needs.filter(n=>(n.bots||[]).includes(tBot));
+  if(!mine.length)return '';
+  const msg=fmt(tr(T('프리셋 점검: 이 표({b})에 조준경·탄약·필수 부품 문제 {n}개가 있습니다. 무기 줄 ⚠에 마우스를 올리면 이유가 보입니다.','Preset check: {n} scope, ammo or required-part problems in this table ({b}). Hover ⚠ on a weapon row for the reason.')),{b:tableName(tBot),n:mine.length});
+  return notice(T(msg,msg),'warn')+`<div class="sw-row"><span class="sp"></span>${go}</div>`;
+}
 /* ===== 1.1.6 프리셋 점검(서버 판정 api/gear/check) ===== */
 let needsCheck=null;
 function runNeedsCheck(){
-  clearTimeout(needsTimerId);if(!canAskNeeds())return;needsAutoOf=GEAR_CATALOG;needsCheck={loading:true};rerender();
+  clearTimeout(needsTimerId);if(!canAskNeeds())return;needsAutoOf=GEAR_CATALOG;needsStale=false;needsCheck={loading:true};rerender();
   return Promise.resolve().then(()=>fetch('api/gear/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemTier:state.gear.itemTier||{}})}))
     .then(r=>r&&r.ok?r.json():null).catch(()=>null)
     .then(res=>{needsCheck=res&&Array.isArray(res.needs)?{needs:res.needs,counts:res.counts||{},at:Date.now()}:{error:true};rerender();});
 }
 function needLine(x,i,nm){
   const pen=/^pen:(.+)$/.exec(x.note||'');
-  const what=x.kind==='scope'?tr(T('이 티어에서 조준경을 달 수 없습니다','Cannot mount a scope at this tier'))
+  const what=x.note==='table'?(x.kind==='ammo'?tr(T('봇별 표에서 이 구경 탄을 모두 0%로 막았습니다(표에서 고치기)','The per-bot table blocks every round of this caliber at 0% (fix it in the table)')):tr(T('봇별 표에서 부착물을 0%로 막아 조준경을 달 수 없습니다(표에서 고치기)','The per-bot table blocks the attachments at 0%, so no scope fits (fix it in the table)')))
+    :x.kind==='scope'?tr(T('이 티어에서 조준경을 달 수 없습니다','Cannot mount a scope at this tier'))
     :x.kind==='ammo'?(pen?fmt(tr(T('이 티어 관통 상한 {n} 아래 탄이 없습니다(티어로는 못 고침)','No ammo under this tier\'s pen cap {n} (tiers cannot fix it)')),{n:esc(pen[1])}):tr(T('이 티어에 맞는 탄약이 없습니다','No matching ammo at this tier')))
     :fmt(tr(T('필수 부품({slot})이 이 티어에 없습니다','Required part ({slot}) missing at this tier')),{slot:esc(x.slot||'')});
   const sug=(x.suggest||[]).map(f=>`${nm(f.id)} T${f.from}→T${f.to}`).join(', ');
-  return `<div class="sw-row needrow"><span><b>${nm(x.itemId)}</b> <span class="pill">T${x.tier}</span> ${what}${sug?`<br><span class="small muted">${tr(T('제안','Fix'))}: ${sug}</span>`:''}</span><span class="sp"></span>${(x.suggest||[]).length?`<button class="mini-btn" data-needfix="${i}">${tr(T('고치기','Fix'))}</button>`:''}<button class="mini-btn" data-needgo="${x.itemId}">${tr(T('이 아이템으로 가기','Go to item'))}</button></div>`;
+  const gx=catIndex()[x.itemId],auto=gx?itEff(gx):null;
+  const tbl=x.table?` <span class="pill warn" title="${esc(fmt(tr(T('봇별 표에 직접 넣은 총입니다. 아이템 티어는 T{a}이지만 T{t} 표에 넣어 T{t} 봇이 T{t} 이하 부품으로 조립합니다.','Put in a per-bot table directly. Its item tier is T{a}, but it sits in the T{t} table, so T{t} bots build it from parts up to T{t}.')),{a:auto==null?'?':auto,t:x.tier}))}">${tr(T('봇별 표에 넣음','In per-bot table'))}</span>`:'';
+  const who=(x.bots||[]).length?`<br><span class="small muted">${tr(T('해당 표','Tables'))}: ${esc(needBots(x))}</span>`:'';
+  return `<div class="sw-row needrow"><span><b>${nm(x.itemId)}</b> <span class="pill">T${x.tier}</span>${tbl} ${what}${who}${sug?`<br><span class="small muted">${tr(T('제안','Fix'))}: ${sug}</span>`:''}</span><span class="sp"></span>${(x.suggest||[]).length?`<button class="mini-btn" data-needfix="${i}">${tr(T('고치기','Fix'))}</button>`:''}${(x.bots||[]).length&&(x.table||x.note==='table')?`<button class="mini-btn" data-needtbl="${i}">${tr(T('봇별 표로 가기','Go to table'))}</button>`:''}<button class="mini-btn" data-needgo="${x.itemId}">${tr(T('이 아이템으로 가기','Go to item'))}</button></div>`;
 }
 function needsCheckHtml(){
   if(!canAskNeeds())return '';
@@ -2491,7 +2523,7 @@ function needsCheckHtml(){
   const man=c&&c.counts?c.counts.manual|0:null;
   const right=`<button class="mini-btn" data-act="needsCheck">${tr(c&&c.needs?T('다시 점검','Check again'):T('프리셋 점검','Check preset'))}</button>${man==null?'':man?`<span class="badge warn">${man}</span>`:'<span class="badge">✓</span>'}`;
   let body;
-  if(!c)body=`<p class="muted small">${tr(T('봇이 자기 티어에서 총에 조준경·맞는 탄약·필수 부품을 못 다는 경우(필요한 부품이 위 티어에 있음)를 찾습니다.','Finds guns that cannot get a scope, matching ammo or a required part at their own tier because what they need sits in a higher tier.'))}</p>`;
+  if(!c)body=`<p class="muted small">${tr(T('봇이 자기 티어에서 총에 조준경·맞는 탄약·필수 부품을 못 다는 경우(필요한 부품이 위 티어에 있음)를 찾습니다. 봇별 아이템 표에 넣은 총은 그 표의 티어에서, 표의 부착물·탄약 설정(무게·0%)까지 따라 판정합니다. 봇별 표는 저장한 내용으로 점검합니다.','Finds guns that cannot get a scope, matching ammo or a required part at their own tier because what they need sits in a higher tier. Guns put in a per-bot table are judged at that table\'s tier, with the table\'s attachment and ammo weights (and 0%). Per-bot tables are checked as saved.'))}</p>`;
   else if(c.loading)body=`<p class="muted small">${tr(T('점검 중…','Checking…'))}</p>`;
   else if(c.error)body=`<p class="muted small">${tr(T('점검하지 못했습니다. 서버 연결을 확인하세요.','Check failed. Check the server connection.'))}</p>`;
   else{
@@ -2514,10 +2546,11 @@ function needsGo(id){
   const el=document.querySelector('#itSearch');if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});
 }
 function tierSelect(it){const cur=state.gear.itemTier?.[it.id]||0,cx=(GEAR_CATALOG||[]).find(x=>x.id===it.id),auto=cx?itAuto(cx):it.t;return `<select class="mini-btn tsel" data-p="gear.itemTier.${it.id}" data-t="n" title="${esc((cx?itWhy(cx)+' — ':'')+tr(T('티어를 바꾸면 그 티어 목록으로 옮겨집니다(다음 판부터 서버 적용). 자세한 근거는 아이템 티어 메뉴.','Changing the tier moves it to that tier list (applies next raid). See Item tiers for details.')))}"><option value="0" ${cur?'':'selected'}>${tr(T('자동','Auto'))} T${auto}</option>${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${cur===n?'selected':''}>T${n}</option>`).join('')}</select>`;}
-/** 1.1.6 봇별 아이템 표 무기 줄: 아이템 티어 표와 같은 ✔/⚠ 표시와 부품 묶음 버튼(점검 결과는 아이템 티어 기준). */
-function irowNeed(it){const x=catIndex()[it.id];if(!x||x.section!=='weapons'||x.slot==='scabbard'||!canAskNeeds())return '';needsAuto();
-  return needMark(x)+` <button class="mini-btn" data-bundle="${x.id}" title="${esc(tr(T('이 총에 맞는 부품을 종류별로 골라 한 번에 옮깁니다','Pick this gun\'s compatible parts by kind and move them together')))}">${tr(T('부품 묶음','Parts'))}</button>`;}
-function irow(it,w,bk,sum,path){const pb=bk?[]:blPartial(it,tBot);return `<div class="irow${bk?' blk':''}"><span class="iname">${tr(it.name)}${irowNeed(it)}${pb.length?` <span class="pill warn" title="${tr(T('블랙리스트','Blacklist'))}">${fmt(tr(T('{b}에게는 금지','banned for {b}')),{b:pb.map(roleName).join(', ')})}</span>`:''}<small class="mono muted">${it.code}</small></span>${srcPill(it.src)}${it.x!=null?pill(tr(T('관통','Pen'))+' '+it.x,'gold'):'<span></span>'}${tierSelect(it)}${bk?`<span class="bkr">${pill(tr(bk.l),'bad')}</span>`:`<div class="ibar"><span style="width:${(w/sum*100).toFixed(0)}%"></span></div>`}<span class="ipct">${bk?'—':Math.round(w/sum*100)+'%'}</span><input type="number" min="0" max="200" value="${w}" data-p="${path}" data-t="n" title="${tr(T('가중치','Weight'))}" ${bk?'disabled':''}><button class="mini-btn" data-irm="${path}" title="${tr(T('빼기','Remove'))}">✕</button></div>`;}
+/** 1.1.6 봇별 아이템 표 무기 줄: 이 표·티어 기준 ✔/⚠ 표시(#105)와 부품 묶음 버튼. */
+function irowNeed(it,path){const x=catIndex()[it.id];if(!x||x.section!=='weapons'||x.slot==='scabbard'||!canAskNeeds())return '';needsAuto();
+  const pp=String(path||'').split('.'),ctx=pp[0]==='tierData'&&pp.length>2?{b:pp[1],t:(+pp[2])+1}:null;
+  return needMark(x,ctx)+` <button class="mini-btn" data-bundle="${x.id}" title="${esc(tr(T('이 총에 맞는 부품을 종류별로 골라 한 번에 옮깁니다','Pick this gun\'s compatible parts by kind and move them together')))}">${tr(T('부품 묶음','Parts'))}</button>`;}
+function irow(it,w,bk,sum,path){const pb=bk?[]:blPartial(it,tBot);return `<div class="irow${bk?' blk':''}"><span class="iname">${tr(it.name)}${irowNeed(it,path)}${pb.length?` <span class="pill warn" title="${tr(T('블랙리스트','Blacklist'))}">${fmt(tr(T('{b}에게는 금지','banned for {b}')),{b:pb.map(roleName).join(', ')})}</span>`:''}<small class="mono muted">${it.code}</small></span>${srcPill(it.src)}${it.x!=null?pill(tr(T('관통','Pen'))+' '+it.x,'gold'):'<span></span>'}${tierSelect(it)}${bk?`<span class="bkr">${pill(tr(bk.l),'bad')}</span>`:`<div class="ibar"><span style="width:${(w/sum*100).toFixed(0)}%"></span></div>`}<span class="ipct">${bk?'—':Math.round(w/sum*100)+'%'}</span><input type="number" min="0" max="200" value="${w}" data-p="${path}" data-t="n" title="${tr(T('가중치','Weight'))}" ${bk?'disabled':''}><button class="mini-btn" data-irm="${path}" title="${tr(T('빼기','Remove'))}">✕</button></div>`;}
 function blockSummary(st){const n=st.bl+st.mod+st.miss+st.pen+(st.tier||0);if(!n)return '';
   return `<div class="notice warn"><span>ⓘ</span><span>${fmt(tr(T('이 화면에서 {n}개가 적용되지 않습니다. 블랙리스트 {a} · 허용 안 한 모드 {b} · 모드 없음 {c} · 관통 상한 {d} · 티어 위(직접 지정) {e}. 줄 그은 아이템은 봇에게 주지 않고, 확률(%) 계산에서도 뺍니다.','{n} items here are not applied: blacklist {a} · mod not allowed {b} · mod missing {c} · pen cap {d} · above tier (manual) {e}. Struck-out items are never given and are left out of the %.')),{n,a:st.bl,b:st.mod,c:st.miss,d:st.pen,e:st.tier||0})} <button class="mini-btn" data-nav="blacklist">${tr(T('블랙리스트','Blacklist'))} →</button> <button class="mini-btn" data-nav="items">${tr(T('허용할 모드','Allowed mods'))} →</button></span></div>`;}
 function picker(sec,slot,b,t){
@@ -2571,7 +2604,7 @@ function importFullJson(text){let j;try{j=JSON.parse(text);}catch{toast(tr(T('JS
   if(!TIER_PRESETS.some(p=>p.id===state.tierPreset)&&!customTierPresets.some(p=>p.id===state.tierPreset))state.tierPreset='edited';
   toast(fmt(tr(T('"{p}" 백업을 불러왔습니다','Loaded backup "{p}"')),{p:String(j.name||'')}));rerender();}
 /* 바꾼 뒤에 고른 커스텀 프리셋 사본을 갱신한다: 버튼 처리는 markEdited() 다음에 표를 고치므로 동기 처리가 끝난 뒤 한 번(Codex 6차 7번) */
-function markEdited(){tierApplySeq++;schedulePresetSync();if(customTierPresets.some(x=>x.id===state.tierPreset))return;const id='t'+Date.now().toString(36),name=customName(customTierPresets);customTierPresets.push({id,name,tiers:clone(state.gear.tiers),data:clone(state.tierData),gearSnap:pickKeys(state,GEAR_KEYS)});state.tierPreset=id;toast(fmt(tr(T('기본 장비 프리셋은 그대로 두고 "{n}"을(를) 만들어 저장합니다','Built-in kept; saving to new "{n}"')),{n:name}));}
+function markEdited(){tierApplySeq++;needsStale=true;schedulePresetSync();if(customTierPresets.some(x=>x.id===state.tierPreset))return;const id='t'+Date.now().toString(36),name=customName(customTierPresets);customTierPresets.push({id,name,tiers:clone(state.gear.tiers),data:clone(state.tierData),gearSnap:pickKeys(state,GEAR_KEYS)});state.tierPreset=id;toast(fmt(tr(T('기본 장비 프리셋은 그대로 두고 "{n}"을(를) 만들어 저장합니다','Built-in kept; saving to new "{n}"')),{n:name}));}
 function copyTierTo(dst,dstT){const srcT=dragTier!=null?dragTier:tierSel,srcKey=tBot,src=clone(state.tierData[srcKey][srcT]);let made=false;
   if(!isGroup(dst)&&!state.tierOwn[dst]){state.tierData[dst]=clone(state.tierData[grpOf(dst)]);state.tierOwn[dst]=true;made=true;}
   if(dst===srcKey&&dstT===srcT){toast(tr(T('같은 자리라 복사하지 않았습니다','Same place — nothing copied')));return;}
@@ -3299,6 +3332,7 @@ document.addEventListener('click',e=>{
   if(d.stier){sampleTier=Math.min(7,Math.max(1,+d.stier||1));rerender();return;}
   if(d.needfix!=null){const x=needsCheck&&needsCheck.needs&&needsCheck.needs[+d.needfix];if(x&&(x.suggest||[]).length)needsFix([x]);return;}
   if(d.needgo){needsGo(d.needgo);return;}
+  if(d.needtbl!=null){const x=needsCheck&&needsCheck.needs&&needsCheck.needs[+d.needtbl];if(x&&(x.bots||[]).length){const k=x.bots[0];tRole=isGroup(k)?'':k;tBot=k;tierSel=x.tier-1;tSec='weapons';pickOpen='';selectPage('tieredit');rerender();}return;}
   if(d.needpick){if(needsAsk){const s=needsAsk.picked;s.has(d.needpick)?s.delete(d.needpick):s.add(d.needpick);rerender();}return;}
   if(d.itset){const [id,n]=d.itset.split('|');if(!/^[0-9a-f]{24}$/i.test(id))return;tierChange([{id,n:+n}]);return;}
   if(d.itbulk!=null){const n=+d.itbulk,ids=[...itSel];itSel.clear();tierChange(ids.map(id=>({id,n})),()=>toast(fmt(tr(n?T('{c}개를 T{n}로 정했습니다','Set {c} items to T{n}'):T('{c}개를 자동으로 되돌렸습니다','Reset {c} items to automatic')),{c:ids.length,n})));if(!ids.length)rerender();return;}
@@ -3332,7 +3366,7 @@ document.addEventListener('click',e=>{
   if(d.bladd){state.blacklist.entries.push({id:d.bladd,bots:['all']});rerender();return;}
   if(d.blrm!=null){state.blacklist.entries.splice(+d.blrm,1);blOpen=-1;rerender();return;}
   if(d.batch){batchLastChange=null;batchCopyPlan=null;const i=batch.indexOf(d.batch);if(i>=0)batch.splice(i,1);else batch.push(d.batch);rerender();return;}
-  const a=d.act,arg=d.arg;if(!a)return;if(a==='needsCheck'){runNeedsCheck();return;}if(a==='bundleGo'){bundleGo();return;}if(a==='bundleCancel'){bundleAsk=null;rerender();return;}if(a==='bundleAbove'){if(bundleAsk){bundleAsk.above=!bundleAsk.above;rerender();}return;}if(a==='sampleRun'){runSample();return;}if(a==='needsFixAuto'){const l=(needsCheck&&needsCheck.needs||[]).filter(x=>!x.manual&&(x.suggest||[]).length),ids=new Set(l.flatMap(x=>x.suggest.map(f=>f.id)));if(!ids.size||!confirm(fmt(tr(T('자동 티어끼리 생긴 문제를 고치려고 {c}개 아이템의 티어를 직접 정합니다. 그 티어 봇이 더 좋은 부품을 쓸 수 있게 됩니다.','Set the tier of {c} items to fix problems among automatic tiers. Bots of those tiers can use better parts.')),{c:ids.size})))return;needsFix(l);return;}if(a==='needsFixAll'){const l=(needsCheck&&needsCheck.needs||[]).filter(x=>x.manual&&(x.suggest||[]).length),ids=new Set(l.flatMap(x=>x.suggest.map(f=>f.id)));if(!ids.size||!confirm(fmt(tr(T('{c}개 아이템의 티어를 옮깁니다.','Move the tier of {c} items.')),{c:ids.size})))return;needsFix(l);return;}if(a==='needsAll'||a==='needsOnly'||a==='needsCancel'){needsAnswer(a==='needsAll'?'all':a==='needsOnly'?'only':'cancel');return;}
+  const a=d.act,arg=d.arg;if(!a)return;if(a==='needsCheck'){runNeedsCheck();return;}if(a==='bundleGo'){bundleGo();return;}if(a==='bundleCancel'){bundleAsk=null;rerender();return;}if(a==='bundleAbove'){if(bundleAsk){bundleAsk.above=!bundleAsk.above;rerender();}return;}if(a==='sampleRun'){runSample();return;}if(a==='needsGoCheck'){selectPage('presetcheck');rerender();return;}if(a==='needsFixAuto'){const l=(needsCheck&&needsCheck.needs||[]).filter(x=>!x.manual&&(x.suggest||[]).length),ids=new Set(l.flatMap(x=>x.suggest.map(f=>f.id)));if(!ids.size||!confirm(fmt(tr(T('자동 티어끼리 생긴 문제를 고치려고 {c}개 아이템의 티어를 직접 정합니다. 그 티어 봇이 더 좋은 부품을 쓸 수 있게 됩니다.','Set the tier of {c} items to fix problems among automatic tiers. Bots of those tiers can use better parts.')),{c:ids.size})))return;needsFix(l);return;}if(a==='needsFixAll'){const l=(needsCheck&&needsCheck.needs||[]).filter(x=>x.manual&&(x.suggest||[]).length),ids=new Set(l.flatMap(x=>x.suggest.map(f=>f.id)));if(!ids.size||!confirm(fmt(tr(T('{c}개 아이템의 티어를 옮깁니다.','Move the tier of {c} items.')),{c:ids.size})))return;needsFix(l);return;}if(a==='needsAll'||a==='needsOnly'||a==='needsCancel'){needsAnswer(a==='needsAll'?'all':a==='needsOnly'?'only':'cancel');return;}
   if(a==='save'){saveToServer();}
   else if(a==='revert'){clearTimeout(presetTimer);state=clone(saved);presetSyncNow();toast(u('revertedT'));rerender();} // 1.1.0: 편집 때 바로 따라 저장된 '내 프리셋'도 저장된 설정으로 되돌린다
   else if(a==='reroll'){seed++;refreshLive();}
@@ -3664,6 +3698,7 @@ async function saveToServer(){
     const j=await r.json();
     if(!r.ok||!j.ok){if(j.login)needLogin(j.login);toast(tr(T('저장 실패: ','Save failed: '))+(j.error||r.status));return;}
     saved=clone(state);
+    if(needsStale&&canAskNeeds())runNeedsCheck();
     toast(j.clamped&&j.clamped.length?fmt(tr(T('저장했습니다. 범위를 넘은 값 {n}개는 서버가 고쳐 씁니다.','Saved. {n} out-of-range values were clamped.')),{n:j.clamped.length}):u('savedT'));
     rerender();
   }catch(e){toast(tr(T('저장 실패: ','Save failed: '))+e.message);}

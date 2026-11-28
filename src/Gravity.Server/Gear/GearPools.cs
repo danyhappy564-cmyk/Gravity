@@ -42,7 +42,8 @@ public static class GearPools
         return result;
     }
 
-    public static double? Weight(GearTable table, ItemInfo info, string id, string? equipmentSlot = null)
+    /// <param name="onlyHere">1.1.6: 목록 전용 표(only)의 '표에 없으면 0' 규칙을 이 장비 칸에 쓸지. 표가 이 칸을 통째로 비워 두었으면(Controls가 거짓) false → 아이템 티어 규칙(자동).</param>
+    public static double? Weight(GearTable table, ItemInfo info, string id, string? equipmentSlot = null, bool onlyHere = true)
     {
         if (equipmentSlot == "SecondPrimaryWeapon" && table.Pools.TryGetValue("secondaryWeapons/"+info.Slot,out var secondary)) return secondary.GetValueOrDefault(id);
         // 목록 전용 표(원작 프리셋)에 보조 주무기 목록이 있으면 그 목록에 없는 종류는 보조로 나오지 않는다(주무기 목록으로 넘어가지 않음, Codex 6차 1번).
@@ -57,13 +58,20 @@ public static class GearPools
             if (legacy.Length > 0) return legacy.Max(k=>table.Pools[k].GetValueOrDefault(id));
         }
         // 목록 전용 표: 장비 칸(무기·방어구)에서 표에 없는 아이템은 무게 0. 부품·방탄판·탄약은 기존 규칙 그대로.
-        if (table.Only && equipmentSlot != null && info.Section is "weapons" or "armor") return 0;
+        if (table.Only && onlyHere && equipmentSlot != null && info.Section is "weapons" or "armor") return 0;
         return null;
     }
 
-    public static bool Controls(GearTable table, string slot, GearItems items) =>
-        table.Pools.Keys.Any(k=>items.PoolEquipment.TryGetValue(k.StartsWith("secondaryWeapons/")?"weapons/"+k[17..]:k,out var slots)&&slots.Contains(slot)&&(!k.StartsWith("secondaryWeapons/")||slot=="SecondPrimaryWeapon"))
-        || slot is "FirstPrimaryWeapon" or "SecondPrimaryWeapon" && (table.Pools.ContainsKey("weapons/primaryShort") || table.Pools.ContainsKey("weapons/primaryLong"));
+    public static bool Controls(GearTable table, string slot, GearItems items) => table.Pools.Keys.Any(k => MapsTo(k, slot, items));
+
+    /// <summary>1.1.6: 이 장비 칸에 표가 무게(&gt;0)를 준 아이템이 하나라도 있는지. 거짓이면 그 칸은 0%로 일부러 끈 것이다.</summary>
+    public static bool Wants(GearTable table, string slot, GearItems items) =>
+        table.Pools.Any(kv => kv.Value.Values.Any(w => w > 0) && MapsTo(kv.Key, slot, items));
+
+    private static bool MapsTo(string k, string slot, GearItems items) =>
+        k is "weapons/primaryShort" or "weapons/primaryLong" ? slot is "FirstPrimaryWeapon" or "SecondPrimaryWeapon"
+        : items.PoolEquipment.TryGetValue(k.StartsWith("secondaryWeapons/") ? "weapons/" + k[17..] : k, out var slots) && slots.Contains(slot)
+          && (!k.StartsWith("secondaryWeapons/") || slot == "SecondPrimaryWeapon");
 
     /// <summary>명시한 아이템만 순회한다(이 티어 표의 유한한 ID 수가 최대 횟수). 전체 DB를 봇마다 검색하지 않는다.</summary>
     public static IEnumerable<string> Seeds(GearTable table,GearItems items,string slot)
