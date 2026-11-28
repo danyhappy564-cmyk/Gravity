@@ -30,6 +30,11 @@ public sealed record RoleGear(bool On, string Mode, int Tier, int Offset, double
     public bool LimitClass { get; init; }
     /// <summary>1.1.5 이 봇의 장비 고르는 범위: global = 장비 티어 화면 설정(gear.tierRange) 따름, 아니면 exact·near·all.</summary>
     public string TierRange { get; init; } = "global";
+    /// <summary>1.1.6 TierRange=down: 봇 티어에서 몇 단계 아래 장비까지 쓸지(2~6).</summary>
+    public int TierDown { get; init; } = 2;
+    /// <summary>1.1.6 Mode=range: 봇 티어를 이 범위(1~7, TierMin≤TierMax)에서 고르게 뽑는다.</summary>
+    public int TierMin { get; init; } = 3;
+    public int TierMax { get; init; } = 5;
     /// <summary>전리품에 열쇠·키카드를 허용(끄면 목록에서 뺌).</summary>
     public bool Keys { get; init; } = true;
     /// <summary>퀘스트 전용 템 허용(전역 퀘스트 템 금지가 꺼져 있을 때만 의미).</summary>
@@ -293,7 +298,7 @@ public static partial class ConfigModel
             var d = GearDefaults.Role(id);
             var p = $"roles.{id}.";
             double wd = r.Num(p + "wDurMin", d.WDurMin, 1, 100), ad = r.Num(p + "aDurMin", d.ADurMin, 1, 100);
-            roles[id] = new RoleGear(r.Bool(p + "on", d.On), r.Str(p + "mode", d.Mode, "follow", "fixed", "offset", "spread"),
+            roles[id] = new RoleGear(r.Bool(p + "on", d.On), r.Str(p + "mode", d.Mode, "follow", "fixed", "offset", "spread", "range"),
                 (int)r.Num(p + "tier", d.Tier, 1, 7), (int)r.Num(p + "offset", 0, -3, 3),
                 r.Num(p + "frontPlate", d.FrontPlate, 0, 100) is var fp && legacyChance && d.On && fp == 90 ? d.FrontPlate : fp, r.Num(p + "sidePlate", d.SidePlate, 0, 100),
                 wd, Math.Max(wd, r.Num(p + "wDurMax", d.WDurMax, 1, 100)), ad, Math.Max(ad, r.Num(p + "aDurMax", d.ADurMax, 1, 100)),
@@ -304,7 +309,10 @@ public static partial class ConfigModel
                 Meds = r.Bool(p + "meds", true), Reroll = v110 ? r.Num(p + "reroll", d.On ? 20 : 0, 0, 100) : 0,
                 TopOn = v110 && r.Bool(p + "topload.on", d.On || id.StartsWith("boss_") || id.StartsWith("f_")),
                 TopChance = r.Num(p + "topload.chance", d.On ? 40 : 30, 0, 100), TopPct = r.Num(p + "topload.pct", 30, 1, 100),
-                TierRange = r.Str(p + "tierRange", "global", "global", "exact", "near", "all")
+                TierRange = r.Str(p + "tierRange", "global", "global", "exact", "near", "all", "down"),
+                TierDown = (int)r.Num(p + "tierDown", 2, 2, 6),
+                TierMin = Math.Min((int)r.Num(p + "tierMin", 3, 1, 7), (int)r.Num(p + "tierMax", 5, 1, 7)),
+                TierMax = Math.Max((int)r.Num(p + "tierMin", 3, 1, 7), (int)r.Num(p + "tierMax", 5, 1, 7))
             };
         }
 

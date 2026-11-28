@@ -24,7 +24,7 @@ public sealed class GearContext
     public bool Night { get; init; }
     public RoleGear Role => Settings.RoleFor(Pick.RoleId);
     /// <summary>1.1.5 이 봇의 장비 고르는 범위(봇별 설정이 global이면 전체 설정).</summary>
-    public string TierRange => Role.TierRange is "exact" or "near" or "all" ? Role.TierRange : Settings.TierRange;
+    public string TierRange => Role.TierRange is "exact" or "near" or "all" or "down" ? Role.TierRange : Settings.TierRange;
     /// <summary>1.0.7 PackNStrap: 벨트 아이템이 있어 완장 칸을 Gravity가 정하는지.</summary>
     public bool BeltManaged { get; set; }
     /// <summary>1.0.7 PackNStrap: 이 봇의 완장 칸 벨트 목록. null = 벨트 안 참.</summary>
@@ -449,9 +449,13 @@ public static class GearApply
     /// <summary>범위가 좁아 후보가 이만큼보다 적으면 바로 아래 티어를 하나씩 더한다(스캐브·레이더처럼 원래 목록이 작은 봇이 한 총만 드는 일 방지, 1차 하네스).</summary>
     internal static int MinRangeCandidates = 3;
 
+    /// <summary>장비 고르는 범위의 가장 낮은 티어(0기반): exact = 봇 티어, near = 한 단계 아래, down = TierDown 단계 아래(1.1.6).</summary>
+    public static int RangeLow(string tierRange, int tier, int down) =>
+        Math.Max(0, tierRange switch { "near" => tier - 1, "down" => tier - down, _ => tier });
+
     internal static void RangeFilter(Dictionary<MongoId, double> pool, string slot, GearTable table, GearContext c, bool onlyHere = true)
     {
-        int lo = c.TierRange == "near" ? c.Pick.Tier - 1 : c.Pick.Tier;
+        int lo = RangeLow(c.TierRange, c.Pick.Tier, c.Role.TierDown);
         var below = pool.Where(kv => kv.Value > 0).Select(kv => kv.Key)
             .Where(m => c.Info(m.ToString()) is { } inf && GearPools.Weight(table, inf, m.ToString(), slot, onlyHere) == null && c.TierOf(slot, m.ToString()) < lo).ToList();
         if (below.Count == 0) return;

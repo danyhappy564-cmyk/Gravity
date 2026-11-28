@@ -75,6 +75,7 @@ public static class GearTier
         int t;
         if (role.Mode == "spread") t = role.Spread is { } sw && Weighted(sw, rnd) is var k && k >= 0 ? k : role.Tier - 1;
         else if (role.Mode == "fixed") t = role.Tier - 1;
+        else if (role.Mode == "range") t = rnd.Next(role.TierMin - 1, role.TierMax); // 1.1.6 보스·팩션 등 티어 범위
         else if (g.TierMode == "fixed") t = g.FixedTier - 1;
         else
         {

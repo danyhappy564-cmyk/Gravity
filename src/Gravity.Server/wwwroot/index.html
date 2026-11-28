@@ -679,6 +679,8 @@ const ROLE_GROUPS=[
  [T('특수','SPECIAL'),[['cultist','컬티스트','Cultists'],['raider','레이더','Raiders'],['rogue','로그','Rogues'],['bloodhound','블러드하운드','Bloodhounds']]],
  [T('팩션 모드','FACTION MODS'),[['ruaf','RUAF','RUAF'],['untar','UNTAR','UNTAR'],['blackdiv','블랙 디비전','Black Division'],['wedge','웨지','Wedge']]]
 ];
+/** 1.1.6 레벨이 있는(장비 티어 화면의 봇 티어·장비 고르기를 따르는) 봇 */
+const LEVELED=['usec','bear','scav','marksman','pscav'];
 const ROLES=ROLE_GROUPS.flatMap(([,l])=>l.map(([id,ko,en])=>({id,name:T(ko,en)})));
 const roleName=id=>tr((ROLES.find(r=>r.id===id)||{name:id}).name);
 const EVENTS=[['halloween',T('할로윈','Halloween'),''],['christmas',T('크리스마스','Christmas'),''],['newyears',T('새해','New Year'),''],['aprilfools',T('만우절','April Fools'),'']];
@@ -739,7 +741,7 @@ function tierDataDefaults(){const out={};TBOTS.forEach(([b])=>{out[b]=[];for(let
 // 1.0.6 티어 분포: 그 봇 기본 티어 50, 위아래 한 칸씩 25. 끝(T1·T7)은 없는 쪽 몫을 안쪽 칸으로 몰아 합 100.
 function spreadDefault(tier){const t=clampN(Math.round(tier)||1,1,7),o={t1:0,t2:0,t3:0,t4:0,t5:0,t6:0,t7:0};o['t'+t]=50;
   if(t===1)o.t2=50;else if(t===7)o.t6=50;else{o['t'+(t-1)]=25;o['t'+(t+1)]=25;}return o;}
-const spreadText=r=>r&&r.mode==='spread'&&r.spread?tr(T('분포','Spread'))+' '+[1,2,3,4,5,6,7].filter(i=>r.spread['t'+i]>0).map(i=>'T'+i+' '+r.spread['t'+i]).join('·'):'';
+const spreadText=r=>r&&r.mode==='range'?tr(T('범위','Range'))+' T'+Math.min(r.tierMin,r.tierMax)+'~T'+Math.max(r.tierMin,r.tierMax):r&&r.mode==='spread'&&r.spread?tr(T('분포','Spread'))+' '+[1,2,3,4,5,6,7].filter(i=>r.spread['t'+i]>0).map(i=>'T'+i+' '+r.spread['t'+i]).join('·'):'';
 // 1.0.6 봇 체력·스킬(Forge #2): 티어(T1~T7)마다 체력(원래대로·PMC 기준 440·배율)·일반 스킬(원래대로·레벨 고정·원래의 %). 무기 숙련은 그대로.
 // 봇 티어 = Gravity가 입힌 장비 티어, 아니면 봇별 장비의 티어 방식(고정·분포 = 고정 티어, 레벨 따라가기 = 레벨의 티어). 묶음 체크로 따를 봇을 고른다.
 const STAT_GROUPS=[['scav',T('스캐브 (저격·AI 플레이어 스캐브 포함)','Scavs (incl. snipers & AI player scavs)')],['pmc',T('PMC','PMCs')],['special',T('특수 봇 · 팩션','Special bots & factions')],['boss',T('보스','Bosses')],['follower',T('호위','Followers')]];
@@ -752,7 +754,7 @@ function roleDefaults(id){
   return {on:pmc,mode:pmc?'follow':boss||fol?'fixed':'fixed',tier:boss?6:fol?5:fac?5:id==='scav'||id==='marksman'?2:id==='pscav'?3:4,offset:0,
     frontPlate:pmc?100:boss?100:fol?85:40,sidePlate:pmc?35:boss?60:fol?30:10,skipBack:true,limitClass:true,
     topload:{on:pmc||boss||fol,chance:pmc?40:30,pct:30},wDurMin:pmc?75:60,wDurMax:100,aDurMin:pmc?70:50,aDurMax:100,
-    loot:true,keys:id==='scav',quest:pmc,poverty:pmc?5:0,reroll:pmc?20:0,meds:true,tierRange:'global'};
+    loot:true,keys:id==='scav',quest:pmc,poverty:pmc?5:0,reroll:pmc?20:0,meds:true,tierRange:'global',tierDown:2,tierMin:3,tierMax:5};
 }
 function makeDefaults(){
   const maps={};
@@ -1927,10 +1929,10 @@ P.roles={desc:T('봇 종류마다 장비 적용 여부와 티어, 방탄판·탄
   const r=state.roles[roleSel],p='roles.'+roleSel+'.',off=!r.on;
   const list=`<div class="list">${ROLE_GROUPS.map(([cap,items])=>`<div class="cap">${tr(cap)}</div>`+items.map(([id,ko,en])=>`<button data-role="${id}" class="${id===roleSel?'on':''}">${tr(T(ko,en))}${spreadText(state.roles[id])?`<small class="muted"> · ${esc(spreadText(state.roles[id]))}</small>`:''}<span class="st ${state.roles[id].on?'on':''}"></span></button>`).join('')).join('')}</div>`;
   const detail=`<div class="stack">${card(T(roleName(roleSel),roleName(roleSel)),sw(p+'on',T('Gravity 장비 적용','Use Gravity loadouts'),T('끄면 SPT(또는 그 봇을 추가한 모드)의 기본 장비를 씁니다.','Off = SPT / source mod default gear.'))
-     +seg(p+'mode',T('티어','Tier'),'',[['follow',T('레벨 따라가기','Follow level')],['fixed',T('고정','Fixed')],['offset',T('레벨 ± 오프셋','Level ± offset')],['spread',T('티어 분포','Tier spread')]],{dis:off})
+     +seg(p+'mode',T('어떤 티어를 쓸지','Which tier'),'',[['follow',T('레벨 따라가기','Follow level')],['fixed',T('고정','Fixed')],['range',T('티어 범위','Tier range')],['offset',T('레벨 ± 오프셋','Level ± offset')],['spread',T('티어 분포','Tier spread')]],{dis:off})+(LEVELED.includes(roleSel)?'':`<p class="small muted">${tr(T('이 봇은 레벨이 없습니다. ‘레벨 따라가기’·‘오프셋’은 내 레벨 구간에서 레벨을 뽑아 티어를 정하고, ‘고정’·‘티어 범위’는 여기서 정한 티어를 씁니다.','This bot has no level. ‘Follow level’ and ‘offset’ roll a level from your level range; ‘Fixed’ and ‘Tier range’ use the tier set here.'))}</p>`)+(r.mode==='range'?range(p+'tierMin',p+'tierMax',T('티어 범위','Tier range'),T('봇마다 이 범위 안에서 티어를 고르게 뽑습니다. 시작 티어 하한과 가난한 봇 확률은 그대로 적용됩니다.','Each bot rolls a tier evenly inside this range. The starting-tier floor and poor-bot chance still apply.'),{min:1,max:7,unit:'',dis:off}):'')
      +(r.mode==='spread'&&r.spread?ratio(p+'spread',[1,2,3,4,5,6,7].map(i=>['t'+i,T('T'+i,'T'+i),['#5f6b7f','#5fd4a6','#6ea8ff','#a78bfa','#f0c070','#f2a65a','#f27f8c'][i-1]]),T('티어별 비중','Share per tier'),T('봇마다 이 비중으로 티어를 굴립니다. 레벨과 상관없이 늘 같은 퍼짐입니다. 시작 티어 하한과 가난한 봇 확률은 그대로 적용됩니다.','Each bot rolls its tier from these shares, regardless of level. The starting-tier floor and poor-bot chance still apply.'))+`<p class="small muted">${esc(spreadText(r))}</p>`:'')
      +(r.mode==='fixed'?slider(p+'tier',T('고정 티어','Fixed tier'),'',{min:1,max:7,unit:'',dis:off}):r.mode==='offset'?slider(p+'offset',T('티어 오프셋','Tier offset'),'',{min:-3,max:3,unit:'',dis:off}):'')
-     +seg(p+'tierRange',T('장비 고르는 범위','Gear pick range'),T('이 봇만 따로 정합니다. ‘장비 티어 설정 따름’은 장비 티어 화면 › 봇 티어와 장비 고르기 › ② 장비 고르기 값을 그대로 씁니다(Gravity 자동 기본 ‘한 티어 아래까지’, Live-like ‘봇 티어 장비만’).','Set this bot separately. ‘Follow Gear tiers’ uses Gear tiers › Bot tier & gear pick › ② Pick gear (Gravity auto default ‘Down one tier’, Live-like ‘Bot tier only’).'),[['global',T('장비 티어 설정 따름','Follow Gear tiers')],['exact',T('봇 티어 장비만','Bot tier only')],['near',T('한 티어 아래까지','Down one tier')],['all',T('아래 티어 전부 (드물게)','All lower tiers (rarer)')]],{dis:off})
+     +seg(p+'tierRange',T('장비 고르는 범위','Gear pick range'),T('이 봇만 따로 정합니다. ‘장비 티어 설정 따름’은 장비 티어 화면 › 봇 티어와 장비 고르기 › ② 장비 고르기 값을 그대로 씁니다(Gravity 자동 기본 ‘한 티어 아래까지’, Live-like ‘봇 티어 장비만’).','Set this bot separately. ‘Follow Gear tiers’ uses Gear tiers › Bot tier & gear pick › ② Pick gear (Gravity auto default ‘Down one tier’, Live-like ‘Bot tier only’).'),[['global',T('장비 티어 설정 따름','Follow Gear tiers')],['exact',T('봇 티어 장비만','Bot tier only')],['near',T('한 티어 아래까지','Down one tier')],['down',T('직접: 몇 단계 아래까지','Custom: N tiers down')],['all',T('아래 티어 전부 (드물게)','All lower tiers (rarer)')]],{dis:off})+(r.tierRange==='down'?slider(p+'tierDown',T('봇 티어에서 몇 단계 아래 장비까지','How many tiers below the bot tier'),T('예: T6 봇에 3이면 T3~T6 장비를 씁니다. 낮은 티어일수록 드물게 나옵니다.','E.g. 3 on a T6 bot uses T3–T6 gear; lower tiers are rarer.'),{min:2,max:6,unit:'',dis:off}):'')+(LEVELED.includes(roleSel)&&r.mode!=='follow'?notice(T('이 봇은 장비 티어 화면의 봇 티어 값을 따르지 않습니다. 위에서 고른 티어 방식을 씁니다.','This bot does not follow the bot-tier values on Gear tiers; it uses the tier mode chosen above.'),'warn'):'')+(LEVELED.includes(roleSel)&&r.tierRange!=='global'?notice(T('이 봇은 장비 티어 화면의 장비 고르기 값을 따르지 않습니다. 위에서 고른 범위를 씁니다.','This bot does not follow the gear-pick value on Gear tiers; it uses the range chosen above.'),'warn'):'')
      +`<div class="chips" style="margin-top:6px"><button class="mini-btn" data-act="copyRole">${tr(T('이 설정을 같은 묶음에 복사','Copy to the same group'))}</button><button class="mini-btn" data-act="resetRole">${tr(T('기본값','Defaults'))}</button></div>`,{icon:'☰',right:pill(r.on?u('on'):u('off'),r.on?'good':'')})}
    <div class="grid g2">
    ${card(T('방탄판','Plates'),slider(p+'frontPlate',T('앞·뒤판 넣을 확률','Front/back plate chance'),'',{dis:off})+slider(p+'sidePlate',T('옆구리 판 넣을 확률','Side plate chance'),'',{dis:off})+sw(p+'skipBack',T('앞판이 없으면 뒤판도 빼기','No back plate without front'),'',{adv:true,dis:off})+sw(p+'limitClass',T('뒤·옆판 등급을 앞판 이하로','Back/side class ≤ front'),'',{adv:true,dis:off}),{icon:'▣',cls:off?'off':''})}

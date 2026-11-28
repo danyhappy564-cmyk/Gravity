@@ -64,6 +64,7 @@ public static class BotStats
         if (dressedTier is { } t) return Math.Clamp(t, 0, 6);
         var role = g.RoleFor(roleId);
         if (role.Mode is "fixed" or "spread") return Math.Clamp(role.Tier - 1, 0, 6);
+        if (role.Mode == "range") return Math.Clamp((role.TierMin + role.TierMax) / 2 - 1, 0, 6);
         return Math.Clamp(GearTier.TierOfLevel(g.Tiers, Math.Max(1, level)) + (role.Mode == "offset" ? role.Offset : 0), 0, 6);
     }
 
