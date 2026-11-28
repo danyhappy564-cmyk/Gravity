@@ -103,6 +103,8 @@ public sealed record GearSettings(
         : DisabledSources.Contains(info.Source));
     /// <summary>1.0.9 모드 아이템 전체 스위치(mods.on). 기존 설정 파일에 값이 없으면 켜짐, 새 설치(ConfigModel.Default)는 꺼짐.</summary>
     public bool ModsOn { get; init; } = true;
+    /// <summary>1.1.6 #106: 봇 원래 목록·봇별 표에 없는 모드 아이템을 아이템 티어대로 장비 칸에 끼워 넣는다(mods.autoFill, 기본 켬). 표의 그 칸에 모드 아이템을 직접 넣었으면 안 함.</summary>
+    public bool ModAutoFill { get; init; } = true;
     /// <summary>1.0.5 의상 탭: 옷을 허용한 모드 출처. null = 한 번도 저장 안 함 → 봇 외형을 바꾸지 않음.</summary>
     public IReadOnlySet<string>? ClothingOn { get; init; }
     /// <summary>1.1.0(#73) 레이드마다 일부만: 기타 모드 아이템(의약품·수류탄·음식·전리품) 수와 모드 의상 수(음수 = 제한 없음).</summary>
@@ -377,7 +379,7 @@ public static partial class ConfigModel
             (int)r.Num("mods.equipment", 30, 0, 1000), r.Num("mods.mult", 100, 0, 200), r.Bool("mods.pmcOnly", true),
             bl, r.Num("blacklist.scavPenCap", 40, 1, 100), r.Bool("blacklist.blockQuest", true), tables)
         { ItemTier = itemTier, ThermalAdd = Ids(g + "thermalAdd"), ThermalRemove = Ids(g + "thermalRemove"), DisabledSources = r.StringList("mods.disabledSources").ToHashSet(StringComparer.Ordinal),
-            DisabledBy = r.Node("mods.disabledBy") is JsonObject ? GearSettings.ModTabs.ToDictionary(t => t, t => (IReadOnlySet<string>)r.StringList("mods.disabledBy." + t).ToHashSet(StringComparer.Ordinal)) : null, ModsOn = r.Bool("mods.on", true),
+            DisabledBy = r.Node("mods.disabledBy") is JsonObject ? GearSettings.ModTabs.ToDictionary(t => t, t => (IReadOnlySet<string>)r.StringList("mods.disabledBy." + t).ToHashSet(StringComparer.Ordinal)) : null, ModsOn = r.Bool("mods.on", true), ModAutoFill = r.Bool("mods.autoFill", true),
             ModOther = (int)r.Num("mods.other", 0, 0, 1000), ModClothing = (int)r.Num("mods.clothingCount", -1, -1, 500),
             ClothingOn = r.Node("mods.clothingOn") is System.Text.Json.Nodes.JsonArray ? r.StringList("mods.clothingOn").ToHashSet(StringComparer.Ordinal) : null, PartTiers = r.Bool("weapons.partTiers", true),
             Belts = new BeltSettings(r.Bool(g + "pns.on", true), r.Bool(g + "pns.pmcOnly", true), r.Bool(g + "pns.unlootable", true)),

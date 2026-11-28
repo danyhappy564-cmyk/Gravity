@@ -137,9 +137,12 @@ public static class GearApply
                 bool useTable = pass == 0;
                 userSlot = useTable && controls;
                 if (useTable)
+                {
                     // 실제 DB에 있고 이 장비 칸에 맞는 아이템만 추가한다. DB 원본은 SPT가 만든 봇 복제본과 분리되어 있다.
+                    // 1.1.6 #106: 중괄호가 없어 아래 else가 안쪽 if(TryAdd)에 붙어, 원래 목록에 이미 있는 표 아이템을 만나면 목록을 원래대로 되돌려 앞서 넣은 표 아이템이 사라졌다.
                     foreach (var id in GearPools.Seeds(table,c.Items,slot))
                         if(pool.TryAdd(id,1))addedEquipment.Add(id);
+                }
                 else { pool.Clear(); foreach (var (k, v) in orig) pool[k] = v; }
                 var candidates = pool.ToList();
                 foreach (var (mid, w) in candidates)
@@ -163,6 +166,25 @@ public static class GearApply
                 }
                 // 1.1.5 장비 후보 범위(gear.tierRange): 자동 티어 아이템 중 봇 티어(near는 한 단계 아래까지)보다 낮은 것은 뺀다.
                 // 사람이 표에 무게를 직접 준 아이템은 그대로 둔다. 다 빠지면 남은 것 중 가장 가까운 아래 티어만 남긴다(스캐브처럼 원래 목록이 낮은 봇).
+                // 1.1.6 #106 모드 자동 끼우기: 원래 목록·표에 없는 모드 아이템을 아이템 티어대로 더한다(이번 판 모드 묶음·블랙리스트·PMC 전용 등은 Blocked가 거름).
+                // 표의 이 칸에 모드 아이템이 하나라도 있으면(0% 포함) 사람이 고른 것이라 건너뛰고, 0%만 넣어 끈 칸도 건너뛴다.
+                if (managed && g.ModAutoFill && g.ModsOn && !(useTable && controls && !GearPools.Wants(table, slot, c.Items)) && !TableHasMod(table, slot, c.Items))
+                {
+                    var pos = pool.Where(kv => kv.Value > 0).Select(kv => kv.Value).ToList();
+                    double baseW = pos.Count > 0 ? pos.Average() : 1;
+                    foreach (var id in c.Items.ModFor(slot))
+                    {
+                        var mid = new MongoId(id);
+                        if (pool.ContainsKey(mid) || c.Blocked(id)) continue;
+                        int t = c.TierOf(slot, id);
+                        if (t > pick.Tier) continue;
+                        var inf = c.Info(id);
+                        if (inf != null && ClassCapped.Contains(slot) && inf.ArmorClass > caps.FMax) continue;
+                        if (slot == "TacticalVest" && !allowArmouredRig && inf != null && (inf.ArmorClass > 0 || inf.PlateSlots)) continue;
+                        pool[mid] = baseW * Factor(pick.Tier - t) * g.ModMult / 100.0;
+                        addedEquipment.Add(id);
+                    }
+                }
                 if (managed && c.TierRange != "all") RangeFilter(pool, slot, table, c, useTable && controls);
                 // 1.1.5(1차 하네스 F-plate): 앞·뒤판 칸에 이 티어 등급 범위([FMin,FMax]) 판이 하나도 안 들어가는 방탄복·리그는 뺀다.
                 // 그대로 두면 판 거르기가 '가장 가까운 등급'으로 대체해 T5에 3급 판, T1에 5급 옆판이 들어간다. 다른 후보가 남을 때만 뺀다.
@@ -452,6 +474,10 @@ public static class GearApply
     /// <summary>장비 고르는 범위의 가장 낮은 티어(0기반): exact = 봇 티어, near = 한 단계 아래, down = TierDown 단계 아래(1.1.6).</summary>
     public static int RangeLow(string tierRange, int tier, int down) =>
         Math.Max(0, tierRange switch { "near" => tier - 1, "down" => tier - down, _ => tier });
+
+    /// <summary>1.1.6 #106: 표의 이 장비 칸 목록에 모드 아이템이 하나라도 있는지(무게 0 포함).</summary>
+    internal static bool TableHasMod(GearTable table, string slot, GearItems items) =>
+        table.Pools.Values.Any(p => p.Keys.Any(id => items.Info.TryGetValue(id, out var i) && i.Mod && i.EquipmentSlots.Contains(slot)));
 
     internal static void RangeFilter(Dictionary<MongoId, double> pool, string slot, GearTable table, GearContext c, bool onlyHere = true)
     {

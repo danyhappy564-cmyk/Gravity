@@ -86,6 +86,10 @@ public sealed class GearItems
         return null;
     }
 
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string[]> _modFor = new();
+    /// <summary>1.1.6 #106: 이 장비 칸에 들어가는 쓸 수 있는 모드 아이템(모드 자동 끼우기 후보).</summary>
+    public string[] ModFor(string slot) => _modFor.GetOrAdd(slot, s => Info.Where(kv => kv.Value.Mod && kv.Value.Available && kv.Value.Section != "ammo" && kv.Value.EquipmentSlots.Contains(s)).Select(kv => kv.Key).Order(StringComparer.Ordinal).ToArray());
+
     public int TierOf(string slot, string id)
     {
         if(SlotTier.TryGetValue(slot,out var d)&&d.TryGetValue(id,out var t))return t;
