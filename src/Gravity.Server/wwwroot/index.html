@@ -2403,6 +2403,7 @@ function sampleHtml(){
   const r=sampleRes;
   const it=id=>{if(!id)return '<span class="muted">—</span>';const x=ci[id];if(!x)return esc(id);const e=itEff(x),up=r&&r.tier&&e>r.tier;return `${esc(itemNm(x))} <span class="pill${up?' warn':''}" title="${esc(up?tr(T('봇 티어보다 위 아이템(봇별 아이템 표에 직접 넣었거나 서버가 보탠 것)','Above the bot tier (put in a per-bot table, or topped up by the server)')):tr(T('아이템 티어','Item tier')))}">T${e}</span>`;};
   const row=(l,v)=>`<span class="small muted">${tr(l)}</span><span class="small">${v}</span>`;
+  const upPart=b=>{const up=(b.partIds||[]).map(id=>ci[id]).filter(x=>x&&r&&itEff(x)>r.tier);return up.length?` <span class="pill warn" title="${esc(up.map(x=>itemNm(x)+' T'+itEff(x)).join(', '))}">${fmt(tr(T('위 티어 부품 {n}개','{n} above-tier parts')),{n:up.length})}</span>`:'';};
   let body='';
   if(r&&r.loading)body=`<p class="muted small">${tr(T('뽑는 중…','Generating…'))}</p>`;
   else if(r&&r.error)body=`<p class="small" style="color:#ffb020">${esc(r.error)}</p>`;
@@ -2412,7 +2413,7 @@ function sampleHtml(){
       +(r.gravity?'':`<p class="small" style="color:#ffb020">${fmt(tr(T('{r}은(는) 봇별 장비 설정이 꺼져 있어 Gravity가 입히지 않습니다. 티어와 상관없이 게임 원래 장비로 나옵니다.','{r} has its per-bot gear switch off, so Gravity does not dress it: it uses the game\'s own gear regardless of tier.')),{r:roleName})}</p>`)
       +r.bots.map(b=>{
         const amm=b.ammo&&ci[b.ammo]?` · ${tr(T('탄','Ammo'))} ${it(b.ammo)} ${fmt(tr(T('관통 {p}','pen {p}')),{p:Math.round(ci[b.ammo].pen||0)})}`:'';
-        const gun=b.weapon?`${it(b.weapon)}${b.scope?' + '+it(b.scope):' <span class="muted">('+tr(T('조준경 없음','no scope'))+')</span>'}${amm} · ${fmt(tr(T('부품 {n}개','{n} parts')),{n:b.parts|0})}`:it(null);
+        const gun=b.weapon?`${it(b.weapon)}${b.scope?' + '+it(b.scope):' <span class="muted">('+tr(T('조준경 없음','no scope'))+')</span>'}${amm} · ${fmt(tr(T('부품 {n}개','{n} parts')),{n:b.parts|0})}${upPart(b)}`:it(null);
         return `<div class="sbot"><b>Lv${b.level}</b><div class="sgrid">${row(T('주무기','Primary'),gun)}${b.pistol?row(T('권총','Pistol'),it(b.pistol)):''}${row(T('방탄복','Armor'),it(b.armor)+cls(b.armorClass))}${row(T('헬멧','Helmet'),it(b.helmet)+cls(b.helmetClass))}${b.headset?row(T('헤드셋','Headset'),it(b.headset)):''}${row(T('리그','Rig'),it(b.rig))}${b.backpack?row(T('가방','Backpack'),it(b.backpack)):''}</div></div>`;
       }).join('');
   }

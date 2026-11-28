@@ -12,6 +12,8 @@ public sealed record SampleBot(int Level, string? Weapon, string? Scope, string?
     /// <summary>주무기에 든 탄(약실·탄창), 주무기 아래 부품 수, 권총, 헤드셋, 가방.</summary>
     public string? Ammo { get; init; }
     public int Parts { get; init; }
+    /// <summary>1.1.6: 주무기 아래 부품 id(화면에서 봇 티어보다 위 부품을 표시).</summary>
+    public IReadOnlyList<string> PartIds { get; init; } = [];
     public string? Pistol { get; init; }
     public string? Headset { get; init; }
     public string? Backpack { get; init; }
@@ -74,6 +76,7 @@ public static class GearSample
             armor?.Template.ToString(), Class(armor), helmet?.Template.ToString(), Class(helmet), rig?.Template.ToString())
         {
             Ammo = ammo?.Template.ToString(), Parts = under.Count(i => Info(i) is { Section: "parts" }),
+            PartIds = under.Where(i => Info(i) is { Section: "parts" }).Select(i => i.Template.ToString()).Distinct().ToList(),
             Pistol = Slot("Holster")?.Template.ToString(), Headset = Slot("Earpiece")?.Template.ToString(), Backpack = Slot("Backpack")?.Template.ToString()
         };
     }
