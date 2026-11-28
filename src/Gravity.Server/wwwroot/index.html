@@ -533,8 +533,10 @@ const T=(ko,en)=>{if(typeof en==='string'&&en)T_SEEN.add(en);return {ko,en};};
 const TN=(id,ko,en)=>({ko,en,id});
 /** 첫 언어: 저장한 선택(gravity.lang) → 없으면 브라우저 언어가 ko로 시작할 때만 한국어, 아니면 영어. */
 function initialLang(){const v=readLocal('gravity.lang');if(v==='ko'||v==='en'||/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/.test(v))return v;return typeof navigator!=='undefined'&&/^ko/i.test(navigator.language||'')?'ko':'en';}
+/** 1.1.6 #106 타임라인 휠 확대 상한(배). */
+const TL_ZMAX=8;
 let lang=initialLang(),mode='easy',page='dashboard',mapSel='bigmap',flowMap='bigmap',modTab='weapons',modSearch='',seed=7,qbDemo=false,ioText='',bossSel='reshala',roleSel='usec',tierSel=0,facSel='ruaf',specSel='raiders',blSearch='',blCat='all',devMap='bigmap',simRows=null,devJson='',batch=[],abpsDemo=false,apbsDemo=false,tierIo='',tBot='pmc',tSec='weapons',tCopyTo='scav',iq='',atWeapon='',missingDemo=false,tSlot='',pickOpen='',pq='',pickAll=false,pickTiers=null,pickSrc='all',tFull=false,attSlot='count',tRole='',tCopyScope='all',blOpen=-1,fileKind='',dragTier=null,lastDownload=null,tlEdit=true,tlDrag=null,tlDragged=false,tlDragEnd=0,tlZoom=1;
-try{const z=+localStorage.getItem('gravity.tlZoom');if([1,2,4].includes(z))tlZoom=z;}catch{}
+try{const z=+localStorage.getItem('gravity.tlZoom');if(z>=1&&z<=TL_ZMAX)tlZoom=z;}catch{}
 let spawnTab='all';
 /** 1.1.4: 맵 탭에서 공통을 따르는 카드의 칸을 바꾸려 할 때 고를 때까지 잡아 두는 값 {mid,card,path,value}. */
 let ovrAsk=null;
@@ -1090,7 +1092,8 @@ function estimate(m){
 function timeline(m,big=false){
   const ed=big&&tlEdit&&page==='spawn';
   const e=estimate(m);if(!e)return spawnLocked()?conflictNotice():notice(T('스폰 모듈이 꺼져 있어 SPT 기본 스폰을 씁니다.','Spawn module is off — SPT default spawns are used.'),'warn');
-  const {p,c}=e,W=960,L=118,R=22,x=t=>L+(W-L-R)*Math.min(t,p.raid)/p.raid;
+  // 1.1.6 #106: 확대는 시간 축만 넓힌다(viewBox 폭을 늘리고 CSS 폭도 같은 비율로 — 높이·글자 크기는 그대로). 전에는 SVG 전체를 키워 전체 화면에서 글자·줄 높이까지 커졌다.
+  const {p,c}=e,L=118,R=22,ZW=ed?tlZoom:1,W=Math.round(L+R+(960-L-R)*ZW),x=t=>L+(W-L-R)*Math.min(t,p.raid)/p.raid;
   const hv=(k,xx,y0,h,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-13}" y="${y0}" width="26" height="${h}" fill="transparent"/><rect x="${xx-3.5}" y="${y0+h/2-12}" width="7" height="24" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
   const pp=k=>ed?` data-pop="${k}" class="tlc"`:'';
   const hf=(k,xx,yy,col)=>ed?`<g class="tlh" data-drag="${k}"><rect x="${xx-13}" y="${yy-14}" width="26" height="28" fill="transparent"/><rect x="${xx-3.5}" y="${yy-9}" width="7" height="18" rx="3.5" fill="${col}" stroke="#0b0f1a" stroke-width="1.5"/></g>`:'';
@@ -1103,7 +1106,7 @@ function timeline(m,big=false){
   const sg=specGroups(m);sg.forEach(g=>lanes.push(['spec:'+g.id,g.name,g.col]));
   const tg=trigOther(m);if(tg.length)lanes.push(['trig',T('트리거 스폰','Trigger spawns'),'#f0a6c8']);
   const LH=50,top=46,BH=bs.length?Math.max(LH,bs.length*20+14):LH,FH=fac.length>1?Math.max(LH,fac.length*22+12):LH,LS=lanes.map(([id])=>id==='boss'?BH:id==='fac'?FH:id.startsWith('spec:')?specLaneH(sg.find(g=>'spec:'+g.id===id),W,L,R):id==='trig'?trigLaneH(tg,W,L,R):LH),TH=LS.reduce((a,b)=>a+b,0),H=top+TH+40,Y={},Y0={};let acc=top;lanes.forEach(([id],i)=>{Y0[id]=acc;Y[id]=acc+LS[i]/2;acc+=LS[i];});
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img"${ed&&tlZoom>1?` style="width:${tlZoom*100}%;min-width:${880*tlZoom}px;max-width:none"`:''} data-l="${L}" data-r="${R}" data-w="${W}" data-raid="${p.raid}" data-map="${m.id}"${ed?' class="tl-ed"':''}><defs><pattern id="hatch${m.id}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#f0c070" stroke-opacity=".45" stroke-width="2.4"/></pattern></defs>`;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img"${ed&&ZW>1?` style="width:${(W/960*100).toFixed(1)}%;min-width:${Math.round(880*W/960)}px;max-width:none"`:''} data-l="${L}" data-r="${R}" data-w="${W}" data-raid="${p.raid}" data-map="${m.id}"${ed?' class="tl-ed"':''}><defs><pattern id="hatch${m.id}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#f0c070" stroke-opacity=".45" stroke-width="2.4"/></pattern></defs>`;
   ['early','mid','late'].forEach((k,i)=>{const x0=x(p.raid*i/3),x1=x(p.raid*(i+1)/3);
     s+=`<rect x="${x0}" y="${top-4}" width="${x1-x0}" height="${TH+8}" fill="#6ea8ff" opacity="${Math.min(.16,c[k]*.07)}"/><line x1="${x0}" x2="${x0}" y1="${top-24}" y2="${top+TH}" stroke="#2b3647" stroke-dasharray="2 4"/><text x="${(x0+x1)/2}" y="${top-14}" fill="#c3cede" font-size="14" text-anchor="middle"${pp('phase|'+k)}>${tr([T('초반','Early'),T('중반','Mid'),T('후반','Late')][i])} ×${(+c[k]).toFixed(2)}</text>`;});
   lanes.forEach(([id,l,col],i)=>{const y=Y0[id],tog=id.startsWith('spec:')||id==='trig',open=tog&&!!tlOpen[id],ly=open?y+22:Y[id]+5.5;s+=`<rect x="6" y="${y+5}" width="${W-12}" height="${LS[i]-10}" rx="9" fill="#ffffff" opacity="${i%2?0.025:0.045}"/><circle cx="20" cy="${ly-5.5}" r="5" fill="${col}"/><text x="32" y="${ly}" fill="#eef2f8" font-size="${tog?13.5:15}" font-weight="600"${tlFit((tog?'▸ ':'')+tr(l),tog?13.5:15,80)}${tog?` data-tlopen="${id}" class="tlc" style="cursor:pointer"`:''}>${tog?(open?'▾ ':'▸ '):''}${tr(l)}</text>`;});
@@ -1147,7 +1150,7 @@ function timeline(m,big=false){
   if(!unitOn)s+=`<text x="${W-R}" y="${H-10}" fill="#647089" font-size="12" text-anchor="end">${tr(T('분','min'))}</text>`;
   const notes=[];bs.forEach(b=>{const bb=state.bosses[b.id];notes.push(ed?`<span class="pill gold tlc" data-pop="boss|${b.id}">★ ${tr(b.name)} ${bossChance(b,m.id)}% · ${bb.zones[m.id].map(z=>zname(m.id,z)).join(', ')}</span>`:pill('★ '+tr(b.name)+' '+bossChance(b,m.id)+'% · '+bb.zones[m.id].map(z=>zname(m.id,z)).join(', '),'gold'));});
   if(m.id==='laboratory'&&state.lab.blackoutLink!=='always')notes.push(pill(tr(T('블랙아웃 연동','Blackout link'))+': '+tr(state.lab.blackoutLink==='only'?T('정전 판에만 블디','BlackDiv on blackout only'):T('정전 판 확률 ×','Blackout ×'))+(state.lab.blackoutLink==='boost'?state.lab.blackoutMult:''),'warn'));
-  return `${ed?previewOverview(m):''}${ed?previewTools(m):''}${ed?`<div class="tl-zoom" style="display:flex;align-items:center;gap:8px;margin:0 0 6px"><span class="small muted">${tr(T('타임라인 확대','Timeline zoom'))}</span><div class="seg">${[1,2,4].map(z=>`<button class="${tlZoom===z?'on':''}" aria-pressed="${tlZoom===z}" data-act="tlZoom" data-v="${z}">${z}×</button>`).join('')}</div></div>`:''}${ed?`<p class="tl-hint">${tr(T('타임라인은 옆으로 밀어 볼 수 있습니다. 점·이름을 누르면 고치는 창이 열립니다.','Swipe the timeline sideways. Tap a dot or name to edit.'))}</p>`:''}<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-shortcuts chips"><button class="btn" data-pop="wave">${tr(T('PMC 설정','PMC settings'))}</button>${m.id!=='laboratory'||state.spawn.allowScavLab?`<button class="btn" data-pop="scav">${tr(T('스캐브 설정','Scav settings'))}</button>`:''}<span class="small muted">${tr(T('이름이나 점을 누르기 어려우면 여기서 엽니다.','Use these buttons when a timeline target is hard to click.'))}</span></div><div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
+  return `${ed?previewOverview(m):''}${ed?previewTools(m):''}${ed?`<div class="tl-zoom" style="display:flex;align-items:center;gap:8px;margin:0 0 6px"><span class="small muted">${tr(T('타임라인 확대','Timeline zoom'))}</span><div class="seg">${[1,2,4].map(z=>`<button class="${tlZoom===z?'on':''}" aria-pressed="${tlZoom===z}" data-act="tlZoom" data-v="${z}">${z}×</button>`).join('')}</div><span class="small mono">${(+tlZoom).toFixed(1)}×</span><span class="small muted">${tr(T('타임라인 위에서 휠 = 커서 위치로 확대·축소, 빈 곳을 끌면 좌우 이동','Wheel over the timeline zooms at the cursor; drag empty space to pan'))}</span></div>`:''}${ed?`<p class="tl-hint">${tr(T('타임라인은 옆으로 밀어 볼 수 있습니다. 점·이름을 누르면 고치는 창이 열립니다.','Swipe the timeline sideways. Tap a dot or name to edit.'))}</p>`:''}<div class="tl">${s}</svg></div>${notes.length?`<div class="chips" style="margin-top:10px">${notes.join('')}</div>`:''}${ed?`<div class="tl-shortcuts chips"><button class="btn" data-pop="wave">${tr(T('PMC 설정','PMC settings'))}</button>${m.id!=='laboratory'||state.spawn.allowScavLab?`<button class="btn" data-pop="scav">${tr(T('스캐브 설정','Scav settings'))}</button>`:''}<span class="small muted">${tr(T('이름이나 점을 누르기 어려우면 여기서 엽니다.','Use these buttons when a timeline target is hard to click.'))}</span></div><div class="tl-hint small muted">✎ ${tr(T('빨간 선(PMC 중단)·흰 막대(첫 웨이브)·초록 막대(스캐브 시작·끝)·노란 막대(시작 보호)·별(보스 시각)·보라 선 양 끝(팩션 등장 시각)을 좌우로 끌고, 구간 이름·웨이브 점·보스·특수 봇·팩션 이름을 누르면 값을 고칠 수 있습니다. 바뀐 값은 저장 바에서 저장합니다.','Drag the red line (PMC stop), white bar (first wave), green bars (scav start/end), yellow bar (protection), stars (boss time) and faction line ends; click phase names, wave dots, bosses, special bots or factions to edit. Save from the save bar.'))}</div>`:''}`;
 }
 const legend=()=>`<div class="legend"><span><i style="background:#6ea8ff;border-radius:50%"></i>${tr(T('웨이브 (숫자 = 최대 인원)','Wave (number = max size)'))}</span><span><i style="background:#6ea8ff55;border:1px solid #6ea8ff"></i>${tr(T('계속 보충','Continuous refill'))}</span><span><i style="background:#bff3df;width:2px"></i>${tr(T('보충 확인 시점','Refill check'))}</span><span><i style="background:repeating-linear-gradient(45deg,#f0c07088 0 2px,transparent 2px 5px)"></i>${tr(T('시작 보호','Start protection'))}</span><span><i style="background:#f27f8c;height:2px"></i>${tr(T('PMC 중단','PMC stop'))}</span></div>`;
 const MAPFIELDS=['startPmcPct','interval','waveMin','waveMax','early','mid','late'];
@@ -1187,7 +1190,7 @@ const mmss=t=>{const s=Math.round(t*60);return String(Math.floor(s/60)).padStart
 const scavPpl=w=>w.min===w.max?String(w.max):w.min+'~'+w.max;
 let scavGenArm='',scavCopySel=[];
 function dragVals(kind,arg,t,raid,m){const c=cfgFor(m);
-  if(kind==='scavw'){const z=tlZoom===4?6:2;return [[`maps.${m.id}.scavList.${arg}.t`,clampN(+(Math.round(t*z)/z).toFixed(3),0,raid)]];}
+  if(kind==='scavw'){const z=tlZoom>=4?6:2;return [[`maps.${m.id}.scavList.${arg}.t`,clampN(+(Math.round(t*z)/z).toFixed(3),0,raid)]];}
   if(kind==='pmcStop')return c.hardStop.mode==='percent'?[['spawn.hardStop.pmcPct',clampN(Math.round((1-t/raid)*100),0,90)]]:[['spawn.stopBeforeEnd',clampN(Math.round(raid-t),0,60)]];
   if(kind==='first')return [['spawn.firstDelay',clampN(Math.round(t*6)*10,0,900)]];
   if(kind==='scavEnd')return [['spawn.hardStop.scavPct',clampN(Math.round((1-t/raid)*100),0,60)]];
@@ -1357,6 +1360,18 @@ let tlRaf=0;
 function applyTimeline(kind,arg,t,raid,m){dragVals(kind,arg,t,raid,m).forEach(([p,v])=>{if(p.startsWith('spawn.')){const [target,ovr]=tlField(p.slice(6),m.id);if(ovr)ensureOverride(ovr);writeSetting(target,v,true);}else writeSetting(p,v,true);});}
 function tlApply(e){const d=tlDrag;if(!d)return;const r=tlTime(e);if(!r)return;applyTimeline(d.kind,d.arg,r.t,r.raid,r.m);updateSavebar();refreshLive();showTip(e,dragLabel(d.kind,d.arg,r.raid));}
 let tlLastEv=null;
+/* 1.1.6 #106 타임라인 휠 확대(커서 위치 기준)와 빈 곳 끌어서 좌우 이동. */
+let tlWheelRaf=0,tlPan=null;
+function tlWheel(e){const tl=e.target&&e.target.closest&&e.target.closest('.tl');if(!tl||!tl.querySelector('svg.tl-ed'))return;
+  const z=clampN(+(tlZoom*Math.exp(-(+e.deltaY||0)*0.0015)).toFixed(2),1,TL_ZMAX);e.preventDefault();if(Math.abs(z-tlZoom)<0.005)return;
+  const r=tl.getBoundingClientRect(),cx=e.clientX-r.left,frac=(tl.scrollLeft+cx)/Math.max(1,tl.scrollWidth);
+  tlZoom=z;try{localStorage.setItem('gravity.tlZoom',String(z));}catch{}
+  cancelAnimationFrame(tlWheelRaf);tlWheelRaf=requestAnimationFrame(()=>{rerender();const n=document.querySelector('.tl');if(n&&n.scrollWidth)n.scrollLeft=Math.max(0,frac*n.scrollWidth-cx);});}
+document.addEventListener('wheel',tlWheel,{passive:false});
+document.addEventListener('pointerdown',e=>{const tl=e.target&&e.target.closest&&e.target.closest('.tl');if(!tl||tlZoom<=1||!tl.querySelector('svg.tl-ed'))return;
+  if(e.target.closest('[data-drag],[data-pop],button,a,input,select'))return;tlPan={tl,x0:e.clientX,s0:tl.scrollLeft};});
+document.addEventListener('pointermove',e=>{if(tlPan){tlPan.tl.scrollLeft=tlPan.s0-(e.clientX-tlPan.x0);return;}});
+document.addEventListener('pointerup',()=>{tlPan=null;});
 document.addEventListener('pointermove',e=>{if(!tlDrag)return;if(Math.abs(e.clientX-tlDrag.x0)>2)tlDragged=true;if(!tlDragged)return;tlLastEv=e;cancelAnimationFrame(tlRaf);tlRaf=requestAnimationFrame(()=>tlApply(e));});
 const tlStop=()=>{if(!tlDrag)return;cancelAnimationFrame(tlRaf);if(tlDragged&&tlLastEv)tlApply(tlLastEv);tlLastEv=null;const moved=tlDragged;tlDrag=null;tlDragged=false;if(moved)tlDragEnd=Date.now();document.body.classList.remove('tl-dragging');$('#tltip').hidden=true;if(moved)rerender();};
 document.addEventListener('pointerup',tlStop);document.addEventListener('pointercancel',tlStop);window.addEventListener('blur',tlStop);
